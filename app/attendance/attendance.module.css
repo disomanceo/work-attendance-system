@@ -1,0 +1,221 @@
+.page {
+  min-height: 100svh;
+  padding: 18px 16px 40px;
+  color: #2e1a52;
+  background:
+    radial-gradient(circle at 85% 5%, rgba(147, 74, 244, 0.15), transparent 28%),
+    linear-gradient(180deg, #fbf9ff, #f3edff);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 48px 1fr 52px;
+  align-items: center;
+  gap: 10px;
+}
+
+.header button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e1d4f7;
+  border-radius: 14px;
+  color: #6b2ccb;
+  background: white;
+  font-size: 22px;
+}
+
+.header span {
+  color: #8c6dba;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.header h1 {
+  margin: 4px 0 0;
+  color: #4f1b98;
+  font-size: 24px;
+}
+
+.header img {
+  object-fit: contain;
+}
+
+.clockCard,
+.statusCard,
+.autoCheckout,
+.locationCard {
+  margin-top: 18px;
+  border: 1px solid #e5daf9;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 15px 38px rgba(74, 38, 128, 0.09);
+}
+
+.clockCard {
+  padding: 20px;
+  text-align: center;
+}
+
+.clockCard p {
+  margin: 0;
+  color: #685285;
+  font-weight: 800;
+}
+
+.clockCard strong {
+  display: block;
+  margin-top: 7px;
+  color: #6d27dc;
+  font-size: clamp(44px, 15vw, 66px);
+  letter-spacing: -2px;
+}
+
+.clockCard small {
+  color: #8a8097;
+}
+
+.statusCard {
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.statusIcon {
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  margin: 0 auto;
+  border: 10px solid #ddc9fd;
+  border-radius: 50%;
+  color: #6d27dc;
+  font-size: 36px;
+}
+
+.statusCard h2 {
+  margin: 14px 0 7px;
+  color: #4f1b98;
+}
+
+.statusCard p {
+  margin: 0;
+  color: #756b88;
+}
+
+.checkInButton {
+  width: 100%;
+  min-height: 62px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 18px;
+  color: white;
+  background: linear-gradient(135deg, #b45bff, #6d24e5);
+  box-shadow: 0 15px 28px rgba(109, 36, 229, 0.28);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.completed {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 16px;
+  color: #16723a;
+  background: #effcf3;
+  font-weight: 800;
+}
+
+.autoCheckout {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 17px;
+  border-color: #f0d28e;
+  background: #fffaf0;
+}
+
+.autoCheckout > span {
+  font-size: 28px;
+}
+
+.autoCheckout strong {
+  color: #3a213f;
+}
+
+.autoCheckout p {
+  margin: 5px 0 0;
+  color: #756477;
+}
+
+.autoCheckout b {
+  color: #6d27dc;
+}
+
+.locationCard {
+  padding: 15px;
+  color: #513b6d;
+  text-align: center;
+}
+
+.successMessage,
+.errorMessage {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.successMessage {
+  color: #176b35;
+  background: #effcf3;
+  border: 1px solid #afe0bc;
+}
+
+.errorMessage {
+  color: #b42318;
+  background: #fff2f2;
+  border: 1px solid #efb5b5;
+}
+
+.historyButton {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 18px;
+  border: 1px solid #d9c9f3;
+  border-radius: 16px;
+  color: #5a26a8;
+  background: white;
+  font-weight: 800;
+}
+
+.loading {
+  display: flex;
+  min-height: 100svh;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #5f28bc;
+  background: #f7f2ff;
+  font-weight: 800;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(95, 40, 188, 0.2);
+  border-top-color: #5f28bc;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 720px) {
+  .page {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 30px 24px 60px;
+  }
+}

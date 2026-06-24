@@ -1,0 +1,462 @@
+.page {
+  min-height: 100svh;
+  padding: 18px 16px 108px;
+  color: #27174d;
+  background:
+    radial-gradient(circle at 90% 4%, rgba(143, 71, 244, 0.14), transparent 26%),
+    linear-gradient(180deg, #fbf9ff 0%, #f4efff 100%);
+}
+
+.topBar,
+.schoolBrand,
+.welcomeCard,
+.attendanceHero,
+.autoCheckout,
+.sectionHeading,
+.liveTime,
+.bottomNav {
+  display: flex;
+  align-items: center;
+}
+
+.topBar {
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.schoolBrand {
+  min-width: 0;
+  gap: 11px;
+}
+
+.schoolBrand img {
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.schoolBrand div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.schoolBrand strong {
+  overflow: hidden;
+  color: #251449;
+  font-size: 17px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.schoolBrand span {
+  color: #766c8d;
+  font-size: 12px;
+}
+
+.logoutButton,
+.sectionHeading button {
+  border: 0;
+  color: #6631bb;
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.welcomeCard {
+  position: relative;
+  min-height: 155px;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 22px 148px 22px 20px;
+  overflow: hidden;
+  border: 1px solid #e6dafd;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(177, 119, 255, 0.22), transparent 38%),
+    #ffffff;
+  box-shadow: 0 16px 40px rgba(82, 44, 139, 0.09);
+}
+
+.greeting {
+  color: #6f6286;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.welcomeCard h1 {
+  margin: 9px 0 6px;
+  color: #6d27dc;
+  font-size: clamp(24px, 7vw, 34px);
+  line-height: 1.2;
+}
+
+.welcomeCard p {
+  margin: 0;
+  color: #766c8d;
+  font-size: 13px;
+}
+
+.panda {
+  position: absolute;
+  right: -8px;
+  bottom: -18px;
+  width: 160px;
+  height: auto;
+  object-fit: contain;
+}
+
+.clockCard,
+.attendanceHero,
+.autoCheckout,
+.todaySection,
+.menuSection {
+  margin-top: 16px;
+  border: 1px solid #e7dcfb;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 36px rgba(82, 44, 139, 0.08);
+}
+
+.clockCard {
+  padding: 20px;
+}
+
+.clockCard p {
+  margin: 0;
+  color: #4f267e;
+  font-weight: 800;
+}
+
+.liveTime {
+  gap: 10px;
+  margin-top: 9px;
+  color: #6d27dc;
+  font-size: clamp(44px, 14vw, 68px);
+  font-weight: 900;
+  letter-spacing: -2px;
+}
+
+.liveTime span {
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: white;
+  background: #9449ee;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.clockCard small {
+  color: #7e7391;
+}
+
+.attendanceHero {
+  align-items: stretch;
+  gap: 16px;
+  padding: 18px;
+}
+
+.statusCircle {
+  display: grid;
+  flex: 0 0 122px;
+  width: 122px;
+  height: 122px;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  border: 12px solid #dcc8fc;
+  border-radius: 50%;
+  color: #5f28bc;
+  text-align: center;
+}
+
+.statusCircle span {
+  font-size: 28px;
+}
+
+.statusCircle strong {
+  font-size: 14px;
+}
+
+.statusCircle small {
+  color: #837892;
+  font-size: 11px;
+}
+
+.attendanceAction {
+  flex: 1;
+}
+
+.attendanceAction h2,
+.todaySection h2,
+.menuSection h2 {
+  margin: 0;
+  color: #4f1b98;
+  font-size: 20px;
+}
+
+.attendanceAction p {
+  margin: 6px 0 14px;
+  color: #7e7391;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.primaryButton {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 18px;
+  color: white;
+  background: linear-gradient(135deg, #b55bff, #6f22e8);
+  box-shadow: 0 14px 26px rgba(111, 34, 232, 0.28);
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.primaryButton span {
+  font-size: 24px;
+}
+
+.autoCheckout {
+  align-items: flex-start;
+  gap: 14px;
+  padding: 17px;
+  border-color: #f4d99a;
+  background: linear-gradient(135deg, #fffdf6, #fff8e6);
+}
+
+.autoCheckout > span {
+  display: grid;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffbf36;
+  font-size: 22px;
+}
+
+.autoCheckout strong {
+  color: #39213d;
+}
+
+.autoCheckout p {
+  margin: 5px 0 0;
+  color: #725f76;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.autoCheckout b {
+  color: #6d27dc;
+  font-size: 16px;
+}
+
+.todaySection,
+.menuSection {
+  padding: 18px;
+}
+
+.sectionHeading {
+  justify-content: space-between;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.summaryGrid article {
+  display: grid;
+  min-height: 112px;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 12px 8px;
+  border: 1px solid #eadffd;
+  border-radius: 18px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.summaryGrid article > span {
+  font-size: 25px;
+}
+
+.summaryGrid small {
+  color: #8a809b;
+  font-size: 11px;
+}
+
+.summaryGrid strong {
+  color: #3d1f70;
+  font-size: 14px;
+}
+
+.menuGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.menuGrid button {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #eadffd;
+  border-radius: 17px;
+  color: #4b267e;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuGrid span {
+  font-size: 24px;
+}
+
+.bottomNav {
+  position: fixed;
+  z-index: 20;
+  left: 10px;
+  right: 10px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  justify-content: space-around;
+  padding: 9px 6px;
+  border: 1px solid #e4d8f7;
+  border-radius: 25px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 38px rgba(67, 35, 114, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.bottomNav button {
+  display: grid;
+  min-width: 64px;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 16px;
+  color: #756b8b;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bottomNav span {
+  font-size: 24px;
+}
+
+.bottomNav .active {
+  color: #6f22e8;
+  background: #eee2ff;
+}
+
+.loading {
+  display: flex;
+  min-height: 100svh;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #5f28bc;
+  background: #f7f2ff;
+  font-weight: 800;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(95, 40, 188, 0.2);
+  border-top-color: #5f28bc;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 760px) {
+  .page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 28px 28px 120px;
+  }
+
+  .welcomeCard {
+    min-height: 190px;
+    padding-left: 34px;
+  }
+
+  .panda {
+    width: 220px;
+  }
+
+  .attendanceHero {
+    padding: 24px;
+  }
+
+  .statusCircle {
+    flex-basis: 150px;
+    width: 150px;
+    height: 150px;
+  }
+
+  .menuGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .bottomNav {
+    left: 50%;
+    width: 620px;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 430px) {
+  .schoolBrand strong {
+    font-size: 15px;
+  }
+
+  .logoutButton {
+    font-size: 12px;
+  }
+
+  .welcomeCard {
+    min-height: 145px;
+    padding-right: 124px;
+  }
+
+  .panda {
+    width: 138px;
+  }
+
+  .attendanceHero {
+    display: grid;
+  }
+
+  .statusCircle {
+    width: 116px;
+    height: 116px;
+    margin: 0 auto;
+  }
+
+  .summaryGrid {
+    gap: 7px;
+  }
+
+  .summaryGrid article {
+    min-height: 104px;
+    padding-inline: 5px;
+  }
+}

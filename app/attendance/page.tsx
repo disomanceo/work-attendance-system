@@ -1,1 +1,449 @@
-"use client"; import { useCallback, useEffect, useMemo, useState } from "react"; import { useRouter } from "next/navigation"; import { createClient } from "@/lib/supabase/client"; type AttendanceSettings = { id: number; school_name: string; latitude: number | null; longitude: number | null; allowed_radius_meters: number; check_in_time: string; check_out_time: string; late_after_time: string; early_checkout_before_time: string; timezone: string; is_active: boolean; }; type AttendanceRecord = { id: string; user_id: string; work_date: string; check_in_at: string | null; check_out_at: string | null; check_in_distance_meters: number | null; check_out_distance_meters: number | null; check_in_status: string; check_out_status: string | null; }; type PositionData = { latitude: number; longitude: number; accuracy: number; }; function getBangkokDate() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit", }).format(new Date()); } function getBangkokTime() { return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, }).format(new Date()); } function formatThaiDate(date: Date) { return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", dateStyle: "full", }).format(date); } function formatThaiTime(value: string | null) { if (!value) { return "-"; } return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", second: "2-digit", }).format(new Date(value)); } function normalizeTime(value: string) { return value.slice(0, 8); } function calculateDistanceMeters( latitude1: number, longitude1: number, latitude2: number, longitude2: number ) { const earthRadius = 6371000; const toRadians = (degree: number) => (degree * Math.PI) / 180; const latitudeDelta = toRadians(latitude2 - latitude1); const longitudeDelta = toRadians(longitude2 - longitude1); const firstLatitude = toRadians(latitude1); const secondLatitude = toRadians(latitude2); const calculation = Math.sin(latitudeDelta / 2) * Math.sin(latitudeDelta / 2) + Math.cos(firstLatitude) * Math.cos(secondLatitude) * Math.sin(longitudeDelta / 2) * Math.sin(longitudeDelta / 2); const angle = 2 * Math.atan2( Math.sqrt(calculation), Math.sqrt(1 - calculation) ); return Math.round(earthRadius * angle); } function getLocation() { return new Promise<PositionData>((resolve, reject) => { if (!navigator.geolocation) { reject(new Error("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง")); return; } navigator.geolocation.getCurrentPosition( (position) => { resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy, }); }, (error) => { const messages: Record<number, string> = { 1: "กรุณาอนุญาตให้เว็บไซต์เข้าถึงตำแหน่งของคุณ", 2: "ไม่สามารถตรวจหาตำแหน่งปัจจุบันได้", 3: "ตรวจหาตำแหน่งนานเกินไป กรุณาลองใหม่", }; reject( new Error( messages[error.code] || "ไม่สามารถตรวจหาตำแหน่งได้" ) ); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0, } ); }); } function getCheckInStatus( currentTime: string, lateAfterTime: string ) { return currentTime > normalizeTime(lateAfterTime) ? "late" : "normal"; } function getCheckOutStatus( currentTime: string, earlyCheckoutTime: string ) { return currentTime < normalizeTime(earlyCheckoutTime) ? "early" : "normal"; } function getStatusLabel(status: string | null) { const labels: Record<string, string> = { normal: "ปกติ", late: "สาย", early: "ออกก่อนเวลา", outside_area: "อยู่นอกพื้นที่", pending: "รอตรวจสอบ", auto: "ออกอัตโนมัติ", }; return status ? labels[status] ?? status : "-"; } export default function AttendancePage() { const router = useRouter(); const supabase = useMemo(() => createClient(), []); const [settings, setSettings] = useState<AttendanceSettings | null>(null); const [record, setRecord] = useState<AttendanceRecord | null>(null); const [loading, setLoading] = useState(true); const [processing, setProcessing] = useState(false); const [message, setMessage] = useState(""); const [messageType, setMessageType] = useState< "success" | "error" >("success"); const [currentPosition, setCurrentPosition] = useState<PositionData | null>(null); const [distanceMeters, setDistanceMeters] = useState<number | null>(null); const loadAttendance = useCallback(async () => { setLoading(true); setMessage(""); try { const { data: { user }, error: userError, } = await supabase.auth.getUser(); if (userError || !user) { router.replace("/login"); return; } const { data: profile, error: profileError } = await supabase .from("profiles") .select("account_status") .eq("id", user.id) .single(); if ( profileError || !profile || profile.account_status !== "active" ) { await supabase.auth.signOut(); router.replace("/login"); return; } const { data: settingsData, error: settingsError } = await supabase .from("attendance_settings") .select("*") .eq("id", 1) .single(); if (settingsError || !settingsData) { throw new Error("ไม่พบการตั้งค่าระบบลงเวลา"); } setSettings(settingsData); const today = getBangkokDate(); const { data: attendanceData, error: attendanceError } = await supabase .from("attendance_records") .select( ` id, user_id, work_date, check_in_at, check_out_at, check_in_distance_meters, check_out_distance_meters, check_in_status, check_out_status ` ) .eq("user_id", user.id) .eq("work_date", today) .maybeSingle(); if (attendanceError) { throw attendanceError; } setRecord(attendanceData ?? null); } catch (error) { console.error("Load attendance error:", error); setMessageType("error"); setMessage( error instanceof Error ? error.message : "ไม่สามารถโหลดข้อมูลลงเวลาได้" ); } finally { setLoading(false); } }, [router, supabase]); useEffect(() => { void loadAttendance(); }, [loadAttendance]); async function verifyLocation() { if ( !settings || settings.latitude === null || settings.longitude === null ) { throw new Error("ยังไม่ได้กำหนดพิกัดโรงเรียน"); } if (!settings.is_active) { throw new Error("ระบบลงเวลายังไม่เปิดใช้งาน"); } const position = await getLocation(); const distance = calculateDistanceMeters( position.latitude, position.longitude, settings.latitude, settings.longitude ); setCurrentPosition(position); setDistanceMeters(distance); if (distance > settings.allowed_radius_meters) { throw new Error( `คุณอยู่นอกพื้นที่ลงเวลา ระยะห่าง ${distance.toLocaleString( "th-TH" )} เมตร อนุญาตไม่เกิน ${ settings.allowed_radius_meters } เมตร` ); } return { position, distance, }; } async function handleCheckIn() { setProcessing(true); setMessage(""); try { if (record?.check_in_at) { throw new Error("วันนี้คุณลงเวลาเข้าแล้ว"); } if (!settings) { throw new Error("ยังโหลดการตั้งค่าไม่สำเร็จ"); } const { data: { user }, } = await supabase.auth.getUser(); if (!user) { router.replace("/login"); return; } const { position, distance } = await verifyLocation(); const currentTime = getBangkokTime(); const checkInStatus = getCheckInStatus( currentTime, settings.late_after_time ); const { data, error } = await supabase .from("attendance_records") .insert({ user_id: user.id, work_date: getBangkokDate(), check_in_at: new Date().toISOString(), check_in_latitude: position.latitude, check_in_longitude: position.longitude, check_in_distance_meters: distance, check_in_status: checkInStatus, updated_at: new Date().toISOString(), }) .select( ` id, user_id, work_date, check_in_at, check_out_at, check_in_distance_meters, check_out_distance_meters, check_in_status, check_out_status ` ) .single(); if (error) { if (error.code === "23505") { throw new Error("วันนี้มีข้อมูลลงเวลาอยู่แล้ว"); } throw error; } setRecord(data); setMessageType("success"); setMessage( checkInStatus === "late" ? "ลงเวลาเข้าสำเร็จ สถานะ: มาสาย" : "ลงเวลาเข้าสำเร็จ" ); } catch (error) { console.error("Check-in error:", error); setMessageType("error"); setMessage( error instanceof Error ? error.message : "ลงเวลาเข้าไม่สำเร็จ" ); } finally { setProcessing(false); } } async function handleCheckOut() { setProcessing(true); setMessage(""); try { if (!record?.id || !record.check_in_at) { throw new Error("กรุณาลงเวลาเข้าก่อน"); } if (record.check_out_at) { throw new Error("วันนี้คุณลงเวลาออกแล้ว"); } if (!settings) { throw new Error("ยังโหลดการตั้งค่าไม่สำเร็จ"); } const { position, distance } = await verifyLocation(); const currentTime = getBangkokTime(); const checkOutStatus = getCheckOutStatus( currentTime, settings.early_checkout_before_time ); const { data, error } = await supabase .from("attendance_records") .update({ check_out_at: new Date().toISOString(), check_out_latitude: position.latitude, check_out_longitude: position.longitude, check_out_distance_meters: distance, check_out_status: checkOutStatus, updated_at: new Date().toISOString(), }) .eq("id", record.id) .select( ` id, user_id, work_date, check_in_at, check_out_at, check_in_distance_meters, check_out_distance_meters, check_in_status, check_out_status ` ) .single(); if (error) { throw error; } setRecord(data); setMessageType("success"); setMessage( checkOutStatus === "early" ? "ลงเวลาออกสำเร็จ สถานะ: ออกก่อนเวลา" : "ลงเวลาออกสำเร็จ" ); } catch (error) { console.error("Check-out error:", error); setMessageType("error"); setMessage( error instanceof Error ? error.message : "ลงเวลาออกไม่สำเร็จ" ); } finally { setProcessing(false); } } async function handleCheckLocation() { setProcessing(true); setMessage(""); try { const { distance } = await verifyLocation(); setMessageType("success"); setMessage( `ตำแหน่งถูกต้อง อยู่ห่างจากโรงเรียน ${distance.toLocaleString( "th-TH" )} เมตร` ); } catch (error) { setMessageType("error"); setMessage( error instanceof Error ? error.message : "ตรวจสอบตำแหน่งไม่สำเร็จ" ); } finally { setProcessing(false); } } if (loading) { return ( <main className="dashboard-loading"> <span className="spinner dark" /> กำลังโหลดระบบลงเวลา... </main> ); } return ( <main className="dashboard-shell"> <header className="dashboard-header"> <div> <p>ATTENDANCE</p> <h1>ลงเวลาปฏิบัติงาน</h1> </div> <button type="button" onClick={() => router.push("/dashboard")} > กลับ Dashboard </button> </header> <section style={{ maxWidth: 760, margin: "32px auto 0", padding: 26, border: "1px solid #d8e2ed", borderRadius: 26, background: "#ffffff", boxShadow: "0 18px 45px rgba(28, 60, 93, 0.1)", }} > <div style={{ padding: 22, borderRadius: 20, color: "#ffffff", background: "linear-gradient(135deg, #0b3153, #1877f2)", }} > <p style={{ margin: 0, opacity: 0.8 }}> {formatThaiDate(new Date())} </p> <h2 style={{ margin: "8px 0 0", fontSize: 26 }}> {settings?.school_name || "สถานที่ปฏิบัติงาน"} </h2> <p style={{ margin: "10px 0 0", opacity: 0.9 }}> รัศมีที่อนุญาต{" "} {settings?.allowed_radius_meters.toLocaleString( "th-TH" ) || "-"}{" "} เมตร </p> </div> {message && ( <div role="alert" style={{ marginTop: 18, padding: "14px 16px", borderRadius: 14, border: messageType === "success" ? "1px solid #a7e3ba" : "1px solid #f2b8b8", color: messageType === "success" ? "#146c2e" : "#c81e1e", background: messageType === "success" ? "#f1fff5" : "#fff5f5", fontWeight: 700, }} > {message} </div> )} <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginTop: 20, }} > <article style={{ padding: 20, border: "1px solid #d8e2ed", borderRadius: 18, background: "#fbfdff", }} > <p style={{ margin: 0, color: "#667085" }}> เวลาเข้า </p> <h3 style={{ margin: "8px 0 0", color: "#071d32", fontSize: 25, }} > {formatThaiTime(record?.check_in_at ?? null)} </h3> <p style={{ margin: "8px 0 0", color: "#667085" }}> {getStatusLabel(record?.check_in_status ?? null)} </p> </article> <article style={{ padding: 20, border: "1px solid #d8e2ed", borderRadius: 18, background: "#fbfdff", }} > <p style={{ margin: 0, color: "#667085" }}> เวลาออก </p> <h3 style={{ margin: "8px 0 0", color: "#071d32", fontSize: 25, }} > {formatThaiTime(record?.check_out_at ?? null)} </h3> <p style={{ margin: "8px 0 0", color: "#667085" }}> {getStatusLabel(record?.check_out_status ?? null)} </p> </article> </section> {distanceMeters !== null && ( <div style={{ marginTop: 18, padding: 16, borderRadius: 16, background: "#eef7ff", color: "#102a43", }} > ระยะห่างจากโรงเรียน:{" "} <strong> {distanceMeters.toLocaleString("th-TH")} เมตร </strong> {currentPosition && ( <div style={{ marginTop: 5, color: "#667085", fontSize: 13, }} > ความแม่นยำ GPS ประมาณ{" "} {Math.round( currentPosition.accuracy ).toLocaleString("th-TH")}{" "} เมตร </div> )} </div> )} <div style={{ display: "grid", gap: 12, marginTop: 22, }} > {!record?.check_in_at && ( <button type="button" disabled={processing} onClick={() => void handleCheckIn()} style={{ height: 58, border: 0, borderRadius: 16, color: "#ffffff", background: "linear-gradient(135deg, #16a34a, #22c55e)", fontSize: 17, fontWeight: 800, cursor: processing ? "wait" : "pointer", opacity: processing ? 0.7 : 1, }} > {processing ? "กำลังตรวจสอบตำแหน่ง..." : "ลงเวลาเข้า"} </button> )} {record?.check_in_at && !record.check_out_at && ( <button type="button" disabled={processing} onClick={() => void handleCheckOut()} style={{ height: 58, border: 0, borderRadius: 16, color: "#ffffff", background: "linear-gradient(135deg, #ea580c, #f97316)", fontSize: 17, fontWeight: 800, cursor: processing ? "wait" : "pointer", opacity: processing ? 0.7 : 1, }} > {processing ? "กำลังตรวจสอบตำแหน่ง..." : "ลงเวลาออก"} </button> )} {record?.check_out_at && ( <div style={{ padding: 17, borderRadius: 16, textAlign: "center", color: "#146c2e", background: "#f1fff5", fontWeight: 800, }} > วันนี้ลงเวลาเข้า–ออกเรียบร้อยแล้ว </div> )} <button type="button" disabled={processing} onClick={() => void handleCheckLocation()} style={{ height: 48, border: "1px solid #cfdbe7", borderRadius: 14, color: "#102a43", background: "#ffffff", fontWeight: 700, cursor: processing ? "wait" : "pointer", }} > ตรวจสอบตำแหน่งปัจจุบัน </button> </div> </section> </main> ); }
+"use client";
+
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import styles from "./attendance.module.css";
+
+type Profile = {
+  role: string;
+  account_status: string;
+};
+
+type AttendanceSettings = {
+  school_name: string;
+  latitude: number | null;
+  longitude: number | null;
+  allowed_radius_meters: number;
+  late_after_time: string;
+  is_active: boolean;
+};
+
+type AttendanceRecord = {
+  id: string;
+  check_in_at: string | null;
+  check_out_at: string | null;
+  check_in_status: string | null;
+  check_out_status: string | null;
+};
+
+type PositionData = {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+};
+
+function getBangkokDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function getBangkokTime() {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
+}
+
+function formatThaiDate(date: Date) {
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    dateStyle: "full",
+  }).format(date);
+}
+
+function formatThaiTime(value: string | null) {
+  if (!value) return "--:--";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(value));
+}
+
+function normalizeTime(value: string) {
+  return value.slice(0, 8);
+}
+
+function calculateDistanceMeters(
+  latitude1: number,
+  longitude1: number,
+  latitude2: number,
+  longitude2: number
+) {
+  const earthRadius = 6371000;
+  const toRadians = (degree: number) => (degree * Math.PI) / 180;
+  const latitudeDelta = toRadians(latitude2 - latitude1);
+  const longitudeDelta = toRadians(longitude2 - longitude1);
+  const firstLatitude = toRadians(latitude1);
+  const secondLatitude = toRadians(latitude2);
+
+  const calculation =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(firstLatitude) *
+      Math.cos(secondLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  const angle = 2 * Math.atan2(
+    Math.sqrt(calculation),
+    Math.sqrt(1 - calculation)
+  );
+
+  return Math.round(earthRadius * angle);
+}
+
+function getLocation() {
+  return new Promise<PositionData>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง"));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }),
+      (error) => {
+        const messages: Record<number, string> = {
+          1: "กรุณาอนุญาตให้เว็บไซต์เข้าถึงตำแหน่งของคุณ",
+          2: "ไม่สามารถตรวจหาตำแหน่งปัจจุบันได้",
+          3: "ตรวจหาตำแหน่งนานเกินไป กรุณาลองใหม่",
+        };
+
+        reject(
+          new Error(messages[error.code] || "ไม่สามารถตรวจหาตำแหน่งได้")
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
+  });
+}
+
+function getAutoCheckoutTime(role: string) {
+  return role === "janitor" ? "18:00 น." : "16:30 น.";
+}
+
+export default function AttendancePage() {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [settings, setSettings] = useState<AttendanceSettings | null>(null);
+  const [record, setRecord] = useState<AttendanceRecord | null>(null);
+  const [now, setNow] = useState(new Date());
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">(
+    "success"
+  );
+  const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const loadAttendance = useCallback(async () => {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("role, account_status")
+        .eq("id", user.id)
+        .single();
+
+      if (
+        profileError ||
+        !profileData ||
+        profileData.account_status !== "active"
+      ) {
+        await supabase.auth.signOut();
+        router.replace("/login");
+        return;
+      }
+
+      setProfile(profileData);
+
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("attendance_settings")
+        .select(
+          "school_name, latitude, longitude, allowed_radius_meters, late_after_time, is_active"
+        )
+        .eq("id", 1)
+        .single();
+
+      if (settingsError || !settingsData) {
+        throw new Error("ไม่พบการตั้งค่าระบบลงเวลา");
+      }
+
+      setSettings(settingsData);
+
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from("attendance_records")
+        .select(
+          "id, check_in_at, check_out_at, check_in_status, check_out_status"
+        )
+        .eq("user_id", user.id)
+        .eq("work_date", getBangkokDate())
+        .maybeSingle();
+
+      if (attendanceError) throw attendanceError;
+      setRecord(attendanceData ?? null);
+    } catch (error) {
+      console.error("Load attendance error:", error);
+      setMessageType("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถโหลดข้อมูลลงเวลาได้"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [router, supabase]);
+
+  useEffect(() => {
+    void loadAttendance();
+  }, [loadAttendance]);
+
+  async function verifyLocation() {
+    if (
+      !settings ||
+      settings.latitude === null ||
+      settings.longitude === null
+    ) {
+      throw new Error("ยังไม่ได้กำหนดพิกัดโรงเรียน");
+    }
+
+    if (!settings.is_active) {
+      throw new Error("ระบบลงเวลายังไม่เปิดใช้งาน");
+    }
+
+    const position = await getLocation();
+    const distance = calculateDistanceMeters(
+      position.latitude,
+      position.longitude,
+      settings.latitude,
+      settings.longitude
+    );
+
+    setDistanceMeters(distance);
+
+    if (distance > settings.allowed_radius_meters) {
+      throw new Error(
+        `คุณอยู่นอกพื้นที่ลงเวลา ระยะห่าง ${distance.toLocaleString(
+          "th-TH"
+        )} เมตร อนุญาตไม่เกิน ${settings.allowed_radius_meters} เมตร`
+      );
+    }
+
+    return { position, distance };
+  }
+
+  async function handleCheckIn() {
+    setProcessing(true);
+    setMessage("");
+
+    try {
+      if (record?.check_in_at) {
+        throw new Error("วันนี้คุณลงเวลาเข้าแล้ว");
+      }
+
+      if (!settings) {
+        throw new Error("ยังโหลดการตั้งค่าไม่สำเร็จ");
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { position, distance } = await verifyLocation();
+      const currentTime = getBangkokTime();
+      const checkInStatus =
+        currentTime > normalizeTime(settings.late_after_time)
+          ? "late"
+          : "normal";
+
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .insert({
+          user_id: user.id,
+          work_date: getBangkokDate(),
+          check_in_at: new Date().toISOString(),
+          check_in_latitude: position.latitude,
+          check_in_longitude: position.longitude,
+          check_in_distance_meters: distance,
+          check_in_status: checkInStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .select(
+          "id, check_in_at, check_out_at, check_in_status, check_out_status"
+        )
+        .single();
+
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error("วันนี้มีข้อมูลลงเวลาอยู่แล้ว");
+        }
+
+        throw error;
+      }
+
+      setRecord(data);
+      setMessageType("success");
+      setMessage(
+        checkInStatus === "late"
+          ? "ลงเวลาเข้าสำเร็จ สถานะ: มาสาย"
+          : "ลงเวลาเข้าสำเร็จ"
+      );
+    } catch (error) {
+      console.error("Check-in error:", error);
+      setMessageType("error");
+      setMessage(
+        error instanceof Error ? error.message : "ลงเวลาเข้าไม่สำเร็จ"
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className={styles.loading}>
+        <span className={styles.spinner} />
+        กำลังโหลดระบบลงเวลา...
+      </main>
+    );
+  }
+
+  const autoCheckoutTime = getAutoCheckoutTime(profile?.role ?? "");
+
+  return (
+    <main className={styles.page}>
+      <header className={styles.header}>
+        <button onClick={() => router.push("/dashboard")}>←</button>
+        <div>
+          <span>ATTENDANCE</span>
+          <h1>ลงเวลาปฏิบัติงาน</h1>
+        </div>
+        <Image
+          src="/images/school-logo.png"
+          alt="โลโก้โรงเรียน"
+          width={52}
+          height={52}
+        />
+      </header>
+
+      <section className={styles.clockCard}>
+        <p>{formatThaiDate(now)}</p>
+        <strong>
+          {new Intl.DateTimeFormat("th-TH", {
+            timeZone: "Asia/Bangkok",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          }).format(now)}
+        </strong>
+        <small>{settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}</small>
+      </section>
+
+      {message && (
+        <div
+          className={
+            messageType === "success"
+              ? styles.successMessage
+              : styles.errorMessage
+          }
+          role="alert"
+        >
+          {message}
+        </div>
+      )}
+
+      <section className={styles.statusCard}>
+        <div className={styles.statusIcon}>◷</div>
+        <h2>
+          {record?.check_in_at ? "ลงเวลาแล้ว" : "ยังไม่ได้ลงเวลา"}
+        </h2>
+        <p>
+          เวลาเข้า: <b>{formatThaiTime(record?.check_in_at ?? null)}</b>
+        </p>
+
+        {!record?.check_in_at ? (
+          <button
+            type="button"
+            className={styles.checkInButton}
+            disabled={processing}
+            onClick={() => void handleCheckIn()}
+          >
+            {processing ? "กำลังตรวจสอบ GPS..." : "ลงเวลาปฏิบัติงาน"}
+          </button>
+        ) : (
+          <div className={styles.completed}>
+            ✓ บันทึกเวลาเข้าเรียบร้อยแล้ว
+          </div>
+        )}
+      </section>
+
+      <section className={styles.autoCheckout}>
+        <span>🔔</span>
+        <div>
+          <strong>เวลาออกบันทึกอัตโนมัติ</strong>
+          <p>
+            ระบบจะลงเวลาออกให้เวลา <b>{autoCheckoutTime}</b>
+          </p>
+        </div>
+      </section>
+
+      {distanceMeters !== null && (
+        <section className={styles.locationCard}>
+          ระยะห่างจากโรงเรียน{" "}
+          <strong>{distanceMeters.toLocaleString("th-TH")} เมตร</strong>
+        </section>
+      )}
+
+      <button
+        className={styles.historyButton}
+        onClick={() => router.push("/attendance/history")}
+      >
+        ดูประวัติการลงเวลา →
+      </button>
+    </main>
+  );
+}

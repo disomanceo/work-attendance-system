@@ -1,8 +1,10 @@
-﻿"use client";
+"use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import styles from "./dashboard.module.css";
 
 type Profile = {
   full_name: string;
@@ -11,6 +13,62 @@ type Profile = {
   role: string;
   account_status: string;
 };
+
+type AttendanceRecord = {
+  check_in_at: string | null;
+  check_out_at: string | null;
+  check_in_status: string | null;
+};
+
+function getBangkokDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function formatThaiDate(date: Date) {
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    dateStyle: "full",
+  }).format(date);
+}
+
+function formatThaiTime(value: string | null) {
+  if (!value) return "--:--";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatLiveTime(date: Date) {
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function getGreeting(date: Date) {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      hour12: false,
+    }).format(date)
+  );
+
+  if (hour < 12) return "สวัสดีตอนเช้า";
+  if (hour < 17) return "สวัสดีตอนบ่าย";
+  return "สวัสดีตอนเย็น";
+}
 
 function getRoleLabel(role: string) {
   const labels: Record<string, string> = {
@@ -24,22 +82,14 @@ function getRoleLabel(role: string) {
   return labels[role] ?? role;
 }
 
-function getStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    pending: "รออนุมัติ",
-    active: "ใช้งานได้",
-    suspended: "ระงับการใช้งาน",
-  };
-
-  return labels[status] ?? status;
+function getAutoCheckoutTime(role: string) {
+  return role === "janitor" ? "18:00 น." : "16:30 น.";
 }
 
-function formatThaiPhone(phone: string) {
-  if (phone.startsWith("66") && phone.length === 11) {
-    return `0${phone.slice(2)}`;
-  }
-
-  return phone;
+function getAttendanceStatus(record: AttendanceRecord | null) {
+  if (!record?.check_in_at) return "ยังไม่ได้ลงเวลา";
+  if (record.check_out_at) return "สิ้นสุดงานแล้ว";
+  return "กำลังปฏิบัติงาน";
 }
 
 export default function DashboardPage() {
@@ -47,13 +97,20 @@ export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [record, setRecord] = useState<AttendanceRecord | null>(null);
+  const [now, setNow] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
 
-    async function loadProfile() {
+    async function loadDashboard() {
       setLoading(true);
       setMessage("");
 
@@ -67,40 +124,41 @@ export default function DashboardPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select(
-          "full_name, phone, position, role, account_status"
-        )
+        .select("full_name, phone, position, role, account_status")
         .eq("id", user.id)
         .single();
 
-      if (error || !data) {
-        console.error("Load profile error:", error);
-
-        if (mounted) {
-          setMessage(
-            "ไม่พบข้อมูลสมาชิก กรุณาติดต่อผู้ดูแลระบบ"
-          );
-          setLoading(false);
-        }
-
-        return;
-      }
-
-      if (data.account_status !== "active") {
+      if (
+        profileError ||
+        !profileData ||
+        profileData.account_status !== "active"
+      ) {
         await supabase.auth.signOut();
         router.replace("/login");
         return;
       }
 
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from("attendance_records")
+        .select("check_in_at, check_out_at, check_in_status")
+        .eq("user_id", user.id)
+        .eq("work_date", getBangkokDate())
+        .maybeSingle();
+
+      if (attendanceError) {
+        console.error("Load dashboard attendance error:", attendanceError);
+      }
+
       if (mounted) {
-        setProfile(data);
+        setProfile(profileData);
+        setRecord(attendanceData ?? null);
         setLoading(false);
       }
     }
 
-    void loadProfile();
+    void loadDashboard();
 
     return () => {
       mounted = false;
@@ -113,225 +171,192 @@ export default function DashboardPage() {
     router.refresh();
   }
 
-  function openAttendance() {
-    router.push("/attendance");
-  }
-
-  function openAttendanceHistory() {
-    router.push("/attendance/history");
-  }
-
   if (loading) {
     return (
-      <main className="dashboard-loading">
-        <span className="spinner dark" />
-        กำลังโหลดข้อมูลสมาชิก...
+      <main className={styles.loading}>
+        <span className={styles.spinner} />
+        กำลังโหลดข้อมูล...
       </main>
     );
   }
 
+  if (!profile) {
+    return (
+      <main className={styles.loading}>
+        {message || "ไม่พบข้อมูลสมาชิก"}
+      </main>
+    );
+  }
+
+  const privileged = ["admin", "director"].includes(profile.role);
+  const attendanceStatus = getAttendanceStatus(record);
+  const autoCheckoutTime = getAutoCheckoutTime(profile.role);
+
   return (
-    <main className="dashboard-shell">
-      <header className="dashboard-header">
-        <div>
-          <p>WORK ATTENDANCE</p>
-          <h1>ระบบลงเวลาปฏิบัติงาน</h1>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            justifyContent: "flex-end",
-          }}
-        >
-          <button
-            type="button"
-            onClick={openAttendance}
-            style={{
-              borderColor: "#16a34a",
-              color: "#ffffff",
-              background:
-                "linear-gradient(135deg, #16a34a, #22c55e)",
-            }}
-          >
-            ลงเวลาปฏิบัติงาน
-          </button>
-
-          <button
-            type="button"
-            onClick={openAttendanceHistory}
-          >
-            ประวัติการลงเวลา
-          </button>
-
-          {["admin", "director"].includes(profile?.role ?? "") && (
-            <button
-              type="button"
-              onClick={() => router.push("/admin/members")}
-              style={{
-                borderColor: "#1877f2",
-                color: "#ffffff",
-                background:
-                  "linear-gradient(135deg, #1877f2, #3799ff)",
-              }}
-            >
-              จัดการสมาชิก
-            </button>
-          )}
-
-          <button type="button" onClick={handleLogout}>
-            ออกจากระบบ
-          </button>
-        </div>
-      </header>
-
-      {message && (
-        <section
-          className="welcome-card"
-          style={{
-            border: "1px solid #fecaca",
-            color: "#c81e1e",
-            background: "#fff7f7",
-          }}
-        >
-          <div className="avatar">!</div>
+    <main className={styles.page}>
+      <header className={styles.topBar}>
+        <div className={styles.schoolBrand}>
+          <Image
+            src="/images/school-logo.png"
+            alt="โลโก้โรงเรียนวัดไผ่มุ้ง"
+            width={58}
+            height={58}
+            priority
+          />
 
           <div>
-            <p style={{ color: "#c81e1e" }}>
-              ไม่สามารถโหลดข้อมูลสมาชิก
-            </p>
-
-            <h2 style={{ color: "#c81e1e" }}>
-              กรุณาตรวจสอบข้อมูล
-            </h2>
-
-            <span style={{ color: "#c81e1e" }}>
-              {message}
-            </span>
+            <strong>โรงเรียนวัดไผ่มุ้ง</strong>
+            <span>ระบบลงเวลาปฏิบัติงาน</span>
           </div>
-        </section>
-      )}
+        </div>
 
-      {profile && (
-        <>
-          <section className="welcome-card">
-            <div className="avatar">👤</div>
+        <button className={styles.logoutButton} onClick={handleLogout}>
+          ออกจากระบบ
+        </button>
+      </header>
 
-            <div>
-              <p>ยินดีต้อนรับ</p>
-              <h2>{profile.full_name}</h2>
-              <span>{formatThaiPhone(profile.phone)}</span>
-            </div>
-          </section>
+      <section className={styles.welcomeCard}>
+        <div>
+          <span className={styles.greeting}>{getGreeting(now)} ☀️</span>
+          <h1>{profile.full_name}</h1>
+          <p>
+            {profile.position || getRoleLabel(profile.role)} ·{" "}
+            {getRoleLabel(profile.role)}
+          </p>
+        </div>
 
-          <section className="dashboard-grid">
-            <article>
-              <span>✓</span>
-              <h3>สถานะสมาชิก</h3>
-              <p>{getStatusLabel(profile.account_status)}</p>
-            </article>
+        <Image
+          className={styles.panda}
+          src="/images/login-panda.png"
+          alt=""
+          width={190}
+          height={190}
+          priority
+        />
+      </section>
 
-            <article>
-              <span>👤</span>
-              <h3>บทบาท</h3>
-              <p>{getRoleLabel(profile.role)}</p>
-            </article>
+      <section className={styles.clockCard}>
+        <p>{formatThaiDate(now)}</p>
+        <div className={styles.liveTime}>
+          {formatLiveTime(now)}
+          <span>● LIVE</span>
+        </div>
+        <small>เวลาปัจจุบัน อัปเดตแบบเรียลไทม์</small>
+      </section>
 
-            <article>
-              <span>🏫</span>
-              <h3>ตำแหน่ง</h3>
-              <p>{profile.position || "ยังไม่ได้กำหนด"}</p>
-            </article>
+      <section className={styles.attendanceHero}>
+        <div className={styles.statusCircle}>
+          <span>◷</span>
+          <strong>{attendanceStatus}</strong>
+          <small>เช้าวันนี้</small>
+        </div>
 
-            <article
-              role="button"
-              tabIndex={0}
-              onClick={openAttendance}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" ||
-                  event.key === " "
-                ) {
-                  openAttendance();
-                }
-              }}
-              style={{
-                cursor: "pointer",
-                borderColor: "#9ed7ae",
-                background:
-                  "linear-gradient(145deg, #ffffff, #f1fff5)",
-              }}
-            >
-              <span>📍</span>
-              <h3>ลงเวลาปฏิบัติงาน</h3>
-              <p>
-                ตรวจสอบตำแหน่ง ลงเวลาเข้า
-                และลงเวลาออก
-              </p>
-            </article>
+        <div className={styles.attendanceAction}>
+          <h2>ลงเวลาปฏิบัติงาน</h2>
+          <p>ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา</p>
 
-            <article
-              role="button"
-              tabIndex={0}
-              onClick={openAttendanceHistory}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" ||
-                  event.key === " "
-                ) {
-                  openAttendanceHistory();
-                }
-              }}
-              style={{
-                cursor: "pointer",
-                borderColor: "#c5b4f4",
-                background:
-                  "linear-gradient(145deg, #ffffff, #f6f2ff)",
-              }}
-            >
-              <span>📅</span>
-              <h3>ประวัติการลงเวลา</h3>
-              <p>
-                ดูเวลาเข้า–ออก มาสาย
-                และออกก่อนเวลาย้อนหลัง
-              </p>
-            </article>
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => router.push("/attendance")}
+          >
+            <span>◉</span>
+            {record?.check_in_at ? "ดูข้อมูลลงเวลาวันนี้" : "ลงเวลาปฏิบัติงาน"}
+          </button>
+        </div>
+      </section>
 
-            {["admin", "director"].includes(profile.role) && (
-              <article
-                role="button"
-                tabIndex={0}
-                onClick={() =>
-                  router.push("/admin/members")
-                }
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" ||
-                    event.key === " "
-                  ) {
-                    router.push("/admin/members");
-                  }
-                }}
-                style={{
-                  cursor: "pointer",
-                  borderColor: "#a9ccff",
-                  background:
-                    "linear-gradient(145deg, #ffffff, #eef7ff)",
-                }}
-              >
-                <span>⚙️</span>
-                <h3>จัดการสมาชิก</h3>
-                <p>
-                  อนุมัติสมาชิก กำหนดบทบาท ตำแหน่ง
-                  และสถานะบัญชี
-                </p>
-              </article>
-            )}
-          </section>
-        </>
-      )}
+      <section className={styles.autoCheckout}>
+        <span>🔔</span>
+        <div>
+          <strong>ระบบบันทึกเวลาออกอัตโนมัติ</strong>
+          <p>
+            เวลาออกของบัญชีนี้คือ <b>{autoCheckoutTime}</b>{" "}
+            ไม่ต้องกดลงเวลาออก
+          </p>
+        </div>
+      </section>
+
+      <section className={styles.todaySection}>
+        <div className={styles.sectionHeading}>
+          <h2>สรุปงานวันนี้</h2>
+          <button onClick={() => router.push("/attendance/history")}>
+            ดูประวัติ
+          </button>
+        </div>
+
+        <div className={styles.summaryGrid}>
+          <article>
+            <span>☀️</span>
+            <small>ลงเวลาเข้า</small>
+            <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
+          </article>
+
+          <article>
+            <span>✓</span>
+            <small>สถานะวันนี้</small>
+            <strong>{attendanceStatus}</strong>
+          </article>
+
+          <article>
+            <span>◷</span>
+            <small>เวลาออกอัตโนมัติ</small>
+            <strong>{autoCheckoutTime}</strong>
+          </article>
+        </div>
+      </section>
+
+      <section className={styles.menuSection}>
+        <h2>เมนูใช้งาน</h2>
+
+        <div className={styles.menuGrid}>
+          <button onClick={() => router.push("/attendance/history")}>
+            <span>◷</span>
+            <b>ประวัติการลงเวลา</b>
+          </button>
+
+          <button onClick={() => router.push("/account/change-pin")}>
+            <span>🔐</span>
+            <b>เปลี่ยน PIN</b>
+          </button>
+
+          {privileged && (
+            <>
+              <button onClick={() => router.push("/admin/members")}>
+                <span>👥</span>
+                <b>จัดการสมาชิก</b>
+              </button>
+
+              <button onClick={() => router.push("/admin/attendance")}>
+                <span>▥</span>
+                <b>รายงานลงเวลา</b>
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
+      <nav className={styles.bottomNav} aria-label="เมนูหลัก">
+        <button className={styles.active}>
+          <span>⌂</span>
+          หน้าแรก
+        </button>
+
+        <button onClick={() => router.push("/attendance")}>
+          <span>◉</span>
+          ลงเวลา
+        </button>
+
+        <button onClick={() => router.push("/attendance/history")}>
+          <span>▣</span>
+          ประวัติ
+        </button>
+
+        <button onClick={() => router.push("/account/change-pin")}>
+          <span>♙</span>
+          โปรไฟล์
+        </button>
+      </nav>
     </main>
   );
 }

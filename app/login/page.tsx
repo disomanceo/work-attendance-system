@@ -39,18 +39,23 @@ export default function LoginPage() {
 
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
-  const [rememberPhone, setRememberPhone] = useState(true);
+  const [rememberLogin, setRememberLogin] = useState(true);
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const remembered = window.localStorage.getItem("attendance_phone");
+    const rememberedPhone = window.localStorage.getItem("attendance_phone");
+    const rememberedPreference =
+      window.localStorage.getItem("attendance_remember_login");
 
-    if (remembered) {
-      setPhone(formatPhoneForInput(remembered));
-      setRememberPhone(true);
+    if (rememberedPhone) {
+      setPhone(formatPhoneForInput(rememberedPhone));
+    }
+
+    if (rememberedPreference !== null) {
+      setRememberLogin(rememberedPreference === "true");
     }
   }, []);
 
@@ -164,7 +169,12 @@ export default function LoginPage() {
         return;
       }
 
-      if (rememberPhone) {
+      window.localStorage.setItem(
+        "attendance_remember_login",
+        String(rememberLogin)
+      );
+
+      if (rememberLogin) {
         window.localStorage.setItem("attendance_phone", formattedPhone);
       } else {
         window.localStorage.removeItem("attendance_phone");
@@ -222,13 +232,18 @@ export default function LoginPage() {
           <h2>โรงเรียนวัดไผ่มุ้ง</h2>
         </header>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form
+          onSubmit={handleSubmit}
+          className={styles.form}
+          autoComplete={rememberLogin ? "on" : "off"}
+        >
           <label className={styles.field}>
             <span className={styles.srOnly}>เบอร์โทรศัพท์</span>
             <input
               type="tel"
+              name="username"
               inputMode="numeric"
-              autoComplete="tel"
+              autoComplete={rememberLogin ? "username" : "off"}
               placeholder="เบอร์โทรศัพท์"
               maxLength={10}
               value={phone}
@@ -245,8 +260,9 @@ export default function LoginPage() {
             <div className={styles.pinWrap}>
               <input
                 type={showPin ? "text" : "password"}
+                name="password"
                 inputMode="numeric"
-                autoComplete="current-password"
+                autoComplete={rememberLogin ? "current-password" : "off"}
                 placeholder="PIN 6 หลัก"
                 maxLength={6}
                 value={pin}
@@ -270,14 +286,16 @@ export default function LoginPage() {
           <label className={styles.rememberRow}>
             <input
               type="checkbox"
-              checked={rememberPhone}
-              onChange={(event) => setRememberPhone(event.target.checked)}
+              checked={rememberLogin}
+              onChange={(event) => setRememberLogin(event.target.checked)}
               disabled={loading}
             />
 
             <span>
               <strong>จำเบอร์โทรและ PIN บนเครื่องนี้</strong>
-              <small>ระบบจะจำเฉพาะเบอร์โทรเพื่อความปลอดภัย</small>
+              <small>
+                เบราว์เซอร์หรือโทรศัพท์จะช่วยบันทึก PIN อย่างปลอดภัย
+              </small>
             </span>
           </label>
 
