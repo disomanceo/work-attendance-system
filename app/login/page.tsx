@@ -31,20 +31,54 @@ export default function LoginPage() {
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    async function checkSession() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    let mounted = true;
 
-      if (user) {
+    async function checkSession() {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("account_status")
+          .eq("id", user.id)
+          .single();
+
+        if (
+          profileError ||
+          !profile ||
+          profile.account_status !== "active"
+        ) {
+          await supabase.auth.signOut();
+          return;
+        }
+
         router.replace("/dashboard");
+        router.refresh();
+      } catch (error) {
+        console.error("Check session error:", error);
+      } finally {
+        if (mounted) {
+          setCheckingSession(false);
+        }
       }
     }
 
     void checkSession();
+
+    return () => {
+      mounted = false;
+    };
   }, [router, supabase]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -68,23 +102,73 @@ export default function LoginPage() {
     try {
       const loginEmail = phoneToLoginEmail(formattedPhone);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: pin,
-      });
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: loginEmail,
+          password: pin,
+        });
 
-      if (error) {
+      if (signInError || !signInData.user) {
         setMessage("เบอร์โทรศัพท์หรือ PIN ไม่ถูกต้อง");
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("account_status")
+        .eq("id", signInData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error("Load profile after login error:", profileError);
+
+        await supabase.auth.signOut();
+
+        setMessage("ไม่พบข้อมูลสมาชิก กรุณาติดต่อผู้ดูแลระบบ");
+        return;
+      }
+
+      if (profile.account_status === "pending") {
+        await supabase.auth.signOut();
+
+        setMessage("บัญชีของคุณอยู่ระหว่างรอผู้ดูแลอนุมัติ");
+        return;
+      }
+
+      if (profile.account_status === "suspended") {
+        await supabase.auth.signOut();
+
+        setMessage("บัญชีของคุณถูกระงับ กรุณาติดต่อผู้ดูแลระบบ");
+        return;
+      }
+
+      if (profile.account_status !== "active") {
+        await supabase.auth.signOut();
+
+        setMessage("สถานะบัญชีไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ");
         return;
       }
 
       router.replace("/dashboard");
       router.refresh();
-    } catch {
+    } catch (error) {
+      console.error("Login error:", error);
+
+      await supabase.auth.signOut();
+
       setMessage("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <main className="dashboard-loading">
+        <span className="spinner dark" />
+        กำลังตรวจสอบบัญชี...
+      </main>
+    );
   }
 
   return (
@@ -92,17 +176,28 @@ export default function LoginPage() {
       <section className="brand-panel">
         <div className="brand-content">
           <div className="brand-badge">WPM</div>
+
           <p className="brand-eyebrow">WORK ATTENDANCE</p>
+
           <h1>ระบบลงเวลาปฏิบัติงาน</h1>
+
           <p className="brand-description">
             ระบบบริหารการลงเวลาสำหรับครูและบุคลากร
             ใช้งานง่าย ปลอดภัย และรองรับทุกอุปกรณ์
           </p>
 
           <div className="feature-list">
-            <div><span>✓</span> ลงเวลาเข้า–ออกอย่างเป็นระบบ</div>
-            <div><span>✓</span> ตรวจสอบประวัติได้ตลอดเวลา</div>
-            <div><span>✓</span> รองรับรายงานและเอกสารในอนาคต</div>
+            <div>
+              <span>✓</span> ลงเวลาเข้า–ออกอย่างเป็นระบบ
+            </div>
+
+            <div>
+              <span>✓</span> ตรวจสอบประวัติได้ตลอดเวลา
+            </div>
+
+            <div>
+              <span>✓</span> รองรับรายงานและเอกสารในอนาคต
+            </div>
           </div>
         </div>
 
@@ -122,8 +217,12 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="login-form">
             <label>
               <span>เบอร์โทรศัพท์</span>
+
               <div className="input-wrap">
-                <span className="input-icon" aria-hidden="true">☎</span>
+                <span className="input-icon" aria-hidden="true">
+                  ☎
+                </span>
+
                 <input
                   type="tel"
                   inputMode="numeric"
@@ -141,8 +240,12 @@ export default function LoginPage() {
 
             <label>
               <span>PIN 6 หลัก</span>
+
               <div className="input-wrap">
-                <span className="input-icon" aria-hidden="true">●</span>
+                <span className="input-icon" aria-hidden="true">
+                  ●
+                </span>
+
                 <input
                   type={showPin ? "text" : "password"}
                   inputMode="numeric"
@@ -155,11 +258,13 @@ export default function LoginPage() {
                   }
                   disabled={loading}
                 />
+
                 <button
                   className="show-pin"
                   type="button"
                   onClick={() => setShowPin((current) => !current)}
                   aria-label={showPin ? "ซ่อน PIN" : "แสดง PIN"}
+                  disabled={loading}
                 >
                   {showPin ? "ซ่อน" : "แสดง"}
                 </button>
@@ -172,7 +277,11 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button className="login-button" type="submit" disabled={loading}>
+            <button
+              className="login-button"
+              type="submit"
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <span className="spinner" />
@@ -188,14 +297,19 @@ export default function LoginPage() {
             ยังไม่มีบัญชี?{" "}
             <Link
               href="/register"
-              style={{ color: "#1877f2", fontWeight: 800 }}
+              style={{
+                color: "#1877f2",
+                fontWeight: 800,
+              }}
             >
               สมัครสมาชิก
             </Link>
           </p>
         </div>
 
-        <p className="copyright">© 2026 Work Attendance System</p>
+        <p className="copyright">
+          © 2026 Work Attendance System
+        </p>
       </section>
     </main>
   );
