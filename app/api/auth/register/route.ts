@@ -27,12 +27,16 @@ export async function POST(request: Request) {
 
     const fullName =
       typeof body.fullName === "string" ? body.fullName.trim() : "";
+
     const rawPhone = typeof body.phone === "string" ? body.phone : "";
     const pin = typeof body.pin === "string" ? body.pin : "";
 
     if (!fullName || fullName.length > 120) {
       return NextResponse.json(
-        { ok: false, message: "กรุณากรอกชื่อ–นามสกุลให้ถูกต้อง" },
+        {
+          ok: false,
+          message: "กรุณากรอกชื่อ–นามสกุลให้ถูกต้อง",
+        },
         { status: 400 }
       );
     }
@@ -41,14 +45,20 @@ export async function POST(request: Request) {
 
     if (!phone) {
       return NextResponse.json(
-        { ok: false, message: "เบอร์โทรศัพท์ไม่ถูกต้อง" },
+        {
+          ok: false,
+          message: "เบอร์โทรศัพท์ไม่ถูกต้อง",
+        },
         { status: 400 }
       );
     }
 
     if (!/^\d{6}$/.test(pin)) {
       return NextResponse.json(
-        { ok: false, message: "PIN ต้องเป็นตัวเลข 6 หลัก" },
+        {
+          ok: false,
+          message: "PIN ต้องเป็นตัวเลข 6 หลัก",
+        },
         { status: 400 }
       );
     }
@@ -60,7 +70,10 @@ export async function POST(request: Request) {
       console.error("Missing Supabase server environment variables");
 
       return NextResponse.json(
-        { ok: false, message: "ระบบยังไม่ได้ตั้งค่าการสมัครสมาชิก" },
+        {
+          ok: false,
+          message: "ระบบยังไม่ได้ตั้งค่าการสมัครสมาชิก",
+        },
         { status: 500 }
       );
     }
@@ -82,7 +95,7 @@ export async function POST(request: Request) {
         full_name: fullName,
         phone,
         role: "staff",
-        account_status: "active",
+        account_status: "pending",
       },
     });
 
@@ -103,11 +116,34 @@ export async function POST(request: Request) {
       );
     }
 
+    const { error: profileError } = await supabase.from("profiles").insert({
+      id: data.user.id,
+      full_name: fullName,
+      phone,
+      position: null,
+      role: "staff",
+      account_status: "pending",
+    });
+
+    if (profileError) {
+      console.error("Create profile error:", profileError);
+
+      await supabase.auth.admin.deleteUser(data.user.id);
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "สร้างข้อมูลสมาชิกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       {
         ok: true,
         userId: data.user.id,
-        message: "สมัครสมาชิกสำเร็จ",
+        message: "สมัครสมาชิกสำเร็จ กรุณารอผู้ดูแลอนุมัติ",
       },
       { status: 201 }
     );
@@ -115,7 +151,10 @@ export async function POST(request: Request) {
     console.error("Register API error:", error);
 
     return NextResponse.json(
-      { ok: false, message: "เกิดข้อผิดพลาดในการสมัครสมาชิก" },
+      {
+        ok: false,
+        message: "เกิดข้อผิดพลาดในการสมัครสมาชิก",
+      },
       { status: 500 }
     );
   }
