@@ -8,11 +8,11 @@ function normalizeThaiPhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
 
   if (digits.startsWith("66") && digits.length === 11) {
-    return `+${digits}`;
+    return digits;
   }
 
   if (digits.startsWith("0") && digits.length === 10) {
-    return `+66${digits.slice(1)}`;
+    return `66${digits.slice(1)}`;
   }
 
   return "";
@@ -67,13 +67,15 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setMessage("เบอร์โทรศัพท์หรือ PIN ไม่ถูกต้อง");
+        console.error("Supabase login error:", error);
+        setMessage(`เข้าสู่ระบบไม่สำเร็จ: ${error.message}`);
         return;
       }
 
       router.replace("/dashboard");
       router.refresh();
-    } catch {
+    } catch (error) {
+      console.error("Login exception:", error);
       setMessage("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่");
     } finally {
       setLoading(false);
