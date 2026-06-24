@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import styles from "./login.module.css";
 
 function normalizeThaiPhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
@@ -23,16 +25,34 @@ function phoneToLoginEmail(phone: string) {
   return `${phone}@attendance.local`;
 }
 
+function formatPhoneForInput(value: string) {
+  if (value.startsWith("66") && value.length === 11) {
+    return `0${value.slice(2)}`;
+  }
+
+  return value;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
+  const [rememberPhone, setRememberPhone] = useState(true);
   const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const remembered = window.localStorage.getItem("attendance_phone");
+
+    if (remembered) {
+      setPhone(formatPhoneForInput(remembered));
+      setRememberPhone(true);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -121,41 +141,40 @@ export default function LoginPage() {
 
       if (profileError || !profile) {
         console.error("Load profile after login error:", profileError);
-
         await supabase.auth.signOut();
-
         setMessage("ไม่พบข้อมูลสมาชิก กรุณาติดต่อผู้ดูแลระบบ");
         return;
       }
 
       if (profile.account_status === "pending") {
         await supabase.auth.signOut();
-
         setMessage("บัญชีของคุณอยู่ระหว่างรอผู้ดูแลอนุมัติ");
         return;
       }
 
       if (profile.account_status === "suspended") {
         await supabase.auth.signOut();
-
         setMessage("บัญชีของคุณถูกระงับ กรุณาติดต่อผู้ดูแลระบบ");
         return;
       }
 
       if (profile.account_status !== "active") {
         await supabase.auth.signOut();
-
         setMessage("สถานะบัญชีไม่ถูกต้อง กรุณาติดต่อผู้ดูแลระบบ");
         return;
+      }
+
+      if (rememberPhone) {
+        window.localStorage.setItem("attendance_phone", formattedPhone);
+      } else {
+        window.localStorage.removeItem("attendance_phone");
       }
 
       router.replace("/dashboard");
       router.refresh();
     } catch (error) {
       console.error("Login error:", error);
-
       await supabase.auth.signOut();
-
       setMessage("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่");
     } finally {
       setLoading(false);
@@ -164,153 +183,139 @@ export default function LoginPage() {
 
   if (checkingSession) {
     return (
-      <main className="dashboard-loading">
-        <span className="spinner dark" />
+      <main className={styles.loadingScreen}>
+        <span className={styles.loadingSpinner} />
         กำลังตรวจสอบบัญชี...
       </main>
     );
   }
 
   return (
-    <main className="login-shell">
-      <section className="brand-panel">
-        <div className="brand-content">
-          <div className="brand-badge">WPM</div>
+    <main className={styles.page}>
+      <div className={styles.decorLineOne} />
+      <div className={styles.decorLineTwo} />
+      <div className={styles.decorLineThree} />
 
-          <p className="brand-eyebrow">WORK ATTENDANCE</p>
+      <Image
+        className={styles.topPanda}
+        src="/images/login-panda.png"
+        alt=""
+        width={230}
+        height={230}
+        priority
+      />
 
-          <h1>ระบบลงเวลาปฏิบัติงาน</h1>
+      <section className={styles.card}>
+        <header className={styles.header}>
+          <h1>ระบบลงเวลา</h1>
 
-          <p className="brand-description">
-            ระบบบริหารการลงเวลาสำหรับครูและบุคลากร
-            ใช้งานง่าย ปลอดภัย และรองรับทุกอุปกรณ์
-          </p>
-
-          <div className="feature-list">
-            <div>
-              <span>✓</span> ลงเวลาเข้า–ออกอย่างเป็นระบบ
-            </div>
-
-            <div>
-              <span>✓</span> ตรวจสอบประวัติได้ตลอดเวลา
-            </div>
-
-            <div>
-              <span>✓</span> รองรับรายงานและเอกสารในอนาคต
-            </div>
-          </div>
-        </div>
-
-        <div className="brand-footer">โรงเรียนวัดไผ่มุ้ง</div>
-      </section>
-
-      <section className="login-panel">
-        <div className="login-card">
-          <div className="mobile-logo">WPM</div>
-
-          <div className="login-heading">
-            <p className="login-kicker">ยินดีต้อนรับ</p>
-            <h2>เข้าสู่ระบบ</h2>
-            <p>กรอกเบอร์โทรศัพท์และ PIN ของคุณ</p>
+          <div className={styles.logoWrap}>
+            <Image
+              src="/images/school-logo.png"
+              alt="ตราโรงเรียนวัดไผ่มุ้ง"
+              width={180}
+              height={180}
+              priority
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="login-form">
-            <label>
-              <span>เบอร์โทรศัพท์</span>
+          <h2>โรงเรียนวัดไผ่มุ้ง</h2>
+        </header>
 
-              <div className="input-wrap">
-                <span className="input-icon" aria-hidden="true">
-                  ☎
-                </span>
-
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  placeholder="0812345678"
-                  maxLength={10}
-                  value={phone}
-                  onChange={(event) =>
-                    setPhone(event.target.value.replace(/\D/g, ""))
-                  }
-                  disabled={loading}
-                />
-              </div>
-            </label>
-
-            <label>
-              <span>PIN 6 หลัก</span>
-
-              <div className="input-wrap">
-                <span className="input-icon" aria-hidden="true">
-                  ●
-                </span>
-
-                <input
-                  type={showPin ? "text" : "password"}
-                  inputMode="numeric"
-                  autoComplete="current-password"
-                  placeholder="••••••"
-                  maxLength={6}
-                  value={pin}
-                  onChange={(event) =>
-                    setPin(event.target.value.replace(/\D/g, ""))
-                  }
-                  disabled={loading}
-                />
-
-                <button
-                  className="show-pin"
-                  type="button"
-                  onClick={() => setShowPin((current) => !current)}
-                  aria-label={showPin ? "ซ่อน PIN" : "แสดง PIN"}
-                  disabled={loading}
-                >
-                  {showPin ? "ซ่อน" : "แสดง"}
-                </button>
-              </div>
-            </label>
-
-            {message && (
-              <div className="form-message" role="alert">
-                {message}
-              </div>
-            )}
-
-            <button
-              className="login-button"
-              type="submit"
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <label className={styles.field}>
+            <span className={styles.srOnly}>เบอร์โทรศัพท์</span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              placeholder="เบอร์โทรศัพท์"
+              maxLength={10}
+              value={phone}
+              onChange={(event) =>
+                setPhone(event.target.value.replace(/\D/g, "").slice(0, 10))
+              }
               disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="spinner" />
-                  กำลังเข้าสู่ระบบ...
-                </>
-              ) : (
-                "เข้าสู่ระบบ"
-              )}
-            </button>
-          </form>
+            />
+          </label>
 
-          <p className="login-help">
-            ยังไม่มีบัญชี?{" "}
-            <Link
-              href="/register"
-              style={{
-                color: "#1877f2",
-                fontWeight: 800,
-              }}
-            >
-              สมัครสมาชิก
-            </Link>
-          </p>
-        </div>
+          <label className={styles.field}>
+            <span className={styles.srOnly}>PIN 6 หลัก</span>
 
-        <p className="copyright">
-          © 2026 Work Attendance System
+            <div className={styles.pinWrap}>
+              <input
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                autoComplete="current-password"
+                placeholder="PIN 6 หลัก"
+                maxLength={6}
+                value={pin}
+                onChange={(event) =>
+                  setPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                disabled={loading}
+              />
+
+              <button
+                type="button"
+                className={styles.showPin}
+                onClick={() => setShowPin((current) => !current)}
+                disabled={loading}
+              >
+                {showPin ? "ซ่อน" : "แสดง"}
+              </button>
+            </div>
+          </label>
+
+          <label className={styles.rememberRow}>
+            <input
+              type="checkbox"
+              checked={rememberPhone}
+              onChange={(event) => setRememberPhone(event.target.checked)}
+              disabled={loading}
+            />
+
+            <span>
+              <strong>จำเบอร์โทรและ PIN บนเครื่องนี้</strong>
+              <small>ระบบจะจำเฉพาะเบอร์โทรเพื่อความปลอดภัย</small>
+            </span>
+          </label>
+
+          {message && (
+            <div className={styles.message} role="alert">
+              {message}
+            </div>
+          )}
+
+          <button
+            className={styles.loginButton}
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className={styles.buttonSpinner} />
+                กำลังเข้าสู่ระบบ...
+              </>
+            ) : (
+              "Login"
+            )}
+          </button>
+        </form>
+
+        <p className={styles.registerLink}>
+          ยังไม่มีบัญชี? <Link href="/register">สมัครสมาชิก</Link>
         </p>
       </section>
+
+      <Image
+        className={styles.bottomPanda}
+        src="/images/login-panda.png"
+        alt="มาสคอตแพนด้าโรงเรียนวัดไผ่มุ้ง"
+        width={520}
+        height={520}
+        priority
+      />
     </main>
   );
 }
