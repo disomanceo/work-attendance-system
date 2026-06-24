@@ -18,6 +18,10 @@ function normalizeThaiPhone(phone: string) {
   return "";
 }
 
+function phoneToLoginEmail(phone: string) {
+  return `${phone}@attendance.local`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -61,16 +65,17 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const loginEmail = phoneToLoginEmail(formattedPhone);
+
       const { error } = await supabase.auth.signInWithPassword({
-        phone: formattedPhone,
+        email: loginEmail,
         password: pin,
       });
 
       if (error) {
-        console.error("Supabase login error:", error);
-        setMessage(`เข้าสู่ระบบไม่สำเร็จ: ${error.message}`);
-        return;
-      }
+  setMessage(`เข้าสู่ระบบไม่สำเร็จ: ${error.message}`);
+  return;
+}
 
       router.replace("/dashboard");
       router.refresh();

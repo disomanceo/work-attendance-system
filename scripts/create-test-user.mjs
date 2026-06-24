@@ -18,6 +18,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 const phone = "66812345678";
+const email = `${phone}@attendance.local`;
 const pin = "654321";
 
 const { data: existingUsers, error: listError } =
@@ -29,19 +30,20 @@ if (listError) {
 }
 
 const existingUser = existingUsers.users.find(
-  (user) => user.phone === phone
+  (user) => user.email === email || user.phone === phone
 );
 
 if (existingUser) {
   const { data, error } = await supabase.auth.admin.updateUserById(
     existingUser.id,
     {
-      phone,
+      email,
       password: pin,
-      phone_confirm: true,
+      email_confirm: true,
       user_metadata: {
         full_name: "ผู้ใช้ทดลอง",
         role: "staff",
+        phone,
       },
     }
   );
@@ -51,19 +53,22 @@ if (existingUser) {
     process.exit(1);
   }
 
-  console.log("อัปเดตผู้ใช้ทดลองสำเร็จ");
+  console.log("อัปเดตบัญชีทดลองสำเร็จ");
   console.log("User ID:", data.user.id);
-  console.log("Phone:", data.user.phone);
+  console.log("Login email:", data.user.email);
+  console.log("กรอกหน้าเว็บ: 0812345678");
+  console.log("PIN: 654321");
   process.exit(0);
 }
 
 const { data, error } = await supabase.auth.admin.createUser({
-  phone,
+  email,
   password: pin,
-  phone_confirm: true,
+  email_confirm: true,
   user_metadata: {
     full_name: "ผู้ใช้ทดลอง",
     role: "staff",
+    phone,
   },
 });
 
@@ -72,6 +77,8 @@ if (error) {
   process.exit(1);
 }
 
-console.log("สร้างผู้ใช้สำเร็จ");
+console.log("สร้างบัญชีทดลองสำเร็จ");
 console.log("User ID:", data.user.id);
-console.log("Phone:", data.user.phone);
+console.log("Login email:", data.user.email);
+console.log("กรอกหน้าเว็บ: 0812345678");
+console.log("PIN: 654321");
