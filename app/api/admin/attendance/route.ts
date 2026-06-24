@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type AttendanceRecord = {
@@ -134,7 +134,7 @@ async function requireAdmin(request: Request) {
   if (
     profileError ||
     !profile ||
-    profile.role !== "admin" ||
+    !["admin", "director"].includes(profile.role) ||
     profile.account_status !== "active"
   ) {
     return {

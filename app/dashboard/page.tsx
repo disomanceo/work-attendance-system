@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -166,7 +166,7 @@ export default function DashboardPage() {
             ประวัติการลงเวลา
           </button>
 
-          {profile?.role === "admin" && (
+          {["admin", "director"].includes(profile?.role ?? "") && (
             <button
               type="button"
               onClick={() => router.push("/admin/members")}
@@ -299,7 +299,7 @@ export default function DashboardPage() {
               </p>
             </article>
 
-            {profile.role === "admin" && (
+            {["admin", "director"].includes(profile.role) && (
               <article
                 role="button"
                 tabIndex={0}
