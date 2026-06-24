@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -73,14 +74,13 @@ export default function LoginPage() {
       });
 
       if (error) {
-  setMessage(`เข้าสู่ระบบไม่สำเร็จ: ${error.message}`);
-  return;
-}
+        setMessage("เบอร์โทรศัพท์หรือ PIN ไม่ถูกต้อง");
+        return;
+      }
 
       router.replace("/dashboard");
       router.refresh();
-    } catch (error) {
-      console.error("Login exception:", error);
+    } catch {
       setMessage("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่");
     } finally {
       setLoading(false);
@@ -185,13 +185,17 @@ export default function LoginPage() {
           </form>
 
           <p className="login-help">
-            หากลืม PIN กรุณาติดต่อผู้ดูแลระบบ
+            ยังไม่มีบัญชี?{" "}
+            <Link
+              href="/register"
+              style={{ color: "#1877f2", fontWeight: 800 }}
+            >
+              สมัครสมาชิก
+            </Link>
           </p>
         </div>
 
-        <p className="copyright">
-          © 2026 Work Attendance System
-        </p>
+        <p className="copyright">© 2026 Work Attendance System</p>
       </section>
     </main>
   );
