@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 
 type Profile = {
+  full_name: string;
+  position: string | null;
   role: string;
   account_status: string;
 };
@@ -32,6 +34,14 @@ type PositionData = {
   latitude: number;
   longitude: number;
   accuracy: number;
+};
+
+type MenuItem = {
+  label: string;
+  icon: string;
+  href?: string;
+  active?: boolean;
+  soon?: boolean;
 };
 
 function getBangkokDate() {
@@ -67,12 +77,23 @@ function formatThaiTime(value: string | null) {
     timeZone: "Asia/Bangkok",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
   }).format(new Date(value));
 }
 
 function normalizeTime(value: string) {
   return value.slice(0, 8);
+}
+
+function getRoleLabel(role: string) {
+  const labels: Record<string, string> = {
+    admin: "ผู้ดูแลระบบ",
+    director: "ผู้บริหาร",
+    teacher: "ครู",
+    staff: "เจ้าหน้าที่",
+    janitor: "ภารโรง",
+  };
+
+  return labels[role] ?? role;
 }
 
 function calculateDistanceMeters(
@@ -151,10 +172,17 @@ export default function AttendancePage() {
     "success"
   );
   const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("attendance_sidebar_collapsed");
+    setSidebarCollapsed(saved === "true");
   }, []);
 
   const loadAttendance = useCallback(async () => {
@@ -174,7 +202,7 @@ export default function AttendancePage() {
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("role, account_status")
+        .select("full_name, position, role, account_status")
         .eq("id", user.id)
         .single<Profile>();
 
@@ -334,6 +362,33 @@ export default function AttendancePage() {
     }
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
+
+  function toggleSidebarCollapsed() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    window.localStorage.setItem(
+      "attendance_sidebar_collapsed",
+      String(next)
+    );
+  }
+
+  function openMenu(item: MenuItem) {
+    if (item.soon || !item.href) {
+      setMessageType("success");
+      setMessage(`${item.label} อยู่ระหว่างพัฒนาระบบ`);
+      setSidebarOpen(false);
+      return;
+    }
+
+    setSidebarOpen(false);
+    router.push(item.href);
+  }
+
   if (loading) {
     return (
       <main className={styles.loading}>
@@ -343,165 +398,380 @@ export default function AttendancePage() {
     );
   }
 
+  if (!profile) {
+    return <main className={styles.loading}>ไม่พบข้อมูลผู้ใช้งาน</main>;
+  }
+
   const isLate = record?.check_in_status === "late";
-  const canViewReports = ["admin", "director", "staff"].includes(
-    profile?.role ?? ""
-  );
-  const canManageMembers = profile?.role === "admin";
+  const canViewReports = ["admin", "director", "staff"].includes(profile.role);
+  const canManageMembers = profile.role === "admin";
+
+  const menuItems: MenuItem[] = [
+    {
+      label: "ลงเวลาปฏิบัติงาน",
+      icon: "◷",
+      href: "/attendance",
+      active: true,
+    },
+    {
+      label: "ประวัติการลงเวลา",
+      icon: "▣",
+      href: "/attendance/history",
+    },
+    {
+      label: "ประวัติการลา",
+      icon: "▤",
+      soon: true,
+    },
+    {
+      label: "สรุปการลงเวลา",
+      icon: "▥",
+      href: "/dashboard",
+    },
+    {
+      label: "ข้อมูลส่วนตัว",
+      icon: "♙",
+      href: "/dashboard",
+    },
+    {
+      label: "เปลี่ยน PIN",
+      icon: "🔐",
+      href: "/account/change-pin",
+    },
+  ];
+
+  if (canViewReports) {
+    menuItems.push({
+      label: "รายงานลงเวลา",
+      icon: "▦",
+      href: "/admin/attendance",
+    });
+  }
+
+  if (canManageMembers) {
+    menuItems.push({
+      label: "จัดการสมาชิก",
+      icon: "👥",
+      href: "/admin/members",
+    });
+  }
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <button
-          type="button"
-          aria-label="กลับหน้าแรก"
-          onClick={() => router.push("/dashboard")}
-        >
-          ←
-        </button>
-
-        <div>
-          <span>ATTENDANCE</span>
-          <h1>ลงเวลาปฏิบัติงาน</h1>
-        </div>
-
-        <Image
-          src="/images/school-logo.png"
-          alt="โลโก้โรงเรียน"
-          width={52}
-          height={52}
-        />
-      </header>
-
-      <section className={styles.clockCard}>
-        <p>{formatThaiDate(now)}</p>
-        <strong>
-          {new Intl.DateTimeFormat("th-TH", {
-            timeZone: "Asia/Bangkok",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-          }).format(now)}
-        </strong>
-        <small>{settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}</small>
-      </section>
-
-      {message && (
-        <div
-          className={
-            messageType === "success"
-              ? styles.successMessage
-              : styles.errorMessage
-          }
-          role="alert"
-        >
-          {message}
-        </div>
-      )}
-
-      <section className={styles.statusCard}>
-        {!record?.check_in_at ? (
-          <>
-            <h2>พร้อมลงเวลาปฏิบัติงาน</h2>
-            <p>กดปุ่มเพื่อให้ระบบตรวจสอบตำแหน่ง GPS</p>
-
-            <button
-              type="button"
-              className={styles.checkInButton}
-              disabled={processing}
-              onClick={() => void handleCheckIn()}
-            >
-              <span className={styles.checkInIcon}>◉</span>
-              <strong>
-                {processing ? "กำลังตรวจสอบ GPS..." : "ลงเวลาปฏิบัติงาน"}
-              </strong>
-              {!processing && <small>แตะเพื่อเช็คอิน</small>}
-            </button>
-          </>
-        ) : (
-          <div className={styles.completed}>
-            <span className={styles.completedIcon}>✓</span>
-            <h2>วันนี้คุณได้ลงเวลาแล้ว</h2>
-
-            <span
-              className={isLate ? styles.lateStatus : styles.normalStatus}
-            >
-              {isLate ? "มาสาย" : "ปกติ"}
-            </span>
-
-            <p>
-              เวลาเข้า <b>{formatThaiTime(record.check_in_at)}</b>
-            </p>
-          </div>
-        )}
-      </section>
-
-      {distanceMeters !== null && (
-        <section className={styles.locationCard}>
-          ระยะห่างจากโรงเรียน{" "}
-          <strong>{distanceMeters.toLocaleString("th-TH")} เมตร</strong>
-        </section>
-      )}
-
-
-      <section className={styles.menuSection}>
-        <h2>เมนูของฉัน</h2>
-
-        <div className={styles.menuGrid}>
-          <button
-            type="button"
-            onClick={() => router.push("/attendance/history")}
-          >
-            <span>◷</span>
-            <b>ประวัติการลงเวลา</b>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/account/change-pin")}
-          >
-            <span>🔐</span>
-            <b>เปลี่ยน PIN</b>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-          >
-            <span>⌂</span>
-            <b>หน้าสรุปข้อมูล</b>
-          </button>
-
-          {canViewReports && (
-            <button
-              type="button"
-              onClick={() => router.push("/admin/attendance")}
-            >
-              <span>▥</span>
-              <b>รายงานลงเวลา</b>
-            </button>
-          )}
-
-          {canManageMembers && (
-            <button
-              type="button"
-              onClick={() => router.push("/admin/members")}
-            >
-              <span>👥</span>
-              <b>จัดการสมาชิก</b>
-            </button>
-          )}
-        </div>
-      </section>
-
+    <main
+      className={`${styles.page} ${
+        sidebarCollapsed ? styles.sidebarCollapsedPage : ""
+      }`}
+    >
       <button
         type="button"
-        className={styles.historyButton}
-        onClick={() => router.push("/attendance/history")}
+        className={styles.mobileMenuButton}
+        aria-label="เปิดเมนู"
+        onClick={() => setSidebarOpen(true)}
       >
-        ดูประวัติการลงเวลา →
+        ☰
       </button>
+
+      {sidebarOpen && (
+        <button
+          type="button"
+          className={styles.overlay}
+          aria-label="ปิดเมนู"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`${styles.sidebar} ${
+          sidebarOpen ? styles.sidebarOpen : ""
+        } ${sidebarCollapsed ? styles.sidebarCollapsed : ""}`}
+      >
+        <div className={styles.sidebarBrand}>
+          <Image
+            src="/images/school-logo.png"
+            alt="โลโก้โรงเรียน"
+            width={48}
+            height={48}
+          />
+
+          {!sidebarCollapsed && (
+            <div>
+              <strong>โรงเรียนวัดไผ่มุ้ง</strong>
+              <small>ระบบลงเวลาปฏิบัติงาน</small>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className={styles.collapseButton}
+            onClick={toggleSidebarCollapsed}
+            aria-label={sidebarCollapsed ? "ขยายเมนู" : "ย่อเมนู"}
+          >
+            {sidebarCollapsed ? "»" : "«"}
+          </button>
+        </div>
+
+        <div className={styles.userCard}>
+          <div className={styles.avatar}>
+            {profile.full_name.trim().charAt(0) || "U"}
+          </div>
+
+          {!sidebarCollapsed && (
+            <div>
+              <strong>{profile.full_name}</strong>
+              <small>
+                {profile.position || getRoleLabel(profile.role)}
+              </small>
+              <span>● ออนไลน์</span>
+            </div>
+          )}
+        </div>
+
+        {!sidebarCollapsed && (
+          <h2 className={styles.menuTitle}>เมนูของฉัน</h2>
+        )}
+
+        <nav className={styles.menuList} aria-label="เมนูของฉัน">
+          {menuItems.map((item) => (
+            <button
+              type="button"
+              key={item.label}
+              className={`${styles.menuItem} ${
+                item.active ? styles.menuItemActive : ""
+              } ${item.soon ? styles.menuItemSoon : ""}`}
+              onClick={() => openMenu(item)}
+              title={sidebarCollapsed ? item.label : undefined}
+            >
+              <span className={styles.menuIcon}>{item.icon}</span>
+
+              {!sidebarCollapsed && (
+                <>
+                  <b>{item.label}</b>
+                  {item.soon && <small>เร็ว ๆ นี้</small>}
+                </>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        <button
+          type="button"
+          className={styles.logoutButton}
+          onClick={() => void handleLogout()}
+        >
+          <span>⇥</span>
+          {!sidebarCollapsed && <b>ออกจากระบบ</b>}
+        </button>
+      </aside>
+
+      <section className={styles.content}>
+        <header className={styles.topBar}>
+          <div>
+            <span>ATTENDANCE</span>
+            <h1>ลงเวลาปฏิบัติงาน</h1>
+            <p>กรุณาลงเวลาเข้าและตรวจสอบสถานะของคุณ</p>
+          </div>
+
+          <div className={styles.topUser}>
+            <div>
+              <strong>{profile.full_name}</strong>
+              <small>{profile.position || getRoleLabel(profile.role)}</small>
+            </div>
+            <div className={styles.topAvatar}>
+              {profile.full_name.trim().charAt(0) || "U"}
+            </div>
+          </div>
+        </header>
+
+        {message && (
+          <div
+            className={
+              messageType === "success"
+                ? styles.successMessage
+                : styles.errorMessage
+            }
+            role="alert"
+          >
+            {message}
+          </div>
+        )}
+
+        <section className={styles.heroGrid}>
+          <article className={styles.checkInPanel}>
+            {!record?.check_in_at ? (
+              <>
+                <button
+                  type="button"
+                  className={styles.checkInButton}
+                  disabled={processing}
+                  onClick={() => void handleCheckIn()}
+                >
+                  <span>◉</span>
+                  <strong>
+                    {processing
+                      ? "กำลังตรวจสอบ GPS..."
+                      : "ลงเวลาปฏิบัติงาน"}
+                  </strong>
+                  {!processing && <small>แตะเพื่อเช็คอิน</small>}
+                </button>
+
+                <p>ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา</p>
+              </>
+            ) : (
+              <div className={styles.completedCircle}>
+                <span>✓</span>
+                <strong>ลงเวลาแล้ว</strong>
+                <small>{formatThaiTime(record.check_in_at)}</small>
+              </div>
+            )}
+          </article>
+
+          <article className={styles.statusPanel}>
+            <div className={styles.currentDate}>
+              <span>▣</span>
+              <p>{formatThaiDate(now)}</p>
+            </div>
+
+            <div className={styles.liveClock}>
+              {new Intl.DateTimeFormat("th-TH", {
+                timeZone: "Asia/Bangkok",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
+              }).format(now)}
+              <span>● เวลาปัจจุบัน</span>
+            </div>
+
+            <div className={styles.todayStatus}>
+              <small>สถานะวันนี้</small>
+              {!record?.check_in_at ? (
+                <strong className={styles.waitingStatus}>
+                  ◷ ยังไม่ได้ลงเวลาเข้า
+                </strong>
+              ) : (
+                <strong
+                  className={
+                    isLate ? styles.lateStatus : styles.normalStatus
+                  }
+                >
+                  {isLate ? "มาสาย" : "ปกติ"}
+                </strong>
+              )}
+            </div>
+
+            <div className={styles.locationRow}>
+              <span>⌖</span>
+              <div>
+                <small>ตำแหน่งลงเวลา</small>
+                <strong>
+                  {settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}
+                </strong>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section className={styles.summaryGrid}>
+          <article className={styles.todayCard}>
+            <div className={styles.todayIcon}>✓</div>
+
+            <div>
+              <small>สถานะของคุณวันนี้</small>
+              <h2>
+                {record?.check_in_at
+                  ? "วันนี้คุณได้ลงเวลาแล้ว"
+                  : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
+              </h2>
+
+              <p>
+                เวลาเข้า{" "}
+                <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
+              </p>
+            </div>
+
+            {record?.check_in_at && (
+              <span
+                className={
+                  isLate ? styles.badgeLate : styles.badgeNormal
+                }
+              >
+                {isLate ? "มาสาย" : "ปกติ"}
+              </span>
+            )}
+          </article>
+
+          <article className={styles.workTimeCard}>
+            <small>เวลาปฏิบัติงาน</small>
+            <strong>
+              {profile.role === "janitor" ? "08:30 - 18:00" : "08:30 - 16:30"}
+            </strong>
+            <p>วันจันทร์ - วันศุกร์</p>
+          </article>
+        </section>
+
+        {distanceMeters !== null && (
+          <section className={styles.locationNotice}>
+            ระยะห่างจากโรงเรียน{" "}
+            <strong>{distanceMeters.toLocaleString("th-TH")} เมตร</strong>
+          </section>
+        )}
+
+        <section className={styles.bottomGrid}>
+          <article className={styles.historyPreview}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <small>HISTORY</small>
+                <h2>ประวัติการลงเวลาล่าสุด</h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push("/attendance/history")}
+              >
+                ดูทั้งหมด →
+              </button>
+            </div>
+
+            <div className={styles.emptyPreview}>
+              <span>▣</span>
+              <p>ดูรายละเอียดประวัติการลงเวลาของคุณ</p>
+              <button
+                type="button"
+                onClick={() => router.push("/attendance/history")}
+              >
+                เปิดประวัติการลงเวลา
+              </button>
+            </div>
+          </article>
+
+          <article className={styles.monthSummary}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <small>MONTHLY</small>
+                <h2>สรุปการลงเวลา</h2>
+              </div>
+            </div>
+
+            <div className={styles.summaryCircle}>
+              <span>เดือนนี้</span>
+              <strong>{record?.check_in_at ? "1" : "0"}</strong>
+              <small>วันที่ลงเวลา</small>
+            </div>
+
+            <div className={styles.legend}>
+              <span>
+                <i className={styles.greenDot} /> ปกติ
+              </span>
+              <span>
+                <i className={styles.redDot} /> มาสาย
+              </span>
+              <span>
+                <i className={styles.purpleDot} /> ลา/ขาด
+              </span>
+            </div>
+          </article>
+        </section>
+      </section>
     </main>
   );
 }
