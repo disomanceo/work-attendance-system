@@ -1,6 +1,13 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./profile.module.css";
@@ -17,6 +24,19 @@ type Profile = {
 
 type AssetType = "profile" | "signature";
 
+type CropState = {
+  sourceUrl: string;
+  naturalWidth: number;
+  naturalHeight: number;
+  scale: number;
+  minScale: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+const CROP_SIZE = 320;
+const OUTPUT_SIZE = 800;
+
 function getRoleLabel(role: string) {
   const labels: Record<string, string> = {
     admin: "ผู้ดูแลระบบ",
@@ -25,28 +45,98 @@ function getRoleLabel(role: string) {
     staff: "เจ้าหน้าที่",
     janitor: "ภารโรง",
   };
+
   return labels[role] ?? role;
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+function readImageDimensions(url: string) {
+  return new Promise<{ width: number; height: number }>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve({
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    });
+    image.onerror = () => reject(new Error("ไม่สามารถอ่านไฟล์รูปภาพได้"));
+    image.src = url;
+  });
+}
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("ไม่สามารถเตรียมรูปภาพได้"));
+    image.src = url;
+  });
+}
+
+async function createCroppedProfileFile(crop: CropState) {
+  const image = await loadImage(crop.sourceUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = OUTPUT_SIZE;
+  canvas.height = OUTPUT_SIZE;
+
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("อุปกรณ์นี้ไม่รองรับการ Crop รูป");
+
+  const ratio = OUTPUT_SIZE / CROP_SIZE;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+  context.drawImage(
+    image,
+    crop.offsetX * ratio,
+    crop.offsetY * ratio,
+    crop.naturalWidth * crop.scale * ratio,
+    crop.naturalHeight * crop.scale * ratio
+  );
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => result
+        ? resolve(result)
+        : reject(new Error("ไม่สามารถสร้างรูปที่ Crop ได้")),
+      "image/jpeg",
+      0.84
+    );
+  });
+
+  return new File([blob], `profile-${Date.now()}.jpg`, {
+    type: "image/jpeg",
+  });
 }
 
 export default function ProfilePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileUrl, setProfileUrl] = useState("");
   const [signatureUrl, setSignatureUrl] = useState("");
   const [uploading, setUploading] = useState<AssetType | null>(null);
+  const [uploadStage, setUploadStage] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error">("success");
+  const [crop, setCrop] = useState<CropState | null>(null);
+  const [cropping, setCropping] = useState(false);
+
+  const dragRef = useRef({
+    active: false,
+    startX: 0,
+    startY: 0,
+    originalX: 0,
+    originalY: 0,
+  });
 
   useEffect(() => {
     let profileObjectUrl = "";
     let signatureObjectUrl = "";
 
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.replace("/login");
         return;
@@ -54,37 +144,27 @@ export default function ProfilePage() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select(
-          "full_name, phone, position, role, account_status, profile_image_file_id, signature_file_id"
-        )
+        .select("full_name, phone, position, role, account_status, profile_image_file_id, signature_file_id")
         .eq("id", user.id)
         .single();
 
-      if (error || !data || data.account_status !== "active") {
+      const profileData = data as Profile | null;
+      if (error || !profileData || profileData.account_status !== "active") {
         router.replace("/login");
         return;
       }
 
-      setProfile(data as Profile);
+      setProfile(profileData);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
-
       if (!accessToken) return;
 
-      async function loadAsset(
-        fileId: string,
-        setter: (value: string) => void
-      ) {
+      async function loadAsset(fileId: string, setter: (value: string) => void) {
         const response = await fetch(
           `/api/account/profile-assets?fileId=${encodeURIComponent(fileId)}`,
           {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
+            headers: { Authorization: `Bearer ${accessToken}` },
             cache: "no-store",
           }
         );
@@ -96,14 +176,18 @@ export default function ProfilePage() {
         return url;
       }
 
-      if (data.profile_image_file_id) {
-        profileObjectUrl =
-          await loadAsset(data.profile_image_file_id, setProfileUrl);
+      if (profileData.profile_image_file_id) {
+        profileObjectUrl = await loadAsset(
+          profileData.profile_image_file_id,
+          setProfileUrl
+        );
       }
 
-      if (data.signature_file_id) {
-        signatureObjectUrl =
-          await loadAsset(data.signature_file_id, setSignatureUrl);
+      if (profileData.signature_file_id) {
+        signatureObjectUrl = await loadAsset(
+          profileData.signature_file_id,
+          setSignatureUrl
+        );
       }
     }
 
@@ -115,44 +199,26 @@ export default function ProfilePage() {
     };
   }, [router, supabase]);
 
-  async function uploadAsset(
-    event: ChangeEvent<HTMLInputElement>,
-    type: AssetType
-  ) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    const allowed =
-      type === "profile"
-        ? ["image/jpeg", "image/png", "image/webp"]
-        : ["image/png", "image/jpeg", "image/webp"];
-
-    if (!allowed.includes(file.type)) {
-      setMessageType("error");
-      setMessage("รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setMessageType("error");
-      setMessage("ไฟล์ต้องมีขนาดไม่เกิน 5 MB");
-      return;
-    }
-
+  async function uploadFile(file: File, type: AssetType) {
     setUploading(type);
+    setUploadStage("กำลังเตรียมไฟล์...");
     setMessage("");
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+      const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
+      if (!accessToken) throw new Error("กรุณาเข้าสู่ระบบใหม่");
 
-      if (!accessToken) {
-        throw new Error("กรุณาเข้าสู่ระบบใหม่");
+      const immediateUrl = URL.createObjectURL(file);
+      if (type === "profile") {
+        if (profileUrl) URL.revokeObjectURL(profileUrl);
+        setProfileUrl(immediateUrl);
+      } else {
+        if (signatureUrl) URL.revokeObjectURL(signatureUrl);
+        setSignatureUrl(immediateUrl);
       }
+
+      setUploadStage("กำลังอัปโหลดไป Google Drive...");
 
       const formData = new FormData();
       formData.append("file", file);
@@ -160,36 +226,23 @@ export default function ProfilePage() {
 
       const response = await fetch("/api/account/profile-assets", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${accessToken}` },
         body: formData,
       });
 
       const result = await response.json();
-
       if (!response.ok || !result.ok) {
         throw new Error(result.message || "อัปโหลดไฟล์ไม่สำเร็จ");
       }
 
-      const previewUrl = URL.createObjectURL(file);
+      setProfile((current) => {
+        if (!current) return current;
+        return type === "profile"
+          ? { ...current, profile_image_file_id: result.fileId }
+          : { ...current, signature_file_id: result.fileId };
+      });
 
-      if (type === "profile") {
-        if (profileUrl) URL.revokeObjectURL(profileUrl);
-        setProfileUrl(previewUrl);
-        setProfile((current) =>
-          current
-            ? { ...current, profile_image_file_id: result.fileId }
-            : current
-        );
-      } else {
-        if (signatureUrl) URL.revokeObjectURL(signatureUrl);
-        setSignatureUrl(previewUrl);
-        setProfile((current) =>
-          current ? { ...current, signature_file_id: result.fileId } : current
-        );
-      }
-
+      setUploadStage("บันทึกสำเร็จ");
       setMessageType("success");
       setMessage(
         type === "profile"
@@ -198,12 +251,159 @@ export default function ProfilePage() {
       );
     } catch (error) {
       setMessageType("error");
-      setMessage(
-        error instanceof Error ? error.message : "อัปโหลดไฟล์ไม่สำเร็จ"
-      );
+      setMessage(error instanceof Error ? error.message : "อัปโหลดไฟล์ไม่สำเร็จ");
     } finally {
       setUploading(null);
+      window.setTimeout(() => setUploadStage(""), 1200);
     }
+  }
+
+  async function chooseProfileImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setMessageType("error");
+      setMessage("รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP");
+      return;
+    }
+
+    if (file.size > 12 * 1024 * 1024) {
+      setMessageType("error");
+      setMessage("รูปต้นฉบับต้องมีขนาดไม่เกิน 12 MB");
+      return;
+    }
+
+    try {
+      const sourceUrl = URL.createObjectURL(file);
+      const dimensions = await readImageDimensions(sourceUrl);
+      const minScale = Math.max(
+        CROP_SIZE / dimensions.width,
+        CROP_SIZE / dimensions.height
+      );
+      const displayWidth = dimensions.width * minScale;
+      const displayHeight = dimensions.height * minScale;
+
+      setCrop({
+        sourceUrl,
+        naturalWidth: dimensions.width,
+        naturalHeight: dimensions.height,
+        scale: minScale,
+        minScale,
+        offsetX: (CROP_SIZE - displayWidth) / 2,
+        offsetY: (CROP_SIZE - displayHeight) / 2,
+      });
+      setMessage("");
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error instanceof Error ? error.message : "เปิดรูปภาพไม่สำเร็จ");
+    }
+  }
+
+  function constrainOffsets(nextX: number, nextY: number, nextScale: number) {
+    if (!crop) return { x: nextX, y: nextY };
+    const displayWidth = crop.naturalWidth * nextScale;
+    const displayHeight = crop.naturalHeight * nextScale;
+    return {
+      x: clamp(nextX, CROP_SIZE - displayWidth, 0),
+      y: clamp(nextY, CROP_SIZE - displayHeight, 0),
+    };
+  }
+
+  function handleZoom(value: number) {
+    if (!crop) return;
+
+    const oldWidth = crop.naturalWidth * crop.scale;
+    const oldHeight = crop.naturalHeight * crop.scale;
+    const centerX = (CROP_SIZE / 2 - crop.offsetX) / oldWidth;
+    const centerY = (CROP_SIZE / 2 - crop.offsetY) / oldHeight;
+    const newWidth = crop.naturalWidth * value;
+    const newHeight = crop.naturalHeight * value;
+    const constrained = constrainOffsets(
+      CROP_SIZE / 2 - centerX * newWidth,
+      CROP_SIZE / 2 - centerY * newHeight,
+      value
+    );
+
+    setCrop({
+      ...crop,
+      scale: value,
+      offsetX: constrained.x,
+      offsetY: constrained.y,
+    });
+  }
+
+  function startDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!crop) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      active: true,
+      startX: event.clientX,
+      startY: event.clientY,
+      originalX: crop.offsetX,
+      originalY: crop.offsetY,
+    };
+  }
+
+  function moveDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!crop || !dragRef.current.active) return;
+    const constrained = constrainOffsets(
+      dragRef.current.originalX + event.clientX - dragRef.current.startX,
+      dragRef.current.originalY + event.clientY - dragRef.current.startY,
+      crop.scale
+    );
+    setCrop({ ...crop, offsetX: constrained.x, offsetY: constrained.y });
+  }
+
+  function endDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    dragRef.current.active = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  async function confirmCrop() {
+    if (!crop) return;
+    setCropping(true);
+
+    try {
+      const croppedFile = await createCroppedProfileFile(crop);
+      const sourceUrl = crop.sourceUrl;
+      setCrop(null);
+      URL.revokeObjectURL(sourceUrl);
+      await uploadFile(croppedFile, "profile");
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error instanceof Error ? error.message : "Crop รูปไม่สำเร็จ");
+    } finally {
+      setCropping(false);
+    }
+  }
+
+  function cancelCrop() {
+    if (crop?.sourceUrl) URL.revokeObjectURL(crop.sourceUrl);
+    setCrop(null);
+  }
+
+  async function chooseSignature(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setMessageType("error");
+      setMessage("รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessageType("error");
+      setMessage("ไฟล์ลายเซ็นต้องมีขนาดไม่เกิน 5 MB");
+      return;
+    }
+
+    await uploadFile(file, "signature");
   }
 
   if (!profile) {
@@ -213,9 +413,7 @@ export default function ProfilePage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <button type="button" onClick={() => router.push("/attendance")}>
-          ←
-        </button>
+        <button type="button" onClick={() => router.push("/attendance")} aria-label="กลับหน้าลงเวลา">←</button>
         <div>
           <span>MY PROFILE</span>
           <h1>ข้อมูลส่วนตัว</h1>
@@ -223,26 +421,22 @@ export default function ProfilePage() {
       </header>
 
       {message && (
-        <div
-          className={
-            messageType === "success"
-              ? styles.successMessage
-              : styles.errorMessage
-          }
-        >
+        <div className={messageType === "success" ? styles.successMessage : styles.errorMessage}>
           {message}
+        </div>
+      )}
+
+      {uploadStage && (
+        <div className={styles.uploadStatus}>
+          <span className={styles.uploadSpinner} />
+          {uploadStage}
         </div>
       )}
 
       <section className={styles.profileCard}>
         <div className={styles.profileImage}>
-          {profileUrl ? (
-            <img src={profileUrl} alt="รูปโปรไฟล์" />
-          ) : (
-            <span>{profile.full_name.charAt(0)}</span>
-          )}
+          {profileUrl ? <img src={profileUrl} alt="รูปโปรไฟล์" /> : <span>{profile.full_name.charAt(0)}</span>}
         </div>
-
         <div>
           <h2>{profile.full_name}</h2>
           <p>{profile.position || getRoleLabel(profile.role)}</p>
@@ -253,50 +447,78 @@ export default function ProfilePage() {
       <section className={styles.uploadGrid}>
         <article>
           <div className={styles.preview}>
-            {profileUrl ? (
-              <img src={profileUrl} alt="ตัวอย่างรูปโปรไฟล์" />
-            ) : (
-              <span>ไม่มีรูปโปรไฟล์</span>
-            )}
+            {profileUrl ? <img src={profileUrl} alt="ตัวอย่างรูปโปรไฟล์" /> : <span>ไม่มีรูปโปรไฟล์</span>}
           </div>
-
           <h2>รูปโปรไฟล์</h2>
-          <p>ใช้ไฟล์ JPG, PNG หรือ WEBP ขนาดไม่เกิน 5 MB</p>
-
+          <p>เลือกรูปแล้วลากตำแหน่งและซูมเพื่อ Crop ได้ ระบบจะย่อรูปก่อนอัปโหลด</p>
           <label className={styles.uploadButton}>
-            {uploading === "profile" ? "กำลังอัปโหลด..." : "เลือกรูปโปรไฟล์"}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={uploading !== null}
-              onChange={(event) => void uploadAsset(event, "profile")}
-            />
+            {uploading === "profile" ? "กำลังอัปโหลด..." : "เลือกรูปและ Crop"}
+            <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading !== null} onChange={(event) => void chooseProfileImage(event)} />
           </label>
         </article>
 
         <article>
           <div className={`${styles.preview} ${styles.signaturePreview}`}>
-            {signatureUrl ? (
-              <img src={signatureUrl} alt="ตัวอย่างลายเซ็น" />
-            ) : (
-              <span>ยังไม่มีลายเซ็น</span>
-            )}
+            {signatureUrl ? <img src={signatureUrl} alt="ตัวอย่างลายเซ็น" /> : <span>ยังไม่มีลายเซ็น</span>}
           </div>
-
           <h2>ลายเซ็น</h2>
           <p>แนะนำไฟล์ PNG พื้นหลังโปร่งใส ขนาดไม่เกิน 5 MB</p>
-
           <label className={styles.uploadButton}>
             {uploading === "signature" ? "กำลังอัปโหลด..." : "เลือกลายเซ็น"}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={uploading !== null}
-              onChange={(event) => void uploadAsset(event, "signature")}
-            />
+            <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading !== null} onChange={(event) => void chooseSignature(event)} />
           </label>
         </article>
       </section>
+
+      {crop && (
+        <div className={styles.cropOverlay} role="dialog" aria-modal="true">
+          <section className={styles.cropModal}>
+            <header>
+              <div>
+                <small>PROFILE PHOTO</small>
+                <h2>จัดตำแหน่งรูปโปรไฟล์</h2>
+              </div>
+              <button type="button" onClick={cancelCrop} aria-label="ปิดหน้าต่าง Crop">×</button>
+            </header>
+
+            <p className={styles.cropHelp}>ลากรูปเพื่อขยับตำแหน่ง และใช้แถบด้านล่างเพื่อซูม</p>
+
+            <div className={styles.cropViewport} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}>
+              <img
+                src={crop.sourceUrl}
+                alt="รูปสำหรับ Crop"
+                draggable={false}
+                style={{
+                  width: crop.naturalWidth * crop.scale,
+                  height: crop.naturalHeight * crop.scale,
+                  transform: `translate(${crop.offsetX}px, ${crop.offsetY}px)`,
+                }}
+              />
+              <div className={styles.cropGuide} />
+            </div>
+
+            <label className={styles.zoomControl}>
+              <span>ย่อ</span>
+              <input
+                type="range"
+                min={crop.minScale}
+                max={crop.minScale * 3}
+                step={crop.minScale / 100}
+                value={crop.scale}
+                onChange={(event) => handleZoom(Number(event.target.value))}
+              />
+              <span>ขยาย</span>
+            </label>
+
+            <div className={styles.cropActions}>
+              <button type="button" className={styles.cancelButton} onClick={cancelCrop} disabled={cropping}>ยกเลิก</button>
+              <button type="button" className={styles.confirmButton} onClick={() => void confirmCrop()} disabled={cropping}>
+                {cropping ? "กำลังเตรียมรูป..." : "ใช้รูปนี้"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
