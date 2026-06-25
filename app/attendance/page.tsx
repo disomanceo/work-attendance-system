@@ -403,6 +403,7 @@ export default function AttendancePage() {
   }
 
   const isLate = record?.check_in_status === "late";
+  const hasCheckedIn = Boolean(record?.check_in_at);
   const canViewReports = ["admin", "director", "staff"].includes(profile.role);
   const canManageMembers = profile.role === "admin";
 
@@ -460,7 +461,7 @@ export default function AttendancePage() {
     <main
       className={`${styles.page} ${
         sidebarCollapsed ? styles.sidebarCollapsedPage : ""
-      }`}
+      } ${hasCheckedIn ? styles.checkedInPage : ""}`}
     >
       <button
         type="button"
@@ -564,6 +565,28 @@ export default function AttendancePage() {
       </aside>
 
       <section className={styles.content}>
+        <header className={styles.mobileTopBar}>
+          <button
+            type="button"
+            className={styles.mobileMenuButtonInline}
+            aria-label="เปิดเมนู"
+            onClick={() => setSidebarOpen(true)}
+          >
+            ☰
+          </button>
+
+          <div className={styles.mobileProfile}>
+            <div className={styles.mobileAvatar}>
+              {profile.full_name.trim().charAt(0) || "U"}
+            </div>
+
+            <div>
+              <strong>{profile.full_name}</strong>
+              <small>{profile.position || getRoleLabel(profile.role)}</small>
+            </div>
+          </div>
+        </header>
+
         <header className={styles.topBar}>
           <div>
             <span>ATTENDANCE</span>
@@ -597,6 +620,20 @@ export default function AttendancePage() {
 
         <section className={styles.heroGrid}>
           <article className={styles.checkInPanel}>
+            <div className={styles.mobileCheckInHeader}>
+              <p>{formatThaiDate(now)}</p>
+              <strong>
+                {new Intl.DateTimeFormat("th-TH", {
+                  timeZone: "Asia/Bangkok",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: false,
+                }).format(now)}
+              </strong>
+              <small>เวลาปัจจุบันแบบเรียลไทม์</small>
+            </div>
+
             {!record?.check_in_at ? (
               <>
                 <button
@@ -605,7 +642,7 @@ export default function AttendancePage() {
                   disabled={processing}
                   onClick={() => void handleCheckIn()}
                 >
-                  <span>◉</span>
+                  <span className={styles.fingerprintIcon}>☝</span>
                   <strong>
                     {processing
                       ? "กำลังตรวจสอบ GPS..."
@@ -614,18 +651,62 @@ export default function AttendancePage() {
                   {!processing && <small>แตะเพื่อเช็คอิน</small>}
                 </button>
 
-                <p>ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา</p>
+                <div className={styles.mobileFeedback}>
+                  {processing ? (
+                    <p className={styles.processingText}>
+                      กำลังตรวจสอบตำแหน่ง GPS...
+                    </p>
+                  ) : message ? (
+                    <p
+                      className={
+                        messageType === "success"
+                          ? styles.feedbackSuccess
+                          : styles.feedbackError
+                      }
+                    >
+                      {message}
+                    </p>
+                  ) : (
+                    <p>ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา</p>
+                  )}
+
+                  {distanceMeters !== null && (
+                    <small>
+                      ระยะห่างจากโรงเรียน{" "}
+                      <b>{distanceMeters.toLocaleString("th-TH")} เมตร</b>
+                    </small>
+                  )}
+                </div>
               </>
             ) : (
-              <div className={styles.completedCircle}>
-                <span>✓</span>
-                <strong>ลงเวลาแล้ว</strong>
-                <small>{formatThaiTime(record.check_in_at)}</small>
+              <div className={styles.completedWrap}>
+                <div className={styles.completedCircle}>
+                  <span>✓</span>
+                  <strong>วันนี้คุณได้ลงเวลาแล้ว</strong>
+                  <small>{formatThaiTime(record.check_in_at)}</small>
+                </div>
+
+                <div className={styles.completedDetails}>
+                  <span
+                    className={
+                      isLate ? styles.badgeLate : styles.badgeNormal
+                    }
+                  >
+                    {isLate ? "มาสาย" : "ปกติ"}
+                  </span>
+
+                  {distanceMeters !== null && (
+                    <small>
+                      ระยะ GPS{" "}
+                      <b>{distanceMeters.toLocaleString("th-TH")} เมตร</b>
+                    </small>
+                  )}
+                </div>
               </div>
             )}
           </article>
 
-          <article className={styles.statusPanel}>
+          <article className={`${styles.statusPanel} ${styles.mobileSecondary}`}>
             <div className={styles.currentDate}>
               <span>▣</span>
               <p>{formatThaiDate(now)}</p>
@@ -671,7 +752,7 @@ export default function AttendancePage() {
           </article>
         </section>
 
-        <section className={styles.summaryGrid}>
+        <section className={`${styles.summaryGrid} ${styles.mobileSecondary}`}>
           <article className={styles.todayCard}>
             <div className={styles.todayIcon}>✓</div>
 
@@ -710,13 +791,13 @@ export default function AttendancePage() {
         </section>
 
         {distanceMeters !== null && (
-          <section className={styles.locationNotice}>
+          <section className={`${styles.locationNotice} ${styles.mobileSecondary}`}>
             ระยะห่างจากโรงเรียน{" "}
             <strong>{distanceMeters.toLocaleString("th-TH")} เมตร</strong>
           </section>
         )}
 
-        <section className={styles.bottomGrid}>
+        <section className={`${styles.bottomGrid} ${styles.mobileSecondary}`}>
           <article className={styles.historyPreview}>
             <div className={styles.sectionHeading}>
               <div>
