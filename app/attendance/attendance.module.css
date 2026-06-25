@@ -1,10 +1,29 @@
 .page {
   min-height: 100svh;
   padding: 18px 16px 40px;
-  color: #2e1a52;
+  color: #f8f5ff;
   background:
-    radial-gradient(circle at 85% 5%, rgba(147, 74, 244, 0.15), transparent 28%),
-    linear-gradient(180deg, #fbf9ff, #f3edff);
+    radial-gradient(circle at 85% 5%, rgba(217, 70, 239, 0.2), transparent 28%),
+    radial-gradient(circle at 8% 50%, rgba(124, 58, 237, 0.18), transparent 32%),
+    linear-gradient(180deg, #100719 0%, #170a2b 52%, #0c0614 100%);
+}
+
+.page button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.page button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.page button:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .header {
@@ -17,15 +36,16 @@
 .header button {
   width: 44px;
   height: 44px;
-  border: 1px solid #e1d4f7;
+  border: 1px solid rgba(216, 180, 254, 0.24);
   border-radius: 14px;
-  color: #6b2ccb;
-  background: white;
+  color: #f4eaff;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   font-size: 22px;
 }
 
 .header span {
-  color: #8c6dba;
+  color: #d8b4fe;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 2px;
@@ -33,8 +53,9 @@
 
 .header h1 {
   margin: 4px 0 0;
-  color: #4f1b98;
+  color: #fff;
   font-size: 24px;
+  text-shadow: 0 0 18px rgba(232, 121, 249, 0.25);
 }
 
 .header img {
@@ -43,13 +64,15 @@
 
 .clockCard,
 .statusCard,
-.autoCheckout,
 .locationCard {
   margin-top: 18px;
-  border: 1px solid #e5daf9;
+  border: 1px solid rgba(216, 180, 254, 0.2);
   border-radius: 24px;
-  background: white;
-  box-shadow: 0 15px 38px rgba(74, 38, 128, 0.09);
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow:
+    0 16px 42px rgba(7, 2, 18, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px);
 }
 
 .clockCard {
@@ -59,101 +82,153 @@
 
 .clockCard p {
   margin: 0;
-  color: #685285;
+  color: #d8c8e9;
   font-weight: 800;
 }
 
 .clockCard strong {
   display: block;
   margin-top: 7px;
-  color: #6d27dc;
+  color: #fff;
   font-size: clamp(44px, 15vw, 66px);
   letter-spacing: -2px;
+  text-shadow: 0 0 24px rgba(232, 121, 249, 0.36);
 }
 
 .clockCard small {
-  color: #8a8097;
+  color: #bca9d7;
 }
 
 .statusCard {
-  padding: 24px 20px;
+  padding: 26px 20px 30px;
   text-align: center;
 }
 
-.statusIcon {
-  display: grid;
-  width: 92px;
-  height: 92px;
-  place-items: center;
-  margin: 0 auto;
-  border: 10px solid #ddc9fd;
-  border-radius: 50%;
-  color: #6d27dc;
-  font-size: 36px;
-}
-
 .statusCard h2 {
-  margin: 14px 0 7px;
-  color: #4f1b98;
+  margin: 0 0 8px;
+  color: #fff;
 }
 
-.statusCard p {
+.statusCard > p {
   margin: 0;
-  color: #756b88;
+  color: #c8b8dd;
 }
 
 .checkInButton {
-  width: 100%;
-  min-height: 62px;
-  margin-top: 20px;
-  border: 0;
-  border-radius: 18px;
-  color: white;
-  background: linear-gradient(135deg, #b45bff, #6d24e5);
-  box-shadow: 0 15px 28px rgba(109, 36, 229, 0.28);
-  font-size: 18px;
-  font-weight: 900;
+  display: flex;
+  width: 172px;
+  height: 172px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+  margin: 24px auto 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: #fff;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.22), transparent 20%),
+    linear-gradient(135deg, #d946ef 0%, #a855f7 42%, #6d28d9 100%);
+  box-shadow:
+    0 18px 38px rgba(168, 85, 247, 0.38),
+    0 0 30px rgba(217, 70, 239, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  font-family: inherit;
+}
+
+.checkInButton:active:not(:disabled) {
+  transform: scale(0.9);
+  box-shadow:
+    0 8px 18px rgba(168, 85, 247, 0.3),
+    0 0 16px rgba(217, 70, 239, 0.22),
+    inset 0 4px 12px rgba(40, 8, 74, 0.24);
+}
+
+.checkInButton strong {
+  max-width: 130px;
+  color: #fff;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.checkInButton small {
+  color: #f1dcff;
+  font-size: 12px;
+}
+
+.checkInIcon {
+  font-size: 34px;
+  line-height: 1;
 }
 
 .completed {
-  margin-top: 20px;
-  padding: 16px;
-  border-radius: 16px;
-  color: #16723a;
-  background: #effcf3;
-  font-weight: 800;
-}
-
-.autoCheckout {
   display: flex;
-  align-items: flex-start;
-  gap: 13px;
-  padding: 17px;
-  border-color: #f0d28e;
-  background: #fffaf0;
+  align-items: center;
+  flex-direction: column;
+  padding: 10px 0 2px;
 }
 
-.autoCheckout > span {
-  font-size: 28px;
+.completedIcon {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  border: 8px solid rgba(74, 222, 128, 0.16);
+  border-radius: 50%;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  font-size: 34px;
+  font-weight: 900;
+  box-shadow: 0 0 26px rgba(34, 197, 94, 0.14);
 }
 
-.autoCheckout strong {
-  color: #3a213f;
+.completed h2 {
+  margin: 16px 0 12px;
 }
 
-.autoCheckout p {
-  margin: 5px 0 0;
-  color: #756477;
+.completed p {
+  margin: 13px 0 0;
+  color: #c8b8dd;
 }
 
-.autoCheckout b {
-  color: #6d27dc;
+.completed b {
+  color: #fff;
+}
+
+.normalStatus,
+.lateStatus {
+  display: inline-flex;
+  min-width: 92px;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 18px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.normalStatus {
+  border-color: rgba(74, 222, 128, 0.34);
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.lateStatus {
+  border-color: rgba(251, 113, 133, 0.36);
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.14);
 }
 
 .locationCard {
   padding: 15px;
-  color: #513b6d;
+  color: #d8c8e9;
   text-align: center;
+}
+
+.locationCard strong {
+  color: #fff;
 }
 
 .successMessage,
@@ -166,25 +241,26 @@
 }
 
 .successMessage {
-  color: #176b35;
-  background: #effcf3;
-  border: 1px solid #afe0bc;
+  border: 1px solid rgba(74, 222, 128, 0.32);
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.13);
 }
 
 .errorMessage {
-  color: #b42318;
-  background: #fff2f2;
-  border: 1px solid #efb5b5;
+  border: 1px solid rgba(251, 113, 133, 0.34);
+  color: #fecdd3;
+  background: rgba(244, 63, 94, 0.13);
 }
 
 .historyButton {
   width: 100%;
-  min-height: 52px;
+  min-height: 54px;
   margin-top: 18px;
-  border: 1px solid #d9c9f3;
+  border: 1px solid rgba(216, 180, 254, 0.24);
   border-radius: 16px;
-  color: #5a26a8;
-  background: white;
+  color: #f4eaff;
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   font-weight: 800;
 }
 
@@ -194,22 +270,26 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  color: #5f28bc;
-  background: #f7f2ff;
+  color: #eadcff;
+  background:
+    radial-gradient(circle at center, rgba(168, 85, 247, 0.16), transparent 35%),
+    #100719;
   font-weight: 800;
 }
 
 .spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid rgba(95, 40, 188, 0.2);
-  border-top-color: #5f28bc;
+  border: 2px solid rgba(232, 121, 249, 0.22);
+  border-top-color: #e879f9;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (min-width: 720px) {

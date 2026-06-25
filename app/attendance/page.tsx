@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 
 type Profile = {
-  role: string;
   account_status: string;
 };
 
@@ -136,15 +135,10 @@ function getLocation() {
   });
 }
 
-function getAutoCheckoutTime(role: string) {
-  return role === "janitor" ? "18:00 น." : "16:30 น.";
-}
-
 export default function AttendancePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [record, setRecord] = useState<AttendanceRecord | null>(null);
   const [now, setNow] = useState(new Date());
@@ -178,9 +172,9 @@ export default function AttendancePage() {
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("role, account_status")
+        .select("account_status")
         .eq("id", user.id)
-        .single();
+        .single<Profile>();
 
       if (
         profileError ||
@@ -191,8 +185,6 @@ export default function AttendancePage() {
         router.replace("/login");
         return;
       }
-
-      setProfile(profileData);
 
       const { data: settingsData, error: settingsError } = await supabase
         .from("attendance_settings")
@@ -276,7 +268,7 @@ export default function AttendancePage() {
 
     try {
       if (record?.check_in_at) {
-        throw new Error("วันนี้คุณลงเวลาเข้าแล้ว");
+        throw new Error("วันนี้คุณได้ลงเวลาแล้ว");
       }
 
       if (!settings) {
@@ -326,11 +318,7 @@ export default function AttendancePage() {
 
       setRecord(data);
       setMessageType("success");
-      setMessage(
-        checkInStatus === "late"
-          ? "ลงเวลาเข้าสำเร็จ สถานะ: มาสาย"
-          : "ลงเวลาเข้าสำเร็จ"
-      );
+      setMessage("บันทึกเวลาปฏิบัติงานเรียบร้อยแล้ว");
     } catch (error) {
       console.error("Check-in error:", error);
       setMessageType("error");
@@ -351,16 +339,24 @@ export default function AttendancePage() {
     );
   }
 
-  const autoCheckoutTime = getAutoCheckoutTime(profile?.role ?? "");
+  const isLate = record?.check_in_status === "late";
 
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <button onClick={() => router.push("/dashboard")}>←</button>
+        <button
+          type="button"
+          aria-label="กลับหน้าแรก"
+          onClick={() => router.push("/dashboard")}
+        >
+          ←
+        </button>
+
         <div>
           <span>ATTENDANCE</span>
           <h1>ลงเวลาปฏิบัติงาน</h1>
         </div>
+
         <Image
           src="/images/school-logo.png"
           alt="โลโก้โรงเรียน"
@@ -397,38 +393,40 @@ export default function AttendancePage() {
       )}
 
       <section className={styles.statusCard}>
-        <div className={styles.statusIcon}>◷</div>
-        <h2>
-          {record?.check_in_at ? "ลงเวลาแล้ว" : "ยังไม่ได้ลงเวลา"}
-        </h2>
-        <p>
-          เวลาเข้า: <b>{formatThaiTime(record?.check_in_at ?? null)}</b>
-        </p>
-
         {!record?.check_in_at ? (
-          <button
-            type="button"
-            className={styles.checkInButton}
-            disabled={processing}
-            onClick={() => void handleCheckIn()}
-          >
-            {processing ? "กำลังตรวจสอบ GPS..." : "ลงเวลาปฏิบัติงาน"}
-          </button>
+          <>
+            <h2>พร้อมลงเวลาปฏิบัติงาน</h2>
+            <p>กดปุ่มเพื่อให้ระบบตรวจสอบตำแหน่ง GPS</p>
+
+            <button
+              type="button"
+              className={styles.checkInButton}
+              disabled={processing}
+              onClick={() => void handleCheckIn()}
+            >
+              <span className={styles.checkInIcon}>◉</span>
+              <strong>
+                {processing ? "กำลังตรวจสอบ GPS..." : "ลงเวลาปฏิบัติงาน"}
+              </strong>
+              {!processing && <small>แตะเพื่อเช็คอิน</small>}
+            </button>
+          </>
         ) : (
           <div className={styles.completed}>
-            ✓ บันทึกเวลาเข้าเรียบร้อยแล้ว
+            <span className={styles.completedIcon}>✓</span>
+            <h2>วันนี้คุณได้ลงเวลาแล้ว</h2>
+
+            <span
+              className={isLate ? styles.lateStatus : styles.normalStatus}
+            >
+              {isLate ? "มาสาย" : "ปกติ"}
+            </span>
+
+            <p>
+              เวลาเข้า <b>{formatThaiTime(record.check_in_at)}</b>
+            </p>
           </div>
         )}
-      </section>
-
-      <section className={styles.autoCheckout}>
-        <span>🔔</span>
-        <div>
-          <strong>เวลาออกบันทึกอัตโนมัติ</strong>
-          <p>
-            ระบบจะลงเวลาออกให้เวลา <b>{autoCheckoutTime}</b>
-          </p>
-        </div>
       </section>
 
       {distanceMeters !== null && (
@@ -439,6 +437,7 @@ export default function AttendancePage() {
       )}
 
       <button
+        type="button"
         className={styles.historyButton}
         onClick={() => router.push("/attendance/history")}
       >
