@@ -470,27 +470,6 @@ export default function ProfilePage() {
         </article>
       </section>
 
-      <section className={styles.securityCard}>
-        <div className={styles.securityIcon}>🔐</div>
-
-        <div className={styles.securityContent}>
-          <small>ACCOUNT SECURITY</small>
-          <h2>ความปลอดภัยของบัญชี</h2>
-          <p>
-            เปลี่ยน PIN สำหรับเข้าสู่ระบบได้จากข้อมูลส่วนตัว
-            ควรใช้ PIN 6 หลักที่คาดเดาได้ยากและไม่บอกผู้อื่น
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className={styles.changePinButton}
-          onClick={() => router.push("/account/change-pin")}
-        >
-          เปลี่ยน PIN
-        </button>
-      </section>
-
       {crop && (
         <div className={styles.cropOverlay} role="dialog" aria-modal="true">
           <section className={styles.cropModal}>

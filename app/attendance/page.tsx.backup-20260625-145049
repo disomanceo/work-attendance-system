@@ -494,7 +494,7 @@ export default function AttendancePage() {
 
   const menuItems: MenuItem[] = [
     {
-      label: "หน้าหลัก",
+      label: "ลงเวลาปฏิบัติงาน",
       icon: "◷",
       href: "/attendance",
       active: true,
@@ -514,7 +514,11 @@ export default function AttendancePage() {
       icon: "♙",
       href: "/account/profile",
     },
-
+    {
+      label: "เปลี่ยน PIN",
+      icon: "🔐",
+      href: "/account/change-pin",
+    },
   ];
 
 
@@ -564,6 +568,20 @@ export default function AttendancePage() {
         } ${sidebarCollapsed ? styles.sidebarCollapsed : ""}`}
       >
         <div className={styles.sidebarBrand}>
+          <Image
+            src="/images/school-logo.png"
+            alt="โลโก้โรงเรียน"
+            width={48}
+            height={48}
+          />
+
+          {!sidebarCollapsed && (
+            <div>
+              <strong>โรงเรียนวัดไผ่มุ้ง</strong>
+              <small>ระบบลงเวลาปฏิบัติงาน</small>
+            </div>
+          )}
+
           <button
             type="button"
             className={styles.collapseButton}
@@ -661,9 +679,24 @@ export default function AttendancePage() {
         <header className={styles.topBar}>
           <div>
             <span>ATTENDANCE</span>
-            <h1>การลงเวลาปฏิบัติงาน</h1>
-            <p>ลงเวลา ตรวจสอบสถานะ และดูข้อมูลการปฏิบัติงานของคุณ</p>
-          </div>        </header>
+            <h1>ลงเวลาปฏิบัติงาน</h1>
+            <p>กรุณาลงเวลาเข้าและตรวจสอบสถานะของคุณ</p>
+          </div>
+
+          <div className={styles.topUser}>
+            <div>
+              <strong>{profile.full_name}</strong>
+              <small>{profile.position || getRoleLabel(profile.role)}</small>
+            </div>
+            <div className={styles.topAvatar}>
+              {profileImageUrl ? (
+                <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+              ) : (
+                profile.full_name.trim().charAt(0) || "U"
+              )}
+            </div>
+          </div>
+        </header>
 
         {message && (
           <div

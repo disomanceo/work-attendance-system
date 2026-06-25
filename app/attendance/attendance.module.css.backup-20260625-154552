@@ -35,7 +35,7 @@
   display: flex;
   width: var(--sidebar-width);
   flex-direction: column;
-  padding: 6px 14px 14px;
+  padding: 18px 14px;
   border-right: 1px solid rgba(216, 180, 254, 0.18);
   background:
     linear-gradient(180deg, rgba(26, 10, 50, 0.97), rgba(10, 4, 20, 0.98));
@@ -51,12 +51,11 @@
 }
 
 .sidebarBrand {
-  position: relative;
-  z-index: 4;
-  display: block;
-  min-height: 0;
-  height: 0;
-  padding: 0;
+  display: flex;
+  min-height: 66px;
+  align-items: center;
+  gap: 11px;
+  padding: 8px;
 }
 
 .sidebarBrand img {
@@ -87,27 +86,22 @@
 }
 
 .collapseButton {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  z-index: 8;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(216, 180, 254, 0.28);
-  border-radius: 11px;
-  color: #f3e8ff;
-  background: rgba(40, 16, 63, 0.92);
-  box-shadow: 0 8px 20px rgba(4, 1, 10, 0.32);
-  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid rgba(216, 180, 254, 0.22);
+  border-radius: 12px;
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.1);
+  font-size: 21px;
   font-weight: 900;
-  backdrop-filter: blur(12px);
 }
 
 .sidebarCollapsed .collapseButton {
   position: absolute;
-  top: 7px;
-  right: -17px;
-  z-index: 8;
+  top: 16px;
+  right: -18px;
   background: #28103f;
 }
 
@@ -115,8 +109,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 0;
-  padding: 12px 48px 12px 12px;
+  margin-top: 4px;
+  padding: 14px;
   border: 1px solid rgba(216, 180, 254, 0.16);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.045);
@@ -163,7 +157,7 @@
 }
 
 .menuTitle {
-  margin: 14px 10px 8px;
+  margin: 22px 10px 10px;
   color: #c084fc;
   font-size: 13px;
   letter-spacing: 0.5px;
@@ -233,12 +227,7 @@
 }
 
 .sidebarCollapsed .sidebarBrand {
-  position: relative;
-  z-index: 4;
-  display: block;
-  min-height: 0;
-  height: 0;
-  padding: 0;
+  justify-content: center;
 }
 
 .sidebarCollapsed .userCard {
@@ -327,7 +316,7 @@
 }
 
 .topUser small {
-  margin-top: 0;
+  margin-top: 3px;
   color: #bba9d3;
   font-size: 11px;
 }
@@ -852,13 +841,8 @@
   }
 
   .sidebarOpen.sidebarCollapsed .sidebarBrand {
-  position: relative;
-  z-index: 4;
-  display: block;
-  min-height: 0;
-  height: 0;
-  padding: 0;
-}
+    justify-content: flex-start;
+  }
 
   .sidebarOpen.sidebarCollapsed .userCard {
     justify-content: flex-start;
@@ -878,21 +862,8 @@
   }
 
   .collapseButton {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  z-index: 8;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(216, 180, 254, 0.28);
-  border-radius: 11px;
-  color: #f3e8ff;
-  background: rgba(40, 16, 63, 0.92);
-  box-shadow: 0 8px 20px rgba(4, 1, 10, 0.32);
-  font-size: 20px;
-  font-weight: 900;
-  backdrop-filter: blur(12px);
-}
+    display: none;
+  }
 
   .mobileMenuButton {
     position: fixed;
@@ -923,7 +894,7 @@
 
   .topBar {
     min-height: auto;
-    padding: 12px 48px 12px 12px;
+    padding: 14px;
   }
 
   .topUser {
@@ -931,7 +902,7 @@
   }
 
   .heroGrid {
-    margin-top: 0;
+    margin-top: 12px;
   }
 
   .checkInPanel,

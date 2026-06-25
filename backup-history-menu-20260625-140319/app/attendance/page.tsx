@@ -21,15 +21,6 @@ type AttendanceSettings = {
   allowed_radius_meters: number;
   late_after_time: string;
   is_active: boolean;
-  gps_enabled: boolean;
-  director_start_time: string;
-  director_end_time: string;
-  teacher_start_time: string;
-  teacher_end_time: string;
-  staff_start_time: string;
-  staff_end_time: string;
-  janitor_start_time: string;
-  janitor_end_time: string;
 };
 
 type AttendanceRecord = {
@@ -232,7 +223,7 @@ export default function AttendancePage() {
       const { data: settingsData, error: settingsError } = await supabase
         .from("attendance_settings")
         .select(
-          "school_name, latitude, longitude, allowed_radius_meters, late_after_time, is_active, gps_enabled, director_start_time, director_end_time, teacher_start_time, teacher_end_time, staff_start_time, staff_end_time, janitor_start_time, janitor_end_time"
+          "school_name, latitude, longitude, allowed_radius_meters, late_after_time, is_active"
         )
         .eq("id", 1)
         .single();
@@ -315,31 +306,16 @@ export default function AttendancePage() {
   }, [profile?.profile_image_file_id, supabase]);
 
   async function verifyLocation() {
-    if (!settings) {
-      throw new Error("ยังโหลดการตั้งค่าไม่สำเร็จ");
-    }
-
-    if (!settings.is_active) {
-      throw new Error("ระบบลงเวลายังไม่เปิดใช้งาน");
-    }
-
-    if (!settings.gps_enabled) {
-      setDistanceMeters(null);
-      return {
-        position: {
-          latitude: 0,
-          longitude: 0,
-          accuracy: 0,
-        },
-        distance: 0,
-      };
-    }
-
     if (
+      !settings ||
       settings.latitude === null ||
       settings.longitude === null
     ) {
       throw new Error("ยังไม่ได้กำหนดพิกัดโรงเรียน");
+    }
+
+    if (!settings.is_active) {
+      throw new Error("ระบบลงเวลายังไม่เปิดใช้งาน");
     }
 
     const position = await getLocation();
@@ -387,21 +363,8 @@ export default function AttendancePage() {
 
       const { position, distance } = await verifyLocation();
       const currentTime = getBangkokTime();
-      const roleStartTimeMap: Record<string, string> = {
-        director: settings.director_start_time,
-        teacher: settings.teacher_start_time,
-        staff: settings.staff_start_time,
-        janitor: settings.janitor_start_time,
-        admin: settings.director_start_time,
-      };
-      const currentRole = profile?.role ?? "teacher";
-
-      const roleStartTime =
-        roleStartTimeMap[currentRole] ??
-        settings.teacher_start_time ??
-        settings.late_after_time;
       const checkInStatus =
-        currentTime > normalizeTime(roleStartTime)
+        currentTime > normalizeTime(settings.late_after_time)
           ? "late"
           : "normal";
 
@@ -488,13 +451,10 @@ export default function AttendancePage() {
   const hasCheckedIn = Boolean(record?.check_in_at);
   const canViewReports = ["admin", "director", "staff"].includes(profile.role);
   const canManageMembers = profile.role === "admin";
-  const historyHref = canViewReports
-    ? "/admin/attendance"
-    : "/attendance/history";
 
   const menuItems: MenuItem[] = [
     {
-      label: "หน้าหลัก",
+      label: "ลงเวลาปฏิบัติงาน",
       icon: "◷",
       href: "/attendance",
       active: true,
@@ -502,7 +462,7 @@ export default function AttendancePage() {
     {
       label: "ประวัติการลงเวลา",
       icon: "▣",
-      href: historyHref,
+      href: "/attendance/history",
     },
     {
       label: "ประวัติการลา",
@@ -510,19 +470,27 @@ export default function AttendancePage() {
       soon: true,
     },
     {
+      label: "สรุปการลงเวลา",
+      icon: "▥",
+      href: "/dashboard",
+    },
+    {
       label: "ข้อมูลส่วนตัว",
       icon: "♙",
       href: "/account/profile",
     },
-
+    {
+      label: "เปลี่ยน PIN",
+      icon: "🔐",
+      href: "/account/change-pin",
+    },
   ];
 
-
-  if (["director", "admin"].includes(profile.role)) {
+  if (canViewReports) {
     menuItems.push({
-      label: "ตั้งค่า",
-      icon: "⚙",
-      href: "/admin/settings",
+      label: "รายงานลงเวลา",
+      icon: "▦",
+      href: "/admin/attendance",
     });
   }
 
@@ -564,6 +532,20 @@ export default function AttendancePage() {
         } ${sidebarCollapsed ? styles.sidebarCollapsed : ""}`}
       >
         <div className={styles.sidebarBrand}>
+          <Image
+            src="/images/school-logo.png"
+            alt="โลโก้โรงเรียน"
+            width={48}
+            height={48}
+          />
+
+          {!sidebarCollapsed && (
+            <div>
+              <strong>โรงเรียนวัดไผ่มุ้ง</strong>
+              <small>ระบบลงเวลาปฏิบัติงาน</small>
+            </div>
+          )}
+
           <button
             type="button"
             className={styles.collapseButton}
@@ -661,9 +643,24 @@ export default function AttendancePage() {
         <header className={styles.topBar}>
           <div>
             <span>ATTENDANCE</span>
-            <h1>การลงเวลาปฏิบัติงาน</h1>
-            <p>ลงเวลา ตรวจสอบสถานะ และดูข้อมูลการปฏิบัติงานของคุณ</p>
-          </div>        </header>
+            <h1>ลงเวลาปฏิบัติงาน</h1>
+            <p>กรุณาลงเวลาเข้าและตรวจสอบสถานะของคุณ</p>
+          </div>
+
+          <div className={styles.topUser}>
+            <div>
+              <strong>{profile.full_name}</strong>
+              <small>{profile.position || getRoleLabel(profile.role)}</small>
+            </div>
+            <div className={styles.topAvatar}>
+              {profileImageUrl ? (
+                <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+              ) : (
+                profile.full_name.trim().charAt(0) || "U"
+              )}
+            </div>
+          </div>
+        </header>
 
         {message && (
           <div
@@ -868,6 +865,32 @@ export default function AttendancePage() {
         )}
 
         <section className={`${styles.bottomGrid} ${styles.mobileSecondary}`}>
+          <article className={styles.historyPreview}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <small>HISTORY</small>
+                <h2>ประวัติการลงเวลาล่าสุด</h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push("/attendance/history")}
+              >
+                ดูทั้งหมด →
+              </button>
+            </div>
+
+            <div className={styles.emptyPreview}>
+              <span>▣</span>
+              <p>ดูรายละเอียดประวัติการลงเวลาของคุณ</p>
+              <button
+                type="button"
+                onClick={() => router.push("/attendance/history")}
+              >
+                เปิดประวัติการลงเวลา
+              </button>
+            </div>
+          </article>
 
           <article className={styles.monthSummary}>
             <div className={styles.sectionHeading}>
