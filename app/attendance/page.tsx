@@ -344,7 +344,10 @@ export default function AttendancePage() {
   }
 
   const isLate = record?.check_in_status === "late";
-  const privileged = ["admin", "director"].includes(profile?.role ?? "");
+  const canViewReports = ["admin", "director", "staff"].includes(
+    profile?.role ?? ""
+  );
+  const canManageMembers = profile?.role === "admin";
 
   return (
     <main className={styles.page}>
@@ -470,24 +473,24 @@ export default function AttendancePage() {
             <b>หน้าสรุปข้อมูล</b>
           </button>
 
-          {privileged && (
-            <>
-              <button
-                type="button"
-                onClick={() => router.push("/admin/members")}
-              >
-                <span>👥</span>
-                <b>จัดการสมาชิก</b>
-              </button>
+          {canViewReports && (
+            <button
+              type="button"
+              onClick={() => router.push("/admin/attendance")}
+            >
+              <span>▥</span>
+              <b>รายงานลงเวลา</b>
+            </button>
+          )}
 
-              <button
-                type="button"
-                onClick={() => router.push("/admin/attendance")}
-              >
-                <span>▥</span>
-                <b>รายงานลงเวลา</b>
-              </button>
-            </>
+          {canManageMembers && (
+            <button
+              type="button"
+              onClick={() => router.push("/admin/members")}
+            >
+              <span>👥</span>
+              <b>จัดการสมาชิก</b>
+            </button>
           )}
         </div>
       </section>

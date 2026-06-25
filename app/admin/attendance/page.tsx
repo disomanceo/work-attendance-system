@@ -351,6 +351,16 @@ export default function AdminAttendancePage() {
     });
   }, [records, searchText, statusFilter]);
 
+  function printReport() {
+    if (filteredRecords.length === 0) {
+      setMessageType("error");
+      setMessage("ไม่มีข้อมูลสำหรับพิมพ์");
+      return;
+    }
+
+    window.print();
+  }
+
   function exportCsv() {
     if (filteredRecords.length === 0) {
       setMessageType("error");
@@ -429,7 +439,7 @@ export default function AdminAttendancePage() {
   }
 
   return (
-    <main className="dashboard-shell">
+    <main className="dashboard-shell attendance-report-page">
       <header className="dashboard-header">
         <div>
           <p>ADMIN ATTENDANCE</p>
@@ -444,14 +454,6 @@ export default function AdminAttendancePage() {
             justifyContent: "flex-end",
           }}
         >
-          <button
-            type="button"
-            onClick={() =>
-              router.push("/admin/members")
-            }
-          >
-            จัดการสมาชิก
-          </button>
 
           <button
             type="button"
@@ -587,6 +589,26 @@ export default function AdminAttendancePage() {
             }}
           >
             ส่งออก CSV
+          </button>
+
+          <button
+            type="button"
+            onClick={printReport}
+            disabled={loading}
+            style={{
+              alignSelf: "end",
+              height: 46,
+              border: 0,
+              borderRadius: 12,
+              color: "#ffffff",
+              background:
+                "linear-gradient(135deg, #7c3aed, #d946ef)",
+              fontWeight: 800,
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            พิมพ์รายงาน
           </button>
         </div>
 

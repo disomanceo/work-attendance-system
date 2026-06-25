@@ -824,3 +824,66 @@ button {
     min-height: 44px;
   }
 }
+
+
+/* Universal press feedback */
+button {
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease,
+    box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+/* Attendance report print layout */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  .attendance-report-page {
+    min-height: auto !important;
+    padding: 0 !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+
+  .attendance-report-page button {
+    display: none !important;
+  }
+
+  .attendance-report-page section,
+  .attendance-report-page article {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .attendance-report-page input,
+  .attendance-report-page select {
+    border: 0 !important;
+    color: #000000 !important;
+    background: transparent !important;
+  }
+
+  .attendance-report-page table {
+    color: #000000 !important;
+    font-size: 10px !important;
+  }
+
+  .attendance-report-page th,
+  .attendance-report-page td {
+    border-color: #999999 !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+}

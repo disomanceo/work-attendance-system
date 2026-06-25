@@ -188,7 +188,10 @@ export default function DashboardPage() {
     );
   }
 
-  const privileged = ["admin", "director"].includes(profile.role);
+  const canViewReports = ["admin", "director", "staff"].includes(
+    profile.role
+  );
+  const canManageMembers = profile.role === "admin";
   const attendanceStatus = getAttendanceStatus(record);
   const autoCheckoutTime = getAutoCheckoutTime(profile.role);
 
@@ -320,18 +323,18 @@ export default function DashboardPage() {
             <b>เปลี่ยน PIN</b>
           </button>
 
-          {privileged && (
-            <>
-              <button onClick={() => router.push("/admin/members")}>
-                <span>👥</span>
-                <b>จัดการสมาชิก</b>
-              </button>
+          {canViewReports && (
+            <button onClick={() => router.push("/admin/attendance")}>
+              <span>▥</span>
+              <b>รายงานลงเวลา</b>
+            </button>
+          )}
 
-              <button onClick={() => router.push("/admin/attendance")}>
-                <span>▥</span>
-                <b>รายงานลงเวลา</b>
-              </button>
-            </>
+          {canManageMembers && (
+            <button onClick={() => router.push("/admin/members")}>
+              <span>👥</span>
+              <b>จัดการสมาชิก</b>
+            </button>
           )}
         </div>
       </section>

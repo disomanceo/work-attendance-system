@@ -134,7 +134,7 @@ async function requireAdmin(request: Request) {
   if (
     profileError ||
     !profile ||
-    !["admin", "director"].includes(profile.role) ||
+    !["admin", "director", "staff"].includes(profile.role) ||
     profile.account_status !== "active"
   ) {
     return {
