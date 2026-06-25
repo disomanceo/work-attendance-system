@@ -270,7 +270,8 @@ export async function GET(request: Request) {
       attendance.map((record) => [record.user_id, record])
     );
 
-    const people = profiles.map((profile) => {
+
+    const allPeople = profiles.map((profile) => {
       const record = attendanceByUser.get(profile.id);
       const roleTimes = getRoleTimes(profile.role, settings);
 
@@ -291,14 +292,28 @@ export async function GET(request: Request) {
       };
     });
 
+    const people = allPeople
+      .filter((person) => Boolean(person.checkInTime))
+      .sort((a, b) => {
+        const timeCompare = a.checkInTime.localeCompare(b.checkInTime);
+
+        if (timeCompare !== 0) {
+          return timeCompare;
+        }
+
+        return a.fullName.localeCompare(b.fullName, "th");
+      });
+
+
     const summary = {
-      total: people.length,
-      present: people.filter((person) => person.checkInTime).length,
+      total: allPeople.length,
+      present: people.length,
       sickLeave: 0,
       personalLeave: 0,
       officialDuty: 0,
+      permittedLeave: 0,
       late: people.filter((person) => person.status === "มาสาย").length,
-      absent: people.filter((person) => !person.checkInTime).length,
+      absent: allPeople.length - people.length,
     };
 
     return NextResponse.json({
