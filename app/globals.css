@@ -541,3 +541,286 @@ button {
     padding: 22px;
   }
 }
+
+
+
+/* =========================================================
+   Neon Purple Theme — Shared Pages
+   Applies to:
+   - Attendance History
+   - Change PIN
+   - Admin Members
+   - Admin Attendance Report
+   - Other dashboard-shell pages
+   ========================================================= */
+
+.dashboard-shell {
+  min-height: 100svh !important;
+  padding: 24px clamp(16px, 4vw, 48px) 64px !important;
+  color: #f8f5ff !important;
+  background:
+    radial-gradient(circle at 88% 4%, rgba(217, 70, 239, 0.20), transparent 28%),
+    radial-gradient(circle at 6% 44%, rgba(124, 58, 237, 0.18), transparent 32%),
+    linear-gradient(180deg, #100719 0%, #170a2b 52%, #0c0614 100%) !important;
+}
+
+.dashboard-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex-wrap: wrap !important;
+}
+
+.dashboard-header p {
+  margin: 0 !important;
+  color: #d8b4fe !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 2px !important;
+}
+
+.dashboard-header h1 {
+  margin: 5px 0 0 !important;
+  color: #ffffff !important;
+  font-size: clamp(24px, 4vw, 34px) !important;
+  text-shadow: 0 0 18px rgba(232, 121, 249, 0.25) !important;
+}
+
+.dashboard-header button,
+.dashboard-shell button {
+  border: 1px solid rgba(216, 180, 254, 0.24) !important;
+  color: #f4eaff !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+.dashboard-header button:hover,
+.dashboard-shell button:hover {
+  border-color: rgba(232, 121, 249, 0.42) !important;
+  background: rgba(168, 85, 247, 0.14) !important;
+}
+
+.dashboard-shell section,
+.dashboard-shell article {
+  border-color: rgba(216, 180, 254, 0.20) !important;
+  background: rgba(255, 255, 255, 0.075) !important;
+  box-shadow:
+    0 16px 42px rgba(7, 2, 18, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+.dashboard-shell section {
+  border-radius: 24px !important;
+}
+
+.dashboard-shell article {
+  border-radius: 18px !important;
+}
+
+.dashboard-shell h2,
+.dashboard-shell h3,
+.dashboard-shell strong {
+  color: #ffffff !important;
+}
+
+.dashboard-shell p,
+.dashboard-shell small {
+  color: #c8b8dd !important;
+}
+
+.dashboard-shell label,
+.dashboard-shell label span {
+  color: #eadcff !important;
+}
+
+.dashboard-shell input,
+.dashboard-shell select,
+.dashboard-shell textarea {
+  border: 1px solid rgba(216, 180, 254, 0.22) !important;
+  color: #f8f5ff !important;
+  background: rgba(255, 255, 255, 0.075) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  color-scheme: dark !important;
+}
+
+.dashboard-shell input::placeholder,
+.dashboard-shell textarea::placeholder {
+  color: #a995c5 !important;
+}
+
+.dashboard-shell input:focus,
+.dashboard-shell select:focus,
+.dashboard-shell textarea:focus {
+  outline: none !important;
+  border-color: #d946ef !important;
+  box-shadow:
+    0 0 0 4px rgba(217, 70, 239, 0.13),
+    0 0 20px rgba(168, 85, 247, 0.13) !important;
+}
+
+.dashboard-shell button[type="submit"],
+.dashboard-shell button[style*="linear-gradient"],
+.dashboard-shell button[style*="#1877f2"],
+.dashboard-shell button[style*="#3799ff"] {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #d946ef 0%, #a855f7 42%, #6d28d9 100%) !important;
+  box-shadow:
+    0 14px 30px rgba(168, 85, 247, 0.34),
+    0 0 24px rgba(217, 70, 239, 0.24) !important;
+}
+
+.dashboard-shell table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  color: #f8f5ff !important;
+}
+
+.dashboard-shell thead,
+.dashboard-shell th {
+  color: #eadcff !important;
+  background: rgba(168, 85, 247, 0.13) !important;
+}
+
+.dashboard-shell th,
+.dashboard-shell td {
+  border-color: rgba(216, 180, 254, 0.16) !important;
+}
+
+.dashboard-shell tbody tr {
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.dashboard-shell tbody tr:hover {
+  background: rgba(168, 85, 247, 0.09) !important;
+}
+
+/* Status chips — preserve meaning while matching the dark theme */
+.dashboard-shell span[style*="#146c2e"],
+.dashboard-shell div[style*="#146c2e"] {
+  color: #bbf7d0 !important;
+  background: rgba(34, 197, 94, 0.13) !important;
+  border-color: rgba(74, 222, 128, 0.28) !important;
+}
+
+.dashboard-shell span[style*="#a04b00"],
+.dashboard-shell div[style*="#a04b00"] {
+  color: #fef08a !important;
+  background: rgba(250, 204, 21, 0.12) !important;
+  border-color: rgba(253, 224, 71, 0.28) !important;
+}
+
+.dashboard-shell span[style*="#c81e1e"],
+.dashboard-shell div[style*="#c81e1e"] {
+  color: #fecdd3 !important;
+  background: rgba(244, 63, 94, 0.12) !important;
+  border-color: rgba(251, 113, 133, 0.30) !important;
+}
+
+.dashboard-shell span[style*="#475467"],
+.dashboard-shell div[style*="#475467"] {
+  color: #ddd6fe !important;
+  background: rgba(148, 163, 184, 0.12) !important;
+  border-color: rgba(196, 181, 253, 0.20) !important;
+}
+
+/* Inline light colors used by old pages */
+.dashboard-shell [style*="#071d32"],
+.dashboard-shell [style*="#102a43"],
+.dashboard-shell [style*="#344054"] {
+  color: #ffffff !important;
+}
+
+.dashboard-shell [style*="#667085"],
+.dashboard-shell [style*="#98a2b3"],
+.dashboard-shell [style*="#475467"] {
+  color: #bca9d7 !important;
+}
+
+.dashboard-shell [style*="#ffffff"],
+.dashboard-shell [style*="#fbfdff"],
+.dashboard-shell [style*="#f8fbff"],
+.dashboard-shell [style*="#f2f4f7"] {
+  background-color: rgba(255, 255, 255, 0.055) !important;
+}
+
+.dashboard-shell [style*="#f1fff5"],
+.dashboard-shell [style*="#eaf9ef"],
+.dashboard-shell [style*="#effcf3"] {
+  background-color: rgba(34, 197, 94, 0.12) !important;
+}
+
+.dashboard-shell [style*="#fffaf0"],
+.dashboard-shell [style*="#fff7e8"],
+.dashboard-shell [style*="#fff8e6"] {
+  background-color: rgba(250, 204, 21, 0.11) !important;
+}
+
+.dashboard-shell [style*="#fff5f5"],
+.dashboard-shell [style*="#fff1f1"],
+.dashboard-shell [style*="#fff2f2"] {
+  background-color: rgba(244, 63, 94, 0.11) !important;
+}
+
+.dashboard-loading {
+  min-height: 100svh !important;
+  color: #eadcff !important;
+  background:
+    radial-gradient(circle at center, rgba(168, 85, 247, 0.16), transparent 35%),
+    #100719 !important;
+}
+
+.dashboard-loading .spinner,
+.spinner.dark {
+  border-color: rgba(232, 121, 249, 0.22) !important;
+  border-top-color: #e879f9 !important;
+}
+
+/* Horizontal overflow safety for admin cards and reports */
+.dashboard-shell section,
+.dashboard-shell article,
+.dashboard-shell div {
+  min-width: 0;
+}
+
+.dashboard-shell [style*="gridTemplateColumns"] {
+  overflow-x: auto;
+}
+
+/* Better mobile behavior for inline grid layouts */
+@media (max-width: 760px) {
+  .dashboard-shell {
+    padding: 18px 14px 48px !important;
+  }
+
+  .dashboard-header {
+    align-items: flex-start !important;
+  }
+
+  .dashboard-header > div:last-child {
+    width: 100%;
+  }
+
+  .dashboard-header button {
+    min-height: 44px !important;
+  }
+
+  .dashboard-shell section {
+    padding: 18px !important;
+  }
+
+  .dashboard-shell article {
+    padding: 16px !important;
+  }
+
+  .dashboard-shell [style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-shell button {
+    min-height: 44px;
+  }
+}
