@@ -58,14 +58,14 @@ export default function ProfilePage() {
           "full_name, phone, position, role, account_status, profile_image_file_id, signature_file_id"
         )
         .eq("id", user.id)
-        .single<Profile>();
+        .single();
 
       if (error || !data || data.account_status !== "active") {
         router.replace("/login");
         return;
       }
 
-      setProfile(data);
+      setProfile(data as Profile);
 
       const {
         data: { session },
@@ -148,7 +148,9 @@ export default function ProfilePage() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session?.access_token) {
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
         throw new Error("กรุณาเข้าสู่ระบบใหม่");
       }
 

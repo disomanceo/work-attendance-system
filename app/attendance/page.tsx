@@ -11,6 +11,7 @@ type Profile = {
   position: string | null;
   role: string;
   account_status: string;
+  profile_image_file_id: string | null;
 };
 
 type AttendanceSettings = {
@@ -173,6 +174,7 @@ export default function AttendancePage() {
   );
   const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -202,9 +204,9 @@ export default function AttendancePage() {
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("full_name, position, role, account_status")
+        .select("full_name, position, role, account_status, profile_image_file_id")
         .eq("id", user.id)
-        .single<Profile>();
+        .single();
 
       if (
         profileError ||
@@ -216,7 +218,7 @@ export default function AttendancePage() {
         return;
       }
 
-      setProfile(profileData);
+      setProfile(profileData as Profile);
 
       const { data: settingsData, error: settingsError } = await supabase
         .from("attendance_settings")
@@ -259,6 +261,49 @@ export default function AttendancePage() {
   useEffect(() => {
     void loadAttendance();
   }, [loadAttendance]);
+
+  useEffect(() => {
+    let objectUrl = "";
+
+    async function loadProfileImage() {
+      if (!profile?.profile_image_file_id) {
+        setProfileImageUrl("");
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const accessToken = session?.access_token;
+
+      if (!accessToken) return;
+
+      const response = await fetch(
+        `/api/account/profile-assets?fileId=${encodeURIComponent(
+          profile.profile_image_file_id
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) return;
+
+      const blob = await response.blob();
+      objectUrl = URL.createObjectURL(blob);
+      setProfileImageUrl(objectUrl);
+    }
+
+    void loadProfileImage();
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [profile?.profile_image_file_id, supabase]);
 
   async function verifyLocation() {
     if (
@@ -432,7 +477,7 @@ export default function AttendancePage() {
     {
       label: "ข้อมูลส่วนตัว",
       icon: "♙",
-      href: "/dashboard",
+      href: "/account/profile",
     },
     {
       label: "เปลี่ยน PIN",
@@ -513,7 +558,11 @@ export default function AttendancePage() {
 
         <div className={styles.userCard}>
           <div className={styles.avatar}>
-            {profile.full_name.trim().charAt(0) || "U"}
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+            ) : (
+              profile.full_name.trim().charAt(0) || "U"
+            )}
           </div>
 
           {!sidebarCollapsed && (
@@ -577,7 +626,11 @@ export default function AttendancePage() {
 
           <div className={styles.mobileProfile}>
             <div className={styles.mobileAvatar}>
-              {profile.full_name.trim().charAt(0) || "U"}
+              {profileImageUrl ? (
+                <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+              ) : (
+                profile.full_name.trim().charAt(0) || "U"
+              )}
             </div>
 
             <div>
@@ -600,7 +653,11 @@ export default function AttendancePage() {
               <small>{profile.position || getRoleLabel(profile.role)}</small>
             </div>
             <div className={styles.topAvatar}>
-              {profile.full_name.trim().charAt(0) || "U"}
+              {profileImageUrl ? (
+                <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+              ) : (
+                profile.full_name.trim().charAt(0) || "U"
+              )}
             </div>
           </div>
         </header>
@@ -642,7 +699,17 @@ export default function AttendancePage() {
                   disabled={processing}
                   onClick={() => void handleCheckIn()}
                 >
-                  <span className={styles.fingerprintIcon}>☝</span>
+                  <span className={styles.fingerprintIcon} aria-hidden="true">
+                    <svg viewBox="0 0 64 64" role="img">
+                      <path d="M32 7C20 7 10 17 10 29c0 7 2 11 2 18" />
+                      <path d="M32 14c-9 0-16 7-16 16 0 8 3 13 3 22" />
+                      <path d="M32 21c-5 0-9 4-9 9 0 9 4 15 4 26" />
+                      <path d="M32 28c-2 0-4 2-4 4 0 10 5 15 5 25" />
+                      <path d="M38 57c0-8-4-14-4-25 0-2 2-4 4-4 4 0 6 4 6 8 0 8 2 12 4 17" />
+                      <path d="M41 22c6 3 9 8 9 15 0 7 2 11 5 15" />
+                      <path d="M48 17c7 6 9 13 9 21" />
+                    </svg>
+                  </span>
                   <strong>
                     {processing
                       ? "กำลังตรวจสอบ GPS..."
