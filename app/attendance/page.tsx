@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 
 type Profile = {
+  role: string;
   account_status: string;
 };
 
@@ -139,6 +140,7 @@ export default function AttendancePage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [record, setRecord] = useState<AttendanceRecord | null>(null);
   const [now, setNow] = useState(new Date());
@@ -172,7 +174,7 @@ export default function AttendancePage() {
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("account_status")
+        .select("role, account_status")
         .eq("id", user.id)
         .single<Profile>();
 
@@ -185,6 +187,8 @@ export default function AttendancePage() {
         router.replace("/login");
         return;
       }
+
+      setProfile(profileData);
 
       const { data: settingsData, error: settingsError } = await supabase
         .from("attendance_settings")
@@ -340,6 +344,7 @@ export default function AttendancePage() {
   }
 
   const isLate = record?.check_in_status === "late";
+  const privileged = ["admin", "director"].includes(profile?.role ?? "");
 
   return (
     <main className={styles.page}>
@@ -435,6 +440,57 @@ export default function AttendancePage() {
           <strong>{distanceMeters.toLocaleString("th-TH")} เมตร</strong>
         </section>
       )}
+
+
+      <section className={styles.menuSection}>
+        <h2>เมนูของฉัน</h2>
+
+        <div className={styles.menuGrid}>
+          <button
+            type="button"
+            onClick={() => router.push("/attendance/history")}
+          >
+            <span>◷</span>
+            <b>ประวัติการลงเวลา</b>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/account/change-pin")}
+          >
+            <span>🔐</span>
+            <b>เปลี่ยน PIN</b>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+          >
+            <span>⌂</span>
+            <b>หน้าสรุปข้อมูล</b>
+          </button>
+
+          {privileged && (
+            <>
+              <button
+                type="button"
+                onClick={() => router.push("/admin/members")}
+              >
+                <span>👥</span>
+                <b>จัดการสมาชิก</b>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push("/admin/attendance")}
+              >
+                <span>▥</span>
+                <b>รายงานลงเวลา</b>
+              </button>
+            </>
+          )}
+        </div>
+      </section>
 
       <button
         type="button"

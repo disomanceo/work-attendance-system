@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -88,7 +88,7 @@ export default function LoginPage() {
           return;
         }
 
-        router.replace("/dashboard");
+        router.replace("/attendance");
         router.refresh();
       } catch (error) {
         console.error("Check session error:", error);
@@ -180,7 +180,7 @@ export default function LoginPage() {
         window.localStorage.removeItem("attendance_phone");
       }
 
-      router.replace("/dashboard");
+      router.replace("/attendance");
       router.refresh();
     } catch (error) {
       console.error("Login error:", error);
@@ -337,3 +337,4 @@ export default function LoginPage() {
     </main>
   );
 }
+
