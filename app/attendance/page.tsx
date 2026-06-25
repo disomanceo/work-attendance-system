@@ -451,6 +451,9 @@ export default function AttendancePage() {
   const hasCheckedIn = Boolean(record?.check_in_at);
   const canViewReports = ["admin", "director", "staff"].includes(profile.role);
   const canManageMembers = profile.role === "admin";
+  const historyHref = canViewReports
+    ? "/admin/attendance"
+    : "/attendance/history";
 
   const menuItems: MenuItem[] = [
     {
@@ -462,17 +465,12 @@ export default function AttendancePage() {
     {
       label: "ประวัติการลงเวลา",
       icon: "▣",
-      href: "/attendance/history",
+      href: historyHref,
     },
     {
       label: "ประวัติการลา",
       icon: "▤",
       soon: true,
-    },
-    {
-      label: "สรุปการลงเวลา",
-      icon: "▥",
-      href: "/dashboard",
     },
     {
       label: "ข้อมูลส่วนตัว",
@@ -486,13 +484,6 @@ export default function AttendancePage() {
     },
   ];
 
-  if (canViewReports) {
-    menuItems.push({
-      label: "รายงานลงเวลา",
-      icon: "▦",
-      href: "/admin/attendance",
-    });
-  }
 
   if (canManageMembers) {
     menuItems.push({

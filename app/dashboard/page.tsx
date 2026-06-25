@@ -192,6 +192,9 @@ export default function DashboardPage() {
     profile.role
   );
   const canManageMembers = profile.role === "admin";
+  const historyHref = canViewReports
+    ? "/admin/attendance"
+    : "/attendance/history";
   const attendanceStatus = getAttendanceStatus(record);
   const autoCheckoutTime = getAutoCheckoutTime(profile.role);
 
@@ -283,7 +286,7 @@ export default function DashboardPage() {
       <section className={styles.todaySection}>
         <div className={styles.sectionHeading}>
           <h2>สรุปงานวันนี้</h2>
-          <button onClick={() => router.push("/attendance/history")}>
+          <button onClick={() => router.push(historyHref)}>
             ดูประวัติ
           </button>
         </div>
@@ -313,7 +316,7 @@ export default function DashboardPage() {
         <h2>เมนูใช้งาน</h2>
 
         <div className={styles.menuGrid}>
-          <button onClick={() => router.push("/attendance/history")}>
+          <button onClick={() => router.push(historyHref)}>
             <span>◷</span>
             <b>ประวัติการลงเวลา</b>
           </button>
@@ -323,12 +326,6 @@ export default function DashboardPage() {
             <b>เปลี่ยน PIN</b>
           </button>
 
-          {canViewReports && (
-            <button onClick={() => router.push("/admin/attendance")}>
-              <span>▥</span>
-              <b>รายงานลงเวลา</b>
-            </button>
-          )}
 
           {canManageMembers && (
             <button onClick={() => router.push("/admin/members")}>
@@ -350,7 +347,7 @@ export default function DashboardPage() {
           ลงเวลา
         </button>
 
-        <button onClick={() => router.push("/attendance/history")}>
+        <button onClick={() => router.push(historyHref)}>
           <span>▣</span>
           ประวัติ
         </button>
