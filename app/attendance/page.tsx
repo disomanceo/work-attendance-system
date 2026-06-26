@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -44,6 +44,12 @@ type PositionData = {
   latitude: number;
   longitude: number;
   accuracy: number;
+};
+
+type PendingCheckIn = {
+  userId: string;
+  position: PositionData;
+  distance: number;
 };
 
 type MenuItem = {
@@ -185,6 +191,11 @@ export default function AttendancePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [lateReasonOpen, setLateReasonOpen] = useState(false);
+  const [lateReason, setLateReason] = useState("");
+  const [lateReasonError, setLateReasonError] = useState("");
+  const [pendingCheckIn, setPendingCheckIn] =
+    useState<PendingCheckIn | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -363,6 +374,49 @@ export default function AttendancePage() {
     return { position, distance };
   }
 
+  function countReasonCharacters(value: string) {
+    return Array.from(value.trim()).length;
+  }
+
+  async function saveCheckIn(
+    pending: PendingCheckIn,
+    note: string | null
+  ) {
+    const { data, error } = await supabase
+      .from("attendance_records")
+      .insert({
+        user_id: pending.userId,
+        work_date: getBangkokDate(),
+        check_in_at: new Date().toISOString(),
+        check_in_latitude: pending.position.latitude,
+        check_in_longitude: pending.position.longitude,
+        check_in_distance_meters: pending.distance,
+        check_in_status: note ? "late" : "normal",
+        note,
+        updated_at: new Date().toISOString(),
+      })
+      .select(
+        "id, check_in_at, check_out_at, check_in_status, check_out_status"
+      )
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        throw new Error("วันนี้มีข้อมูลลงเวลาอยู่แล้ว");
+      }
+
+      throw error;
+    }
+
+    setRecord(data);
+    setMessageType("success");
+    setMessage(
+      note
+        ? "บันทึกเวลามาสายพร้อมเหตุผลเรียบร้อยแล้ว"
+        : "บันทึกเวลาปฏิบัติงานเรียบร้อยแล้ว"
+    );
+  }
+
   async function handleCheckIn() {
     setProcessing(true);
     setMessage("");
@@ -387,6 +441,7 @@ export default function AttendancePage() {
 
       const { position, distance } = await verifyLocation();
       const currentTime = getBangkokTime();
+
       const roleStartTimeMap: Record<string, string> = {
         director: settings.director_start_time,
         teacher: settings.teacher_start_time,
@@ -394,56 +449,103 @@ export default function AttendancePage() {
         janitor: settings.janitor_start_time,
         admin: settings.director_start_time,
       };
+
       const currentRole = profile?.role ?? "teacher";
 
       const roleStartTime =
         roleStartTimeMap[currentRole] ??
         settings.teacher_start_time ??
         settings.late_after_time;
-      const checkInStatus =
-        currentTime > normalizeTime(roleStartTime)
-          ? "late"
-          : "normal";
 
-      const { data, error } = await supabase
-        .from("attendance_records")
-        .insert({
-          user_id: user.id,
-          work_date: getBangkokDate(),
-          check_in_at: new Date().toISOString(),
-          check_in_latitude: position.latitude,
-          check_in_longitude: position.longitude,
-          check_in_distance_meters: distance,
-          check_in_status: checkInStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .select(
-          "id, check_in_at, check_out_at, check_in_status, check_out_status"
-        )
-        .single();
+      const isLateCheckIn =
+        currentTime > normalizeTime(roleStartTime);
 
-      if (error) {
-        if (error.code === "23505") {
-          throw new Error("วันนี้มีข้อมูลลงเวลาอยู่แล้ว");
-        }
+      const pending: PendingCheckIn = {
+        userId: user.id,
+        position,
+        distance,
+      };
 
-        throw error;
+      if (isLateCheckIn) {
+        setPendingCheckIn(pending);
+        setLateReason("");
+        setLateReasonError("");
+        setLateReasonOpen(true);
+        return;
       }
 
-      setRecord(data);
-      setMessageType("success");
-      setMessage("บันทึกเวลาปฏิบัติงานเรียบร้อยแล้ว");
+      await saveCheckIn(pending, null);
     } catch (error) {
       console.error("Check-in error:", error);
       setMessageType("error");
       setMessage(
-        error instanceof Error ? error.message : "ลงเวลาเข้าไม่สำเร็จ"
+        error instanceof Error
+          ? error.message
+          : "ลงเวลาเข้าไม่สำเร็จ"
       );
     } finally {
       setProcessing(false);
     }
   }
 
+  function closeLateReasonModal() {
+    if (processing) return;
+
+    setLateReasonOpen(false);
+    setLateReason("");
+    setLateReasonError("");
+    setPendingCheckIn(null);
+  }
+
+  async function confirmLateCheckIn() {
+    const normalizedReason = lateReason.trim();
+    const reasonLength =
+      countReasonCharacters(normalizedReason);
+
+    if (reasonLength < 5) {
+      setLateReasonError(
+        "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร"
+      );
+      return;
+    }
+
+    if (reasonLength > 30) {
+      setLateReasonError(
+        "เหตุผลต้องไม่เกิน 30 ตัวอักษร"
+      );
+      return;
+    }
+
+    if (!pendingCheckIn) {
+      setLateReasonError(
+        "ไม่พบข้อมูลการลงเวลา กรุณาปิดแล้วลองใหม่"
+      );
+      return;
+    }
+
+    setProcessing(true);
+    setLateReasonError("");
+
+    try {
+      await saveCheckIn(
+        pendingCheckIn,
+        normalizedReason
+      );
+
+      setLateReasonOpen(false);
+      setLateReason("");
+      setPendingCheckIn(null);
+    } catch (error) {
+      console.error("Late check-in error:", error);
+      setLateReasonError(
+        error instanceof Error
+          ? error.message
+          : "บันทึกเหตุผลมาสายไม่สำเร็จ"
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -505,9 +607,9 @@ export default function AttendancePage() {
       href: historyHref,
     },
     {
-      label: "ประวัติการลา",
+      label: "การลา",
       icon: "▤",
-      soon: true,
+      href: "/leave",
     },
     {
       label: "ข้อมูลส่วนตัว",
@@ -519,6 +621,12 @@ export default function AttendancePage() {
 
 
   if (["director", "admin"].includes(profile.role)) {
+    menuItems.push({
+      label: "พิจารณาใบลา",
+      icon: "✓",
+      href: "/admin/leave",
+    });
+
     menuItems.push({
       label: "ตั้งค่า",
       icon: "⚙",
@@ -897,6 +1005,99 @@ export default function AttendancePage() {
           </article>
         </section>
       </section>
-    </main>
+
+      {lateReasonOpen && (
+        <div
+          className={styles.lateReasonOverlay}
+          role="presentation"
+        >
+          <section
+            className={styles.lateReasonModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="late-reason-title"
+          >
+            <div className={styles.lateReasonIcon}>!</div>
+
+            <div className={styles.lateReasonHeading}>
+              <small>ลงเวลาหลังเวลาเริ่มงาน</small>
+              <h2 id="late-reason-title">
+                กรุณาระบุเหตุผลที่มาสาย
+              </h2>
+              <p>
+                ระบุเหตุผลตั้งแต่ 5–30 ตัวอักษร
+              </p>
+            </div>
+
+            <label className={styles.lateReasonField}>
+              <span>เหตุผลมาสาย</span>
+              <textarea
+                value={lateReason}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+
+                  if (Array.from(nextValue).length <= 30) {
+                    setLateReason(nextValue);
+                  }
+
+                  if (lateReasonError) {
+                    setLateReasonError("");
+                  }
+                }}
+                rows={3}
+                maxLength={30}
+                autoFocus
+                disabled={processing}
+                placeholder="เช่น รถติดจากอุบัติเหตุระหว่างเดินทาง"
+              />
+            </label>
+
+            <div className={styles.lateReasonMeta}>
+              <small
+                className={
+                  countReasonCharacters(lateReason) >= 5
+                    ? styles.lateReasonCountValid
+                    : ""
+                }
+              >
+                {countReasonCharacters(lateReason)}/30 ตัวอักษร
+              </small>
+
+              {lateReasonError && (
+                <p role="alert">{lateReasonError}</p>
+              )}
+            </div>
+
+            <div className={styles.lateReasonActions}>
+              <button
+                type="button"
+                className={styles.lateReasonCancel}
+                onClick={closeLateReasonModal}
+                disabled={processing}
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                type="button"
+                className={styles.lateReasonConfirm}
+                onClick={() => void confirmLateCheckIn()}
+                disabled={
+                  processing ||
+                  countReasonCharacters(lateReason) < 5 ||
+                  countReasonCharacters(lateReason) > 30
+                }
+              >
+                {processing
+                  ? "กำลังบันทึก..."
+                  : "ยืนยันและลงเวลา"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}    </main>
   );
 }
+
+
+
