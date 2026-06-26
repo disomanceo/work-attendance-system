@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -97,6 +97,16 @@ function attendanceStatus(record: AttendanceRecord) {
   if (record.check_out_status === "early") return "ออกก่อนเวลา";
   if (!record.check_out_at) return "ยังไม่ลงเวลาออก";
   return "ปกติ";
+}
+function formatLateReason(note: string | null) {
+  if (!note) return "";
+
+  return note
+    .trim()
+    .replace(/^ขออนุญาตมาสาย\s*/u, "")
+    .replace(/^เนื่องจาก\s*/u, "")
+    .replace(/^เพราะ\s*/u, "")
+    .trim();
 }
 
 async function authorizeAdmin(
@@ -303,7 +313,10 @@ async function buildDailyPdf(
       status: attendanceStatus(record),
       checkOut: formatThaiTime(record.check_out_at),
       signature: "",
-      note: record.note?.trim() ?? "",
+      note:
+        record.check_in_status === "late"
+          ? formatLateReason(record.note)
+          : "",
     };
   });
 
@@ -532,3 +545,4 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request, true);
 }
+
