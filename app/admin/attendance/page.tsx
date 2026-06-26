@@ -1041,49 +1041,6 @@ export default function AdminAttendancePage() {
               <DownloadIcon />
               {loadingPdf ? "กำลังตรวจสอบ..." : reportMode === "monthly" ? "ดาวน์โหลด PDF รวมเดือน" : "ดาวน์โหลด PDF"}
             </button>
-
-            {reportMode === "daily" && (
-              <button
-                type="button"
-                className={styles.buildDailyButton}
-                onClick={buildSelectedDailyPdf}
-                disabled={
-                  buildingDailyPdf ||
-                  deletingDailyPdf ||
-                  loadingPdf ||
-                  monthFileStatus.monthClosed
-                }
-              >
-                {buildingDailyPdf
-                  ? "กำลังสร้าง..."
-                  : pdfInfo?.found
-                    ? "สร้าง PDF ใหม่"
-                    : "สร้าง PDF วันนี้"}
-              </button>
-            )}
-
-            {reportMode === "daily" && (
-              <button
-                type="button"
-                className={styles.deletePdfButton}
-                onClick={deleteSelectedDailyPdf}
-                disabled={
-                  deletingDailyPdf ||
-                  loadingPdf ||
-                  !pdfInfo?.found ||
-                  monthFileStatus.monthClosed
-                }
-                title={
-                  monthFileStatus.monthClosed
-                    ? "เดือนนี้ปิดแล้ว ไม่สามารถลบไฟล์รายวันได้"
-                    : pdfInfo?.found
-                      ? `ลบ ${pdfInfo.fileName}`
-                      : "วันที่เลือกยังไม่มีไฟล์ PDF"
-                }
-              >
-                {deletingDailyPdf ? "กำลังลบ..." : "ลบ PDF วันนี้"}
-              </button>
-            )}
           </div>
         </section>
 
