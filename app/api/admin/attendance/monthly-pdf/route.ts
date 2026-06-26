@@ -175,7 +175,19 @@ async function handle(request: Request, allowWrite: boolean) {
 
     if (mode === "status") {
       const result = await callGas(config, month, "status");
-      return NextResponse.json(result);
+
+      // สำคัญ: ป้องกันหน้า React ล่มเมื่อ GAS ไม่ส่งบางฟิลด์กลับมา
+      return NextResponse.json({
+        ok: true,
+        dailyPdfDays: Array.isArray(result.dailyPdfDays)
+          ? result.dailyPdfDays
+          : [],
+        monthlyPdfFound: Boolean(result.monthlyPdfFound),
+        monthClosed: Boolean(result.monthClosed),
+        canCloseMonth: Boolean(result.canCloseMonth),
+        monthlyFileName: result.monthlyFileName,
+        message: result.message,
+      });
     }
 
     if (allowWrite && (mode === "build" || mode === "close")) {
