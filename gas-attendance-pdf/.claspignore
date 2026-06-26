@@ -1,0 +1,16 @@
+.clasp.json
+.claspignore
+TEMPLATE-GUIDE.md
+README*
+*.md
+
+_backup/**
+backup/**
+backups/**
+
+Code-before-*.js
+Code-before-*.gs
+*.backup.js
+*.backup.gs
+*.bak.js
+*.bak.gs
