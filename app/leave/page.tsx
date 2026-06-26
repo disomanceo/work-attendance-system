@@ -478,15 +478,15 @@ export default function LeavePage() {
           <div>
             <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
               {leaveType === "sick"
-                ? "ใบรับรองแพทย์หรือหลักฐาน"
-                : "หลักฐานประกอบ เช่น รูปถ่าย (ไม่บังคับ)"}
+                ? "ใบรับรองแพทย์หรือหลักฐาน PDF, JPG, PNG"
+                : "หลักฐานประกอบ PDF, JPG หรือ PNG (ไม่บังคับ)"}
             </span>
 
             <input
               ref={attachmentInputRef}
               id="leave-attachment"
               type="file"
-              accept="image/jpeg,image/png"
+              accept="application/pdf,image/jpeg,image/png"
               style={{ display: "none" }}
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;
@@ -513,11 +513,11 @@ export default function LeavePage() {
                 cursor: "pointer",
               }}
             >
-              <span aria-hidden="true" style={{ fontSize: 34 }}>📷</span>
+              <span aria-hidden="true" style={{ fontSize: 34 }}>{attachment?.type === "application/pdf" ? "📄" : "📷"}</span>
               <strong>
-                {attachment ? "แตะเพื่อเปลี่ยนรูปหลักฐาน" : "แตะเพื่อเลือกรูปจากเครื่องหรือมือถือ"}
+                {attachment ? "แตะเพื่อเปลี่ยนไฟล์หลักฐาน" : "แตะเพื่อเลือกไฟล์จากเครื่องหรือมือถือ"}
               </strong>
-              <small style={{ color: "#6b7280" }}>รองรับ JPG และ PNG ขนาดไม่เกิน 5 MB</small>
+              <small style={{ color: "#6b7280" }}>รองรับ PDF, JPG และ PNG ขนาดไม่เกิน 10 MB</small>
             </label>
 
             {attachment && (
@@ -534,7 +534,7 @@ export default function LeavePage() {
                     background: "#ffffff",
                   }}
                 >
-                  {attachmentPreviewUrl && (
+                  {attachmentPreviewUrl && attachment.type.startsWith("image/") ? (
                     <img
                       src={attachmentPreviewUrl}
                       alt="ตัวอย่างหลักฐานที่เลือก"
@@ -546,7 +546,31 @@ export default function LeavePage() {
                         border: "1px solid #ddd6fe",
                       }}
                     />
-                  )}
+                  ) : attachmentPreviewUrl ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.open(
+                          attachmentPreviewUrl,
+                          "_blank",
+                          "noopener,noreferrer"
+                        )
+                      }
+                      style={{
+                        width: 88,
+                        height: 88,
+                        border: "1px solid #ddd6fe",
+                        borderRadius: 12,
+                        background: "#f5f3ff",
+                        color: "#5b21b6",
+                        fontSize: 30,
+                        cursor: "pointer",
+                      }}
+                      aria-label="เปิดดูไฟล์ PDF ที่เลือก"
+                    >
+                      📄
+                    </button>
+                  ) : null}
 
                   <div style={{ minWidth: 0 }}>
                     <strong style={{ display: "block", wordBreak: "break-word" }}>
@@ -572,7 +596,7 @@ export default function LeavePage() {
                           cursor: "pointer",
                         }}
                       >
-                        ลบรูปหลักฐาน
+                        ลบไฟล์หลักฐาน
                       </button>
                     </div>
                   </div>

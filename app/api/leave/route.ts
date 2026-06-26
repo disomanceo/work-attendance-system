@@ -27,8 +27,9 @@ type GasPendingResponse = {
   evidenceFileUrl?: string;
 };
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
   "image/jpeg",
   "image/png",
 ]);
@@ -519,7 +520,7 @@ export async function POST(request: Request) {
 
       if (attachment.size > MAX_FILE_SIZE) {
         return NextResponse.json(
-          { ok: false, message: "ไฟล์แนบต้องมีขนาดไม่เกิน 5 MB" },
+          { ok: false, message: "ไฟล์หลักฐานต้องมีขนาดไม่เกิน 10 MB" },
           { status: 400 }
         );
       }
@@ -529,7 +530,7 @@ export async function POST(request: Request) {
           {
             ok: false,
             message:
-              "รุ่นนี้รองรับหลักฐานเฉพาะ JPG และ PNG เพื่อรวมไว้ใน PDF ฉบับเดียว",
+              "รองรับไฟล์หลักฐานเฉพาะ PDF, JPG และ PNG",
           },
           { status: 400 }
         );

@@ -21,7 +21,10 @@ type GasFinalizeResponse = {
   pdfFileUrl?: string;
   pdfFileName?: string;
   finalFolderId?: string;
-};
+finalEvidenceFileId?: string;
+  finalEvidenceFileUrl?: string;
+  finalEvidenceFileName?: string;
+  };
 
 function config() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -350,8 +353,8 @@ export async function PATCH(request: Request) {
         working_document_id: null,
         working_document_url: null,
         drive_request_folder_id: null,
-        evidence_file_id: null,
-        evidence_file_url: null,
+        evidence_file_id: gasResult.finalEvidenceFileId || null,
+        evidence_file_url: gasResult.finalEvidenceFileUrl || null,
         attachment_bucket: null,
         attachment_path: null,
       })
