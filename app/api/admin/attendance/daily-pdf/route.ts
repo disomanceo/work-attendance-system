@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,7 @@ type Profile = {
   position: string | null;
   role: string;
   account_status: string;
+  signature_file_id: string | null;
 };
 
 type GasPdfResponse = {
@@ -37,6 +38,13 @@ type GasPdfResponse = {
   recordCount?: number;
 };
 
+type GasAssetResponse = {
+  ok?: boolean;
+  message?: string;
+  base64?: string;
+  mimeType?: string;
+};
+
 function getConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey =
@@ -44,13 +52,17 @@ function getConfig() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const gasUrl = process.env.GAS_DAILY_PDF_API_URL;
   const gasSecret = process.env.GAS_DAILY_PDF_SECRET;
+  const profileGasUrl = process.env.GAS_PROFILE_UPLOAD_URL;
+  const profileGasSecret = process.env.GAS_PROFILE_UPLOAD_SECRET;
 
   if (
     !supabaseUrl ||
     !publishableKey ||
     !serviceRoleKey ||
     !gasUrl ||
-    !gasSecret
+    !gasSecret ||
+    !profileGasUrl ||
+    !profileGasSecret
   ) {
     return null;
   }
@@ -61,6 +73,8 @@ function getConfig() {
     serviceRoleKey,
     gasUrl,
     gasSecret,
+    profileGasUrl,
+    profileGasSecret,
   };
 }
 
@@ -98,6 +112,7 @@ function attendanceStatus(record: AttendanceRecord) {
   if (!record.check_out_at) return "ยังไม่ลงเวลาออก";
   return "ปกติ";
 }
+
 function formatLateReason(note: string | null) {
   if (!note) return "";
 
@@ -226,6 +241,55 @@ async function callGasGet(
   return result;
 }
 
+async function getSignatureAsset(
+  config: NonNullable<ReturnType<typeof getConfig>>,
+  fileId: string | null | undefined
+) {
+  if (!fileId) {
+    return null;
+  }
+
+  const response = await fetch(config.profileGasUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain;charset=utf-8",
+    },
+    body: JSON.stringify({
+      secret: config.profileGasSecret,
+      action: "get",
+      fileId,
+    }),
+    cache: "no-store",
+    redirect: "follow",
+  });
+
+  const responseText = await response.text();
+  let result: GasAssetResponse;
+
+  try {
+    result = JSON.parse(responseText) as GasAssetResponse;
+  } catch {
+    throw new Error(
+      "GAS รูปภาพไม่ได้ส่งข้อมูลลายเซ็นกลับมาเป็น JSON"
+    );
+  }
+
+  if (!response.ok || result.ok !== true) {
+    throw new Error(
+      result.message || "ไม่สามารถโหลดลายเซ็นของผู้อำนวยการได้"
+    );
+  }
+
+  if (!result.base64) {
+    return null;
+  }
+
+  return {
+    base64: result.base64,
+    mimeType: result.mimeType || "image/png",
+  };
+}
+
 async function buildDailyPdf(
   config: NonNullable<ReturnType<typeof getConfig>>,
   date: string
@@ -275,7 +339,7 @@ async function buildDailyPdf(
     await adminClient
       .from("profiles")
       .select(
-        "id, full_name, position, role, account_status"
+        "id, full_name, position, role, account_status, signature_file_id"
       )
       .eq("account_status", "active")
       .order("full_name", { ascending: true });
@@ -285,9 +349,28 @@ async function buildDailyPdf(
   }
 
   const profiles = (profileData ?? []) as Profile[];
+
+  const directorProfile =
+    profiles.find(
+      (profile) =>
+        profile.role === "director" &&
+        Boolean(profile.signature_file_id)
+    ) ??
+    profiles.find((profile) => profile.role === "director") ??
+    null;
+
+  const directorSignature =
+    directorProfile?.signature_file_id
+      ? await getSignatureAsset(
+          config,
+          directorProfile.signature_file_id
+        )
+      : null;
+
   const profileMap = new Map(
     profiles.map((profile) => [profile.id, profile])
   );
+
   const attendanceMap = new Map(
     attendance.map((record) => [record.user_id, record])
   );
@@ -325,6 +408,7 @@ async function buildDailyPdf(
     .map((profile) => {
       const record = attendanceMap.get(profile.id);
       const note = record?.note?.trim() ?? "";
+
       return {
         fullName: profile.full_name,
         reason: note,
@@ -363,6 +447,15 @@ async function buildDailyPdf(
     date,
     rows,
     notes: noteItems,
+    director: {
+      fullName: directorProfile?.full_name ?? "",
+      position:
+        directorProfile?.position ||
+        (directorProfile
+          ? getRoleLabel(directorProfile.role)
+          : ""),
+    },
+    directorSignature,
     summary: {
       total: profiles.length,
       present: presentRecords.length,
@@ -413,7 +506,7 @@ async function handle(request: Request, allowWrite: boolean) {
         {
           ok: false,
           message:
-            "Environment Variables สำหรับ Supabase หรือ GAS ยังไม่ครบ",
+            "Environment Variables สำหรับ Supabase, GAS PDF หรือ GAS รูปภาพยังไม่ครบ",
         },
         { status: 500 }
       );
@@ -545,4 +638,3 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request, true);
 }
-
