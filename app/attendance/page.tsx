@@ -505,9 +505,9 @@ export default function AttendancePage() {
       href: historyHref,
     },
     {
-      label: "ประวัติการลา",
+      label: "การลา",
       icon: "▤",
-      soon: true,
+      href: "/leave",
     },
     {
       label: "ข้อมูลส่วนตัว",
@@ -519,6 +519,11 @@ export default function AttendancePage() {
 
 
   if (["director", "admin"].includes(profile.role)) {
+    menuItems.push({
+      label: "พิจารณาใบลา",
+      icon: "✓",
+      href: "/admin/leave",
+    });
     menuItems.push({
       label: "ตั้งค่า",
       icon: "⚙",
