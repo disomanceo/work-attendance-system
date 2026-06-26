@@ -14,6 +14,9 @@ type SettingsPayload = {
   staff_end_time: string;
   janitor_start_time: string;
   janitor_end_time: string;
+  active_fiscal_year: number | null;
+  fiscal_year_start_date: string | null;
+  fiscal_year_end_date: string | null;
 };
 
 function getConfig() {
@@ -194,6 +197,9 @@ export async function GET(request: Request) {
         staff_end_time,
         janitor_start_time,
         janitor_end_time,
+        active_fiscal_year,
+        fiscal_year_start_date,
+        fiscal_year_end_date,
         updated_at
       `
     )
@@ -270,6 +276,53 @@ export async function PUT(request: Request) {
     );
   }
 
+  const activeFiscalYear = Number(body.active_fiscal_year);
+  const fiscalYearStartDate =
+    typeof body.fiscal_year_start_date === "string"
+      ? body.fiscal_year_start_date.trim()
+      : "";
+  const fiscalYearEndDate =
+    typeof body.fiscal_year_end_date === "string"
+      ? body.fiscal_year_end_date.trim()
+      : "";
+
+  if (
+    !Number.isInteger(activeFiscalYear) ||
+    activeFiscalYear < 2500 ||
+    activeFiscalYear > 2700
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "กรุณากำหนดปีงบประมาณ พ.ศ. ระหว่าง 2500–2700",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(fiscalYearStartDate) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(fiscalYearEndDate)
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "กรุณากำหนดวันที่เริ่มและสิ้นสุดปีงบประมาณ",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (fiscalYearEndDate < fiscalYearStartDate) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "วันที่สิ้นสุดปีงบประมาณต้องไม่ก่อนวันที่เริ่ม",
+      },
+      { status: 400 }
+    );
+  }
+
   const timeFields = {
     director_start_time: normalizeTime(body.director_start_time),
     director_end_time: normalizeTime(body.director_end_time),
@@ -297,6 +350,9 @@ export async function PUT(request: Request) {
     longitude,
     allowed_radius_meters: Math.round(allowedRadius),
     ...timeFields,
+    active_fiscal_year: activeFiscalYear,
+    fiscal_year_start_date: fiscalYearStartDate,
+    fiscal_year_end_date: fiscalYearEndDate,
     updated_by: auth.userId,
     updated_at: new Date().toISOString(),
   };
@@ -326,3 +382,4 @@ export async function PUT(request: Request) {
     settings: data,
   });
 }
+

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./settings.module.css";
+import PositionWorkPolicySection from "./PositionWorkPolicySection";
 
 type RoleKey = "director" | "teacher" | "staff" | "janitor";
 
@@ -20,6 +21,9 @@ type AttendanceSettings = {
   staff_end_time: string;
   janitor_start_time: string;
   janitor_end_time: string;
+  active_fiscal_year: number | null;
+  fiscal_year_start_date: string | null;
+  fiscal_year_end_date: string | null;
 };
 
 type ApiResponse = {
@@ -68,6 +72,9 @@ const DEFAULT_SETTINGS: AttendanceSettings = {
   staff_end_time: "16:30",
   janitor_start_time: "06:00",
   janitor_end_time: "18:00",
+  active_fiscal_year: null,
+  fiscal_year_start_date: null,
+  fiscal_year_end_date: null,
 };
 
 function normalizeTime(value: string) {
@@ -581,65 +588,94 @@ export default function DirectorSettingsPage() {
           </div>
         </section>
 
-        <section className={styles.card}>
+        <PositionWorkPolicySection
+          roles={ROLE_ROWS}
+          getStartTime={(role) =>
+            String(
+              settings[
+                `${role}_start_time` as keyof AttendanceSettings
+              ]
+            )
+          }
+          getEndTime={(role) =>
+            String(
+              settings[
+                `${role}_end_time` as keyof AttendanceSettings
+              ]
+            )
+          }
+          onTimeChange={updateTime}
+        />
+
+        <section className={styles.card} id="fiscal-year-settings">
           <div className={styles.sectionHeading}>
-            <h2>เวลาปฏิบัติงานตามตำแหน่ง</h2>
+            <h2>ปีงบประมาณอ้างอิง</h2>
             <p>
-              เวลาเริ่มใช้ตรวจมาสาย และเวลาเลิกงานใช้ในเอกสารบัญชีลงเวลารายวัน
+              กำหนดปีงบประมาณที่ใช้กับระบบลา จำนวนครั้งลา
+              รายงาน และข้อมูลเพื่อการประเมิน
             </p>
           </div>
 
-          <div className={styles.roleGrid}>
-            {ROLE_ROWS.map((role) => {
-              const startKey =
-                `${role.key}_start_time` as keyof AttendanceSettings;
-              const endKey =
-                `${role.key}_end_time` as keyof AttendanceSettings;
+          <div className={styles.timeGrid}>
+            <label>
+              <span>ปีงบประมาณ (พ.ศ.)</span>
+              <input
+                type="number"
+                min="2500"
+                max="2700"
+                required
+                value={settings.active_fiscal_year ?? ""}
+                placeholder="เช่น 2570"
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    active_fiscal_year:
+                      event.target.value === ""
+                        ? null
+                        : Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
 
-              return (
-                <article key={role.key}>
-                  <div>
-                    <h3>{role.title}</h3>
-                    <p>{role.description}</p>
-                  </div>
+            <label>
+              <span>วันที่เริ่มปีงบประมาณ</span>
+              <input
+                type="date"
+                required
+                value={settings.fiscal_year_start_date ?? ""}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    fiscal_year_start_date:
+                      event.target.value || null,
+                  }))
+                }
+              />
+            </label>
 
-                  <div className={styles.timeGrid}>
-                    <label>
-                      <span>เวลาเริ่ม</span>
-                      <input
-                        type="time"
-                        required
-                        value={String(settings[startKey])}
-                        onChange={(event) =>
-                          updateTime(
-                            role.key,
-                            "start",
-                            event.target.value
-                          )
-                        }
-                      />
-                    </label>
-
-                    <label>
-                      <span>เวลาเลิกงาน</span>
-                      <input
-                        type="time"
-                        required
-                        value={String(settings[endKey])}
-                        onChange={(event) =>
-                          updateTime(
-                            role.key,
-                            "end",
-                            event.target.value
-                          )
-                        }
-                      />
-                    </label>
-                  </div>
-                </article>
-              );
-            })}
+            <label>
+              <span>วันที่สิ้นสุดปีงบประมาณ</span>
+              <input
+                type="date"
+                required
+                min={settings.fiscal_year_start_date ?? undefined}
+                value={settings.fiscal_year_end_date ?? ""}
+                onChange={(event) =>
+                  setSettings((current) => ({
+                    ...current,
+                    fiscal_year_end_date:
+                      event.target.value || null,
+                  }))
+                }
+              />
+            </label>
           </div>
+
+          <p>
+            ระบบเก็บปีงบประมาณเป็น พ.ศ. โดยตรง
+            จึงไม่บวก 543 ซ้ำอีก
+          </p>
         </section>
 
         <section className={`${styles.card} ${styles.dangerCard}`}>
@@ -771,3 +807,4 @@ export default function DirectorSettingsPage() {
     </main>
   );
 }
+
