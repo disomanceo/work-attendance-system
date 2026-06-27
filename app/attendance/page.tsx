@@ -687,7 +687,7 @@ export default function AttendancePage() {
       : "ปกติ";
   const hasCheckedIn = Boolean(record?.check_in_at);
   const canViewReports = ["admin", "director"].includes(profile.role);
-  const canManageMembers = profile.role === "admin";
+  const canManageMembers = ["admin", "director"].includes(profile.role);
   const historyHref =
     profile.role === "admin" || profile.role === "director"
       ? "/admin/attendance"
@@ -1216,6 +1216,7 @@ export default function AttendancePage() {
       )}    </main>
   );
 }
+
 
 
 
