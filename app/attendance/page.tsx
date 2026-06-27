@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -877,7 +877,7 @@ export default function AttendancePage() {
           <div>
             <span>ATTENDANCE</span>
             <h1>การลงเวลาปฏิบัติงาน</h1>
-            <p>ลงเวลา ตรวจสอบสถานะ และดูข้อมูลการปฏิบัติงานของคุณ</p>
+            <p>{formatThaiDate(now)}</p>
           </div>        </header>
 
         {message && (
@@ -893,282 +893,227 @@ export default function AttendancePage() {
           </div>
         )}
 
-        <section className={styles.heroGrid}>
-          <article className={styles.checkInPanel}>
-            <div className={styles.mobileCheckInHeader}>
-              <p>{formatThaiDate(now)}</p>
-              <strong>
-                {new Intl.DateTimeFormat("th-TH", {
-                  timeZone: "Asia/Bangkok",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hour12: false,
-                }).format(now)}
-              </strong>
-              <small>เวลาปัจจุบันแบบเรียลไทม์</small>
-            </div>
-
-            {todayLeave ? (
-              <div className={styles.leaveTodayWrap}>
-                <div
-                  className={`${styles.leaveApprovalBadge} ${
-                    todayLeave.status === "approved"
-                      ? styles.leaveApprovalBadgeApproved
-                      : styles.leaveApprovalBadgePending
-                  }`}
-                >
-                  <span aria-hidden="true">
-                    {todayLeave.status === "approved" ? "✓" : "◷"}
-                  </span>
-                  <strong>
-                    {todayLeave.status === "approved"
-                      ? "อนุมัติแล้ว"
-                      : "รอพิจารณา"}
-                  </strong>
-                </div>
-
-                <h2>{getLeaveDisplayLabel(todayLeave)}</h2>
-                <p>{todayLeave.message}</p>
-                <small>วันนี้ระบบงดแสดงปุ่มลงเวลาตามสถานะคำขอ</small>
+        <section className={styles.compactDashboard}>
+          <article
+            className={`${styles.compactStatusCard} ${
+              todayLeave
+                ? styles.compactStatusLeave
+                : record?.check_in_at
+                  ? styles.compactStatusSuccess
+                  : styles.compactStatusWaiting
+            }`}
+          >
+            <div className={styles.compactStatusHeader}>
+              <div className={styles.compactStatusIcon} aria-hidden="true">
+                {todayLeave
+                  ? todayLeave.status === "approved"
+                    ? "✓"
+                    : "◷"
+                  : record?.check_in_at
+                    ? "✓"
+                    : "◷"}
               </div>
-            ) : !record?.check_in_at ? (
-              <>
-                <button
-                  type="button"
-                  className={styles.checkInButton}
-                  disabled={processing}
-                  onClick={() => void handleCheckIn()}
-                >
-                  <span className={styles.fingerprintIcon} aria-hidden="true">
-                    <svg viewBox="0 0 64 64" role="img">
-                      <path d="M32 7C20 7 10 17 10 29c0 7 2 11 2 18" />
-                      <path d="M32 14c-9 0-16 7-16 16 0 8 3 13 3 22" />
-                      <path d="M32 21c-5 0-9 4-9 9 0 9 4 15 4 26" />
-                      <path d="M32 28c-2 0-4 2-4 4 0 10 5 15 5 25" />
-                      <path d="M38 57c0-8-4-14-4-25 0-2 2-4 4-4 4 0 6 4 6 8 0 8 2 12 4 17" />
-                      <path d="M41 22c6 3 9 8 9 15 0 7 2 11 5 15" />
-                      <path d="M48 17c7 6 9 13 9 21" />
-                    </svg>
-                  </span>
-                  <strong>
-                    {processing
-                      ? "กำลังตรวจสอบ GPS..."
-                      : "ลงเวลาปฏิบัติงาน"}
-                  </strong>
-                  {!processing && <small>แตะเพื่อเช็คอิน</small>}
-                </button>
 
-                <div className={styles.mobileFeedback}>
-                  {processing ? (
-                    <p className={styles.processingText}>
-                      กำลังตรวจสอบตำแหน่ง GPS...
-                    </p>
-                  ) : message ? (
-                    <p
-                      className={
-                        messageType === "success"
-                          ? styles.feedbackSuccess
-                          : styles.feedbackError
-                      }
-                    >
-                      {message}
-                    </p>
-                  ) : (
-                    <p>ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา</p>
-                  )}
-
-                  {distanceMeters !== null && (
-                    <small>
-                      ระยะห่างจากโรงเรียน{" "}
-                      <b>{distanceMeters.toLocaleString("th-TH")} เมตร</b>
-                    </small>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className={styles.completedWrap}>
-                <div className={styles.completedCircle}>
-                  <span>✓</span>
-                  <strong>วันนี้คุณได้ลงเวลาแล้ว</strong>
-                  <small>{formatThaiTime(record.check_in_at)}</small>
-                </div>
-
-                <div className={styles.completedDetails}>
-                  <span
-                    className={
-                      isLate ? styles.badgeLate : styles.badgeNormal
-                    }
-                  >
-                    {checkInStatusLabel}
-                  </span>
-
-                  {distanceMeters !== null && (
-                    <small>
-                      ระยะ GPS{" "}
-                      <b>{distanceMeters.toLocaleString("th-TH")} เมตร</b>
-                    </small>
-                  )}
-                </div>
+              <div className={styles.compactStatusHeading}>
+                <small>สถานะวันนี้</small>
+                <h2>
+                  {todayLeave
+                    ? getLeaveDisplayLabel(todayLeave)
+                    : record?.check_in_at
+                      ? "ลงเวลาเรียบร้อยแล้ว"
+                      : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
+                </h2>
+                <p>{formatThaiDate(now)}</p>
               </div>
-            )}
-          </article>
 
-          <article className={`${styles.statusPanel} ${styles.mobileSecondary}`}>
-            <div className={styles.currentDate}>
-              <span>▣</span>
-              <p>{formatThaiDate(now)}</p>
-            </div>
-
-            <div className={styles.liveClock}>
-              {new Intl.DateTimeFormat("th-TH", {
-                timeZone: "Asia/Bangkok",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-                hour12: false,
-              }).format(now)}
-              <span>● เวลาปัจจุบัน</span>
-            </div>
-
-            <div className={styles.todayStatus}>
-              <small>สถานะวันนี้</small>
-              {todayLeave ? (
-                <strong className={styles.leaveStatus}>
-                  ✓ {todayLeave.label}
-                </strong>
-              ) : !record?.check_in_at ? (
-                <strong className={styles.waitingStatus}>
-                  ◷ ยังไม่ได้ลงเวลาเข้า
-                </strong>
-              ) : (
-                <strong
+              {record?.check_in_at && !todayLeave && (
+                <span
                   className={
-                    isLate ? styles.lateStatus : styles.normalStatus
+                    isLate ? styles.badgeLate : styles.badgeNormal
                   }
                 >
                   {checkInStatusLabel}
-                </strong>
+                </span>
               )}
             </div>
 
-            <div className={styles.locationRow}>
-              <span>⌖</span>
+            <div className={styles.compactInfoGrid}>
               <div>
-                <small>ตำแหน่งลงเวลา</small>
+                <small>เวลาเข้า</small>
+                <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
+              </div>
+
+              <div>
+                <small>สถานะ</small>
+                <strong>
+                  {todayLeave
+                    ? todayLeave.status === "approved"
+                      ? "อนุมัติแล้ว"
+                      : "รอพิจารณา"
+                    : record?.check_in_at
+                      ? checkInStatusLabel
+                      : "รอลงเวลา"}
+                </strong>
+              </div>
+
+              <div>
+                <small>เวลาปฏิบัติงาน</small>
+                <strong>
+                  {profile.role === "janitor"
+                    ? "08:30 - 18:00 น."
+                    : "08:30 - 16:30 น."}
+                </strong>
+              </div>
+
+              <div>
+                <small>สถานที่ลงเวลา</small>
                 <strong>
                   {settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}
                 </strong>
               </div>
-            </div>
-          </article>
-        </section>
 
-        <section className={`${styles.summaryGrid} ${styles.mobileSecondary}`}>
-          <article className={styles.todayCard}>
-            <div
-              className={`${styles.todayIcon} ${
-                todayLeave ? styles.todayLeaveIcon : ""
-              }`}
-            >
-              {todayLeave?.status === "approved" ? "✓" : todayLeave ? "◷" : "✓"}
-            </div>
-
-            <div className={styles.todayStatusContent}>
-              <small>สถานะของคุณวันนี้</small>
-
-              {todayLeave ? (
-                <>
-                  <div
-                    className={`${styles.leaveApprovalBadge} ${
-                      todayLeave.status === "approved"
-                        ? styles.leaveApprovalBadgeApproved
-                        : styles.leaveApprovalBadgePending
-                    }`}
-                  >
-                    <span aria-hidden="true">
-                      {todayLeave.status === "approved" ? "✓" : "◷"}
-                    </span>
-                    <strong>
-                      {todayLeave.status === "approved"
-                        ? "อนุมัติแล้ว"
-                        : "รอพิจารณา"}
-                    </strong>
-                  </div>
-
-                  <h2>{getLeaveDisplayLabel(todayLeave)}</h2>
-                  <p>{todayLeave.message}</p>
-                </>
-              ) : (
-                <>
-                  <h2>
-                    {record?.check_in_at
-                      ? "วันนี้คุณได้ลงเวลาแล้ว"
-                      : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
-                  </h2>
-                  <p>
-                    เวลาเข้า{" "}
-                    <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
-                  </p>
-                </>
+              {distanceMeters !== null && (
+                <div>
+                  <small>ระยะห่าง</small>
+                  <strong>
+                    {distanceMeters.toLocaleString("th-TH")} เมตร
+                  </strong>
+                </div>
               )}
             </div>
 
-            {record?.check_in_at && !todayLeave && (
-              <span
-                className={
-                  isLate ? styles.badgeLate : styles.badgeNormal
-                }
-              >
-                {checkInStatusLabel}
-              </span>
+            {todayLeave ? (
+              <div className={styles.compactLeaveNotice}>
+                <strong>
+                  {todayLeave.status === "approved"
+                    ? "รายการลาได้รับอนุมัติแล้ว"
+                    : "รายการลาอยู่ระหว่างรอพิจารณา"}
+                </strong>
+                <p>{todayLeave.message}</p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/leave")}
+                >
+                  ดูรายละเอียดการลา
+                </button>
+              </div>
+            ) : !record?.check_in_at ? (
+              <div className={styles.compactActionArea}>
+                <button
+                  type="button"
+                  className={styles.compactCheckInButton}
+                  disabled={processing}
+                  onClick={() => void handleCheckIn()}
+                >
+                  <span aria-hidden="true">⌾</span>
+                  <strong>
+                    {processing
+                      ? "กำลังตรวจสอบตำแหน่ง..."
+                      : "ลงเวลาปฏิบัติงาน"}
+                  </strong>
+                </button>
+
+                <small>
+                  ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา
+                </small>
+              </div>
+            ) : (
+              <div className={styles.compactCompletedNotice}>
+                <span aria-hidden="true">✓</span>
+                <div>
+                  <strong>บันทึกเวลาของวันนี้เรียบร้อยแล้ว</strong>
+                  <small>
+                    เวลาเข้า {formatThaiTime(record.check_in_at)}
+                  </small>
+                </div>
+              </div>
             )}
           </article>
 
-          <article className={styles.workTimeCard}>
-            <small>เวลาปฏิบัติงาน</small>
-            <strong>
-              {profile.role === "janitor" ? "08:30 - 18:00" : "08:30 - 16:30"}
-            </strong>
-            <p>วันจันทร์ - วันศุกร์</p>
-          </article>
-        </section>
+          <section className={styles.compactBottomGrid}>
+            <article className={styles.compactOverviewCard}>
+              <div className={styles.compactSectionHeading}>
+                <div>
+                  <small>ภาพรวมวันนี้</small>
+                  <h2>ข้อมูลที่สำคัญ</h2>
+                </div>
 
-        {distanceMeters !== null && (
-          <section className={`${styles.locationNotice} ${styles.mobileSecondary}`}>
-            ระยะห่างจากโรงเรียน{" "}
-            <strong>{distanceMeters.toLocaleString("th-TH")} เมตร</strong>
-          </section>
-        )}
-
-        <section className={`${styles.bottomGrid} ${styles.mobileSecondary}`}>
-
-          <article className={styles.monthSummary}>
-            <div className={styles.sectionHeading}>
-              <div>
-                <small>MONTHLY</small>
-                <h2>สรุปการลงเวลา</h2>
+                <button
+                  type="button"
+                  onClick={() => router.push(historyHref)}
+                >
+                  ดูประวัติทั้งหมด
+                </button>
               </div>
-            </div>
 
-            <div className={styles.summaryCircle}>
-              <span>เดือนนี้</span>
-              <strong>{record?.check_in_at ? "1" : "0"}</strong>
-              <small>วันที่ลงเวลา</small>
-            </div>
+              <div className={styles.compactOverviewGrid}>
+                <div>
+                  <span>◷</span>
+                  <small>เวลาปัจจุบัน</small>
+                  <strong>
+                    {new Intl.DateTimeFormat("th-TH", {
+                      timeZone: "Asia/Bangkok",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    }).format(now)} น.
+                  </strong>
+                </div>
 
-            <div className={styles.legend}>
-              <span>
-                <i className={styles.greenDot} /> ปกติ
-              </span>
-              <span>
-                <i className={styles.redDot} /> มาสาย
-              </span>
-              <span>
-                <i className={styles.purpleDot} /> ลา/ขาด
-              </span>
-            </div>
-          </article>
+                <div>
+                  <span>▣</span>
+                  <small>วันทำงาน</small>
+                  <strong>จันทร์ - ศุกร์</strong>
+                </div>
+
+                <div>
+                  <span>⌖</span>
+                  <small>ระบบ GPS</small>
+                  <strong>
+                    {settings?.gps_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}
+                  </strong>
+                </div>
+              </div>
+            </article>
+
+            <article className={styles.compactQuickCard}>
+              <div className={styles.compactSectionHeading}>
+                <div>
+                  <small>ทางลัด</small>
+                  <h2>เมนูที่ใช้บ่อย</h2>
+                </div>
+              </div>
+
+              <div className={styles.compactQuickGrid}>
+                <button
+                  type="button"
+                  onClick={() => router.push(historyHref)}
+                >
+                  <span>◷</span>
+                  <strong>ประวัติการลงเวลา</strong>
+                  <small>ตรวจสอบข้อมูลย้อนหลัง</small>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/leave")}
+                >
+                  <span>▤</span>
+                  <strong>ขออนุญาตลา</strong>
+                  <small>ยื่นลาและดูสถานะ</small>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/account/profile")}
+                >
+                  <span>♙</span>
+                  <strong>ข้อมูลส่วนตัว</strong>
+                  <small>แก้ไขข้อมูลและเอกสาร</small>
+                </button>
+              </div>
+            </article>
+          </section>
         </section>
       </section>
 
@@ -1261,8 +1206,10 @@ export default function AttendancePage() {
             </div>
           </section>
         </div>
-      )}          <LeaveReviewPopup role={profile.role} />
-</main>
+      )}
+
+      <LeaveReviewPopup role={profile.role} />
+    </main>
   );
 }
 

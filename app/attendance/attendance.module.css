@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   --sidebar-width: 292px;
   min-height: 100svh;
   color: #f8f5ff;
@@ -1704,5 +1704,459 @@
 
   .todayStatusContent {
     width: calc(100% - 74px);
+  }
+}
+
+/* COMPACT ATTENDANCE DASHBOARD V2 */
+.compactDashboard {
+  display: grid;
+  gap: 18px;
+}
+
+.compactStatusCard,
+.compactOverviewCard,
+.compactQuickCard {
+  border: 1px solid rgba(216, 180, 254, 0.16);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(31, 17, 48, 0.94), rgba(17, 9, 29, 0.96));
+  box-shadow: 0 22px 55px rgba(4, 1, 10, 0.28);
+}
+
+.compactStatusCard {
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+}
+
+.compactStatusCard::after {
+  position: absolute;
+  top: -90px;
+  right: -70px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.09);
+  content: "";
+  pointer-events: none;
+}
+
+.compactStatusSuccess { border-color: rgba(74, 222, 128, 0.25); }
+.compactStatusWaiting { border-color: rgba(250, 204, 21, 0.2); }
+.compactStatusLeave { border-color: rgba(96, 165, 250, 0.24); }
+
+.compactStatusHeader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.compactStatusIcon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(135deg, #7c3aed, #d946ef);
+  box-shadow: 0 14px 30px rgba(124, 58, 237, 0.28);
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.compactStatusSuccess .compactStatusIcon { background: linear-gradient(135deg, #16a34a, #4ade80); }
+.compactStatusWaiting .compactStatusIcon { background: linear-gradient(135deg, #d97706, #facc15); }
+.compactStatusLeave .compactStatusIcon { background: linear-gradient(135deg, #2563eb, #60a5fa); }
+
+.compactStatusHeading {
+  min-width: 0;
+  flex: 1;
+}
+
+.compactStatusHeading small,
+.compactStatusHeading p {
+  display: block;
+  color: #bba9d3;
+}
+
+.compactStatusHeading small {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.compactStatusHeading h2 {
+  margin: 4px 0;
+  color: #fff;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1.2;
+}
+
+.compactStatusHeading p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.compactInfoGrid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 180, 254, 0.13);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.compactInfoGrid > div {
+  min-width: 0;
+  padding: 18px;
+  border-right: 1px solid rgba(216, 180, 254, 0.1);
+}
+
+.compactInfoGrid > div:last-child { border-right: 0; }
+
+.compactInfoGrid small,
+.compactInfoGrid strong {
+  display: block;
+}
+
+.compactInfoGrid small {
+  color: #a997c0;
+  font-size: 12px;
+}
+
+.compactInfoGrid strong {
+  margin-top: 7px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compactActionArea {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.compactCheckInButton {
+  display: flex;
+  width: min(100%, 520px);
+  min-height: 62px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  box-shadow: 0 16px 34px rgba(34, 197, 94, 0.24);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.compactCheckInButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.compactCheckInButton span { font-size: 24px; }
+
+.compactActionArea > small {
+  color: #a997c0;
+  font-size: 12px;
+}
+
+.compactCompletedNotice,
+.compactLeaveNotice {
+  position: relative;
+  z-index: 1;
+  margin-top: 22px;
+  border-radius: 18px;
+}
+
+.compactCompletedNotice {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 18px;
+  color: #dcfce7;
+  background: rgba(34, 197, 94, 0.11);
+}
+
+.compactCompletedNotice > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #22c55e;
+  font-weight: 900;
+}
+
+.compactCompletedNotice strong,
+.compactCompletedNotice small {
+  display: block;
+}
+
+.compactCompletedNotice small {
+  margin-top: 3px;
+  color: #a7f3d0;
+}
+
+.compactLeaveNotice {
+  padding: 18px;
+  color: #dbeafe;
+  background: rgba(59, 130, 246, 0.11);
+}
+
+.compactLeaveNotice p {
+  margin: 7px 0 14px;
+  color: #bfdbfe;
+}
+
+.compactLeaveNotice button,
+.compactSectionHeading button {
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  border-radius: 12px;
+  color: #dbeafe;
+  background: rgba(37, 99, 235, 0.14);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.compactLeaveNotice button { padding: 10px 14px; }
+
+.compactBottomGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.compactOverviewCard,
+.compactQuickCard {
+  padding: 22px;
+}
+
+.compactSectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.compactSectionHeading small {
+  color: #a997c0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+}
+
+.compactSectionHeading h2 {
+  margin: 4px 0 0;
+  color: #fff;
+  font-size: 19px;
+}
+
+.compactSectionHeading button {
+  padding: 9px 12px;
+  font-size: 12px;
+}
+
+.compactOverviewGrid,
+.compactQuickGrid {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.compactOverviewGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.compactOverviewGrid > div {
+  padding: 16px;
+  border: 1px solid rgba(216, 180, 254, 0.11);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.compactOverviewGrid span,
+.compactOverviewGrid small,
+.compactOverviewGrid strong {
+  display: block;
+}
+
+.compactOverviewGrid span {
+  color: #c084fc;
+  font-size: 22px;
+}
+
+.compactOverviewGrid small {
+  margin-top: 10px;
+  color: #a997c0;
+  font-size: 11px;
+}
+
+.compactOverviewGrid strong {
+  margin-top: 5px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.compactQuickGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.compactQuickGrid button {
+  display: grid;
+  min-height: 132px;
+  align-content: center;
+  justify-items: start;
+  padding: 17px;
+  border: 1px solid rgba(216, 180, 254, 0.12);
+  border-radius: 17px;
+  color: #f8f5ff;
+  background: rgba(255, 255, 255, 0.035);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.compactQuickGrid button:hover {
+  border-color: rgba(192, 132, 252, 0.34);
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.compactQuickGrid span,
+.compactQuickGrid strong,
+.compactQuickGrid small {
+  display: block;
+}
+
+.compactQuickGrid span {
+  color: #c084fc;
+  font-size: 26px;
+}
+
+.compactQuickGrid strong {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.compactQuickGrid small {
+  margin-top: 5px;
+  color: #a997c0;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .compactInfoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compactInfoGrid > div:nth-child(2n) { border-right: 0; }
+
+  .compactInfoGrid > div:nth-child(n + 3) {
+    border-top: 1px solid rgba(216, 180, 254, 0.1);
+  }
+
+  .compactBottomGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .compactDashboard { gap: 13px; }
+
+  .compactStatusCard,
+  .compactOverviewCard,
+  .compactQuickCard {
+    border-radius: 20px;
+  }
+
+  .compactStatusCard { padding: 18px; }
+  .compactStatusHeader { align-items: flex-start; }
+
+  .compactStatusIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+    font-size: 23px;
+  }
+
+  .compactStatusHeading h2 { font-size: 21px; }
+
+  .compactStatusHeader > .badgeNormal,
+  .compactStatusHeader > .badgeLate {
+    position: absolute;
+    top: 60px;
+    left: 64px;
+  }
+
+  .compactInfoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 30px;
+  }
+
+  .compactInfoGrid > div { padding: 14px; }
+
+  .compactInfoGrid strong {
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .compactCheckInButton {
+    min-height: 58px;
+    border-radius: 16px;
+  }
+
+  .compactOverviewCard,
+  .compactQuickCard {
+    padding: 17px;
+  }
+
+  .compactOverviewGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .compactOverviewGrid > div { padding: 12px 9px; }
+  .compactOverviewGrid strong { font-size: 11px; }
+
+  .compactQuickGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .compactQuickGrid button {
+    min-height: 112px;
+    padding: 12px 9px;
+  }
+
+  .compactQuickGrid span { font-size: 22px; }
+  .compactQuickGrid strong { font-size: 11px; }
+  .compactQuickGrid small { display: none; }
+}
+
+@media (max-width: 420px) {
+  .compactInfoGrid { grid-template-columns: 1fr; }
+
+  .compactInfoGrid > div,
+  .compactInfoGrid > div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .compactInfoGrid > div:nth-child(n + 2) {
+    border-top: 1px solid rgba(216, 180, 254, 0.1);
   }
 }
