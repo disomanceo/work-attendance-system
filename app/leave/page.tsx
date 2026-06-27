@@ -128,7 +128,6 @@ export default function LeavePage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
-  const [lateSubmissionReason, setLateSubmissionReason] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [evidenceDescription, setEvidenceDescription] = useState("");
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -142,6 +141,7 @@ export default function LeavePage() {
   const [pendingRequests, setPendingRequests] =
     useState<AdminPendingLeaveRequest[]>([]);
   const [processingId, setProcessingId] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const getToken = useCallback(async () => {
     const {
@@ -320,8 +320,8 @@ export default function LeavePage() {
       form.set("startDate", startDate);
       form.set("endDate", endDate);
       form.set("reason", reason);
-      form.set("lateSubmissionReason", lateSubmissionReason);
-      form.set("evidenceDescription", attachment ? evidenceDescription.trim() : "-");
+      form.set("lateSubmissionReason", "");
+      form.set("evidenceDescription", attachment ? evidenceDescription.trim() || "-" : "-");
       if (attachment) form.set("attachment", attachment);
 
       const response = await fetchWithTimeout("/api/leave", {
@@ -343,7 +343,6 @@ export default function LeavePage() {
       setStartDate("");
       setEndDate("");
       setReason("");
-      setLateSubmissionReason("");
       setAttachment(null);
       setEvidenceDescription("");
       if (attachmentInputRef.current) {
@@ -470,14 +469,53 @@ export default function LeavePage() {
 
   return (
     <main className={styles.page}>
+      <aside className={styles.appSidebar} aria-label="เมนูหลัก">
+        <a href="/attendance">
+          <span>◷</span>
+          <strong>การลงเวลา</strong>
+        </a>
+        <a href="/leave" className={styles.navActive}>
+          <span>▤</span>
+          <strong>ขออนุญาตลา</strong>
+        </a>
+        <a
+          href={
+            ["director", "admin"].includes(profileRole)
+              ? "/admin/attendance"
+              : "/attendance/history"
+          }
+        >
+          <span>▥</span>
+          <strong>รายงาน</strong>
+        </a>
+        <a
+          href={
+            ["director", "admin"].includes(profileRole)
+              ? "/admin/settings"
+              : "/account/profile"
+          }
+        >
+          <span>⚙</span>
+          <strong>ตั้งค่า</strong>
+        </a>
+      </aside>
+
+      <div className={styles.pageContent}>
 <header className={styles.header}>
-        <div>
-          <small>LEAVE MANAGEMENT</small>
-          <h1>ขออนุญาตลาป่วย-ลากิจ</h1>
-          <p>ยื่นคำขอลา ตรวจสอบประวัติ และติดตามผลการพิจารณา</p>
-        </div>
-        <a href="/attendance">กลับหน้าลงเวลา</a>
-      </header>
+          <a
+            href="/attendance"
+            className={styles.backButton}
+            aria-label="กลับหน้าลงเวลา"
+            title="กลับหน้าลงเวลา"
+          >
+            ‹
+          </a>
+
+          <div className={styles.headerTitle}>
+            <h1>ขออนุญาตลาป่วย-ลากิจ</h1>
+            <p>กรอกข้อมูลเพื่อยื่นใบลา</p>
+          </div>
+        </header>
 
       {summary && leaveSettings && (
         <section className={styles.summaryGrid}>
@@ -495,16 +533,7 @@ export default function LeavePage() {
             <strong>
               {summary.sick.days} วัน
             </strong>
-            <span>
-              ใช้ไป {summary.sick.times} ครั้ง · สิทธิ์{" "}
-              {leaveSettings.sickLeaveDays} วัน · คงเหลือ{" "}
-              {Math.max(
-                leaveSettings.sickLeaveDays -
-                  summary.sick.days,
-                0
-              )}{" "}
-              วัน
-            </span>
+            <span>จาก {leaveSettings.sickLeaveDays} วัน</span>
           </article>
 
           <article>
@@ -512,16 +541,7 @@ export default function LeavePage() {
             <strong>
               {summary.personal.days} วัน
             </strong>
-            <span>
-              ใช้ไป {summary.personal.times} ครั้ง · สิทธิ์{" "}
-              {leaveSettings.personalLeaveDays} วัน · คงเหลือ{" "}
-              {Math.max(
-                leaveSettings.personalLeaveDays -
-                  summary.personal.days,
-                0
-              )}{" "}
-              วัน
-            </span>
+            <span>จาก {leaveSettings.personalLeaveDays} วัน</span>
           </article>
         </section>
       )}
@@ -531,7 +551,7 @@ export default function LeavePage() {
 
       <section className={styles.grid}>
         <form className={styles.formCard} onSubmit={submitLeave}>
-          <h2>ยื่นใบลา</h2>
+          <h2>เลือกประเภทการลา</h2>
 
           <div className={styles.typeGrid}>
             <button
@@ -585,19 +605,7 @@ export default function LeavePage() {
               onChange={(event) => setReason(event.target.value)}
               placeholder="ระบุเหตุผลอย่างน้อย 5 ตัวอักษร"
             />
-          </label>
-
-          <label>
-            เหตุผลกรณียื่นเกินกำหนด
-            <textarea
-              minLength={5}
-              maxLength={300}
-              rows={3}
-              value={lateSubmissionReason}
-              onChange={(event) => setLateSubmissionReason(event.target.value)}
-              placeholder="กรอกเฉพาะกรณีย้อนหลังเกิน 3 วันทำการ"
-            />
-          </label>
+          </label>
 
           <div>
             <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
@@ -703,15 +711,14 @@ export default function LeavePage() {
                 </div>
 
                 <label>
-                  ระบุหลักฐาน
+                  คำอธิบายใต้รูป (ไม่บังคับ)
                   <input
                     type="text"
-                    required
                     minLength={2}
                     maxLength={100}
                     value={evidenceDescription}
                     onChange={(event) => setEvidenceDescription(event.target.value)}
-                    placeholder="เช่น ใบรับรองแพทย์ หรือ รูปถ่าย"
+                    placeholder="เช่น ใบรับรองแพทย์ หรือรายละเอียดเพิ่มเติม"
                   />
                 </label>
               </div>
@@ -734,19 +741,29 @@ export default function LeavePage() {
         </form>
 
         <section className={styles.historyCard}>
-          <div className={styles.cardHeading}>
-            <h2>
-              {["director", "admin"].includes(profileRole)
-                ? "ประวัติและพิจารณาใบลา"
-                : "ประวัติการลา"}
-            </h2>
-            <button type="button" onClick={() => void loadData()}>
-              รีเฟรช
-            </button>
-          </div>
+          <button
+            type="button"
+            className={styles.historyToggle}
+            onClick={() => setHistoryOpen((current) => !current)}
+            aria-expanded={historyOpen}
+          >
+            <span className={styles.historyToggleIcon}>◷</span>
+            <strong>ประวัติการลา {requests.length} รายการ</strong>
+            <span className={styles.historyToggleAction}>
+              {historyOpen ? "ซ่อนประวัติ" : "ดูประวัติทั้งหมด"}
+              <b className={historyOpen ? styles.chevronOpen : ""}>⌄</b>
+            </span>
+          </button>
 
+          {historyOpen && (
+            <div className={styles.historyContent}>
+              <div className={styles.historyTools}>
+                <button type="button" onClick={() => void loadData()}>
+                  รีเฟรชข้อมูล
+                </button>
+              </div>
 
-          {["director", "admin"].includes(profileRole) && (
+              {["director", "admin"].includes(profileRole) && (
             <section className={styles.reviewSection}>
               <div className={styles.reviewHeading}>
                 <div>
@@ -934,9 +951,43 @@ export default function LeavePage() {
               ))}
             </div>
           )}
-        </section>
+                    </div>
+          )}
+</section>
       </section>
-    </main>
+          </div>
+
+      <nav className={styles.bottomNav} aria-label="เมนูมือถือ">
+        <a href="/attendance">
+          <span>◷</span>
+          <small>การลงเวลา</small>
+        </a>
+        <a href="/leave" className={styles.navActive}>
+          <span>▤</span>
+          <small>ขออนุญาตลา</small>
+        </a>
+        <a
+          href={
+            ["director", "admin"].includes(profileRole)
+              ? "/admin/attendance"
+              : "/attendance/history"
+          }
+        >
+          <span>▥</span>
+          <small>รายงาน</small>
+        </a>
+        <a
+          href={
+            ["director", "admin"].includes(profileRole)
+              ? "/admin/settings"
+              : "/account/profile"
+          }
+        >
+          <span>⚙</span>
+          <small>ตั้งค่า</small>
+        </a>
+      </nav>
+</main>
   );
 }
 
