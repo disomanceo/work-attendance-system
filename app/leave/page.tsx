@@ -52,12 +52,15 @@ type Summary = {
   fiscalYear: number;
   sick: { times: number; days: number };
   personal: { times: number; days: number };
+  combined: { times: number; days: number };
 };
 
 type LeaveSettings = {
   fiscalYear: number;
   sickLeaveDays: number;
   personalLeaveDays: number;
+  combinedLeaveTimesLimit: number;
+  combinedLeaveDaysLimit: number;
 };
 
 function thaiFiscalYear(year: number | null | undefined) {
@@ -240,23 +243,25 @@ export default function LeavePage() {
       const settings: LeaveSettings =
         settingsResult.settings;
 
-      const approvedCurrentYear =
-        loadedRequests.filter(
-          (item) =>
-            item.status === "approved" &&
-            Number(item.fiscal_year) ===
-              Number(settings.fiscalYear)
-        );
+      const countedStatuses = new Set([
+        "pending",
+        "approved",
+        "rejected",
+      ]);
 
-      const sickRequests =
-        approvedCurrentYear.filter(
-          (item) => item.leave_type === "sick"
-        );
+      const countedCurrentYear = loadedRequests.filter(
+        (item) =>
+          countedStatuses.has(item.status) &&
+          Number(item.fiscal_year) === Number(settings.fiscalYear)
+      );
 
-      const personalRequests =
-        approvedCurrentYear.filter(
-          (item) => item.leave_type === "personal"
-        );
+      const sickRequests = countedCurrentYear.filter(
+        (item) => item.leave_type === "sick"
+      );
+
+      const personalRequests = countedCurrentYear.filter(
+        (item) => item.leave_type === "personal"
+      );
 
       const calculatedSummary: Summary = {
         fiscalYear: settings.fiscalYear,
@@ -275,6 +280,14 @@ export default function LeavePage() {
             (total, item) =>
               total +
               Number(item.total_work_days || 0),
+            0
+          ),
+        },
+        combined: {
+          times: countedCurrentYear.length,
+          days: countedCurrentYear.reduce(
+            (total, item) =>
+              total + Number(item.total_work_days || 0),
             0
           ),
         },
@@ -591,6 +604,57 @@ export default function LeavePage() {
           </article>
         </section>
       )}
+      {summary && leaveSettings && (
+        <section
+          className={`${styles.combinedQuotaCard} ${
+            summary.combined.times >
+              leaveSettings.combinedLeaveTimesLimit ||
+            summary.combined.days >
+              leaveSettings.combinedLeaveDaysLimit
+              ? styles.combinedQuotaExceeded
+              : ""
+          }`}
+        >
+          <div className={styles.combinedQuotaHeading}>
+            <div>
+              <small>เกณฑ์รวมลาป่วยและลากิจ</small>
+              <h2>นับรายการยื่นลาในปีงบประมาณ {summary.fiscalYear}</h2>
+            </div>
+            <span>ไม่นับรายการยกเลิกหรือลบแล้ว</span>
+          </div>
+
+          <div className={styles.combinedQuotaGrid}>
+            <article>
+              <small>จำนวนครั้งรวม</small>
+              <strong>
+                {summary.combined.times} /{" "}
+                {leaveSettings.combinedLeaveTimesLimit}
+              </strong>
+              <span>ครั้ง</span>
+            </article>
+
+            <article>
+              <small>จำนวนวันรวม</small>
+              <strong>
+                {summary.combined.days} /{" "}
+                {leaveSettings.combinedLeaveDaysLimit}
+              </strong>
+              <span>วัน</span>
+            </article>
+          </div>
+
+          {(summary.combined.times >
+            leaveSettings.combinedLeaveTimesLimit ||
+            summary.combined.days >
+              leaveSettings.combinedLeaveDaysLimit) && (
+            <p className={styles.combinedQuotaWarning}>
+              ⚠ เกินเกณฑ์รวมที่กำหนด แต่ยังยื่นใบลาได้
+            </p>
+          )}
+        </section>
+      )}
+
+
 
       {message && <div className={styles.success}>{message}</div>}
       {errorMessage && <div className={styles.error}>{errorMessage}</div>}

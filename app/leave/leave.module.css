@@ -2660,3 +2660,101 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+
+/* Combined sick and personal leave quota */
+
+.combinedQuotaCard {
+  width: min(100%, 820px);
+  margin: 0 auto 18px;
+  padding: 18px;
+  border: 1px solid #d9cde5;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(255,255,255,.95));
+  box-shadow: 0 10px 28px rgba(70, 50, 90, 0.06);
+}
+
+.combinedQuotaHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.combinedQuotaHeading small {
+  color: #78549a;
+  font-weight: 900;
+}
+
+.combinedQuotaHeading h2 {
+  margin: 4px 0 0;
+  color: #412d55;
+  font-size: 17px;
+}
+
+.combinedQuotaHeading > span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  color: #6f6179;
+  background: #f3eff6;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.combinedQuotaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.combinedQuotaGrid article {
+  padding: 14px;
+  border: 1px solid #e2d9e9;
+  border-radius: 15px;
+  background: #fff;
+  text-align: center;
+}
+
+.combinedQuotaGrid small,
+.combinedQuotaGrid span {
+  display: block;
+  color: #84748f;
+}
+
+.combinedQuotaGrid strong {
+  display: block;
+  margin: 5px 0 2px;
+  color: #5f367f;
+  font-size: 25px;
+}
+
+.combinedQuotaExceeded {
+  border-color: #ef9aa5;
+}
+
+.combinedQuotaWarning {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: #a61b2b;
+  background: #fff1f2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 800px) {
+  .combinedQuotaCard {
+    padding: 14px;
+  }
+
+  .combinedQuotaHeading {
+    display: block;
+  }
+
+  .combinedQuotaHeading > span {
+    display: inline-flex;
+    margin-top: 8px;
+  }
+}

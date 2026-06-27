@@ -342,23 +342,45 @@ export async function GET(request: Request) {
 
     if (error) throw new Error("โหลดประวัติการลาไม่สำเร็จ");
 
-    const approved = (requests ?? []).filter(
-      (item) => item.status === "approved" && item.fiscal_year === fiscalYear
+    const countedStatuses = new Set([
+      "pending",
+      "approved",
+      "rejected",
+    ]);
+
+    const counted = (requests ?? []).filter(
+      (item) =>
+        countedStatuses.has(String(item.status)) &&
+        Number(item.fiscal_year) === fiscalYear
+    );
+
+    const sick = counted.filter((item) => item.leave_type === "sick");
+    const personal = counted.filter(
+      (item) => item.leave_type === "personal"
     );
 
     const summary = {
       fiscalYear,
       sick: {
-        times: approved.filter((item) => item.leave_type === "sick").length,
-        days: approved
-          .filter((item) => item.leave_type === "sick")
-          .reduce((sum, item) => sum + Number(item.total_work_days), 0),
+        times: sick.length,
+        days: sick.reduce(
+          (sum, item) => sum + Number(item.total_work_days || 0),
+          0
+        ),
       },
       personal: {
-        times: approved.filter((item) => item.leave_type === "personal").length,
-        days: approved
-          .filter((item) => item.leave_type === "personal")
-          .reduce((sum, item) => sum + Number(item.total_work_days), 0),
+        times: personal.length,
+        days: personal.reduce(
+          (sum, item) => sum + Number(item.total_work_days || 0),
+          0
+        ),
+      },
+      combined: {
+        times: counted.length,
+        days: counted.reduce(
+          (sum, item) => sum + Number(item.total_work_days || 0),
+          0
+        ),
       },
     };
 

@@ -17,7 +17,9 @@ type Policy = {
   personal_leave_days: number;
   late_limit_count: number;
   grace_minutes: number;
-  is_active: boolean;
+    combined_leave_times_limit: number;
+  combined_leave_days_limit: number;
+is_active: boolean;
 };
 
 type RoleRow = {
@@ -128,7 +130,9 @@ export default function PositionWorkPolicySection({
       | "sick_leave_days"
       | "personal_leave_days"
       | "late_limit_count"
-      | "grace_minutes",
+      | "grace_minutes"
+      | "combined_leave_times_limit"
+      | "combined_leave_days_limit",
     value: number
   ) {
     setPolicies((current) =>
@@ -341,6 +345,43 @@ export default function PositionWorkPolicySection({
                       }
                     />
                   </label>
+                  <label>
+                    <span>เกณฑ์รวมลา (ครั้ง)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="999"
+                      className={styles.policyInput}
+                      value={policy.combined_leave_times_limit}
+                      onChange={(event) =>
+                        updatePolicy(
+                          role.key,
+                          "combined_leave_times_limit",
+                          Number(event.target.value)
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>เกณฑ์รวมลา (วัน)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="365"
+                      className={styles.policyInput}
+                      value={policy.combined_leave_days_limit}
+                      onChange={(event) =>
+                        updatePolicy(
+                          role.key,
+                          "combined_leave_days_limit",
+                          Number(event.target.value)
+                        )
+                      }
+                    />
+                  </label>
+
+
 
                   <label>
                     <span>มาสายได้ (ครั้ง)</span>
@@ -406,7 +447,7 @@ export default function PositionWorkPolicySection({
       >
         {saving
           ? "กำลังบันทึกสิทธิ์..."
-          : "บันทึกสิทธิ์การลาและเกณฑ์มาสาย"}
+          : "บันทึกสิทธิ์การลา เกณฑ์รวม และเกณฑ์มาสาย"}
       </button>
     </section>
   );

@@ -10,7 +10,9 @@ type PolicyInput = {
   personal_leave_days: number;
   late_limit_count: number;
   grace_minutes: number;
-  is_active: boolean;
+    combined_leave_times_limit: number;
+  combined_leave_days_limit: number;
+is_active: boolean;
 };
 
 const ROLE_KEYS: RoleKey[] = [
@@ -227,6 +229,8 @@ export async function GET(request: Request) {
         personal_leave_days,
         late_limit_count,
         grace_minutes,
+        combined_leave_times_limit,
+        combined_leave_days_limit,
         is_active
       `
     )
@@ -259,9 +263,11 @@ export async function GET(request: Request) {
       existing ?? {
         role_key: roleKey,
         fiscal_year: activeFiscalYear,
-        sick_leave_days: 30,
-        personal_leave_days: 15,
-        late_limit_count: 5,
+        sick_leave_days: 23,
+        personal_leave_days: 23,
+        
+        combined_leave_times_limit: 6,
+        combined_leave_days_limit: 23,late_limit_count: 5,
         grace_minutes: 0,
         is_active: true,
       }
@@ -340,13 +346,25 @@ export async function PUT(request: Request) {
       0,
       180
     );
+    const combinedLeaveTimesLimit = validInteger(
+      item?.combined_leave_times_limit,
+      0,
+      999
+    );
+    const combinedLeaveDaysLimit = validInteger(
+      item?.combined_leave_days_limit,
+      0,
+      365
+    );
 
     if (
       !ROLE_KEYS.includes(roleKey) ||
       sickLeaveDays === null ||
       personalLeaveDays === null ||
       lateLimitCount === null ||
-      graceMinutes === null
+      graceMinutes === null ||
+      combinedLeaveTimesLimit === null ||
+      combinedLeaveDaysLimit === null
     ) {
       return NextResponse.json(
         {
@@ -366,6 +384,8 @@ export async function PUT(request: Request) {
         personalLeaveDays,
       late_limit_count: lateLimitCount,
       grace_minutes: graceMinutes,
+      combined_leave_times_limit: combinedLeaveTimesLimit,
+      combined_leave_days_limit: combinedLeaveDaysLimit,
       is_active: Boolean(item?.is_active),
     });
   }
@@ -398,7 +418,7 @@ export async function PUT(request: Request) {
   return NextResponse.json({
     ok: true,
     message:
-      "บันทึกสิทธิ์การลาและเกณฑ์มาสายเรียบร้อยแล้ว",
+      "บันทึกสิทธิ์การลา เกณฑ์รวม และเกณฑ์มาสายเรียบร้อยแล้ว",
     policies: data,
   });
 }

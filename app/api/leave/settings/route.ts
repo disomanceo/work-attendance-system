@@ -191,7 +191,9 @@ export async function GET(request: Request) {
         `
           sick_leave_days,
           personal_leave_days,
-          late_limit_count,
+          
+          combined_leave_times_limit,
+          combined_leave_days_limit,late_limit_count,
           grace_minutes
         `
       )
@@ -239,6 +241,10 @@ export async function GET(request: Request) {
         policy.sick_leave_days,
       personalLeaveDays:
         policy.personal_leave_days,
+      combinedLeaveTimesLimit:
+        policy.combined_leave_times_limit,
+      combinedLeaveDaysLimit:
+        policy.combined_leave_days_limit,
       lateLimitCount:
         policy.late_limit_count,
       graceMinutes:
