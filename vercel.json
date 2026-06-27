@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/auto-checkout",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/attendance-daily-pdf",
+      "schedule": "0 11 * * *"
     }
   ]
 }
