@@ -69,6 +69,17 @@ type TodayLeaveResponse = {
   leave?: TodayLeave | null;
 };
 
+type MonthlySummary = {
+  normal: number;
+  late: number;
+  leave: number;
+};
+
+type MonthlySummaryResponse = {
+  ok: boolean;
+  message?: string;
+  summary?: MonthlySummary;
+};
 type MenuItem = {
   label: string;
   icon: string;
@@ -211,6 +222,9 @@ export default function AttendancePage() {
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [record, setRecord] = useState<AttendanceRecord | null>(null);
   const [todayLeave, setTodayLeave] = useState<TodayLeave | null>(null);
+  const [monthlySummary, setMonthlySummary] =
+    useState<MonthlySummary | null>(null);
+  const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(true);
   const [now, setNow] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -275,6 +289,31 @@ export default function AttendancePage() {
     [supabase]
   );
 
+  async function loadMonthlySummary(accessToken: string) {
+    setMonthlySummaryLoading(true);
+
+    try {
+      const response = await fetch("/api/attendance/monthly-summary", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      });
+
+      const result = (await response.json()) as MonthlySummaryResponse;
+
+      if (!response.ok || !result.ok || !result.summary) {
+        throw new Error(result.message || "โหลดสรุปรายเดือนไม่สำเร็จ");
+      }
+
+      setMonthlySummary(result.summary);
+    } catch (error) {
+      console.error("Load monthly summary error:", error);
+      setMonthlySummary(null);
+    } finally {
+      setMonthlySummaryLoading(false);
+    }
+  }
   const loadAttendance = useCallback(async () => {
     setLoading(true);
     setMessage("");
@@ -344,6 +383,7 @@ export default function AttendancePage() {
       setRecord(attendanceData ?? null);
 
       await loadTodayLeave(session.access_token);
+      await loadMonthlySummary(session.access_token);
     } catch (error) {
       console.error("Load attendance error:", error);
       setMessageType("error");
@@ -893,136 +933,40 @@ export default function AttendancePage() {
           </div>
         )}
 
-        <section className={styles.compactDashboard}>
-          <article
-            className={`${styles.compactStatusCard} ${
-              todayLeave
-                ? styles.compactStatusLeave
-                : record?.check_in_at
-                  ? styles.compactStatusSuccess
-                  : styles.compactStatusWaiting
-            }`}
-          >
-            <div className={styles.compactRealtime}>
-              <strong>
-                {new Intl.DateTimeFormat("th-TH", {
-                  timeZone: "Asia/Bangkok",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hour12: false,
-                }).format(now)}
-              </strong>
+        <section className={styles.focusDashboard}>
+          <article className={styles.focusCheckInCard}>
+            <p className={styles.focusDate}>{formatThaiDate(now)}</p>
+
+            <div className={styles.focusClock}>
+              {new Intl.DateTimeFormat("th-TH", {
+                timeZone: "Asia/Bangkok",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
+              }).format(now)}
               <small>เวลาปัจจุบัน</small>
             </div>
 
-            <div className={styles.compactStatusHeader}>
-              <div className={styles.compactStatusIcon} aria-hidden="true">
-                {todayLeave
-                  ? todayLeave.status === "approved"
-                    ? "✓"
-                    : "◷"
-                  : record?.check_in_at
-                    ? "✓"
-                    : "◷"}
-              </div>
-
-              <div className={styles.compactStatusHeading}>
-                <small>สถานะวันนี้</small>
-                <h2>
-                  {todayLeave
-                    ? getLeaveDisplayLabel(todayLeave)
-                    : record?.check_in_at
-                      ? "ลงเวลาเรียบร้อยแล้ว"
-                      : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
-                </h2>
-                <p>{formatThaiDate(now)}</p>
-              </div>
-
-              {record?.check_in_at && !todayLeave && (
-                <span
-                  className={
-                    isLate ? styles.badgeLate : styles.badgeNormal
-                  }
-                >
-                  {checkInStatusLabel}
-                </span>
-              )}
-            </div>
-
-            <div className={styles.compactInfoGrid}>
-              <div>
-                <small>เวลาเข้า</small>
-                <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
-              </div>
-
-              <div>
-                <small>สถานะ</small>
-                <strong>
-                  {todayLeave
-                    ? todayLeave.status === "approved"
-                      ? "อนุมัติแล้ว"
-                      : "รอพิจารณา"
-                    : record?.check_in_at
-                      ? checkInStatusLabel
-                      : "รอลงเวลา"}
-                </strong>
-              </div>
-
-              <div>
-                <small>เวลาปฏิบัติงาน</small>
-                <strong>
-                  {profile.role === "janitor"
-                    ? "08:30 - 18:00 น."
-                    : "08:30 - 16:30 น."}
-                </strong>
-              </div>
-
-              <div>
-                <small>สถานที่ลงเวลา</small>
-                <strong>
-                  {settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}
-                </strong>
-              </div>
-
-              {distanceMeters !== null && (
-                <div>
-                  <small>ระยะห่าง</small>
-                  <strong>
-                    {distanceMeters.toLocaleString("th-TH")} เมตร
-                  </strong>
-                </div>
-              )}
-            </div>
-
             {todayLeave ? (
-              <div className={styles.compactLeaveNotice}>
-                <strong>
-                  {todayLeave.status === "approved"
-                    ? "รายการลาได้รับอนุมัติแล้ว"
-                    : "รายการลาอยู่ระหว่างรอพิจารณา"}
-                </strong>
+              <div className={styles.focusLeaveState}>
+                <span>{todayLeave.status === "approved" ? "✓" : "◷"}</span>
+                <h2>{getLeaveDisplayLabel(todayLeave)}</h2>
                 <p>{todayLeave.message}</p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/leave")}
-                >
+                <button type="button" onClick={() => router.push("/leave")}>
                   ดูรายละเอียดการลา
                 </button>
               </div>
             ) : !record?.check_in_at ? (
-              <div className={styles.compactActionArea}>
+              <div className={styles.focusAction}>
                 <button
                   type="button"
-                  className={styles.compactCheckInButton}
+                  className={styles.focusFingerprintButton}
                   disabled={processing}
                   onClick={() => void handleCheckIn()}
                   aria-label="ลงเวลาปฏิบัติงาน"
                 >
-                  <span
-                    className={styles.compactFingerprintIcon}
-                    aria-hidden="true"
-                  >
+                  <span className={styles.focusFingerprintIcon} aria-hidden="true">
                     <svg viewBox="0 0 64 64">
                       <path d="M32 7C20 7 10 17 10 29c0 7 2 11 2 18" />
                       <path d="M32 14c-9 0-16 7-16 16 0 8 3 13 3 22" />
@@ -1033,117 +977,130 @@ export default function AttendancePage() {
                       <path d="M48 17c7 6 9 13 9 21" />
                     </svg>
                   </span>
-
                   <strong>
-                    {processing
-                      ? "กำลังตรวจสอบ GPS..."
-                      : "ลงเวลาปฏิบัติงาน"}
+                    {processing ? "กำลังตรวจสอบ GPS..." : "ลงเวลาปฏิบัติงาน"}
                   </strong>
-
                   {!processing && <small>แตะเพื่อเช็กอิน</small>}
                 </button>
 
-                <small>
+                <small className={styles.focusGpsHint}>
                   ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา
                 </small>
               </div>
             ) : (
-              <div className={styles.compactCompletedNotice}>
-                <span aria-hidden="true">✓</span>
-                <div>
-                  <strong>บันทึกเวลาของวันนี้เรียบร้อยแล้ว</strong>
-                  <small>
-                    เวลาเข้า {formatThaiTime(record.check_in_at)}
-                  </small>
-                </div>
+              <div className={styles.focusCompletedState}>
+                <span>✓</span>
+                <h2>ลงเวลาเรียบร้อยแล้ว</h2>
+                <strong>เวลาเข้า {formatThaiTime(record.check_in_at)} น.</strong>
+                <p>{formatThaiDate(now)}</p>
               </div>
             )}
           </article>
 
-          <section className={styles.compactBottomGrid}>
-            <article className={styles.compactOverviewCard}>
-              <div className={styles.compactSectionHeading}>
-                <div>
-                  <small>ภาพรวมวันนี้</small>
-                  <h2>ข้อมูลที่สำคัญ</h2>
-                </div>
+          <article className={styles.focusStatusCard}>
+            <div className={styles.focusSectionHeading}>
+              <small>สถานะวันนี้</small>
+              <h2>รายละเอียดการลงเวลา</h2>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={() => router.push(historyHref)}
-                >
-                  ดูประวัติทั้งหมด
-                </button>
+            <div className={styles.focusStatusGrid}>
+              <div>
+                <small>เวลาเข้า</small>
+                <strong>{formatThaiTime(record?.check_in_at ?? null)} น.</strong>
               </div>
 
-              <div className={styles.compactOverviewGrid}>
-                <div>
-                  <span>◷</span>
-                  <small>เวลาปัจจุบัน</small>
-                  <strong>
-                    {new Intl.DateTimeFormat("th-TH", {
+              <div>
+                <small>สถานะ</small>
+                {todayLeave ? (
+                  <span className={styles.focusStatusLeave}>
+                    {getLeaveDisplayLabel(todayLeave)}
+                  </span>
+                ) : !record?.check_in_at ? (
+                  <span className={styles.focusStatusWaiting}>รอลงเวลา</span>
+                ) : isLate ? (
+                  <span className={styles.focusStatusLate}>มาสาย</span>
+                ) : (
+                  <span className={styles.focusStatusNormal}>ปกติ</span>
+                )}
+              </div>
+
+              <div>
+                <small>สถานที่</small>
+                <strong>{settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}</strong>
+              </div>
+
+              <div>
+                <small>ระยะ GPS</small>
+                <strong>
+                  {distanceMeters === null
+                    ? "--"
+                    : `${distanceMeters.toLocaleString("th-TH")} เมตร`}
+                </strong>
+              </div>
+            </div>
+          </article>
+
+          <article className={styles.focusMonthlyCard}>
+            <div className={styles.focusSectionHeading}>
+              <small>สรุปการลงเวลา</small>
+              <h2>
+                {monthlySummary
+                  ? `เดือน${new Intl.DateTimeFormat("th-TH", {
+                      month: "long",
+                      year: "numeric",
                       timeZone: "Asia/Bangkok",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    }).format(now)} น.
-                  </strong>
-                </div>
+                    }).format(now)}`
+                  : "ประจำเดือนนี้"}
+              </h2>
+            </div>
 
-                <div>
-                  <span>▣</span>
-                  <small>วันทำงาน</small>
-                  <strong>จันทร์ - ศุกร์</strong>
-                </div>
+            <div className={styles.focusChart}>
+              {[
+                {
+                  label: "ปกติ",
+                  value: monthlySummary?.normal ?? 0,
+                  className: styles.focusBarNormal,
+                },
+                {
+                  label: "มาสาย",
+                  value: monthlySummary?.late ?? 0,
+                  className: styles.focusBarLate,
+                },
+                {
+                  label: "ลา",
+                  value: monthlySummary?.leave ?? 0,
+                  className: styles.focusBarLeave,
+                },
+              ].map((item) => {
+                const maxValue = Math.max(
+                  monthlySummary?.normal ?? 0,
+                  monthlySummary?.late ?? 0,
+                  monthlySummary?.leave ?? 0,
+                  1
+                );
+                const width = `${Math.max((item.value / maxValue) * 100, item.value ? 8 : 0)}%`;
 
-                <div>
-                  <span>⌖</span>
-                  <small>ระบบ GPS</small>
-                  <strong>
-                    {settings?.gps_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}
-                  </strong>
-                </div>
-              </div>
-            </article>
+                return (
+                  <div className={styles.focusChartRow} key={item.label}>
+                    <span>{item.label}</span>
+                    <div className={styles.focusChartTrack}>
+                      <i
+                        className={item.className}
+                        style={{ width }}
+                      />
+                    </div>
+                    <strong>{item.value} วัน</strong>
+                  </div>
+                );
+              })}
+            </div>
 
-            <article className={styles.compactQuickCard}>
-              <div className={styles.compactSectionHeading}>
-                <div>
-                  <small>ทางลัด</small>
-                  <h2>เมนูที่ใช้บ่อย</h2>
-                </div>
-              </div>
-
-              <div className={styles.compactQuickGrid}>
-                <button
-                  type="button"
-                  onClick={() => router.push(historyHref)}
-                >
-                  <span>◷</span>
-                  <strong>ประวัติการลงเวลา</strong>
-                  <small>ตรวจสอบข้อมูลย้อนหลัง</small>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => router.push("/leave")}
-                >
-                  <span>▤</span>
-                  <strong>ขออนุญาตลา</strong>
-                  <small>ยื่นลาและดูสถานะ</small>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => router.push("/account/profile")}
-                >
-                  <span>♙</span>
-                  <strong>ข้อมูลส่วนตัว</strong>
-                  <small>แก้ไขข้อมูลและเอกสาร</small>
-                </button>
-              </div>
-            </article>
-          </section>
+            {monthlySummaryLoading && (
+              <p className={styles.focusSummaryNote}>
+                กำลังโหลดข้อมูลสรุปรายเดือน...
+              </p>
+            )}
+          </article>
         </section>
       </section>
 

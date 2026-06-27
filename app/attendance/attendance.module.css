@@ -2331,3 +2331,406 @@
     height: 68px;
   }
 }
+
+/* ATTENDANCE FOCUS LAYOUT V4 */
+.focusDashboard {
+  display: grid;
+  gap: 18px;
+}
+
+.focusCheckInCard,
+.focusStatusCard,
+.focusMonthlyCard {
+  border: 1px solid rgba(216, 180, 254, 0.15);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(31, 17, 48, 0.95), rgba(17, 9, 29, 0.97));
+  box-shadow: 0 22px 55px rgba(4, 1, 10, 0.28);
+}
+
+.focusCheckInCard {
+  display: grid;
+  justify-items: center;
+  padding: 26px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.focusDate {
+  margin: 0;
+  color: #ddd0ef;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.focusClock {
+  display: grid;
+  justify-items: center;
+  margin-top: 14px;
+  color: #fff;
+  font-size: clamp(42px, 7vw, 68px);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.focusClock small {
+  margin-top: 9px;
+  color: #a997c0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.focusAction {
+  display: grid;
+  justify-items: center;
+  gap: 13px;
+  margin-top: 24px;
+}
+
+.focusFingerprintButton {
+  display: grid;
+  width: 220px;
+  height: 220px;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  padding: 22px;
+  border: 8px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  color: #fff;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2), transparent 24%),
+    linear-gradient(145deg, #22c55e, #15803d);
+  box-shadow:
+    0 0 0 10px rgba(34, 197, 94, 0.1),
+    0 26px 56px rgba(22, 163, 74, 0.34),
+    inset 0 -12px 24px rgba(20, 83, 45, 0.28);
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.focusFingerprintButton:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.015);
+}
+
+.focusFingerprintButton:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.focusFingerprintButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.focusFingerprintIcon {
+  display: grid;
+  width: 82px;
+  height: 82px;
+  place-items: center;
+}
+
+.focusFingerprintIcon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.focusFingerprintButton strong {
+  font-size: 15px;
+}
+
+.focusFingerprintButton small {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+}
+
+.focusGpsHint {
+  color: #a997c0;
+  font-size: 12px;
+}
+
+.focusCompletedState,
+.focusLeaveState {
+  display: grid;
+  justify-items: center;
+  margin-top: 24px;
+}
+
+.focusCompletedState > span,
+.focusLeaveState > span {
+  display: grid;
+  width: 116px;
+  height: 116px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #22c55e, #15803d);
+  box-shadow: 0 22px 45px rgba(34, 197, 94, 0.28);
+  font-size: 58px;
+  font-weight: 900;
+}
+
+.focusCompletedState h2,
+.focusLeaveState h2 {
+  margin: 18px 0 6px;
+  color: #fff;
+  font-size: 25px;
+}
+
+.focusCompletedState strong {
+  color: #dcfce7;
+  font-size: 17px;
+}
+
+.focusCompletedState p,
+.focusLeaveState p {
+  margin: 8px 0 0;
+  color: #bba9d3;
+}
+
+.focusLeaveState > span {
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+}
+
+.focusLeaveState button {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  border-radius: 12px;
+  color: #dbeafe;
+  background: rgba(37, 99, 235, 0.16);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.focusStatusCard,
+.focusMonthlyCard {
+  padding: 22px;
+}
+
+.focusSectionHeading small {
+  color: #a997c0;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+}
+
+.focusSectionHeading h2 {
+  margin: 4px 0 0;
+  color: #fff;
+  font-size: 20px;
+}
+
+.focusStatusGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 180, 254, 0.11);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.focusStatusGrid > div {
+  min-width: 0;
+  padding: 17px;
+  border-right: 1px solid rgba(216, 180, 254, 0.09);
+}
+
+.focusStatusGrid > div:last-child {
+  border-right: 0;
+}
+
+.focusStatusGrid small,
+.focusStatusGrid strong {
+  display: block;
+}
+
+.focusStatusGrid small {
+  color: #a997c0;
+  font-size: 11px;
+}
+
+.focusStatusGrid strong {
+  margin-top: 7px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.focusStatusNormal,
+.focusStatusLate,
+.focusStatusWaiting,
+.focusStatusLeave {
+  display: inline-flex;
+  min-width: 74px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 7px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.focusStatusNormal {
+  border: 1px solid rgba(34, 197, 94, 0.36);
+  color: #166534;
+  background: #dcfce7;
+}
+
+.focusStatusLate {
+  border: 1px solid rgba(239, 68, 68, 0.36);
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.focusStatusWaiting {
+  border: 1px solid rgba(245, 158, 11, 0.36);
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.focusStatusLeave {
+  border: 1px solid rgba(139, 92, 246, 0.36);
+  color: #6b21a8;
+  background: #f3e8ff;
+}
+
+.focusChart {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.focusChartRow {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 12px;
+}
+
+.focusChartRow > span {
+  color: #ddd0ef;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.focusChartRow > strong {
+  color: #fff;
+  font-size: 13px;
+  text-align: right;
+}
+
+.focusChartTrack {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.focusChartTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+
+.focusBarNormal { background: linear-gradient(90deg, #16a34a, #4ade80); }
+.focusBarLate { background: linear-gradient(90deg, #dc2626, #fb7185); }
+.focusBarLeave { background: linear-gradient(90deg, #7c3aed, #c084fc); }
+
+.focusSummaryNote {
+  margin: 14px 0 0;
+  color: #a997c0;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .topBar {
+    display: none;
+  }
+
+  .focusDashboard {
+    gap: 13px;
+    margin-top: -4px;
+  }
+
+  .focusCheckInCard,
+  .focusStatusCard,
+  .focusMonthlyCard {
+    border-radius: 20px;
+  }
+
+  .focusCheckInCard {
+    min-height: calc(100svh - 126px);
+    padding: 18px 15px 22px;
+    align-content: start;
+  }
+
+  .focusDate {
+    font-size: 14px;
+  }
+
+  .focusClock {
+    margin-top: 12px;
+    font-size: 44px;
+  }
+
+  .focusAction {
+    margin-top: 20px;
+  }
+
+  .focusFingerprintButton {
+    width: 204px;
+    height: 204px;
+  }
+
+  .focusStatusCard,
+  .focusMonthlyCard {
+    padding: 17px;
+  }
+
+  .focusStatusGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focusStatusGrid > div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .focusStatusGrid > div:nth-child(n + 3) {
+    border-top: 1px solid rgba(216, 180, 254, 0.09);
+  }
+}
+
+@media (max-width: 390px) {
+  .focusCheckInCard {
+    min-height: calc(100svh - 116px);
+  }
+
+  .focusClock {
+    font-size: 40px;
+  }
+
+  .focusFingerprintButton {
+    width: 188px;
+    height: 188px;
+  }
+
+  .focusFingerprintIcon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .focusChartRow {
+    grid-template-columns: 58px minmax(0, 1fr) 54px;
+    gap: 8px;
+  }
+}
