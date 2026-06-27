@@ -1,10 +1,12 @@
 type C = Record<string, unknown>;
 
 const GREEN = "#1B8A5A";
+const GREEN_DARK = "#11603E";
 const AMBER = "#D97706";
 const RED = "#C2414C";
 const TEXT = "#19352A";
 const MUTED = "#63776E";
+const BORDER = "#D8EAE0";
 
 function t(value: string, extra: Record<string, unknown> = {}): C {
   return { type: "text", text: value, color: TEXT, size: "sm", wrap: true, ...extra };
@@ -22,55 +24,67 @@ function row(label: string, value: string): C {
   };
 }
 
-function bubble(
-  title: string,
-  subtitle: string,
-  color: string,
-  body: C[],
-  button: { label: string; url: string }
-): C {
+function bubble(title: string, subtitle: string, color: string, body: C[], button?: { label: string; url: string }): C {
   return {
     type: "bubble",
     size: "mega",
     header: {
       type: "box",
       layout: "vertical",
-      paddingAll: "20px",
+      paddingAll: "17px",
       backgroundColor: color,
       contents: [
         t(title, { color: "#FFFFFF", size: "lg", weight: "bold" }),
-        t(subtitle, { color: "#E8FFF4", size: "xs", margin: "sm" }),
+        t(subtitle, { color: "#E8FFF4", size: "xs", margin: "xs" }),
       ],
     },
-    body: { type: "box", layout: "vertical", paddingAll: "20px", contents: body },
-    footer: {
-      type: "box",
-      layout: "vertical",
-      paddingAll: "16px",
-      contents: [{
-        type: "button",
-        style: "primary",
-        height: "sm",
-        color,
-        action: { type: "uri", label: button.label, uri: button.url },
-      }],
-    },
+    body: { type: "box", layout: "vertical", paddingAll: "17px", contents: body },
+    ...(button ? {
+      footer: {
+        type: "box",
+        layout: "vertical",
+        paddingAll: "12px",
+        contents: [{
+          type: "button",
+          style: "primary",
+          height: "sm",
+          color,
+          action: { type: "uri", label: button.label, uri: button.url },
+        }],
+      },
+    } : {}),
   };
 }
 
-function card(label: string, count: number, background: string, color: string): C {
+export function helpFlex() {
   return {
-    type: "box",
-    layout: "vertical",
-    flex: 1,
-    paddingAll: "9px",
-    cornerRadius: "12px",
-    backgroundColor: background,
-    contents: [
-      t(label, { size: "xxs", color, align: "center", weight: "bold" }),
-      t(String(count), { size: "xl", color, align: "center", weight: "bold", margin: "xs" }),
-      t("คน", { size: "xxs", color, align: "center" }),
-    ],
+    type: "flex",
+    altText: "คำสั่งระบบลงเวลาปฏิบัติงาน",
+    contents: bubble("🤖 คำสั่งระบบลงเวลา", "โรงเรียนวัดไผ่มุ้ง", GREEN, [
+      {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          t("ช่วยเหลือ", { weight: "bold", color: GREEN_DARK, flex: 2 }),
+          t("แสดงรายการคำสั่ง", { size: "xs", color: MUTED, flex: 5 }),
+        ],
+      },
+      {
+        type: "box",
+        layout: "horizontal",
+        margin: "md",
+        contents: [
+          t("สรุป", { weight: "bold", color: GREEN_DARK, flex: 2 }),
+          t("รายงานการลงเวลาของวันนี้", { size: "xs", color: MUTED, flex: 5 }),
+        ],
+      },
+      { type: "separator", margin: "lg", color: BORDER },
+      t("รองรับ: คำสั่ง · เมนู · help · รายงาน · รายงานวันนี้", {
+        size: "xxs",
+        color: MUTED,
+        margin: "lg",
+      }),
+    ]),
   };
 }
 
@@ -84,7 +98,7 @@ export function leaveSubmittedFlex(i: {
     contents: bubble("📝 มีใบลาใหม่", "รอการพิจารณาจากผู้บริหาร", AMBER, [
       t(i.fullName, { size: "xl", weight: "bold" }),
       t(i.position || "-", { size: "xs", color: MUTED, margin: "xs" }),
-      { type: "separator", margin: "lg", color: "#D8EAE0" },
+      { type: "separator", margin: "lg", color: BORDER },
       row("ประเภท", i.leaveTypeLabel),
       row("วันที่ลา", `${i.startDate} – ${i.endDate}`),
       row("จำนวน", `${i.totalDays} วัน`),
@@ -106,64 +120,92 @@ export function leaveReviewedFlex(i: {
 }) {
   const color = i.approved ? GREEN : RED;
   const status = i.approved ? "อนุมัติ" : "ไม่อนุมัติ";
-
   return {
     type: "flex",
     altText: `${status}ใบลาของ ${i.fullName}`,
-    contents: bubble(
-      i.approved ? "✅ อนุมัติใบลาแล้ว" : "❌ ไม่อนุมัติใบลา",
-      "ผลการพิจารณาใบลา",
-      color,
-      [
-        t(i.fullName, { size: "xl", weight: "bold" }),
-        { type: "separator", margin: "lg", color: "#D8EAE0" },
-        row("ประเภท", i.leaveTypeLabel),
-        row("วันที่ลา", `${i.startDate} – ${i.endDate}`),
-        row("จำนวน", `${i.totalDays} วัน`),
-        row("เลขที่ใบลา", i.leaveNumber),
-        row("ผู้พิจารณา", i.reviewerName),
-        t(`ผลการพิจารณา: ${status}`, { margin: "lg", weight: "bold", color }),
-        ...(i.reviewNote ? [t(`หมายเหตุ: ${i.reviewNote}`, { size: "xs", color: MUTED, margin: "sm" })] : []),
-      ],
-      { label: "เปิดระบบการลา", url: `${i.appUrl}/leave` }
-    ),
+    contents: bubble(i.approved ? "✅ อนุมัติใบลาแล้ว" : "❌ ไม่อนุมัติใบลา", "ผลการพิจารณาใบลา", color, [
+      t(i.fullName, { size: "xl", weight: "bold" }),
+      { type: "separator", margin: "lg", color: BORDER },
+      row("ประเภท", i.leaveTypeLabel),
+      row("วันที่ลา", `${i.startDate} – ${i.endDate}`),
+      row("จำนวน", `${i.totalDays} วัน`),
+      row("เลขที่ใบลา", i.leaveNumber),
+      row("ผู้พิจารณา", i.reviewerName),
+      t(`ผลการพิจารณา: ${status}`, { margin: "lg", weight: "bold", color }),
+      ...(i.reviewNote ? [t(`หมายเหตุ: ${i.reviewNote}`, { size: "xs", color: MUTED, margin: "sm" })] : []),
+    ], { label: "เปิดระบบการลา", url: `${i.appUrl}/leave` }),
+  };
+}
+
+function attendanceLine(line: { time: string; name: string; late: boolean }): C {
+  return {
+    type: "box",
+    layout: "horizontal",
+    margin: "sm",
+    contents: [
+      t(`${line.time} น.`, {
+        size: "xs",
+        weight: "bold",
+        color: line.late ? AMBER : GREEN_DARK,
+        flex: 2,
+      }),
+      t(line.name, { size: "xs", flex: 4 }),
+      ...(line.late ? [t("มาสาย", {
+        size: "xxs",
+        weight: "bold",
+        color: AMBER,
+        align: "end",
+        flex: 1,
+      })] : []),
+    ],
   };
 }
 
 export function attendanceDailyFlex(i: {
-  thaiDate: string; reportTime: string; onTime: number; late: number; presentTotal: number;
-  sick: number; personal: number; missing: number; attendanceLines: string[];
-  noteLines: string[]; appUrl: string;
+  thaiDate: string;
+  reportTime: string;
+  attendance: Array<{ time: string; name: string; late: boolean }>;
+  noteLines: string[];
+  appUrl: string;
 }) {
   const body: C[] = [
-    t(i.thaiDate, { size: "lg", weight: "bold" }),
+    t(i.thaiDate, { size: "md", weight: "bold" }),
     t(`ข้อมูล ณ เวลา ${i.reportTime} น.`, { size: "xs", color: MUTED, margin: "xs" }),
-    {
-      type: "box", layout: "horizontal", spacing: "sm", margin: "lg",
-      contents: [card("มาตรงเวลา", i.onTime, "#EAF8F0", "#11603E"), card("มาสาย", i.late, "#FFF7E8", AMBER)],
-    },
-    {
-      type: "box", layout: "horizontal", spacing: "sm", margin: "sm",
-      contents: [
-        card("ลาป่วย", i.sick, "#EFF6FF", "#2563EB"),
-        card("ลากิจ", i.personal, "#F5F3FF", "#7C3AED"),
-        card("ไม่ลงเวลา", i.missing, "#FFF1F2", RED),
-      ],
-    },
-    t(`รวมมาปฏิบัติงาน ${i.presentTotal} คน`, { margin: "md", weight: "bold", color: "#11603E", align: "center" }),
-    { type: "separator", margin: "lg", color: "#D8EAE0" },
-    t("ลำดับการลงเวลา", { margin: "lg", weight: "bold", color: "#11603E" }),
-    ...(i.attendanceLines.length ? i.attendanceLines.map(x => t(x, { size: "xs", margin: "sm" })) : [t("ยังไม่มีผู้ลงเวลา", { color: MUTED, margin: "sm" })]),
-    { type: "separator", margin: "lg", color: "#D8EAE0" },
-    t("หมายเหตุ", { margin: "lg", weight: "bold", color: "#11603E" }),
-    ...(i.noteLines.length ? i.noteLines.map(x => t(`• ${x}`, { size: "xs", margin: "sm" })) : [t("ไม่มี", { color: MUTED, margin: "sm" })]),
+    { type: "separator", margin: "lg", color: BORDER },
+    t("ลำดับการลงเวลา", { margin: "lg", weight: "bold", color: GREEN_DARK }),
+    ...(i.attendance.length
+      ? i.attendance.map(attendanceLine)
+      : [t("ยังไม่มีผู้ลงเวลา", { size: "xs", color: MUTED, margin: "sm" })]),
   ];
+
+  if (i.noteLines.length) {
+    body.push(
+      { type: "separator", margin: "lg", color: BORDER },
+      t("หมายเหตุ", { margin: "lg", weight: "bold", color: GREEN_DARK }),
+      ...i.noteLines.map((line) => t(`• ${line}`, { size: "xs", margin: "sm" }))
+    );
+  } else {
+    body.push({
+      type: "box",
+      layout: "vertical",
+      margin: "lg",
+      paddingAll: "10px",
+      cornerRadius: "10px",
+      backgroundColor: "#EAF8F0",
+      contents: [t("✅ บุคลากรลงเวลาครบทุกคน", {
+        size: "xs",
+        color: GREEN_DARK,
+        weight: "bold",
+        align: "center",
+      })],
+    });
+  }
 
   return {
     type: "flex",
     altText: `รายงานการลงเวลาปฏิบัติงาน ${i.thaiDate}`,
     contents: bubble("📊 รายงานการลงเวลาปฏิบัติงาน", "โรงเรียนวัดไผ่มุ้ง", GREEN, body, {
-      label: "เปิดรายงานในระบบ",
+      label: "เปิดรายงาน",
       url: `${i.appUrl}/admin/attendance`,
     }),
   };
