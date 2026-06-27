@@ -943,14 +943,7 @@ export default function LeavePage() {
                       {statusLabel(item.status)}
                     </span>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 8,
-                        justifyContent: "flex-end",
-                      }}
-                    >
+                    <div className={styles.leaveActions}>
                       {item.status === "pending" &&
                         item.working_document_url && (
                           <a
