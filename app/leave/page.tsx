@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +26,26 @@ type LeaveRequest = {
   pdf_file_url: string | null;
   medical_certificate_required: boolean;
   created_at: string;
+};
+
+
+type AdminPendingLeaveRequest = {
+  id: string;
+  leave_type: "personal" | "sick";
+  start_date: string;
+  end_date: string;
+  total_work_days: number;
+  reason: string;
+  fiscal_year: number;
+  submission_kind: string;
+  attachment_path: string | null;
+  medical_certificate_required: boolean;
+  status: string;
+  profiles: {
+    full_name: string;
+    position: string | null;
+    role: string;
+  } | null;
 };
 
 type Summary = {
@@ -115,8 +135,13 @@ export default function LeavePage() {
   const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [profileRole, setProfileRole] = useState("");
+  const [pendingRequests, setPendingRequests] =
+    useState<AdminPendingLeaveRequest[]>([]);
+  const [processingId, setProcessingId] = useState("");
 
   const getToken = useCallback(async () => {
     const {
@@ -132,7 +157,29 @@ export default function LeavePage() {
     try {
       const token = await getToken();
 
-      const [leaveResponse, settingsResponse] = await Promise.all([
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("ไม่พบข้อมูลผู้ใช้งาน");
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profileData) {
+        throw new Error("ไม่สามารถตรวจสอบสิทธิ์ผู้ใช้งานได้");
+      }
+
+      const currentRole = String(profileData.role || "");
+      const canReviewLeave = ["director", "admin"].includes(currentRole);
+      setProfileRole(currentRole);
+
+      const [leaveResponse, settingsResponse, pendingResponse] = await Promise.all([
         fetchWithTimeout("/api/leave", {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
@@ -141,10 +188,19 @@ export default function LeavePage() {
           headers: { Authorization: `Bearer ${token}` },
           cache: "no-store",
         }),
+        canReviewLeave
+          ? fetchWithTimeout("/api/admin/leave?status=pending", {
+              headers: { Authorization: `Bearer ${token}` },
+              cache: "no-store",
+            })
+          : Promise.resolve(null),
       ]);
 
       const leaveResult = await leaveResponse.json();
       const settingsResult = await settingsResponse.json();
+      const pendingResult = pendingResponse
+        ? await pendingResponse.json()
+        : { ok: true, requests: [] };
 
       if (!leaveResponse.ok || !leaveResult.ok) {
         throw new Error(
@@ -159,6 +215,21 @@ export default function LeavePage() {
             "โหลดข้อมูลปีงบประมาณไม่สำเร็จ"
         );
       }
+
+      if (
+        pendingResponse &&
+        (!pendingResponse.ok || !pendingResult.ok)
+      ) {
+        throw new Error(
+          pendingResult.message || "โหลดใบลารอพิจารณาไม่สำเร็จ"
+        );
+      }
+
+      setPendingRequests(
+        Array.isArray(pendingResult.requests)
+          ? pendingResult.requests
+          : []
+      );
 
       const loadedRequests: LeaveRequest[] =
         Array.isArray(leaveResult.requests)
@@ -218,7 +289,7 @@ export default function LeavePage() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, supabase]);
 
   useEffect(() => {
     void loadData();
@@ -288,6 +359,96 @@ export default function LeavePage() {
     }
   }
 
+  async function deleteLeave(item: LeaveRequest) {
+    const confirmed = window.confirm(
+      `ยืนยันลบ${leaveLabel(item.leave_type)} วันที่ ${item.start_date} ถึง ${item.end_date} ใช่หรือไม่?\n\nเมื่อลบแล้ว รายการนี้จะไม่ถูกนำไปนับในระบบลงเวลาและรายงาน PDF`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(item.id);
+    setMessage("");
+    setErrorMessage("");
+
+    try {
+      const token = await getToken();
+      const response = await fetchWithTimeout("/api/leave", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ requestId: item.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "ลบใบลาไม่สำเร็จ");
+      }
+
+      setMessage(result.message || "ลบใบลาเรียบร้อยแล้ว");
+      await loadData();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "ลบใบลาไม่สำเร็จ"
+      );
+    } finally {
+      setDeletingId("");
+    }
+  }
+
+
+  async function reviewLeave(
+    requestId: string,
+    action: "approve" | "reject"
+  ) {
+    const note =
+      action === "reject"
+        ? window.prompt("ระบุเหตุผลที่ไม่อนุมัติ")?.trim() ?? ""
+        : "";
+
+    if (action === "reject" && note.length < 5) {
+      setErrorMessage(
+        "กรุณาระบุเหตุผลที่ไม่อนุมัติอย่างน้อย 5 ตัวอักษร"
+      );
+      return;
+    }
+
+    setProcessingId(requestId);
+    setMessage("");
+    setErrorMessage("");
+
+    try {
+      const token = await getToken();
+      const response = await fetchWithTimeout("/api/admin/leave", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ requestId, action, note }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "บันทึกผลไม่สำเร็จ");
+      }
+
+      setMessage(result.message || "บันทึกผลเรียบร้อยแล้ว");
+      await loadData();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "บันทึกผลไม่สำเร็จ"
+      );
+    } finally {
+      setProcessingId("");
+    }
+  }
+
   async function openAttachment(requestId: string) {
     const token = await getToken();
     const response = await fetchWithTimeout(
@@ -312,8 +473,8 @@ export default function LeavePage() {
 <header className={styles.header}>
         <div>
           <small>LEAVE MANAGEMENT</small>
-          <h1>ระบบการลา</h1>
-          <p>ยื่นลากิจและลาป่วย พร้อมตรวจสอบสถิติปีงบประมาณ</p>
+          <h1>ขออนุญาตลาป่วย-ลากิจ</h1>
+          <p>ยื่นคำขอลา ตรวจสอบประวัติ และติดตามผลการพิจารณา</p>
         </div>
         <a href="/attendance">กลับหน้าลงเวลา</a>
       </header>
@@ -574,11 +735,113 @@ export default function LeavePage() {
 
         <section className={styles.historyCard}>
           <div className={styles.cardHeading}>
-            <h2>ประวัติการลา</h2>
+            <h2>
+              {["director", "admin"].includes(profileRole)
+                ? "ประวัติและพิจารณาใบลา"
+                : "ประวัติการลา"}
+            </h2>
             <button type="button" onClick={() => void loadData()}>
               รีเฟรช
             </button>
           </div>
+
+
+          {["director", "admin"].includes(profileRole) && (
+            <section className={styles.reviewSection}>
+              <div className={styles.reviewHeading}>
+                <div>
+                  <small>สำหรับผู้บริหาร</small>
+                  <h3>ใบลารอพิจารณา</h3>
+                </div>
+                <strong>{pendingRequests.length} รายการ</strong>
+              </div>
+
+              {pendingRequests.length === 0 ? (
+                <p className={styles.reviewEmpty}>
+                  ไม่มีใบลารอพิจารณา
+                </p>
+              ) : (
+                <div className={styles.reviewList}>
+                  {pendingRequests.map((item) => (
+                    <article
+                      key={item.id}
+                      className={styles.reviewItem}
+                    >
+                      <div className={styles.reviewItemTop}>
+                        <div>
+                          <span className={styles.leaveType}>
+                            {item.leave_type === "sick"
+                              ? "ลาป่วย"
+                              : "ลากิจ"}
+                          </span>
+                          <h4>
+                            {item.profiles?.full_name ??
+                              "ไม่พบชื่อสมาชิก"}
+                          </h4>
+                          <p>
+                            {item.profiles?.position ||
+                              item.profiles?.role}
+                          </p>
+                        </div>
+                        <strong>
+                          {item.total_work_days} วันทำการ
+                        </strong>
+                      </div>
+
+                      <p>
+                        {item.start_date} ถึง {item.end_date}
+                      </p>
+                      <p>{item.reason}</p>
+
+                      {item.medical_certificate_required && (
+                        <p className={styles.reviewWarning}>
+                          ต้องมีใบรับรองแพทย์
+                        </p>
+                      )}
+
+                      <div className={styles.reviewActions}>
+                        {item.attachment_path && (
+                          <button
+                            type="button"
+                            className={styles.evidenceButton}
+                            onClick={() =>
+                              void openAttachment(item.id)
+                            }
+                          >
+                            ดูหลักฐาน
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          className={styles.rejectButton}
+                          disabled={processingId === item.id}
+                          onClick={() =>
+                            void reviewLeave(item.id, "reject")
+                          }
+                        >
+                          ไม่อนุมัติ
+                        </button>
+
+                        <button
+                          type="button"
+                          className={styles.approveButton}
+                          disabled={processingId === item.id}
+                          onClick={() =>
+                            void reviewLeave(item.id, "approve")
+                          }
+                        >
+                          {processingId === item.id
+                            ? "กำลังบันทึก..."
+                            : "อนุมัติ"}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           {loading ? (
             <p>กำลังโหลด...</p>
@@ -654,6 +917,17 @@ export default function LeavePage() {
                           เปิด PDF ใบลา
                         </a>
                       )}
+
+                      <button
+                        type="button"
+                        className={styles.deleteLeaveButton}
+                        disabled={deletingId === item.id}
+                        onClick={() => void deleteLeave(item)}
+                      >
+                        {deletingId === item.id
+                          ? "กำลังลบ..."
+                          : "ลบใบลา"}
+                      </button>
                     </div>
                   </footer>
                 </article>

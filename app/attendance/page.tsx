@@ -52,6 +52,22 @@ type PendingCheckIn = {
   distance: number;
 };
 
+type TodayLeave = {
+  id: string;
+  leave_type: "sick" | "personal" | "official_duty" | string;
+  start_date: string;
+  end_date: string;
+  status: "pending" | "approved" | string;
+  label: string;
+  message: string;
+};
+
+type TodayLeaveResponse = {
+  ok: boolean;
+  message?: string;
+  leave?: TodayLeave | null;
+};
+
 type MenuItem = {
   label: string;
   icon: string;
@@ -180,6 +196,7 @@ export default function AttendancePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [record, setRecord] = useState<AttendanceRecord | null>(null);
+  const [todayLeave, setTodayLeave] = useState<TodayLeave | null>(null);
   const [now, setNow] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -207,6 +224,43 @@ export default function AttendancePage() {
     setSidebarCollapsed(saved === "true");
   }, []);
 
+  const loadTodayLeave = useCallback(
+    async (accessToken?: string) => {
+      let token = accessToken;
+
+      if (!token) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        token = session?.access_token;
+      }
+
+      if (!token) {
+        throw new Error("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+      }
+
+      const response = await fetch("/api/leave/today", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
+
+      const result = (await response.json()) as TodayLeaveResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          result.message || "ตรวจสอบข้อมูลการลาของวันนี้ไม่สำเร็จ"
+        );
+      }
+
+      const leave = result.leave ?? null;
+      setTodayLeave(leave);
+      return leave;
+    },
+    [supabase]
+  );
+
   const loadAttendance = useCallback(async () => {
     setLoading(true);
     setMessage("");
@@ -218,6 +272,15 @@ export default function AttendancePage() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
+        router.replace("/login");
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
         router.replace("/login");
         return;
       }
@@ -265,6 +328,8 @@ export default function AttendancePage() {
 
       if (attendanceError) throw attendanceError;
       setRecord(attendanceData ?? null);
+
+      await loadTodayLeave(session.access_token);
     } catch (error) {
       console.error("Load attendance error:", error);
       setMessageType("error");
@@ -276,7 +341,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [router, supabase]);
+  }, [loadTodayLeave, router, supabase]);
 
   useEffect(() => {
     void loadAttendance();
@@ -380,8 +445,17 @@ export default function AttendancePage() {
 
   async function saveCheckIn(
     pending: PendingCheckIn,
-    note: string | null
+    note: string | null,
+    checkInStatus: "normal" | "late" = note
+      ? "late"
+      : "normal"
   ) {
+    const activeLeave = await loadTodayLeave();
+
+    if (activeLeave) {
+      throw new Error(activeLeave.message);
+    }
+
     const { data, error } = await supabase
       .from("attendance_records")
       .insert({
@@ -391,7 +465,7 @@ export default function AttendancePage() {
         check_in_latitude: pending.position.latitude,
         check_in_longitude: pending.position.longitude,
         check_in_distance_meters: pending.distance,
-        check_in_status: note ? "late" : "normal",
+        check_in_status: checkInStatus,
         note,
         updated_at: new Date().toISOString(),
       })
@@ -411,9 +485,11 @@ export default function AttendancePage() {
     setRecord(data);
     setMessageType("success");
     setMessage(
-      note
-        ? "บันทึกเวลามาสายพร้อมเหตุผลเรียบร้อยแล้ว"
-        : "บันทึกเวลาปฏิบัติงานเรียบร้อยแล้ว"
+      note === "ปฏิบัติราชการก่อนเข้าโรงเรียน"
+        ? "บันทึกเวลาเรียบร้อยแล้ว สถานะ: ไปราชการ"
+        : checkInStatus === "late"
+          ? "บันทึกเวลามาสายพร้อมเหตุผลเรียบร้อยแล้ว"
+          : "บันทึกเวลาปฏิบัติงานเรียบร้อยแล้ว"
     );
   }
 
@@ -424,6 +500,12 @@ export default function AttendancePage() {
     try {
       if (record?.check_in_at) {
         throw new Error("วันนี้คุณได้ลงเวลาแล้ว");
+      }
+
+      const activeLeave = todayLeave ?? (await loadTodayLeave());
+
+      if (activeLeave) {
+        throw new Error(activeLeave.message);
       }
 
       if (!settings) {
@@ -465,6 +547,15 @@ export default function AttendancePage() {
         position,
         distance,
       };
+
+      if (isLateCheckIn && currentRole === "director") {
+        await saveCheckIn(
+          pending,
+          "ปฏิบัติราชการก่อนเข้าโรงเรียน",
+          "normal"
+        );
+        return;
+      }
 
       if (isLateCheckIn) {
         setPendingCheckIn(pending);
@@ -587,6 +678,13 @@ export default function AttendancePage() {
   }
 
   const isLate = record?.check_in_status === "late";
+  const isOfficialDuty =
+    record?.check_in_status === "official_duty";
+  const checkInStatusLabel = isOfficialDuty
+    ? "ไปราชการ"
+    : isLate
+      ? "มาสาย"
+      : "ปกติ";
   const hasCheckedIn = Boolean(record?.check_in_at);
   const canViewReports = ["admin", "director", "staff"].includes(profile.role);
   const canManageMembers = profile.role === "admin";
@@ -602,12 +700,12 @@ export default function AttendancePage() {
       active: true,
     },
     {
-      label: "ประวัติการลงเวลา",
+      label: "การลงเวลาปฏิบัติงาน",
       icon: "▣",
       href: historyHref,
     },
     {
-      label: "การลา",
+      label: "ขออนุญาตลาป่วย-ลากิจ",
       icon: "▤",
       href: "/leave",
     },
@@ -619,15 +717,9 @@ export default function AttendancePage() {
 
   ];
 
-
   if (["director", "admin"].includes(profile.role)) {
     menuItems.push({
-      label: "พิจารณาใบลา",
-      icon: "✓",
-      href: "/admin/leave",
-    });
 
-    menuItems.push({
       label: "ตั้งค่า",
       icon: "⚙",
       href: "/admin/settings",
@@ -802,7 +894,18 @@ export default function AttendancePage() {
               <small>เวลาปัจจุบันแบบเรียลไทม์</small>
             </div>
 
-            {!record?.check_in_at ? (
+            {todayLeave ? (
+              <div className={styles.leaveTodayWrap}>
+                <div className={styles.leaveTodayIcon}>✓</div>
+                <strong>{todayLeave.message}</strong>
+                <small>
+                  สถานะคำขอ:{" "}
+                  {todayLeave.status === "approved"
+                    ? "อนุมัติแล้ว"
+                    : "รอพิจารณา"}
+                </small>
+              </div>
+            ) : !record?.check_in_at ? (
               <>
                 <button
                   type="button"
@@ -870,7 +973,7 @@ export default function AttendancePage() {
                       isLate ? styles.badgeLate : styles.badgeNormal
                     }
                   >
-                    {isLate ? "มาสาย" : "ปกติ"}
+                    {checkInStatusLabel}
                   </span>
 
                   {distanceMeters !== null && (
@@ -903,7 +1006,11 @@ export default function AttendancePage() {
 
             <div className={styles.todayStatus}>
               <small>สถานะวันนี้</small>
-              {!record?.check_in_at ? (
+              {todayLeave ? (
+                <strong className={styles.leaveStatus}>
+                  ✓ {todayLeave.label}
+                </strong>
+              ) : !record?.check_in_at ? (
                 <strong className={styles.waitingStatus}>
                   ◷ ยังไม่ได้ลงเวลาเข้า
                 </strong>
@@ -913,7 +1020,7 @@ export default function AttendancePage() {
                     isLate ? styles.lateStatus : styles.normalStatus
                   }
                 >
-                  {isLate ? "มาสาย" : "ปกติ"}
+                  {checkInStatusLabel}
                 </strong>
               )}
             </div>
@@ -937,14 +1044,24 @@ export default function AttendancePage() {
             <div>
               <small>สถานะของคุณวันนี้</small>
               <h2>
-                {record?.check_in_at
-                  ? "วันนี้คุณได้ลงเวลาแล้ว"
-                  : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
+                {todayLeave
+                  ? todayLeave.message
+                  : record?.check_in_at
+                    ? "วันนี้คุณได้ลงเวลาแล้ว"
+                    : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
               </h2>
 
               <p>
-                เวลาเข้า{" "}
-                <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
+                {todayLeave ? (
+                  <>
+                    ประเภท <strong>{todayLeave.label}</strong>
+                  </>
+                ) : (
+                  <>
+                    เวลาเข้า{" "}
+                    <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
+                  </>
+                )}
               </p>
             </div>
 
@@ -954,7 +1071,7 @@ export default function AttendancePage() {
                   isLate ? styles.badgeLate : styles.badgeNormal
                 }
               >
-                {isLate ? "มาสาย" : "ปกติ"}
+                {checkInStatusLabel}
               </span>
             )}
           </article>
