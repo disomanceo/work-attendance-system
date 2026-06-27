@@ -220,6 +220,7 @@ export default function AdminAttendancePage() {
   const [pdfInfo, setPdfInfo] = useState<DailyPdfInfo | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState("");
   const [message, setMessage] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const selectedDateParts = useMemo(() => {
     const date = parseLocalDate(selectedDate);
@@ -980,6 +981,71 @@ export default function AdminAttendancePage() {
 
   return (
     <main className={styles.page}>
+      <button
+        type="button"
+        className={styles.mobileMenuButton}
+        onClick={() => setMobileMenuOpen(true)}
+        aria-label="เปิดเมนู"
+        aria-expanded={mobileMenuOpen}
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      {mobileMenuOpen && (
+        <>
+          <button
+            type="button"
+            className={styles.mobileMenuOverlay}
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="ปิดเมนู"
+          />
+
+          <aside className={styles.mobileDrawer} aria-label="เมนูหลัก">
+            <div className={styles.mobileDrawerHeader}>
+              <div>
+                <small>เมนูหลัก</small>
+                <strong>ระบบลงเวลาปฏิบัติงาน</strong>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="ปิดเมนู"
+              >
+                ×
+              </button>
+            </div>
+
+            <nav className={styles.mobileDrawerNav}>
+              <a href="/attendance">
+                <span>◷</span>
+                <strong>การลงเวลา</strong>
+              </a>
+
+              <a href="/leave">
+                <span>▤</span>
+                <strong>ขออนุญาตลา</strong>
+              </a>
+
+              <a
+                href="/admin/attendance"
+                className={styles.mobileDrawerActive}
+              >
+                <span>▥</span>
+                <strong>รายงาน</strong>
+              </a>
+
+              <a href="/admin/settings">
+                <span>⚙</span>
+                <strong>ตั้งค่า</strong>
+              </a>
+            </nav>
+          </aside>
+        </>
+      )}
+
       <section className={styles.panel}>
         <header className={styles.pageHeader}>
           <div>
