@@ -165,23 +165,9 @@ function getAttendanceStatus(record: AttendanceReportRecord) {
   if (record.check_out_status === "early") {
     return { label: "ออกก่อนเวลา", tone: "warning" as const };
   }
-  if (!record.check_out_at) {
-    return { label: "ยังไม่ลงเวลาออก", tone: "neutral" as const };
-  }
   return { label: "มาปฏิบัติราชการ", tone: "success" as const };
 }
 
-function getReviewStatus(record: AttendanceReportRecord) {
-  if (
-    record.check_in_status === "pending" ||
-    record.check_in_status === "outside_area" ||
-    record.check_out_status === "pending" ||
-    record.check_out_status === "outside_area"
-  ) {
-    return { label: "รอตรวจสอบ", tone: "pending" as const };
-  }
-  return { label: "ตรวจสอบแล้ว", tone: "success" as const };
-}
 
 function DownloadIcon() {
   return (
@@ -509,9 +495,7 @@ export default function AdminAttendancePage() {
           (statusFilter === "normal" &&
             attendanceStatus.label === "มาปฏิบัติราชการ") ||
           (statusFilter === "late" &&
-            attendanceStatus.label === "มาสาย") ||
-          (statusFilter === "incomplete" &&
-            attendanceStatus.label === "ยังไม่ลงเวลาออก");
+            attendanceStatus.label === "มาสาย");
 
         return matchesSearch && matchesStatus;
       })
@@ -577,7 +561,7 @@ export default function AdminAttendancePage() {
 
     const headers = [
       "ลำดับ", "วันที่", "ชื่อ-นามสกุล", "ตำแหน่ง", "บทบาท",
-      "เวลาเข้า", "เวลาออก", "สถานะเวลา", "สถานะตรวจสอบ", "หมายเหตุ",
+      "เวลาเข้า", "สถานะ", "หมายเหตุ",
     ];
 
     const rows = filteredRecords.map((record, index) => [
@@ -587,9 +571,7 @@ export default function AdminAttendancePage() {
       record.position ?? "",
       getRoleLabel(record.role),
       formatThaiTime(record.check_in_at),
-      formatThaiTime(record.check_out_at),
       getAttendanceStatus(record).label,
-      getReviewStatus(record).label,
       record.note ?? "",
     ]);
 
@@ -1069,7 +1051,6 @@ export default function AdminAttendancePage() {
               <option value="all">ทั้งหมด</option>
               <option value="normal">มาปฏิบัติราชการ</option>
               <option value="late">มาสาย</option>
-              <option value="incomplete">ยังไม่ลงเวลาออก</option>
               <option value="sick">ลาป่วย</option>
               <option value="personal">ลากิจ</option>
               <option value="official_duty">ไปราชการ</option>
@@ -1235,20 +1216,6 @@ export default function AdminAttendancePage() {
                   <small>คน</small>
                 </div>
               </div>
-
-              <div className={styles.timeDetailSection}>
-                <div>
-                  <h3>รายละเอียดการลงเวลาเข้า–ออก</h3>
-                  <p>เป็นข้อมูลประกอบและอาจซ้อนกันได้</p>
-                </div>
-                <div className={styles.timeDetailGrid}>
-                  <div><span>เข้า–ออกครบ</span><strong>{summary.complete}</strong></div>
-                  <div><span>มาสาย</span><strong>{summary.late}</strong></div>
-                  <div><span>ออกก่อนเวลา</span><strong>{summary.early}</strong></div>
-                  <div><span>ยังไม่ลงเวลาออก</span><strong>{summary.incomplete}</strong></div>
-                  <div><span>รอตรวจสอบ</span><strong>{summary.pendingReview ?? 0}</strong></div>
-                </div>
-              </div>
             </section>
 
             <section className={styles.listCard}>
@@ -1268,20 +1235,17 @@ export default function AdminAttendancePage() {
                       <th>ชื่อ-นามสกุล</th>
                       <th>ตำแหน่ง</th>
                       <th>เวลาเข้า</th>
-                      <th>เวลาออก</th>
                       <th>สถานะ</th>
-                      <th>ตรวจสอบ</th>
                       <th>หมายเหตุ</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
-                      <tr><td colSpan={8} className={styles.emptyCell}>กำลังโหลดข้อมูล...</td></tr>
+                      <tr><td colSpan={6} className={styles.emptyCell}>กำลังโหลดข้อมูล...</td></tr>
                     ) : filteredRecords.length === 0 ? (
-                      <tr><td colSpan={8} className={styles.emptyCell}>ไม่พบข้อมูลในวันที่เลือก</td></tr>
+                      <tr><td colSpan={6} className={styles.emptyCell}>ไม่พบข้อมูลในวันที่เลือก</td></tr>
                     ) : filteredRecords.map((record, index) => {
                       const status = getAttendanceStatus(record);
-                      const review = getReviewStatus(record);
                       return (
                         <tr key={record.id}>
                           <td>{index + 1}</td>
@@ -1291,9 +1255,7 @@ export default function AdminAttendancePage() {
                           </td>
                           <td>{record.position || getRoleLabel(record.role)}</td>
                           <td>{formatThaiTime(record.check_in_at)}</td>
-                          <td>{formatThaiTime(record.check_out_at)}</td>
                           <td><span className={`${styles.badge} ${styles[`badge_${status.tone}`]}`}>{status.label}</span></td>
-                          <td><span className={`${styles.reviewBadge} ${styles[`review_${review.tone}`]}`}>{review.label}</span></td>
                           <td>{record.note || "-"}</td>
                         </tr>
                       );
