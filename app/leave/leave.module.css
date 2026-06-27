@@ -497,3 +497,260 @@
   }
 }
 /* NEO GREEN THEME END */
+
+/* COMPACT LEAVE TABLE START */
+.reviewSection{
+  padding:14px;
+}
+
+.reviewHeading{
+  margin-bottom:10px;
+}
+
+.reviewList{
+  display:grid;
+  gap:8px;
+}
+
+.reviewItem{
+  display:grid;
+  grid-template-columns:minmax(180px,1.2fr) minmax(170px,1fr) 88px auto;
+  align-items:center;
+  gap:12px;
+  min-height:62px;
+  padding:10px 12px;
+  border-radius:13px;
+}
+
+.reviewItemTop{
+  display:contents;
+}
+
+.reviewItemTop>div{
+  min-width:0;
+}
+
+.reviewItemTop h4{
+  margin:2px 0 1px;
+  font-size:15px;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.reviewItemTop p{
+  margin:0;
+  font-size:12px;
+  line-height:1.25;
+  color:#718278;
+}
+
+.reviewItemTop>strong{
+  grid-column:3;
+  font-size:13px;
+  text-align:center;
+}
+
+.reviewItem>p{
+  margin:0;
+  font-size:13px;
+  line-height:1.3;
+}
+
+.reviewItem>p:nth-of-type(1){
+  grid-column:2;
+  grid-row:1;
+  color:#52685e;
+}
+
+.reviewItem>p:nth-of-type(2){
+  display:none;
+}
+
+.reviewItem .reviewWarning{
+  display:none;
+}
+
+.reviewActions{
+  grid-column:4;
+  grid-row:1;
+  margin:0;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+
+.reviewActions button{
+  min-height:34px;
+  padding:7px 10px;
+  border-radius:9px;
+  font-size:12px;
+  white-space:nowrap;
+}
+
+.historyCard .list{
+  gap:8px;
+}
+
+.historyCard .leaveItem{
+  display:grid;
+  grid-template-columns:minmax(170px,1.1fr) minmax(180px,1fr) 110px auto;
+  align-items:center;
+  gap:10px 14px;
+  min-height:58px;
+  padding:10px 12px;
+  border-radius:13px;
+}
+
+.historyCard .leaveItem>div:first-child{
+  grid-column:1;
+  grid-row:1;
+}
+
+.historyCard .leaveItem h3{
+  grid-column:1;
+  grid-row:2;
+  margin:0;
+  font-size:14px;
+  line-height:1.25;
+}
+
+.historyCard .leaveItem>p:nth-of-type(1){
+  grid-column:2;
+  grid-row:1 / span 2;
+  margin:0;
+  font-size:13px;
+}
+
+.historyCard .leaveItem>p:nth-of-type(2){
+  display:none;
+}
+
+.historyCard .leaveItem footer{
+  display:contents;
+  margin:0;
+}
+
+.historyCard .leaveItem footer>span{
+  grid-column:3;
+  grid-row:1 / span 2;
+  justify-self:center;
+}
+
+.historyCard .leaveItem footer>div{
+  grid-column:4;
+  grid-row:1 / span 2;
+  display:flex!important;
+  gap:6px!important;
+  flex-wrap:nowrap!important;
+  justify-content:flex-end!important;
+}
+
+.historyCard .leaveItem footer a,
+.historyCard .leaveItem footer button{
+  min-height:34px;
+  padding:7px 10px;
+  border:1px solid rgba(47,141,105,.18);
+  border-radius:9px;
+  background:rgba(255,255,255,.82);
+  color:#226b50;
+  font-size:12px;
+  font-weight:800;
+  text-decoration:none;
+  white-space:nowrap;
+}
+
+@media(max-width:900px){
+  .reviewItem{
+    grid-template-columns:minmax(150px,1fr) minmax(150px,1fr) 76px;
+  }
+
+  .reviewActions{
+    grid-column:1 / -1;
+    grid-row:2;
+    justify-content:flex-end;
+  }
+
+  .historyCard .leaveItem{
+    grid-template-columns:minmax(150px,1fr) minmax(160px,1fr) 96px;
+  }
+
+  .historyCard .leaveItem footer>div{
+    grid-column:1 / -1;
+    grid-row:3;
+  }
+}
+
+@media(max-width:620px){
+  .reviewItem{
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:6px 10px;
+    padding:10px;
+  }
+
+  .reviewItemTop>div{
+    grid-column:1;
+    grid-row:1;
+  }
+
+  .reviewItemTop>strong{
+    grid-column:2;
+    grid-row:1;
+  }
+
+  .reviewItem>p:nth-of-type(1){
+    grid-column:1 / -1;
+    grid-row:2;
+    font-size:12px;
+  }
+
+  .reviewActions{
+    grid-column:1 / -1;
+    grid-row:3;
+    justify-content:stretch;
+  }
+
+  .reviewActions button{
+    flex:1 1 auto;
+  }
+
+  .historyCard .leaveItem{
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:6px 10px;
+    padding:10px;
+  }
+
+  .historyCard .leaveItem>div:first-child{
+    grid-column:1;
+    grid-row:1;
+  }
+
+  .historyCard .leaveItem h3{
+    grid-column:1;
+    grid-row:2;
+  }
+
+  .historyCard .leaveItem>p:nth-of-type(1){
+    grid-column:1 / -1;
+    grid-row:3;
+    font-size:12px;
+  }
+
+  .historyCard .leaveItem footer>span{
+    grid-column:2;
+    grid-row:1 / span 2;
+  }
+
+  .historyCard .leaveItem footer>div{
+    grid-column:1 / -1;
+    grid-row:4;
+    justify-content:stretch!important;
+  }
+
+  .historyCard .leaveItem footer a,
+  .historyCard .leaveItem footer button{
+    flex:1 1 auto;
+    text-align:center;
+  }
+}
+/* COMPACT LEAVE TABLE END */
