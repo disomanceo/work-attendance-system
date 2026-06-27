@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -21,14 +21,22 @@ type AttendanceReportRecord = {
   position: string | null;
   role: string;
   account_status: string;
+  daily_status?: "present" | "sick" | "personal" | "official_duty" | "absent";
 };
 
 type AttendanceSummary = {
   total: number;
+  totalPersonnel?: number;
+  present?: number;
+  sickLeave?: number;
+  personalLeave?: number;
+  officialDuty?: number;
+  absent?: number;
   complete: number;
   late: number;
   early: number;
   incomplete: number;
+  pendingReview?: number;
 };
 
 type AttendanceApiResponse = {
@@ -133,11 +141,34 @@ function getRoleLabel(role: string) {
 }
 
 function getAttendanceStatus(record: AttendanceReportRecord) {
-  if (!record.check_in_at) return { label: "ไม่ลงเวลา", tone: "danger" as const };
-  if (record.check_in_status === "late") return { label: "มาสาย", tone: "warning" as const };
-  if (record.check_out_status === "early") return { label: "ออกก่อนเวลา", tone: "warning" as const };
-  if (!record.check_out_at) return { label: "ยังไม่ลงเวลาออก", tone: "neutral" as const };
-  return { label: "ปกติ", tone: "success" as const };
+  if (record.daily_status === "sick" || record.check_in_status === "sick") {
+    return { label: "ลาป่วย", tone: "leave" as const };
+  }
+  if (record.daily_status === "personal" || record.check_in_status === "personal") {
+    return { label: "ลากิจ", tone: "leave" as const };
+  }
+  if (
+    record.daily_status === "official_duty" ||
+    record.check_in_status === "official_duty"
+  ) {
+    return { label: "ไปราชการ", tone: "duty" as const };
+  }
+  if (record.daily_status === "absent" || record.check_in_status === "absent") {
+    return { label: "ไม่มาปฏิบัติราชการ", tone: "danger" as const };
+  }
+  if (!record.check_in_at) {
+    return { label: "ไม่มาปฏิบัติราชการ", tone: "danger" as const };
+  }
+  if (record.check_in_status === "late") {
+    return { label: "มาสาย", tone: "warning" as const };
+  }
+  if (record.check_out_status === "early") {
+    return { label: "ออกก่อนเวลา", tone: "warning" as const };
+  }
+  if (!record.check_out_at) {
+    return { label: "ยังไม่ลงเวลาออก", tone: "neutral" as const };
+  }
+  return { label: "มาปฏิบัติราชการ", tone: "success" as const };
 }
 
 function getReviewStatus(record: AttendanceReportRecord) {
@@ -462,23 +493,43 @@ export default function AdminAttendancePage() {
   const filteredRecords = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
 
-    return records.filter((record) => {
-      const attendanceStatus = getAttendanceStatus(record);
-      const matchesSearch =
-        !keyword ||
-        record.full_name.toLowerCase().includes(keyword) ||
-        (record.position ?? "").toLowerCase().includes(keyword) ||
-        getRoleLabel(record.role).toLowerCase().includes(keyword);
+    return records
+      .filter((record) => Boolean(record.check_in_at))
+      .filter((record) => {
+        const attendanceStatus = getAttendanceStatus(record);
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "normal" && attendanceStatus.label === "ปกติ") ||
-        (statusFilter === "late" && attendanceStatus.label === "มาสาย") ||
-        (statusFilter === "incomplete" && attendanceStatus.label === "ยังไม่ลงเวลาออก") ||
-        (statusFilter === "absent" && attendanceStatus.label === "ไม่ลงเวลา");
+        const matchesSearch =
+          !keyword ||
+          record.full_name.toLowerCase().includes(keyword) ||
+          (record.position ?? "").toLowerCase().includes(keyword) ||
+          getRoleLabel(record.role).toLowerCase().includes(keyword);
 
-      return matchesSearch && matchesStatus;
-    });
+        const matchesStatus =
+          statusFilter === "all" ||
+          (statusFilter === "normal" &&
+            attendanceStatus.label === "มาปฏิบัติราชการ") ||
+          (statusFilter === "late" &&
+            attendanceStatus.label === "มาสาย") ||
+          (statusFilter === "incomplete" &&
+            attendanceStatus.label === "ยังไม่ลงเวลาออก");
+
+        return matchesSearch && matchesStatus;
+      })
+      .sort((left, right) => {
+        const leftTime = left.check_in_at
+          ? new Date(left.check_in_at).getTime()
+          : Number.POSITIVE_INFINITY;
+
+        const rightTime = right.check_in_at
+          ? new Date(right.check_in_at).getTime()
+          : Number.POSITIVE_INFINITY;
+
+        if (leftTime !== rightTime) {
+          return leftTime - rightTime;
+        }
+
+        return left.full_name.localeCompare(right.full_name, "th");
+      });
   }, [records, searchText, statusFilter]);
 
 
@@ -951,8 +1002,8 @@ export default function AdminAttendancePage() {
         <header className={styles.pageHeader}>
           <div>
             <p className={styles.eyebrow}>DAILY ATTENDANCE REPORT</p>
-            <h1>รายงานการลงเวลาประจำวัน</h1>
-            <p className={styles.subtitle}>ตรวจสอบข้อมูลและดาวน์โหลดรายงานในวันที่เลือก</p>
+            <h1>รายงานการมาปฏิบัติราชการประจำวัน</h1>
+            <p className={styles.subtitle}>ตรวจสอบสถานะการมาปฏิบัติราชการของบุคลากรโรงเรียนวัดไผ่มุ้ง</p>
           </div>
           <button type="button" className={styles.backButton} onClick={() => router.push("/dashboard")}>
             กลับ Dashboard
@@ -1003,7 +1054,7 @@ export default function AdminAttendancePage() {
           </div>
 
           <div className={styles.field}>
-            <label>ค้นหาพนักงาน</label>
+            <label>ค้นหาบุคลากร</label>
             <input
               type="search"
               value={searchText}
@@ -1016,10 +1067,13 @@ export default function AdminAttendancePage() {
             <label>สถานะการลงเวลา</label>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">ทั้งหมด</option>
-              <option value="normal">ปกติ</option>
+              <option value="normal">มาปฏิบัติราชการ</option>
               <option value="late">มาสาย</option>
               <option value="incomplete">ยังไม่ลงเวลาออก</option>
-              <option value="absent">ไม่ลงเวลา</option>
+              <option value="sick">ลาป่วย</option>
+              <option value="personal">ลากิจ</option>
+              <option value="official_duty">ไปราชการ</option>
+              <option value="absent">ไม่มาปฏิบัติราชการ</option>
             </select>
           </div>
 
@@ -1027,20 +1081,7 @@ export default function AdminAttendancePage() {
             <button type="button" className={styles.csvButton} onClick={exportCsv} disabled={loading}>
               <DownloadIcon /> ดาวน์โหลด CSV
             </button>
-            <button
-              type="button"
-              className={styles.pdfButton}
-              onClick={downloadReportPdf}
-              disabled={loadingPdf || !pdfInfo?.found}
-              title={
-                pdfInfo?.found
-                  ? `ดาวน์โหลด ${pdfInfo.fileName}`
-                  : "ยังไม่พบไฟล์ PDF ของวันที่เลือก"
-              }
-            >
-              <DownloadIcon />
-              {loadingPdf ? "กำลังตรวจสอบ..." : reportMode === "monthly" ? "ดาวน์โหลด PDF รวมเดือน" : "ดาวน์โหลด PDF"}
-            </button>
+            
           </div>
         </section>
 
@@ -1051,7 +1092,7 @@ export default function AdminAttendancePage() {
                 {THAI_MONTHS[selectedDateParts.monthIndex]}{" "}
                 {selectedDateParts.year + 543}
               </strong>
-              <span>เลือกวันที่ หรือเปิดรายงานรวมทั้งเดือน</span>
+              <span>เลือกวันที่เพื่อดูรายงานรายวัน หรือสร้าง PDF รวมเดือน</span>
             </div>
             <div className={styles.monthActionButtons}>
               <button
@@ -1061,10 +1102,10 @@ export default function AdminAttendancePage() {
                 disabled={buildingMonthly || closingMonth || monthFileStatus.monthClosed}
               >
                 {buildingMonthly
-                  ? "กำลังสร้างรวมทั้งเดือน..."
+                  ? "กำลังสร้าง PDF รวมเดือน..."
                   : monthFileStatus.monthClosed
                     ? "ปิดเดือนแล้ว"
-                    : "สร้าง/ปรับปรุงไฟล์รวมเดือน"}
+                    : "สร้าง PDF รวมเดือน"}
               </button>
 
               <button
@@ -1135,23 +1176,7 @@ export default function AdminAttendancePage() {
               );
             })}
 
-            <button
-              type="button"
-              className={[
-                reportMode === "monthly"
-                  ? styles.activeMonthTotal
-                  : styles.monthTotalButton,
-                monthFileStatus.monthlyPdfFound
-                  ? styles.monthTotalReady
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onClick={chooseMonthlyReport}
-            >
-              รวมทั้งเดือน
-              {monthFileStatus.monthlyPdfFound && <small>✓</small>}
-            </button>
+            
           </div>
 
           <div className={styles.monthLegend}>
@@ -1168,23 +1193,71 @@ export default function AdminAttendancePage() {
 
         <div className={styles.contentGrid}>
           <div className={styles.leftColumn}>
-            <section className={styles.summaryCard}>
-              <h2>สรุปข้อมูลการลงเวลา</h2>
-              <div className={styles.summaryGrid}>
-                <div><span>พนักงานทั้งหมด</span><strong>{summary.total}</strong><small>คน</small></div>
-                <div className={styles.green}><span>ลงเวลาปกติ</span><strong>{summary.complete}</strong><small>คน</small></div>
-                <div className={styles.orange}><span>มาสาย</span><strong>{summary.late}</strong><small>คน</small></div>
-                <div className={styles.red}><span>ลงเวลาไม่ครบ</span><strong>{summary.incomplete}</strong><small>คน</small></div>
+                        <section className={styles.summaryCard}>
+              <div className={styles.summaryTitleRow}>
+                <div>
+                  <p className={styles.summaryEyebrow}>DAILY PERSONNEL STATUS</p>
+                  <h2>สรุปการมาปฏิบัติราชการประจำวัน</h2>
+                  <p>ยอดหลักทั้ง 5 สถานะรวมกันเท่ากับจำนวนบุคลากรทั้งหมด</p>
+                </div>
+                <span className={styles.summaryDate}>{formatThaiLongDate(selectedDate)}</span>
+              </div>
+
+              <div className={styles.primarySummaryGrid}>
+                <div className={styles.cardTotal}>
+                  <span>บุคลากรทั้งหมด</span>
+                  <strong>{summary.totalPersonnel ?? summary.total}</strong>
+                  <small>คน</small>
+                </div>
+                <div className={styles.cardPresent}>
+                  <span>มาปฏิบัติราชการ</span>
+                  <strong>{summary.present ?? summary.complete}</strong>
+                  <small>คน</small>
+                </div>
+                <div className={styles.cardSick}>
+                  <span>ลาป่วย</span>
+                  <strong>{summary.sickLeave ?? 0}</strong>
+                  <small>คน</small>
+                </div>
+                <div className={styles.cardPersonal}>
+                  <span>ลากิจ</span>
+                  <strong>{summary.personalLeave ?? 0}</strong>
+                  <small>คน</small>
+                </div>
+                <div className={styles.cardDuty}>
+                  <span>ไปราชการ</span>
+                  <strong>{summary.officialDuty ?? 0}</strong>
+                  <small>คน</small>
+                </div>
+                <div className={styles.cardAbsent}>
+                  <span>ไม่มาปฏิบัติราชการ</span>
+                  <strong>{summary.absent ?? 0}</strong>
+                  <small>คน</small>
+                </div>
+              </div>
+
+              <div className={styles.timeDetailSection}>
+                <div>
+                  <h3>รายละเอียดการลงเวลาเข้า–ออก</h3>
+                  <p>เป็นข้อมูลประกอบและอาจซ้อนกันได้</p>
+                </div>
+                <div className={styles.timeDetailGrid}>
+                  <div><span>เข้า–ออกครบ</span><strong>{summary.complete}</strong></div>
+                  <div><span>มาสาย</span><strong>{summary.late}</strong></div>
+                  <div><span>ออกก่อนเวลา</span><strong>{summary.early}</strong></div>
+                  <div><span>ยังไม่ลงเวลาออก</span><strong>{summary.incomplete}</strong></div>
+                  <div><span>รอตรวจสอบ</span><strong>{summary.pendingReview ?? 0}</strong></div>
+                </div>
               </div>
             </section>
 
             <section className={styles.listCard}>
               <div className={styles.cardHeader}>
                 <div>
-                  <h2>รายการลงเวลาของพนักงาน</h2>
+                  <h2>รายชื่อบุคลากรและสถานะการปฏิบัติราชการ</h2>
                   <p>{reportMode === "monthly" ? `${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}` : formatThaiLongDate(selectedDate)}</p>
                 </div>
-                <span>{filteredRecords.length} รายการ</span>
+                <span>{filteredRecords.length} คนที่เช็กอินแล้ว</span>
               </div>
 
               <div className={styles.tableWrap}>
@@ -1344,3 +1417,6 @@ export default function AdminAttendancePage() {
     </main>
   );
 }
+
+
+
