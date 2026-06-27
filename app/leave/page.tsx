@@ -556,7 +556,12 @@ export default function LeavePage() {
             <h1>ขออนุญาตลาป่วย-ลากิจ</h1>
             <p>กรอกข้อมูลเพื่อยื่นใบลา</p>
           </div>
-        </header>
+        
+          <a href="/attendance" className={styles.dashboardButton}>
+            <span aria-hidden="true">⌂</span>
+            กลับหน้า Dashboard
+          </a>
+</header>
 
       {summary && leaveSettings && (
         <section className={styles.summaryGrid}>

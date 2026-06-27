@@ -1814,3 +1814,154 @@
     transform: translateX(0);
   }
 }
+
+
+/* Leave desktop layout correction */
+
+.dashboardButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 15px;
+  border: 1px solid #d5c9e1;
+  border-radius: 13px;
+  background: #ffffff;
+  color: #665184;
+  box-shadow: 0 7px 18px rgba(87, 68, 110, 0.08);
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dashboardButton span {
+  font-size: 18px;
+}
+
+@media (min-width: 801px) {
+  .header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    text-align: left;
+  }
+
+  .headerTitle {
+    min-width: 0;
+    flex: 1;
+    text-align: left;
+  }
+
+  .dashboardButton {
+    flex: 0 0 auto;
+  }
+
+  .grid {
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr) !important;
+    align-items: start;
+  }
+
+  .formCard,
+  .historyCard {
+    min-width: 0;
+  }
+
+  .historyCard {
+    overflow: hidden;
+  }
+
+  .historyToggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .historyToggleAction {
+    margin-left: auto;
+  }
+
+  .historyContent {
+    overflow: hidden;
+  }
+
+  .historyTools {
+    padding: 8px 0 12px;
+  }
+
+  .leaveItem {
+    min-width: 0;
+  }
+
+  .leaveItem > div:first-child {
+    flex-wrap: wrap;
+  }
+
+  .leaveItem footer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .leaveItem footer > div {
+    display: flex !important;
+    min-width: 0;
+    flex: 1 1 260px;
+    justify-content: flex-end !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .leaveItem footer a,
+  .leaveItem footer button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .leaveItem footer span {
+    flex: 0 0 auto;
+  }
+
+  .deleteLeaveButton {
+    width: auto !important;
+    flex: 0 0 auto;
+  }
+
+  .reviewItemTop {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .reviewActions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .summaryGrid article {
+    background: #ffffff;
+    border-color: #e2dbe9;
+  }
+
+  .summaryGrid article:nth-child(1) {
+    border-top-color: #aa98bf;
+  }
+
+  .summaryGrid article:nth-child(2) {
+    border-top-color: #ef9aa6;
+  }
+
+  .summaryGrid article:nth-child(3) {
+    border-top-color: #f2b46f;
+  }
+}
+
+@media (max-width: 800px) {
+  .dashboardButton {
+    display: none;
+  }
+}
