@@ -5,7 +5,7 @@ const ATTENDANCE_REPORT_CONFIG = {
   MAX_FOLDER_DEPTH: 4,
   // Google Docs ต้นฉบับรูปแบบราชการ
   DAILY_TEMPLATE_ID:
-    "1XFEiaz3xRKVVXqQFkXpGk_Ts7oxEajElQe4VRkKvql0",
+    "1pomYwEtxsBJ0u_UGXtndMDPJ15qriQ_2STVzVBk72t0",
   DAILY_DATA_ROWS: 12,
 };
 
@@ -135,6 +135,7 @@ function verifySecretValue_(suppliedSecret) {
 }
 
 function handleBuildDailyPdf_(payload) {
+  const startedAt = Date.now();
   const date = String(payload.date || "").trim();
   const rows = Array.isArray(payload.rows)
     ? payload.rows
@@ -276,7 +277,7 @@ function handleBuildDailyPdf_(payload) {
   clearAllRemainingPlaceholders_(body);
 
   document.saveAndClose();
-  Utilities.sleep(1200);
+  Utilities.sleep(150);
 
   const pdfBlob = copiedFile
     .getAs(MimeType.PDF)
@@ -290,6 +291,7 @@ function handleBuildDailyPdf_(payload) {
     found: true,
     replaced: replaced,
     recordCount: rows.length,
+    elapsedMs: Date.now() - startedAt,
     fileId: pdfFile.getId(),
     fileName: pdfFile.getName(),
     documentId: copiedFile.getId(),
@@ -428,98 +430,221 @@ function fillFixedRepeatedPlaceholders_(
   rows,
   maxRows
 ) {
-  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeRows = Array.isArray(rows)
+    ? rows.slice(0, maxRows)
+    : [];
 
-  for (
-    let index = 0;
-    index < maxRows;
-    index += 1
-  ) {
-    const row = safeRows[index] || {};
+  while (safeRows.length < maxRows) {
+    safeRows.push({});
+  }
 
-    replaceNextLiteralPlaceholder_(
-      body,
-      "{{ลำดับ}}",
-      row.fullName || row.name || row.full_name
+  const queues = {
+    order: safeRows.map(function (row, index) {
+      const hasName = Boolean(
+        row.fullName ||
+        row.name ||
+        row.full_name
+      );
+
+      return hasName
         ? toThaiDigits_(index + 1)
-        : ""
-    );
+        : "";
+    }),
 
-    replaceNextLiteralPlaceholder_(
-      body,
-      "{{ชื่อนามสกุล}}",
-      toThaiDigits_(
+    fullName: safeRows.map(function (row) {
+      return toThaiDigits_(
         row.fullName ||
         row.name ||
         row.full_name ||
         ""
-      )
-    );
+      );
+    }),
 
-    replaceNextLiteralPlaceholder_(
-      body,
-      "{{ตำแหน่ง}}",
-      toThaiDigits_(
+    position: safeRows.map(function (row) {
+      return toThaiDigits_(
         row.position ||
         row.jobTitle ||
         ""
-      )
-    );
+      );
+    }),
 
-    replaceNextLiteralPlaceholder_(
-      body,
-      "{{เวลาเข้า}}",
-      toThaiDigits_(
+    checkIn: safeRows.map(function (row) {
+      return toThaiDigits_(
         row.checkIn ||
         row.check_in ||
         row.timeIn ||
         ""
-      )
-    );
+      );
+    }),
 
-    replaceNextStatusPlaceholder_(
-      body,
-      toThaiDigits_(
+    status: safeRows.map(function (row) {
+      return toThaiDigits_(
         row.status ||
         row.attendanceStatus ||
         ""
-      )
-    );
+      );
+    }),
 
-    replaceNextLiteralPlaceholder_(
-      body,
-      "{{เวลากลับ}}",
-      toThaiDigits_(
+    checkOut: safeRows.map(function (row) {
+      return toThaiDigits_(
         row.checkOut ||
         row.check_out ||
         row.timeOut ||
         ""
-      )
-    );
+      );
+    }),
 
-    replaceNextLiteralPlaceholder_(
-      body,
-      "{{เหตุผล}}",
-      toThaiDigits_(
+    reason: safeRows.map(function (row) {
+      return toThaiDigits_(
         row.reason ||
         row.leaveReason ||
         row.note ||
         ""
-      )
-    );
+      );
+    }),
+  };
 
-    replaceNextLiteralPlaceholder_(
-      body,
-      "{{ลายเซ็น}}",
-      toThaiDigits_(
-        row.signature ||
-        row.signatureText ||
-        ""
-      )
-    );
+  const placeholderMap = {
+    "{{ลำดับ}}": "order",
+    "{{ชื่อนามสกุล}}": "fullName",
+    "{{ตำแหน่ง}}": "position",
+    "{{เวลาเข้า}}": "checkIn",
+    "{{สถานะ}}": "status",
+    "{{สถานะเวลา}}": "status",
+    "{{สถานะ เวลา}}": "status",
+    "{{เวลากลับ}}": "checkOut",
+    "{{เหตุผล}}": "reason",
+  };
+
+  const counters = {
+    order: 0,
+    fullName: 0,
+    position: 0,
+    checkIn: 0,
+    status: 0,
+    checkOut: 0,
+    reason: 0,
+  };
+
+  replaceRepeatedPlaceholdersFast_(
+    body,
+    placeholderMap,
+    queues,
+    counters
+  );
+}
+
+/**
+ * ไล่อ่านเอกสารเพียงรอบเดียว แทนการค้นหาจากต้นเอกสาร
+ * ซ้ำหลายสิบครั้ง จึงลดเวลาสร้าง PDF ได้มาก
+ */
+function replaceRepeatedPlaceholdersFast_(
+  element,
+  placeholderMap,
+  queues,
+  counters
+) {
+  if (!element) {
+    return;
   }
 
+  const type =
+    typeof element.getType === "function"
+      ? element.getType()
+      : null;
+
+  if (
+    type === DocumentApp.ElementType.PARAGRAPH ||
+    type === DocumentApp.ElementType.LIST_ITEM
+  ) {
+    let editableText;
+
+    try {
+      editableText = element.editAsText();
+    } catch (error) {
+      editableText = null;
+    }
+
+    if (editableText) {
+      let currentText = editableText.getText();
+
+      while (true) {
+        let selectedPlaceholder = "";
+        let selectedIndex = -1;
+
+        Object.keys(placeholderMap).forEach(function (
+          placeholder
+        ) {
+          const foundIndex =
+            currentText.indexOf(placeholder);
+
+          if (
+            foundIndex !== -1 &&
+            (
+              selectedIndex === -1 ||
+              foundIndex < selectedIndex
+            )
+          ) {
+            selectedPlaceholder = placeholder;
+            selectedIndex = foundIndex;
+          }
+        });
+
+        if (selectedIndex === -1) {
+          break;
+        }
+
+        const field =
+          placeholderMap[selectedPlaceholder];
+        const valueIndex = counters[field];
+        const queue = queues[field] || [];
+        const replacement = String(
+          queue[valueIndex] == null
+            ? ""
+            : queue[valueIndex]
+        );
+
+        counters[field] += 1;
+
+        editableText.deleteText(
+          selectedIndex,
+          selectedIndex +
+            selectedPlaceholder.length -
+            1
+        );
+
+        if (replacement) {
+          editableText.insertText(
+            selectedIndex,
+            replacement
+          );
+        }
+
+        currentText = editableText.getText();
+      }
+    }
+
+    return;
+  }
+
+  if (
+    typeof element.getNumChildren === "function"
+  ) {
+    for (
+      let index = 0;
+      index < element.getNumChildren();
+      index += 1
+    ) {
+      replaceRepeatedPlaceholdersFast_(
+        element.getChild(index),
+        placeholderMap,
+        queues,
+        counters
+      );
+    }
+  }
 }
+
 
 function replaceNextStatusPlaceholder_(
   body,
