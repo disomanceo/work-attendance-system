@@ -1,1 +1,398 @@
-"use client"; import { useCallback, useEffect, useMemo, useState } from "react"; import { useRouter } from "next/navigation"; import { createClient } from "@/lib/supabase/client"; type AttendanceRecord = { id: string; work_date: string; check_in_at: string | null; check_out_at: string | null; check_in_distance_meters: number | null; check_out_distance_meters: number | null; check_in_status: string; check_out_status: string | null; note: string | null; }; function formatThaiDate(value: string) { const date = new Date(`${value}T00:00:00+07:00`); return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "long", day: "numeric", weekday: "short", }).format(date); } function formatThaiTime(value: string | null) { if (!value) { return "-"; } return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", second: "2-digit", }).format(new Date(value)); } function getStatusLabel(status: string | null) { const labels: Record<string, string> = { normal: "ปกติ", late: "มาสาย", early: "ออกก่อนเวลา", outside_area: "อยู่นอกพื้นที่", pending: "รอตรวจสอบ", auto: "ออกอัตโนมัติ", }; return status ? labels[status] ?? status : "-"; } function getStatusStyle(status: string | null) { if (status === "normal") { return { color: "#146c2e", background: "#eaf9ef", border: "1px solid #b8e3c5", }; } if (status === "late" || status === "early") { return { color: "#a04b00", background: "#fff7e8", border: "1px solid #f3d29c", }; } if (status === "outside_area" || status === "suspended") { return { color: "#c81e1e", background: "#fff1f1", border: "1px solid #f2b8b8", }; } return { color: "#475467", background: "#f2f4f7", border: "1px solid #d0d5dd", }; } function getMonthStart() { const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", }); return `${formatter.format(new Date())}-01`; } function getToday() { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit", day: "2-digit", }).format(new Date()); } export default function AttendanceHistoryPage() { const router = useRouter(); const supabase = useMemo(() => createClient(), []); const [records, setRecords] = useState<AttendanceRecord[]>([]); const [loading, setLoading] = useState(true); const [message, setMessage] = useState(""); const [startDate, setStartDate] = useState(getMonthStart()); const [endDate, setEndDate] = useState(getToday()); const loadHistory = useCallback(async () => { setLoading(true); setMessage(""); try { const { data: { user }, error: userError, } = await supabase.auth.getUser(); if (userError || !user) { router.replace("/login"); return; } const { data: profile, error: profileError } = await supabase .from("profiles") .select("account_status") .eq("id", user.id) .single(); if ( profileError || !profile || profile.account_status !== "active" ) { await supabase.auth.signOut(); router.replace("/login"); return; } if (!startDate || !endDate) { throw new Error("กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด"); } if (startDate > endDate) { throw new Error("วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด"); } const { data, error } = await supabase .from("attendance_records") .select( ` id, work_date, check_in_at, check_out_at, check_in_distance_meters, check_out_distance_meters, check_in_status, check_out_status, note ` ) .eq("user_id", user.id) .gte("work_date", startDate) .lte("work_date", endDate) .order("work_date", { ascending: false }); if (error) { throw error; } setRecords(data ?? []); } catch (error) { console.error("Load attendance history error:", error); setMessage( error instanceof Error ? error.message : "ไม่สามารถโหลดประวัติการลงเวลาได้" ); } finally { setLoading(false); } }, [endDate, router, startDate, supabase]); useEffect(() => { void loadHistory(); }, [loadHistory]); const summary = useMemo(() => { const lateCount = records.filter( (record) => record.check_in_status === "late" ).length; const earlyCount = records.filter( (record) => record.check_out_status === "early" ).length; const completeCount = records.filter( (record) => record.check_in_at && record.check_out_at ).length; return { total: records.length, late: lateCount, early: earlyCount, complete: completeCount, }; }, [records]); return ( <main className="dashboard-shell"> <header className="dashboard-header"> <div> <p>ATTENDANCE HISTORY</p> <h1>ประวัติการลงเวลา</h1> </div> <div style={{ display: "flex", gap: 10, flexWrap: "wrap", }} > <button type="button" onClick={() => router.push("/attendance")} > หน้าลงเวลา </button> <button type="button" onClick={() => router.push("/dashboard")} > กลับ Dashboard </button> </div> </header> <section style={{ marginTop: 28, padding: 22, border: "1px solid #d8e2ed", borderRadius: 22, background: "#ffffff", boxShadow: "0 16px 40px rgba(28, 60, 93, 0.08)", }} > <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, }} > <label> <span style={{ display: "block", marginBottom: 7, color: "#344054", fontWeight: 700, }} > วันที่เริ่มต้น </span> <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value) } style={{ width: "100%", height: 46, padding: "0 12px", border: "1px solid #d8e2ed", borderRadius: 12, background: "#ffffff", }} /> </label> <label> <span style={{ display: "block", marginBottom: 7, color: "#344054", fontWeight: 700, }} > วันที่สิ้นสุด </span> <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value) } style={{ width: "100%", height: 46, padding: "0 12px", border: "1px solid #d8e2ed", borderRadius: 12, background: "#ffffff", }} /> </label> <button type="button" onClick={() => void loadHistory()} disabled={loading} style={{ alignSelf: "end", height: 46, border: 0, borderRadius: 12, color: "#ffffff", background: "linear-gradient(135deg, #1877f2, #3799ff)", fontWeight: 800, cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1, }} > {loading ? "กำลังโหลด..." : "แสดงข้อมูล"} </button> </div> </section> {message && ( <div role="alert" style={{ marginTop: 18, padding: "14px 16px", border: "1px solid #f2b8b8", borderRadius: 14, color: "#c81e1e", background: "#fff5f5", fontWeight: 700, }} > {message} </div> )} <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginTop: 20, }} > <article style={{ padding: 18, border: "1px solid #d8e2ed", borderRadius: 18, background: "#ffffff", }} > <p style={{ margin: 0, color: "#667085" }}> วันลงเวลาทั้งหมด </p> <h2 style={{ margin: "8px 0 0", color: "#071d32" }}> {summary.total} </h2> </article> <article style={{ padding: 18, border: "1px solid #b8e3c5", borderRadius: 18, background: "#f1fff5", }} > <p style={{ margin: 0, color: "#667085" }}> ลงเวลาครบ </p> <h2 style={{ margin: "8px 0 0", color: "#146c2e" }}> {summary.complete} </h2> </article> <article style={{ padding: 18, border: "1px solid #f3d29c", borderRadius: 18, background: "#fffaf0", }} > <p style={{ margin: 0, color: "#667085" }}> มาสาย </p> <h2 style={{ margin: "8px 0 0", color: "#a04b00" }}> {summary.late} </h2> </article> <article style={{ padding: 18, border: "1px solid #f3d29c", borderRadius: 18, background: "#fffaf0", }} > <p style={{ margin: 0, color: "#667085" }}> ออกก่อนเวลา </p> <h2 style={{ margin: "8px 0 0", color: "#a04b00" }}> {summary.early} </h2> </article> </section> <section style={{ marginTop: 20, padding: 22, border: "1px solid #d8e2ed", borderRadius: 22, background: "#ffffff", boxShadow: "0 16px 40px rgba(28, 60, 93, 0.08)", }} > <h2 style={{ margin: "0 0 18px", color: "#071d32", fontSize: 22, }} > รายการลงเวลา </h2> {loading ? ( <div style={{ padding: 40, textAlign: "center", color: "#667085", }} > กำลังโหลดข้อมูล... </div> ) : records.length === 0 ? ( <div style={{ padding: 40, textAlign: "center", color: "#667085", }} > ไม่พบข้อมูลในช่วงวันที่ที่เลือก </div> ) : ( <div style={{ display: "grid", gap: 14, }} > {records.map((record) => ( <article key={record.id} style={{ padding: 18, border: "1px solid #d8e2ed", borderRadius: 18, background: "#fbfdff", }} > <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, 1.2fr) repeat(2, minmax(130px, 1fr))", gap: 16, alignItems: "center", }} > <div> <h3 style={{ margin: 0, color: "#071d32", fontSize: 17, }} > {formatThaiDate(record.work_date)} </h3> {record.note && ( <p style={{ margin: "7px 0 0", color: "#667085", fontSize: 13, }} > หมายเหตุ: {record.note} </p> )} </div> <div> <p style={{ margin: 0, color: "#667085", fontSize: 13, }} > เวลาเข้า </p> <strong style={{ display: "block", marginTop: 5, color: "#071d32", }} > {formatThaiTime(record.check_in_at)} </strong> <span style={{ display: "inline-block", marginTop: 7, padding: "4px 9px", borderRadius: 999, fontSize: 12, fontWeight: 800, ...getStatusStyle(record.check_in_status), }} > {getStatusLabel(record.check_in_status)} </span> {record.check_in_distance_meters !== null && ( <p style={{ margin: "6px 0 0", color: "#98a2b3", fontSize: 12, }} > ห่างโรงเรียน{" "} {Math.round( record.check_in_distance_meters ).toLocaleString("th-TH")}{" "} เมตร </p> )} </div> <div> <p style={{ margin: 0, color: "#667085", fontSize: 13, }} > เวลาออก </p> <strong style={{ display: "block", marginTop: 5, color: "#071d32", }} > {formatThaiTime(record.check_out_at)} </strong> <span style={{ display: "inline-block", marginTop: 7, padding: "4px 9px", borderRadius: 999, fontSize: 12, fontWeight: 800, ...getStatusStyle(record.check_out_status), }} > {getStatusLabel(record.check_out_status)} </span> {record.check_out_distance_meters !== null && ( <p style={{ margin: "6px 0 0", color: "#98a2b3", fontSize: 12, }} > ห่างโรงเรียน{" "} {Math.round( record.check_out_distance_meters ).toLocaleString("th-TH")}{" "} เมตร </p> )} </div> </div> </article> ))} </div> )} </section> </main> ); }
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import styles from "./attendance-history.module.css";
+
+type AttendanceRecord = {
+  id: string;
+  work_date: string;
+  check_in_at: string | null;
+  check_out_at: string | null;
+  check_in_distance_meters: number | null;
+  check_out_distance_meters: number | null;
+  check_in_status: string;
+  check_out_status: string | null;
+  note: string | null;
+};
+
+type Profile = {
+  full_name: string;
+  position: string | null;
+  role: string;
+  account_status: string;
+};
+
+function getToday() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function getMonthStart() {
+  const today = getToday();
+  return `${today.slice(0, 7)}-01`;
+}
+
+function parseLocalDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatThaiDate(value: string) {
+  return new Intl.DateTimeFormat("th-TH", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(parseLocalDate(value));
+}
+
+function formatThaiTime(value: string | null) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function getRoleLabel(role: string) {
+  const labels: Record<string, string> = {
+    admin: "ผู้ดูแลระบบ",
+    director: "ผู้อำนวยการ",
+    teacher: "ครู",
+    staff: "เจ้าหน้าที่",
+    janitor: "นักการภารโรง",
+  };
+
+  return labels[role] ?? role;
+}
+
+function getStatus(record: AttendanceRecord) {
+  const isDirectorDuty =
+    record.check_in_status === "normal" &&
+    record.note?.trim() === "ปฏิบัติราชการก่อนเข้าโรงเรียน";
+
+  if (isDirectorDuty) {
+    return { label: "ไปราชการ", tone: "info" as const };
+  }
+
+  if (!record.check_in_at) {
+    return { label: "ไม่ลงเวลา", tone: "danger" as const };
+  }
+
+  if (record.check_in_status === "late") {
+    return { label: "มาสาย", tone: "warning" as const };
+  }
+
+  if (record.check_out_status === "early") {
+    return { label: "ออกก่อนเวลา", tone: "warning" as const };
+  }
+
+  if (!record.check_out_at) {
+    return { label: "ยังไม่ลงเวลาออก", tone: "neutral" as const };
+  }
+
+  return { label: "ปกติ", tone: "success" as const };
+}
+
+export default function AttendanceHistoryPage() {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [startDate, setStartDate] = useState(getMonthStart());
+  const [endDate, setEndDate] = useState(getToday());
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  const loadHistory = useCallback(async () => {
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("full_name, position, role, account_status")
+        .eq("id", user.id)
+        .single();
+
+      if (
+        profileError ||
+        !profileData ||
+        profileData.account_status !== "active"
+      ) {
+        await supabase.auth.signOut();
+        router.replace("/login");
+        return;
+      }
+
+      setProfile(profileData as Profile);
+
+      if (!startDate || !endDate) {
+        throw new Error("กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด");
+      }
+
+      if (startDate > endDate) {
+        throw new Error("วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด");
+      }
+
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .select(
+          `
+            id,
+            work_date,
+            check_in_at,
+            check_out_at,
+            check_in_distance_meters,
+            check_out_distance_meters,
+            check_in_status,
+            check_out_status,
+            note
+          `
+        )
+        .eq("user_id", user.id)
+        .gte("work_date", startDate)
+        .lte("work_date", endDate)
+        .order("work_date", { ascending: false });
+
+      if (error) throw error;
+      setRecords((data ?? []) as AttendanceRecord[]);
+    } catch (error) {
+      console.error("Load attendance history error:", error);
+      setRecords([]);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถโหลดประวัติการลงเวลาได้"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [endDate, router, startDate, supabase]);
+
+  useEffect(() => {
+    void loadHistory();
+  }, [loadHistory]);
+
+  const summary = useMemo(() => {
+    const late = records.filter(
+      (record) => record.check_in_status === "late"
+    ).length;
+    const early = records.filter(
+      (record) => record.check_out_status === "early"
+    ).length;
+    const complete = records.filter(
+      (record) => record.check_in_at && record.check_out_at
+    ).length;
+    const incomplete = records.filter(
+      (record) => !record.check_in_at || !record.check_out_at
+    ).length;
+
+    return {
+      total: records.length,
+      complete,
+      late,
+      early,
+      incomplete,
+    };
+  }, [records]);
+
+  const filteredRecords = useMemo(() => {
+    if (statusFilter === "all") return records;
+
+    return records.filter((record) => {
+      const status = getStatus(record).label;
+      return status === statusFilter;
+    });
+  }, [records, statusFilter]);
+
+  return (
+    <main className={styles.page}>
+      <section className={styles.panel}>
+        <header className={styles.pageHeader}>
+          <div>
+            <p className={styles.eyebrow}>ATTENDANCE REPORT</p>
+            <h1>ประวัติการลงเวลา</h1>
+            <p className={styles.subtitle}>
+              ตรวจสอบเวลาเข้า–ออกและสถานะการปฏิบัติงานของคุณ
+            </p>
+          </div>
+
+          <div className={styles.headerActions}>
+            <button type="button" onClick={() => router.push("/attendance")}>ลงเวลา</button>
+            <button type="button" onClick={() => router.push("/dashboard")}>Dashboard</button>
+          </div>
+        </header>
+
+        <section className={styles.profileStrip}>
+          <div>
+            <small>ผู้ใช้งาน</small>
+            <strong>{profile?.full_name || "-"}</strong>
+          </div>
+          <div>
+            <small>ตำแหน่ง</small>
+            <strong>{profile?.position || getRoleLabel(profile?.role || "") || "-"}</strong>
+          </div>
+          <div>
+            <small>ช่วงข้อมูล</small>
+            <strong>{formatThaiDate(startDate)} – {formatThaiDate(endDate)}</strong>
+          </div>
+        </section>
+
+        <section className={styles.toolbar}>
+          <label>
+            <span>วันที่เริ่มต้น</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
+          </label>
+
+          <label>
+            <span>วันที่สิ้นสุด</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+            />
+          </label>
+
+          <label>
+            <span>สถานะ</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <option value="all">ทั้งหมด</option>
+              <option value="ปกติ">ปกติ</option>
+              <option value="มาสาย">มาสาย</option>
+              <option value="ออกก่อนเวลา">ออกก่อนเวลา</option>
+              <option value="ไปราชการ">ไปราชการ</option>
+              <option value="ยังไม่ลงเวลาออก">ยังไม่ลงเวลาออก</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => void loadHistory()}
+            disabled={loading}
+          >
+            {loading ? "กำลังโหลด..." : "แสดงข้อมูล"}
+          </button>
+        </section>
+
+        {message && <div className={styles.errorBox}>{message}</div>}
+
+        <section className={styles.summaryGrid}>
+          <article>
+            <span>วันลงเวลาทั้งหมด</span>
+            <strong>{summary.total.toLocaleString("th-TH")}</strong>
+          </article>
+          <article className={styles.successCard}>
+            <span>ลงเวลาครบ</span>
+            <strong>{summary.complete.toLocaleString("th-TH")}</strong>
+          </article>
+          <article className={styles.warningCard}>
+            <span>มาสาย</span>
+            <strong>{summary.late.toLocaleString("th-TH")}</strong>
+          </article>
+          <article className={styles.warningCard}>
+            <span>ออกก่อนเวลา</span>
+            <strong>{summary.early.toLocaleString("th-TH")}</strong>
+          </article>
+          <article className={styles.neutralCard}>
+            <span>ข้อมูลไม่ครบ</span>
+            <strong>{summary.incomplete.toLocaleString("th-TH")}</strong>
+          </article>
+        </section>
+
+        <section className={styles.tableSection}>
+          <div className={styles.tableHeader}>
+            <div>
+              <p className={styles.eyebrow}>MY ATTENDANCE</p>
+              <h2>รายการลงเวลา</h2>
+            </div>
+            <span>{filteredRecords.length.toLocaleString("th-TH")} รายการ</span>
+          </div>
+
+          {loading ? (
+            <div className={styles.emptyState}>กำลังโหลดข้อมูล...</div>
+          ) : filteredRecords.length === 0 ? (
+            <div className={styles.emptyState}>ไม่พบข้อมูลในช่วงวันที่ที่เลือก</div>
+          ) : (
+            <div className={styles.tableWrap}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>วันที่</th>
+                    <th>เวลาเข้า</th>
+                    <th>เวลาออก</th>
+                    <th>สถานะ</th>
+                    <th>หมายเหตุ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRecords.map((record) => {
+                    const status = getStatus(record);
+
+                    return (
+                      <tr key={record.id}>
+                        <td data-label="วันที่">
+                          <strong>{formatThaiDate(record.work_date)}</strong>
+                        </td>
+                        <td data-label="เวลาเข้า">
+                          <strong>{formatThaiTime(record.check_in_at)}</strong>
+                          {record.check_in_distance_meters !== null && (
+                            <small>
+                              ห่างโรงเรียน {Math.round(record.check_in_distance_meters).toLocaleString("th-TH")} เมตร
+                            </small>
+                          )}
+                        </td>
+                        <td data-label="เวลาออก">
+                          <strong>{formatThaiTime(record.check_out_at)}</strong>
+                          {record.check_out_distance_meters !== null && (
+                            <small>
+                              ห่างโรงเรียน {Math.round(record.check_out_distance_meters).toLocaleString("th-TH")} เมตร
+                            </small>
+                          )}
+                        </td>
+                        <td data-label="สถานะ">
+                          <span className={`${styles.statusBadge} ${styles[status.tone]}`}>
+                            {status.label}
+                          </span>
+                        </td>
+                        <td data-label="หมายเหตุ">{record.note || "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </section>
+    </main>
+  );
+}
