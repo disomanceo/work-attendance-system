@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { notifyLeaveReviewed } from "@/lib/line/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -365,6 +366,21 @@ export async function PATCH(request: Request) {
         "สร้าง PDF สำเร็จแล้ว แต่บันทึกผลลงฐานข้อมูลไม่สำเร็จ กรุณาติดต่อผู้ดูแล"
       );
     }
+
+    await notifyLeaveReviewed({
+      requestId: leave.id,
+      fullName: leave.profiles?.full_name || "ไม่พบชื่อ",
+      leaveType: leave.leave_type,
+      startDate: leave.start_date,
+      endDate: leave.end_date,
+      totalDays: Number(leave.total_work_days || 0),
+      approved: nextStatus === "approved",
+      reviewerName: profile.full_name || "ผู้บริหาร",
+      reviewNote: body.note?.trim() || "",
+      leaveNumber: leave.leave_number,
+    }).catch((lineError) => {
+      console.error("LINE leave reviewed notification error:", lineError);
+    });
 
     return NextResponse.json({
       ok: true,

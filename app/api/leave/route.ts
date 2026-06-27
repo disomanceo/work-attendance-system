@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { notifyLeaveSubmitted } from "@/lib/line/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -150,8 +151,9 @@ async function holidaySet(
 }
 
 function isWorkDay(date: Date, holidays: Set<string>) {
-  const day = date.getDay();
-  if (day === 0 || day === 6) return false;
+  // โรงเรียนอาจเปิดเรียนหรือปฏิบัติงานชดเชยในวันเสาร์–อาทิตย์
+  // จึงนับวันเสาร์และวันอาทิตย์เป็นวันที่ยื่นลาได้ตามปกติ
+  // ยกเว้นวันที่ผู้ดูแลกำหนดไว้ในตาราง leave_holidays เท่านั้น
   return !holidays.has(dateKey(date));
 }
 
@@ -692,6 +694,20 @@ export async function POST(request: Request) {
       throw new Error("บันทึกใบลาไม่สำเร็จ");
     }
 
+    await notifyLeaveSubmitted({
+      requestId: data.id,
+      fullName: profile.full_name,
+      position: profile.position || profile.role,
+      leaveType,
+      startDate: startDateValue,
+      endDate: endDateValue,
+      totalDays: totalWorkDays,
+      reason,
+      leaveNumber: gasResult.leaveNumber,
+    }).catch((lineError) => {
+      console.error("LINE leave submitted notification error:", lineError);
+    });
+
     return NextResponse.json({
       ok: true,
       request: data,
@@ -708,3 +724,107 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const authorization = await authorize(request);
+
+    if (!authorization.ok) {
+      return NextResponse.json(
+        { ok: false, message: authorization.message },
+        { status: authorization.status }
+      );
+    }
+
+    const { admin, user, cfg } = authorization;
+
+    let requestId = "";
+
+    try {
+      const body = (await request.json()) as { requestId?: unknown };
+      requestId =
+        typeof body.requestId === "string" ? body.requestId.trim() : "";
+    } catch {
+      requestId = "";
+    }
+
+    if (!requestId) {
+      return NextResponse.json(
+        { ok: false, message: "ไม่พบรหัสใบลาที่ต้องการลบ" },
+        { status: 400 }
+      );
+    }
+
+    const { data: leaveRequest, error: loadError } = await admin
+      .from("leave_requests")
+      .select(
+        `
+          id,
+          user_id,
+          status,
+          working_document_id,
+          drive_request_folder_id,
+          evidence_file_id
+        `
+      )
+      .eq("id", requestId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (loadError) {
+      throw new Error("ตรวจสอบข้อมูลใบลาไม่สำเร็จ");
+    }
+
+    if (!leaveRequest) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ไม่พบใบลา หรือคุณไม่มีสิทธิ์ลบใบลารายการนี้",
+        },
+        { status: 404 }
+      );
+    }
+
+    const hasDriveAssets = Boolean(
+      leaveRequest.working_document_id ||
+        leaveRequest.drive_request_folder_id ||
+        leaveRequest.evidence_file_id
+    );
+
+    if (hasDriveAssets) {
+      await callGas(cfg.leaveGasUrl, {
+        action: "leaveDiscardPending",
+        secret: cfg.leaveGasSecret,
+        workingDocumentId: leaveRequest.working_document_id || "",
+        evidenceFileId: leaveRequest.evidence_file_id || "",
+        requestFolderId: leaveRequest.drive_request_folder_id || "",
+      });
+    }
+
+    const { error: deleteError } = await admin
+      .from("leave_requests")
+      .delete()
+      .eq("id", requestId)
+      .eq("user_id", user.id);
+
+    if (deleteError) {
+      throw new Error("ลบข้อมูลใบลาไม่สำเร็จ");
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: "ลบใบลาเรียบร้อยแล้ว",
+      requestId,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          error instanceof Error ? error.message : "ลบใบลาไม่สำเร็จ",
+      },
+      { status: 500 }
+    );
+  }
+}
+

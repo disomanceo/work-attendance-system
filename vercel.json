@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/attendance-daily-pdf",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/attendance-line-report",
+      "schedule": "15 1 * * *"
     }
   ]
 }
