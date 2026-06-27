@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -91,15 +91,7 @@ function getStatus(record: AttendanceRecord) {
     return { label: "มาสาย", tone: "warning" as const };
   }
 
-  if (record.check_out_status === "early") {
-    return { label: "ออกก่อนเวลา", tone: "warning" as const };
-  }
-
-  if (!record.check_out_at) {
-    return { label: "ยังไม่ลงเวลาออก", tone: "neutral" as const };
-  }
-
-  return { label: "ปกติ", tone: "success" as const };
+  return { label: "มาปฏิบัติราชการ", tone: "success" as const };
 }
 
 export default function AttendanceHistoryPage() {
@@ -195,25 +187,38 @@ export default function AttendanceHistoryPage() {
   }, [loadHistory]);
 
   const summary = useMemo(() => {
+    const present = records.filter(
+      (record) =>
+        Boolean(record.check_in_at) &&
+        record.check_in_status !== "late" &&
+        !(
+          record.check_in_status === "normal" &&
+          record.note?.trim() ===
+            "ปฏิบัติราชการก่อนเข้าโรงเรียน"
+        )
+    ).length;
+
     const late = records.filter(
       (record) => record.check_in_status === "late"
     ).length;
-    const early = records.filter(
-      (record) => record.check_out_status === "early"
+
+    const officialDuty = records.filter(
+      (record) =>
+        record.check_in_status === "normal" &&
+        record.note?.trim() ===
+          "ปฏิบัติราชการก่อนเข้าโรงเรียน"
     ).length;
-    const complete = records.filter(
-      (record) => record.check_in_at && record.check_out_at
-    ).length;
-    const incomplete = records.filter(
-      (record) => !record.check_in_at || !record.check_out_at
+
+    const absent = records.filter(
+      (record) => !record.check_in_at
     ).length;
 
     return {
       total: records.length,
-      complete,
+      present,
       late,
-      early,
-      incomplete,
+      officialDuty,
+      absent,
     };
   }, [records]);
 
@@ -232,15 +237,15 @@ export default function AttendanceHistoryPage() {
         <header className={styles.pageHeader}>
           <div>
             <p className={styles.eyebrow}>ATTENDANCE REPORT</p>
-            <h1>ประวัติการลงเวลา</h1>
+            <h1>การลงเวลาปฏิบัติงาน</h1>
             <p className={styles.subtitle}>
-              ตรวจสอบเวลาเข้า–ออกและสถานะการปฏิบัติงานของคุณ
+              ตรวจสอบประวัติการลงเวลาและสถานะการปฏิบัติงานของคุณ
             </p>
           </div>
 
           <div className={styles.headerActions}>
-            <button type="button" onClick={() => router.push("/attendance")}>ลงเวลา</button>
-            <button type="button" onClick={() => router.push("/dashboard")}>Dashboard</button>
+            <button type="button" onClick={() => router.push("/attendance")}>กลับหน้าลงเวลา</button>
+            <button type="button" onClick={() => router.push("/attendance")}>กลับหน้าหลัก</button>
           </div>
         </header>
 
@@ -285,11 +290,9 @@ export default function AttendanceHistoryPage() {
               onChange={(event) => setStatusFilter(event.target.value)}
             >
               <option value="all">ทั้งหมด</option>
-              <option value="ปกติ">ปกติ</option>
+              <option value="มาปฏิบัติราชการ">มาปฏิบัติราชการ</option>
               <option value="มาสาย">มาสาย</option>
-              <option value="ออกก่อนเวลา">ออกก่อนเวลา</option>
               <option value="ไปราชการ">ไปราชการ</option>
-              <option value="ยังไม่ลงเวลาออก">ยังไม่ลงเวลาออก</option>
             </select>
           </label>
 
@@ -307,24 +310,24 @@ export default function AttendanceHistoryPage() {
 
         <section className={styles.summaryGrid}>
           <article>
-            <span>วันลงเวลาทั้งหมด</span>
+            <span>วันปฏิบัติงานทั้งหมด</span>
             <strong>{summary.total.toLocaleString("th-TH")}</strong>
           </article>
           <article className={styles.successCard}>
-            <span>ลงเวลาครบ</span>
-            <strong>{summary.complete.toLocaleString("th-TH")}</strong>
+            <span>มาปฏิบัติราชการ</span>
+            <strong>{summary.present.toLocaleString("th-TH")}</strong>
           </article>
           <article className={styles.warningCard}>
             <span>มาสาย</span>
             <strong>{summary.late.toLocaleString("th-TH")}</strong>
           </article>
-          <article className={styles.warningCard}>
-            <span>ออกก่อนเวลา</span>
-            <strong>{summary.early.toLocaleString("th-TH")}</strong>
+          <article className={styles.infoCard}>
+            <span>ไปราชการ</span>
+            <strong>{summary.officialDuty.toLocaleString("th-TH")}</strong>
           </article>
-          <article className={styles.neutralCard}>
-            <span>ข้อมูลไม่ครบ</span>
-            <strong>{summary.incomplete.toLocaleString("th-TH")}</strong>
+          <article className={styles.dangerCard}>
+            <span>ไม่ได้ลงเวลา</span>
+            <strong>{summary.absent.toLocaleString("th-TH")}</strong>
           </article>
         </section>
 
@@ -348,7 +351,6 @@ export default function AttendanceHistoryPage() {
                   <tr>
                     <th>วันที่</th>
                     <th>เวลาเข้า</th>
-                    <th>เวลาออก</th>
                     <th>สถานะ</th>
                     <th>หมายเหตุ</th>
                   </tr>
@@ -367,14 +369,6 @@ export default function AttendanceHistoryPage() {
                           {record.check_in_distance_meters !== null && (
                             <small>
                               ห่างโรงเรียน {Math.round(record.check_in_distance_meters).toLocaleString("th-TH")} เมตร
-                            </small>
-                          )}
-                        </td>
-                        <td data-label="เวลาออก">
-                          <strong>{formatThaiTime(record.check_out_at)}</strong>
-                          {record.check_out_distance_meters !== null && (
-                            <small>
-                              ห่างโรงเรียน {Math.round(record.check_out_distance_meters).toLocaleString("th-TH")} เมตร
                             </small>
                           )}
                         </td>
