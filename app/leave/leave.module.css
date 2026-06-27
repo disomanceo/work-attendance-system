@@ -1443,3 +1443,77 @@
     text-align: right;
   }
 }
+
+
+/* Leave mobile navigation correction */
+
+/* Desktop: restore the original leave-page layout without the added white sidebar. */
+.page {
+  --app-sidebar-width: 0px;
+  padding: 32px;
+}
+
+.pageContent {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.appSidebar {
+  display: none !important;
+}
+
+/* The back-chevron button is no longer used. */
+.backButton {
+  display: none !important;
+}
+
+/* Header returns to a clean centered layout. */
+.header {
+  padding-inline: 26px;
+}
+
+/* Bottom navigation must exist on mobile only. */
+.bottomNav {
+  display: none;
+}
+
+/* Submit button follows the normal document flow, so it cannot cover fields. */
+.submitButton {
+  position: static !important;
+  bottom: auto !important;
+  z-index: auto !important;
+  width: 100%;
+  margin-top: 2px;
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: 14px 12px calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .header {
+    min-height: 74px;
+    padding: 14px 12px;
+  }
+
+  .headerTitle {
+    width: 100%;
+    text-align: center;
+  }
+
+  .bottomNav {
+    display: grid;
+  }
+
+  .submitButton {
+    position: static !important;
+    bottom: auto !important;
+    margin-top: 4px;
+  }
+
+  /* Extra breathing room after attachment caption/input. */
+  .formCard {
+    padding-bottom: 20px;
+  }
+}

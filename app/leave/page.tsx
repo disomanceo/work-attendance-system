@@ -469,49 +469,9 @@ export default function LeavePage() {
 
   return (
     <main className={styles.page}>
-      <aside className={styles.appSidebar} aria-label="เมนูหลัก">
-        <a href="/attendance">
-          <span>◷</span>
-          <strong>การลงเวลา</strong>
-        </a>
-        <a href="/leave" className={styles.navActive}>
-          <span>▤</span>
-          <strong>ขออนุญาตลา</strong>
-        </a>
-        <a
-          href={
-            ["director", "admin"].includes(profileRole)
-              ? "/admin/attendance"
-              : "/attendance/history"
-          }
-        >
-          <span>▥</span>
-          <strong>รายงาน</strong>
-        </a>
-        <a
-          href={
-            ["director", "admin"].includes(profileRole)
-              ? "/admin/settings"
-              : "/account/profile"
-          }
-        >
-          <span>⚙</span>
-          <strong>ตั้งค่า</strong>
-        </a>
-      </aside>
-
-      <div className={styles.pageContent}>
+<div className={styles.pageContent}>
 <header className={styles.header}>
-          <a
-            href="/attendance"
-            className={styles.backButton}
-            aria-label="กลับหน้าลงเวลา"
-            title="กลับหน้าลงเวลา"
-          >
-            ‹
-          </a>
-
-          <div className={styles.headerTitle}>
+<div className={styles.headerTitle}>
             <h1>ขออนุญาตลาป่วย-ลากิจ</h1>
             <p>กรอกข้อมูลเพื่อยื่นใบลา</p>
           </div>
