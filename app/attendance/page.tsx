@@ -686,11 +686,12 @@ export default function AttendancePage() {
       ? "มาสาย"
       : "ปกติ";
   const hasCheckedIn = Boolean(record?.check_in_at);
-  const canViewReports = ["admin", "director", "staff"].includes(profile.role);
+  const canViewReports = ["admin", "director"].includes(profile.role);
   const canManageMembers = profile.role === "admin";
-  const historyHref = canViewReports
-    ? "/admin/attendance"
-    : "/attendance/history";
+  const historyHref =
+    profile.role === "admin" || profile.role === "director"
+      ? "/admin/attendance"
+      : "/attendance/history";
 
   const menuItems: MenuItem[] = [
     {
