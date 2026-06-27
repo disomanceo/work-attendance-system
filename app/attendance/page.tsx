@@ -903,6 +903,19 @@ export default function AttendancePage() {
                   : styles.compactStatusWaiting
             }`}
           >
+            <div className={styles.compactRealtime}>
+              <strong>
+                {new Intl.DateTimeFormat("th-TH", {
+                  timeZone: "Asia/Bangkok",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: false,
+                }).format(now)}
+              </strong>
+              <small>เวลาปัจจุบัน</small>
+            </div>
+
             <div className={styles.compactStatusHeader}>
               <div className={styles.compactStatusIcon} aria-hidden="true">
                 {todayLeave
@@ -1004,13 +1017,30 @@ export default function AttendancePage() {
                   className={styles.compactCheckInButton}
                   disabled={processing}
                   onClick={() => void handleCheckIn()}
+                  aria-label="ลงเวลาปฏิบัติงาน"
                 >
-                  <span aria-hidden="true">⌾</span>
+                  <span
+                    className={styles.compactFingerprintIcon}
+                    aria-hidden="true"
+                  >
+                    <svg viewBox="0 0 64 64">
+                      <path d="M32 7C20 7 10 17 10 29c0 7 2 11 2 18" />
+                      <path d="M32 14c-9 0-16 7-16 16 0 8 3 13 3 22" />
+                      <path d="M32 21c-5 0-9 4-9 9 0 9 4 15 4 26" />
+                      <path d="M32 28c-2 0-4 2-4 4 0 10 5 15 5 25" />
+                      <path d="M38 57c0-8-4-14-4-25 0-2 2-4 4-4 4 0 6 4 6 8 0 8 2 12 4 17" />
+                      <path d="M41 22c6 3 9 8 9 15 0 7 2 11 5 15" />
+                      <path d="M48 17c7 6 9 13 9 21" />
+                    </svg>
+                  </span>
+
                   <strong>
                     {processing
-                      ? "กำลังตรวจสอบตำแหน่ง..."
+                      ? "กำลังตรวจสอบ GPS..."
                       : "ลงเวลาปฏิบัติงาน"}
                   </strong>
+
+                  {!processing && <small>แตะเพื่อเช็กอิน</small>}
                 </button>
 
                 <small>
