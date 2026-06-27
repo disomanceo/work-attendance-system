@@ -80,19 +80,22 @@ export default function LeaveReviewPopup({ role }: Props) {
       setItems(pending);
       setCurrentIndex(0);
 
-      if (pending.length > 0) {
-        const newestId = String(pending[0]?.id || "");
-        const lastSeenId = window.localStorage.getItem(
-          "director_last_seen_pending_leave_id"
-        );
+      if (pending.length === 0) {
+        setOpen(false);
+        return;
+      }
 
-        if (newestId && newestId !== lastSeenId) {
-          setOpen(true);
-          window.localStorage.setItem(
-            "director_last_seen_pending_leave_id",
-            newestId
-          );
-        }
+      const newestId = String(pending[0]?.id || "");
+      const lastSeenId = window.localStorage.getItem(
+        "director_last_seen_pending_leave_id"
+      );
+
+      if (newestId && newestId !== lastSeenId) {
+        setOpen(true);
+        window.localStorage.setItem(
+          "director_last_seen_pending_leave_id",
+          newestId
+        );
       }
     } catch (error) {
       setErrorMessage(
@@ -153,7 +156,15 @@ export default function LeaveReviewPopup({ role }: Props) {
 
       setItems((current) => {
         const next = current.filter((entry) => entry.id !== item.id);
-        setCurrentIndex((index) => Math.min(index, Math.max(next.length - 1, 0)));
+
+        setCurrentIndex((index) =>
+          Math.min(index, Math.max(next.length - 1, 0))
+        );
+
+        if (next.length === 0) {
+          setOpen(false);
+        }
+
         return next;
       });
     } catch (error) {
@@ -196,20 +207,20 @@ export default function LeaveReviewPopup({ role }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        className={`${styles.floatingButton} ${
-          items.length > 0 ? styles.floatingButtonAlert : ""
-        }`}
-        onClick={() => setOpen(true)}
-        aria-label={`ใบลารอพิจารณา ${items.length} รายการ`}
-      >
-        <span className={styles.bell}>🔔</span>
-        <strong>ใบลารอพิจารณา</strong>
-        <b>{items.length}</b>
-      </button>
+      {items.length > 0 && (
+        <button
+          type="button"
+          className={`${styles.floatingButton} ${styles.floatingButtonAlert}`}
+          onClick={() => setOpen(true)}
+          aria-label={`ใบลารอพิจารณา ${items.length} รายการ`}
+        >
+          <span className={styles.bell}>🔔</span>
+          <strong>ใบลารอพิจารณา</strong>
+          <b>{items.length}</b>
+        </button>
+      )}
 
-      {open && (
+      {open && current && (
         <div className={styles.overlay} role="dialog" aria-modal="true">
           <section className={styles.modal}>
             <header className={styles.modalHeader}>
@@ -217,11 +228,9 @@ export default function LeaveReviewPopup({ role }: Props) {
                 <small>สำหรับผู้บริหาร</small>
                 <h2>
                   ใบลารอพิจารณา
-                  {items.length > 0 && (
-                    <span>
-                      {currentIndex + 1} จาก {items.length}
-                    </span>
-                  )}
+                  <span>
+                    {currentIndex + 1} จาก {items.length}
+                  </span>
                 </h2>
               </div>
 
@@ -241,12 +250,6 @@ export default function LeaveReviewPopup({ role }: Props) {
 
             {loading ? (
               <div className={styles.loadingBox}>กำลังโหลดข้อมูล...</div>
-            ) : !current ? (
-              <div className={styles.emptyState}>
-                <span>✓</span>
-                <strong>ไม่มีใบลารอพิจารณา</strong>
-                <p>รายการทั้งหมดได้รับการจัดการแล้ว</p>
-              </div>
             ) : (
               <>
                 <article className={styles.leaveCard}>
