@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
+import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
 
 type Profile = {
   full_name: string;
@@ -1260,7 +1261,8 @@ export default function AttendancePage() {
             </div>
           </section>
         </div>
-      )}    </main>
+      )}          <LeaveReviewPopup role={profile.role} />
+</main>
   );
 }
 

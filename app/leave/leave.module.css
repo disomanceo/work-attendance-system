@@ -2167,3 +2167,353 @@
     width: 100%;
   }
 }
+
+
+/* Final leave card containment fix */
+
+.historyCard,
+.historyContent,
+.list,
+.leaveItem,
+.reviewSection,
+.reviewList,
+.reviewItem {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.leaveItem,
+.reviewItem {
+  overflow: hidden;
+}
+
+.leaveItem footer {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eee7f2;
+}
+
+.leaveItem footer > span {
+  width: fit-content;
+}
+
+.leaveItem footer > div {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.leaveItem footer a,
+.leaveItem footer button {
+  display: inline-flex !important;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  max-width: 100%;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
+  white-space: normal !important;
+  word-break: break-word;
+  text-align: center;
+}
+
+.deleteLeaveButton {
+  border: 1px solid #ef4444 !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+  box-shadow: 0 5px 14px rgba(185, 28, 28, 0.08);
+}
+
+.deleteLeaveButton:hover:not(:disabled) {
+  border-color: #dc2626 !important;
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.reviewActions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px !important;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eee7f2;
+}
+
+.reviewActions button {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .leaveItem footer > div {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .leaveItem footer a,
+  .leaveItem footer button {
+    width: 100%;
+  }
+}
+
+
+/* Leave management visual redesign */
+
+.page {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.06), transparent 32%),
+    linear-gradient(180deg, #fbfaff 0%, #f6f4fa 100%);
+}
+
+.header,
+.summaryGrid article,
+.formCard,
+.historyCard,
+.reviewSection,
+.reviewItem,
+.leaveItem {
+  border-color: #e1d9e8 !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(70, 50, 90, 0.06) !important;
+}
+
+.header {
+  border-radius: 22px;
+}
+
+.summaryGrid article {
+  min-height: 98px;
+  border-top-width: 2px !important;
+}
+
+.grid {
+  align-items: start;
+}
+
+.formCard,
+.historyCard {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.historyCard {
+  padding: 20px !important;
+}
+
+.historyToggle {
+  min-height: 54px;
+  padding: 0 0 14px !important;
+}
+
+.historyToggleIcon {
+  display: none !important;
+}
+
+.historyContent {
+  min-width: 0;
+  padding: 0 !important;
+  border-top: 0 !important;
+}
+
+.reviewSection {
+  margin-bottom: 18px;
+  padding: 16px !important;
+  border-radius: 16px;
+}
+
+.reviewList,
+.list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.reviewItem,
+.leaveItem {
+  min-width: 0;
+  overflow: hidden;
+  padding: 14px !important;
+  border-radius: 14px !important;
+}
+
+.reviewItemTop {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start !important;
+  gap: 12px !important;
+}
+
+.reviewActions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px !important;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eee8f2;
+}
+
+.reviewActions button {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+}
+
+.rejectButton {
+  border: 1px solid #ef9aa5 !important;
+  background: #fff1f2 !important;
+  color: #b42335 !important;
+}
+
+.approveButton {
+  border: 1px solid #58c590 !important;
+  background: #ecfdf5 !important;
+  color: #087443 !important;
+}
+
+.leaveFooter {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center !important;
+  gap: 12px !important;
+  width: 100%;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eee8f2;
+}
+
+.statusBadge {
+  width: fit-content;
+  min-height: 32px;
+  padding: 6px 10px !important;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.statusBadge[data-status="approved"] {
+  border: 1px solid #92ddb8;
+  color: #087443;
+  background: #ecfdf5;
+}
+
+.statusBadge[data-status="pending"] {
+  border: 1px solid #efcb7f;
+  color: #9a6200;
+  background: #fff8e8;
+}
+
+.statusBadge[data-status="rejected"] {
+  border: 1px solid #ef9aa5;
+  color: #b42335;
+  background: #fff1f2;
+}
+
+.leaveActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.leaveActions a,
+.leaveActions button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  max-width: 100%;
+  padding: 8px 12px !important;
+  border: 1px solid #d7cbe2 !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #5f4776 !important;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+.deleteLeaveButton {
+  border-color: #ef4444 !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+  box-shadow: 0 5px 14px rgba(185, 28, 28, 0.08);
+}
+
+.deleteLeaveButton:hover:not(:disabled) {
+  border-color: #dc2626 !important;
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+@media (min-width: 801px) {
+  .grid {
+    grid-template-columns: minmax(420px, 0.94fr) minmax(560px, 1.28fr) !important;
+  }
+
+  .historyCard {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .historyCard {
+    padding: 15px !important;
+  }
+
+  .historyToggle {
+    align-items: center;
+  }
+
+  .leaveFooter {
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+  }
+
+  .leaveActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+  }
+
+  .leaveActions a,
+  .leaveActions button {
+    width: 100%;
+  }
+
+  .reviewItemTop {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reviewActions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .leaveActions {
+    grid-template-columns: 1fr;
+  }
+}
