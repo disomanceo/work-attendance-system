@@ -30,6 +30,7 @@ function thaiDate(value: string, short = false) {
 
 function thaiTime(value: string | null) {
   if (!value) return "-";
+
   return new Intl.DateTimeFormat("th-TH", {
     timeZone: "Asia/Bangkok",
     hour: "2-digit",
@@ -171,8 +172,12 @@ export async function buildAttendanceReportMessage(
   | { ok: false; message: string; detail?: unknown }
 > {
   const admin = getLineAdminClient();
+
   if (!admin) {
-    return { ok: false, message: "สร้าง Supabase Admin Client ไม่สำเร็จ" };
+    return {
+      ok: false,
+      message: "สร้าง Supabase Admin Client ไม่สำเร็จ",
+    };
   }
 
   const [profilesResult, recordsResult, leavesResult] = await Promise.all([
@@ -209,34 +214,73 @@ export async function buildAttendanceReportMessage(
   const profiles = profilesResult.data ?? [];
   const records = recordsResult.data ?? [];
   const leaves = leavesResult.data ?? [];
-  const profileMap = new Map(profiles.map((item) => [item.id, item]));
-  const validRecords = records.filter((item) => profileMap.has(item.user_id));
 
-  const attendedIds = new Set(validRecords.map((item) => item.user_id));
-  const leaveIds = new Set(leaves.map((item) => item.user_id));
-  const missing = profiles.filter(
-    (item) => !attendedIds.has(item.id) && !leaveIds.has(item.id)
+  const profileMap = new Map(
+    profiles.map((item) => [item.id, item])
   );
-  const sick = leaves.filter((item) => item.leave_type === "sick");
-  const personal = leaves.filter((item) => item.leave_type === "personal");
 
-  const attendance = validRecords.map((record) => {
+  const validRecords = records.filter((item) =>
+    profileMap.has(item.user_id)
+  );
+
+  const attendedIds = new Set(
+    validRecords.map((item) => item.user_id)
+  );
+
+  const leaveIds = new Set(
+    leaves.map((item) => item.user_id)
+  );
+
+  const missing = profiles.filter(
+    (item) =>
+      !attendedIds.has(item.id) &&
+      !leaveIds.has(item.id)
+  );
+
+  const sick = leaves.filter(
+    (item) => item.leave_type === "sick"
+  );
+
+  const personal = leaves.filter(
+    (item) => item.leave_type === "personal"
+  );
+
+  const attendance = validRecords.map((record, index) => {
     const profile = profileMap.get(record.user_id);
+    const isDirector = profile?.role === "director";
+
     return {
+      index: index + 1,
       time: thaiTime(record.check_in_at),
       name: profile?.full_name || "ไม่พบชื่อ",
-      late: record.check_in_status === "late",
+      status: isDirector
+        ? ("official" as const)
+        : record.check_in_status === "late"
+          ? ("late" as const)
+          : ("normal" as const),
     };
   });
 
   const noteLines = [
-    ...sick.map(
-      (item) => `${profileMap.get(item.user_id)?.full_name || "ไม่พบชื่อ"} — ลาป่วย`
-    ),
-    ...personal.map(
-      (item) => `${profileMap.get(item.user_id)?.full_name || "ไม่พบชื่อ"} — ลากิจ`
-    ),
-    ...missing.map((item) => `${item.full_name} — ยังไม่ได้ลงเวลา`),
+    ...sick.map((item) => ({
+      name:
+        profileMap.get(item.user_id)?.full_name ||
+        "ไม่พบชื่อ",
+      status: "sick" as const,
+    })),
+    ...personal.map((item) => ({
+      name:
+        profileMap.get(item.user_id)?.full_name ||
+        "ไม่พบชื่อ",
+      status: "personal" as const,
+    })),
+    ...missing.map((item) => ({
+      name: item.full_name,
+      status:
+        item.role === "director"
+          ? ("official" as const)
+          : ("missing" as const),
+    })),
   ];
 
   return {
@@ -256,11 +300,19 @@ export async function sendDailyAttendanceReport(dateKey: string) {
   if (!target.ok || !target.settings.notify_daily_attendance) return target;
 
   const key = `attendance-daily:${dateKey}`;
+
   if (await wasSent(key)) {
-    return { ok: true as const, skipped: true, message: "รายงานวันนี้ส่งแล้ว" };
+    return {
+      ok: true as const,
+      skipped: true,
+      message: "รายงานวันนี้ส่งแล้ว",
+    };
   }
 
-  const report = await buildAttendanceReportMessage(dateKey, "08:15");
+  const report = await buildAttendanceReportMessage(
+    dateKey,
+    "08:15"
+  );
 
   if (!report.ok) {
     await log(
@@ -273,7 +325,18 @@ export async function sendDailyAttendanceReport(dateKey: string) {
     return report;
   }
 
-  const result = await pushLineMessages(target.groupId, [report.message]);
-  await log(key, "attendance_daily", target.groupId, result, result.ok);
+  const result = await pushLineMessages(
+    target.groupId,
+    [report.message]
+  );
+
+  await log(
+    key,
+    "attendance_daily",
+    target.groupId,
+    result,
+    result.ok
+  );
+
   return result;
 }
