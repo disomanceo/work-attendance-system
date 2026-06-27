@@ -141,6 +141,7 @@ export default function LeavePage() {
   const [pendingRequests, setPendingRequests] =
     useState<AdminPendingLeaveRequest[]>([]);
   const [processingId, setProcessingId] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const getToken = useCallback(async () => {
@@ -294,6 +295,12 @@ export default function LeavePage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 801px)").matches) {
+      setHistoryOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!attachment) {
@@ -469,6 +476,80 @@ export default function LeavePage() {
 
   return (
     <main className={styles.page}>
+      <button
+        type="button"
+        className={styles.mobileMenuButton}
+        onClick={() => setMobileMenuOpen(true)}
+        aria-label="เปิดเมนู"
+        aria-expanded={mobileMenuOpen}
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      {mobileMenuOpen && (
+        <>
+          <button
+            type="button"
+            className={styles.mobileMenuOverlay}
+            aria-label="ปิดเมนู"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          <aside className={styles.mobileDrawer} aria-label="เมนูหลัก">
+            <div className={styles.mobileDrawerHeader}>
+              <div>
+                <small>เมนูหลัก</small>
+                <strong>ระบบลงเวลาปฏิบัติงาน</strong>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="ปิดเมนู"
+              >
+                ×
+              </button>
+            </div>
+
+            <nav className={styles.mobileDrawerNav}>
+              <a href="/attendance">
+                <span>◷</span>
+                <strong>การลงเวลา</strong>
+              </a>
+
+              <a href="/leave" className={styles.mobileDrawerActive}>
+                <span>▤</span>
+                <strong>ขออนุญาตลา</strong>
+              </a>
+
+              <a
+                href={
+                  ["director", "admin"].includes(profileRole)
+                    ? "/admin/attendance"
+                    : "/attendance/history"
+                }
+              >
+                <span>▥</span>
+                <strong>รายงาน</strong>
+              </a>
+
+              <a
+                href={
+                  ["director", "admin"].includes(profileRole)
+                    ? "/admin/settings"
+                    : "/account/profile"
+                }
+              >
+                <span>⚙</span>
+                <strong>ตั้งค่า</strong>
+              </a>
+            </nav>
+          </aside>
+        </>
+      )}
+
 <div className={styles.pageContent}>
 <header className={styles.header}>
 <div className={styles.headerTitle}>
@@ -916,37 +997,6 @@ export default function LeavePage() {
 </section>
       </section>
           </div>
-
-      <nav className={styles.bottomNav} aria-label="เมนูมือถือ">
-        <a href="/attendance">
-          <span>◷</span>
-          <small>การลงเวลา</small>
-        </a>
-        <a href="/leave" className={styles.navActive}>
-          <span>▤</span>
-          <small>ขออนุญาตลา</small>
-        </a>
-        <a
-          href={
-            ["director", "admin"].includes(profileRole)
-              ? "/admin/attendance"
-              : "/attendance/history"
-          }
-        >
-          <span>▥</span>
-          <small>รายงาน</small>
-        </a>
-        <a
-          href={
-            ["director", "admin"].includes(profileRole)
-              ? "/admin/settings"
-              : "/account/profile"
-          }
-        >
-          <span>⚙</span>
-          <small>ตั้งค่า</small>
-        </a>
-      </nav>
 </main>
   );
 }
