@@ -570,29 +570,45 @@ export default function LeavePage() {
             <p>กรอกข้อมูลเพื่อยื่นใบลา</p>
           </div>
         
-          <a href="/attendance" className={styles.dashboardButton}>
-            <span aria-hidden="true">⌂</span>
-            กลับหน้า Dashboard
-          </a>
+          <div className={styles.headerActions}>
+            <a href="/attendance" className={styles.dashboardButton}>
+              <span aria-hidden="true">⌂</span>
+              กลับหน้า Dashboard
+            </a>
+
+            {summary && leaveSettings && (
+              <section
+                className={`${styles.leaveStatsCard} ${
+                  summary.combined.times >
+                    leaveSettings.combinedLeaveTimesLimit ||
+                  summary.combined.days >
+                    leaveSettings.combinedLeaveDaysLimit
+                    ? styles.leaveStatsExceeded
+                    : ""
+                }`}
+                aria-label="สถิติการลา"
+              >
+                <strong>สถิติการลา</strong>
+                <span>
+                  {summary.combined.times}/{leaveSettings.combinedLeaveTimesLimit} ครั้ง
+                  <b aria-hidden="true">•</b>
+                  {summary.combined.days}/{leaveSettings.combinedLeaveDaysLimit} วัน
+                </span>
+                <small>
+                  ลาแล้ว {summary.combined.times} ครั้ง รวม {summary.combined.days} วัน
+                </small>
+              </section>
+            )}
+          </div>
 </header>
 
       {summary && leaveSettings && (
         <section className={styles.summaryGrid}>
           <article>
-            <small>ปีงบประมาณ</small>
-            <strong>
-              {thaiFiscalYear(
-                leaveSettings.fiscalYear
-              )}
-            </strong>
-          </article>
-
-          <article>
             <small>ลาป่วย</small>
             <strong>
               {summary.sick.days} วัน
             </strong>
-            <span>จาก {leaveSettings.sickLeaveDays} วัน</span>
           </article>
 
           <article>
@@ -600,59 +616,10 @@ export default function LeavePage() {
             <strong>
               {summary.personal.days} วัน
             </strong>
-            <span>จาก {leaveSettings.personalLeaveDays} วัน</span>
           </article>
         </section>
       )}
-      {summary && leaveSettings && (
-        <section
-          className={`${styles.combinedQuotaCard} ${
-            summary.combined.times >
-              leaveSettings.combinedLeaveTimesLimit ||
-            summary.combined.days >
-              leaveSettings.combinedLeaveDaysLimit
-              ? styles.combinedQuotaExceeded
-              : ""
-          }`}
-        >
-          <div className={styles.combinedQuotaHeading}>
-            <div>
-              <small>เกณฑ์รวมลาป่วยและลากิจ</small>
-              <h2>นับรายการยื่นลาในปีงบประมาณ {summary.fiscalYear}</h2>
-            </div>
-            <span>ไม่นับรายการยกเลิกหรือลบแล้ว</span>
-          </div>
-
-          <div className={styles.combinedQuotaGrid}>
-            <article>
-              <small>จำนวนครั้งรวม</small>
-              <strong>
-                {summary.combined.times} /{" "}
-                {leaveSettings.combinedLeaveTimesLimit}
-              </strong>
-              <span>ครั้ง</span>
-            </article>
-
-            <article>
-              <small>จำนวนวันรวม</small>
-              <strong>
-                {summary.combined.days} /{" "}
-                {leaveSettings.combinedLeaveDaysLimit}
-              </strong>
-              <span>วัน</span>
-            </article>
-          </div>
-
-          {(summary.combined.times >
-            leaveSettings.combinedLeaveTimesLimit ||
-            summary.combined.days >
-              leaveSettings.combinedLeaveDaysLimit) && (
-            <p className={styles.combinedQuotaWarning}>
-              ⚠ เกินเกณฑ์รวมที่กำหนด แต่ยังยื่นใบลาได้
-            </p>
-          )}
-        </section>
-      )}
+      
 
 
 

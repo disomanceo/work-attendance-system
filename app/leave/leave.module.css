@@ -2758,3 +2758,127 @@
     margin-top: 8px;
   }
 }
+
+
+/* COMPACT LEAVE STAT CARD V2 START */
+.headerActions{
+  display:grid;
+  width:230px;
+  gap:8px;
+  flex:0 0 230px;
+}
+
+.headerActions .dashboardButton{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  width:100%;
+  min-height:42px;
+  padding:9px 12px;
+  border-radius:12px;
+  line-height:1.2;
+}
+
+.leaveStatsCard{
+  display:grid;
+  gap:3px;
+  width:100%;
+  min-height:68px;
+  padding:9px 12px;
+  border:1px solid #cfc4dc;
+  border-radius:12px;
+  background:rgba(255,255,255,.88);
+  color:#5b4b6c;
+  box-shadow:0 6px 18px rgba(87,68,110,.08);
+}
+
+.leaveStatsCard>strong{
+  color:#574467;
+  font-size:12px;
+  line-height:1.2;
+}
+
+.leaveStatsCard>span{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:#4f3d61;
+  font-size:14px;
+  font-weight:900;
+  line-height:1.25;
+  white-space:nowrap;
+}
+
+.leaveStatsCard>span b{
+  color:#aa98bf;
+  font-size:10px;
+}
+
+.leaveStatsCard>small{
+  color:#7b6c88;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.25;
+}
+
+.leaveStatsExceeded{
+  border-color:#e6a2aa;
+  background:#fff7f8;
+}
+
+.summaryGrid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  max-width:520px;
+  margin-left:auto;
+  margin-right:auto;
+  gap:10px;
+}
+
+.summaryGrid article{
+  min-height:70px;
+  padding:12px 14px;
+  gap:3px;
+  border-radius:16px;
+}
+
+.summaryGrid strong{
+  font-size:22px;
+}
+
+@media(max-width:800px){
+  .headerActions{
+    width:100%;
+    max-width:none;
+    flex-basis:auto;
+  }
+
+  .leaveStatsCard{
+    min-height:64px;
+  }
+
+  .summaryGrid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+  }
+}
+
+@media(max-width:420px){
+  .leaveStatsCard{
+    padding:8px 10px;
+  }
+
+  .leaveStatsCard>span{
+    font-size:13px;
+  }
+
+  .summaryGrid article{
+    min-height:64px;
+    padding:10px 12px;
+  }
+
+  .summaryGrid strong{
+    font-size:20px;
+  }
+}
+/* COMPACT LEAVE STAT CARD V2 END */
