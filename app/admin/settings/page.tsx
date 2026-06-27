@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -468,8 +468,8 @@ export default function DirectorSettingsPage() {
         </div>
       )}
 
-      <form onSubmit={saveSettings}>
-        <section className={styles.card}>
+      <form className={styles.settingsGrid} onSubmit={saveSettings}>
+        <section className={`${styles.card} ${styles.gpsCard}`}>
           <div className={styles.cardHeading}>
             <div>
               <h2>การตรวจจับตำแหน่ง GPS</h2>
@@ -607,7 +607,7 @@ export default function DirectorSettingsPage() {
           onTimeChange={updateTime}
         />
 
-        <section className={styles.card} id="fiscal-year-settings">
+        <section className={`${styles.card} ${styles.fiscalCard}`} id="fiscal-year-settings">
           <div className={styles.sectionHeading}>
             <h2>ปีงบประมาณอ้างอิง</h2>
             <p>

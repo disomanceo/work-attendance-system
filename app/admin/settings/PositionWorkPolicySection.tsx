@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import styles from "./settings.module.css";
 
 type RoleKey =
   | "director"
@@ -204,77 +205,29 @@ export default function PositionWorkPolicySection({
     }
   }
 
-  const inputStyle = {
-    width: "100%",
-    minHeight: 42,
-    padding: "8px 10px",
-    borderRadius: 10,
-    border:
-      "1px solid rgba(255,255,255,0.16)",
-    background:
-      "rgba(255,255,255,0.07)",
-    color: "inherit",
-    fontSize: 15,
-  } as const;
 
   return (
-    <section
-      style={{
-        width: "100%",
-        maxWidth: 790,
-        margin: "20px auto 0",
-        padding: 18,
-        borderRadius: 18,
-        border:
-          "1px solid rgba(255,255,255,0.14)",
-        background:
-          "rgba(255,255,255,0.055)",
-        boxSizing: "border-box",
-      }}
-    >
-      <div style={{ marginBottom: 16 }}>
-        <h2 style={{ margin: "0 0 6px" }}>
+    <section className={styles.policySection}>
+      <div className={styles.policyHeader}>
+        <h2>
           การปฏิบัติงาน สิทธิ์การลา
           และเกณฑ์มาสายตามตำแหน่ง
         </h2>
 
-        <p
-          style={{
-            margin: 0,
-            opacity: 0.72,
-          }}
-        >
+        <p>
           ปีงบประมาณ {fiscalYear || "-"} —
           กำหนดค่าทั้งหมดแยกตามตำแหน่ง
         </p>
       </div>
 
       {message && (
-        <div
-          style={{
-            marginBottom: 14,
-            padding: 12,
-            borderRadius: 10,
-            background:
-              "rgba(34,197,94,0.16)",
-            color: "#bbf7d0",
-          }}
-        >
+        <div className={styles.policyMessage}>
           {message}
         </div>
       )}
 
       {error && (
-        <div
-          style={{
-            marginBottom: 14,
-            padding: 12,
-            borderRadius: 10,
-            background:
-              "rgba(239,68,68,0.16)",
-            color: "#fecaca",
-          }}
-        >
+        <div className={styles.policyError}>
           {error}
         </div>
       )}
@@ -282,15 +235,7 @@ export default function PositionWorkPolicySection({
       {loading ? (
         <p>กำลังโหลดสิทธิ์ตามตำแหน่ง...</p>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: 16,
-            alignItems: "stretch",
-          }}
-        >
+        <div className={styles.policyGrid}>
           {roles.map((role) => {
             const policy =
               getPolicy(role.key);
@@ -302,57 +247,25 @@ export default function PositionWorkPolicySection({
             return (
               <article
                 key={role.key}
-                style={{
-                  display: "grid",
-                  gridTemplateRows:
-                    "auto 1fr",
-                  gap: 16,
-                  width: "100%",
-                  minHeight: 260,
-                  padding: 16,
-                  borderRadius: 14,
-                  border:
-                    "1px solid rgba(255,255,255,0.12)",
-                  background:
-                    "rgba(0,0,0,0.12)",
-                  boxSizing: "border-box",
-                }}
+                className={styles.policyCard}
               >
                 <div>
-                  <h3
-                    style={{
-                      margin: "0 0 4px",
-                    }}
-                  >
+                  <h3>
                     {role.title}
                   </h3>
 
-                  <p
-                    style={{
-                      margin: 0,
-                      opacity: 0.66,
-                      fontSize: 13,
-                    }}
-                  >
+                  <p>
                     {role.description}
                   </p>
                 </div>
 
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(2, minmax(0, 1fr))",
-                    gap: 12,
-                    alignContent: "start",
-                  }}
-                >
+                <div className={styles.policyFields}>
                   <label>
                     <span>เวลาเริ่ม</span>
                     <input
                       type="time"
                       required
-                      style={inputStyle}
+                      className={styles.policyInput}
                       value={getStartTime(
                         role.key
                       )}
@@ -371,7 +284,7 @@ export default function PositionWorkPolicySection({
                     <input
                       type="time"
                       required
-                      style={inputStyle}
+                      className={styles.policyInput}
                       value={getEndTime(
                         role.key
                       )}
@@ -391,7 +304,7 @@ export default function PositionWorkPolicySection({
                       type="number"
                       min="0"
                       max="365"
-                      style={inputStyle}
+                      className={styles.policyInput}
                       value={
                         policy.sick_leave_days
                       }
@@ -413,7 +326,7 @@ export default function PositionWorkPolicySection({
                       type="number"
                       min="0"
                       max="365"
-                      style={inputStyle}
+                      className={styles.policyInput}
                       value={
                         policy.personal_leave_days
                       }
@@ -435,7 +348,7 @@ export default function PositionWorkPolicySection({
                       type="number"
                       min="0"
                       max="999"
-                      style={inputStyle}
+                      className={styles.policyInput}
                       value={
                         policy.late_limit_count
                       }
@@ -457,7 +370,7 @@ export default function PositionWorkPolicySection({
                       type="number"
                       min="0"
                       max="180"
-                      style={inputStyle}
+                      className={styles.policyInput}
                       value={
                         policy.grace_minutes
                       }
@@ -489,21 +402,7 @@ export default function PositionWorkPolicySection({
         onClick={() =>
           void savePolicies()
         }
-        style={{
-          marginTop: 16,
-          minHeight: 44,
-          padding: "0 18px",
-          border: 0,
-          borderRadius: 11,
-          background:
-            "linear-gradient(135deg,#7c3aed,#9333ea)",
-          color: "#ffffff",
-          fontWeight: 700,
-          cursor: saving
-            ? "not-allowed"
-            : "pointer",
-          opacity: saving ? 0.65 : 1,
-        }}
+        className={styles.policySaveButton}
       >
         {saving
           ? "กำลังบันทึกสิทธิ์..."

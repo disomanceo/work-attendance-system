@@ -865,3 +865,30 @@
   }
 }
 /* SETTINGS NEO GREEN LAYOUT END */
+
+/* SETTINGS FULL LAYOUT START */
+.settingsGrid{width:min(100%,1280px);margin:18px auto 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.settingsGrid>.card{width:100%;max-width:none;margin:0;min-height:390px;display:flex;flex-direction:column}
+.gpsCard .gpsSettings{flex:1;display:flex;flex-direction:column}
+.gpsCard .coordinateGrid{margin-top:auto}
+.fiscalCard .timeGrid{grid-template-columns:1fr}
+.fiscalCard>p:last-child{margin-top:auto;padding-top:18px}
+.dangerCard .resetRow{margin-top:auto}
+.policySection{grid-column:1/-1;width:100%;max-width:none;margin:0;padding:24px;border:1px solid rgba(47,141,105,.16);border-radius:22px;background:rgba(255,255,255,.76);backdrop-filter:blur(16px) saturate(130%);box-shadow:0 16px 44px rgba(24,69,54,.07)}
+.policyHeader{margin-bottom:18px}.policyHeader h2{margin:0 0 6px;color:#194b39}.policyHeader p{margin:0;color:#61776d}
+.policyGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:stretch}
+.policyCard{display:grid;grid-template-rows:auto 1fr;gap:14px;min-width:0;min-height:300px;padding:18px;border:1px solid rgba(47,141,105,.15);border-radius:18px;background:linear-gradient(145deg,rgba(248,253,250,.92),rgba(255,255,255,.78));box-shadow:0 8px 22px rgba(24,69,54,.04)}
+.policyCard h3{margin:0 0 4px;color:#194b39}.policyCard p{margin:0;color:#6b7f76;font-size:13px}
+.policyFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;align-content:start}
+.policyFields label{display:grid;gap:6px;min-width:0}.policyFields span{color:#315d4c;font-size:12px;font-weight:800}
+.policyInput{width:100%;min-height:42px;padding:8px 10px;border:1px solid rgba(47,141,105,.20);border-radius:10px;background:rgba(255,255,255,.92);color:#17382d;font-size:14px;outline:none}
+.policyInput:focus{border-color:#42b883;box-shadow:0 0 0 4px rgba(66,184,131,.12)}
+.policyMessage{margin-bottom:14px;padding:12px;border-radius:10px;background:rgba(232,249,239,.90);color:#17603f}
+.policyError{margin-bottom:14px;padding:12px;border-radius:10px;background:rgba(255,241,242,.90);color:#a63d3d}
+.policySaveButton{margin-top:16px;min-height:46px;padding:0 18px;border:1px solid rgba(47,141,105,.18);border-radius:12px;background:linear-gradient(135deg,#42b883,#2f8d69);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 10px 22px rgba(47,141,105,.20)}
+.policySaveButton:disabled{cursor:not-allowed;opacity:.6}
+.settingsGrid>.saveBar{grid-column:1/-1;width:100%;max-width:none;margin:0}
+@media(max-width:1100px){.settingsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.settingsGrid>.dangerCard{grid-column:1/-1;min-height:280px}.policyGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.settingsGrid{grid-template-columns:1fr}.settingsGrid>.card,.settingsGrid>.dangerCard{grid-column:auto;min-height:0}.policyGrid{grid-template-columns:1fr}.policyCard{min-height:0}}
+@media(max-width:430px){.policyFields{grid-template-columns:1fr}}
+/* SETTINGS FULL LAYOUT END */
