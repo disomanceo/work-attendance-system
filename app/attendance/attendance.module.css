@@ -1582,3 +1582,127 @@
   }
 }
 
+
+
+/* Leave approval status badge */
+.leaveTodayWrap {
+  display: flex;
+  width: min(100%, 390px);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  padding: 28px 24px;
+  border: 1px solid rgba(74, 222, 128, 0.22);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.14), transparent 48%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    0 18px 48px rgba(4, 1, 10, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.leaveTodayWrap h2 {
+  margin: 4px 0 0;
+  color: #ffffff;
+  font-size: clamp(22px, 3vw, 30px);
+}
+
+.leaveTodayWrap p {
+  margin: 0;
+  color: #d6c8e7;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.leaveTodayWrap small {
+  color: #9f8bb8;
+  font-size: 11px;
+}
+
+.leaveApprovalBadge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.leaveApprovalBadge > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.leaveApprovalBadgeApproved {
+  border-color: rgba(74, 222, 128, 0.38);
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.13);
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.09);
+}
+
+.leaveApprovalBadgeApproved > span {
+  color: #052e16;
+  background: #4ade80;
+}
+
+.leaveApprovalBadgePending {
+  border-color: rgba(251, 191, 36, 0.38);
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.13);
+}
+
+.leaveApprovalBadgePending > span {
+  color: #422006;
+  background: #fbbf24;
+}
+
+.todayStatusContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.todayStatusContent .leaveApprovalBadge {
+  margin-top: 8px;
+}
+
+.todayStatusContent h2 {
+  margin-top: 9px;
+}
+
+.todayLeaveIcon {
+  border-color: rgba(74, 222, 128, 0.36);
+  color: #4ade80;
+  background:
+    radial-gradient(circle, rgba(74, 222, 128, 0.18), rgba(34, 197, 94, 0.08));
+  box-shadow: 0 0 26px rgba(34, 197, 94, 0.12);
+}
+
+@media (max-width: 760px) {
+  .leaveTodayWrap {
+    width: min(100%, 340px);
+    padding: 24px 18px;
+  }
+
+  .leaveApprovalBadge {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .todayStatusContent {
+    width: calc(100% - 74px);
+  }
+}

@@ -128,6 +128,19 @@ function getRoleLabel(role: string) {
   return labels[role] ?? role;
 }
 
+
+function getLeaveDisplayLabel(leave: TodayLeave) {
+  if (leave.label?.trim()) return leave.label.trim();
+
+  const labels: Record<string, string> = {
+    sick: "ลาป่วย",
+    personal: "ลากิจ",
+    official_duty: "ไปราชการ",
+  };
+
+  return labels[leave.leave_type] ?? "การลา";
+}
+
 function calculateDistanceMeters(
   latitude1: number,
   longitude1: number,
@@ -897,14 +910,26 @@ export default function AttendancePage() {
 
             {todayLeave ? (
               <div className={styles.leaveTodayWrap}>
-                <div className={styles.leaveTodayIcon}>✓</div>
-                <strong>{todayLeave.message}</strong>
-                <small>
-                  สถานะคำขอ:{" "}
-                  {todayLeave.status === "approved"
-                    ? "อนุมัติแล้ว"
-                    : "รอพิจารณา"}
-                </small>
+                <div
+                  className={`${styles.leaveApprovalBadge} ${
+                    todayLeave.status === "approved"
+                      ? styles.leaveApprovalBadgeApproved
+                      : styles.leaveApprovalBadgePending
+                  }`}
+                >
+                  <span aria-hidden="true">
+                    {todayLeave.status === "approved" ? "✓" : "◷"}
+                  </span>
+                  <strong>
+                    {todayLeave.status === "approved"
+                      ? "อนุมัติแล้ว"
+                      : "รอพิจารณา"}
+                  </strong>
+                </div>
+
+                <h2>{getLeaveDisplayLabel(todayLeave)}</h2>
+                <p>{todayLeave.message}</p>
+                <small>วันนี้ระบบงดแสดงปุ่มลงเวลาตามสถานะคำขอ</small>
               </div>
             ) : !record?.check_in_at ? (
               <>
@@ -1040,33 +1065,55 @@ export default function AttendancePage() {
 
         <section className={`${styles.summaryGrid} ${styles.mobileSecondary}`}>
           <article className={styles.todayCard}>
-            <div className={styles.todayIcon}>✓</div>
-
-            <div>
-              <small>สถานะของคุณวันนี้</small>
-              <h2>
-                {todayLeave
-                  ? todayLeave.message
-                  : record?.check_in_at
-                    ? "วันนี้คุณได้ลงเวลาแล้ว"
-                    : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
-              </h2>
-
-              <p>
-                {todayLeave ? (
-                  <>
-                    ประเภท <strong>{todayLeave.label}</strong>
-                  </>
-                ) : (
-                  <>
-                    เวลาเข้า{" "}
-                    <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
-                  </>
-                )}
-              </p>
+            <div
+              className={`${styles.todayIcon} ${
+                todayLeave ? styles.todayLeaveIcon : ""
+              }`}
+            >
+              {todayLeave?.status === "approved" ? "✓" : todayLeave ? "◷" : "✓"}
             </div>
 
-            {record?.check_in_at && (
+            <div className={styles.todayStatusContent}>
+              <small>สถานะของคุณวันนี้</small>
+
+              {todayLeave ? (
+                <>
+                  <div
+                    className={`${styles.leaveApprovalBadge} ${
+                      todayLeave.status === "approved"
+                        ? styles.leaveApprovalBadgeApproved
+                        : styles.leaveApprovalBadgePending
+                    }`}
+                  >
+                    <span aria-hidden="true">
+                      {todayLeave.status === "approved" ? "✓" : "◷"}
+                    </span>
+                    <strong>
+                      {todayLeave.status === "approved"
+                        ? "อนุมัติแล้ว"
+                        : "รอพิจารณา"}
+                    </strong>
+                  </div>
+
+                  <h2>{getLeaveDisplayLabel(todayLeave)}</h2>
+                  <p>{todayLeave.message}</p>
+                </>
+              ) : (
+                <>
+                  <h2>
+                    {record?.check_in_at
+                      ? "วันนี้คุณได้ลงเวลาแล้ว"
+                      : "ยังไม่ได้ลงเวลาปฏิบัติงาน"}
+                  </h2>
+                  <p>
+                    เวลาเข้า{" "}
+                    <strong>{formatThaiTime(record?.check_in_at ?? null)}</strong>
+                  </p>
+                </>
+              )}
+            </div>
+
+            {record?.check_in_at && !todayLeave && (
               <span
                 className={
                   isLate ? styles.badgeLate : styles.badgeNormal
