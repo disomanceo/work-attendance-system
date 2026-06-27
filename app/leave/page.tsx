@@ -938,8 +938,8 @@ export default function LeavePage() {
                   </p>
                   <p>{item.reason}</p>
 
-                  <footer>
-                    <span data-status={item.status}>
+                  <footer className={styles.leaveFooter}>
+                    <span className={styles.statusBadge} data-status={item.status}>
                       {statusLabel(item.status)}
                     </span>
 
@@ -987,9 +987,7 @@ export default function LeavePage() {
                         disabled={deletingId === item.id}
                         onClick={() => void deleteLeave(item)}
                       >
-                        {deletingId === item.id
-                          ? "กำลังลบ..."
-                          : "ลบใบลา"}
+                        {deletingId === item.id ? "กำลังลบ..." : "🗑 ลบใบลา"}
                       </button>
                     </div>
                   </footer>

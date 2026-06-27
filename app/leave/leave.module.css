@@ -1965,3 +1965,205 @@
     display: none;
   }
 }
+
+
+/* Leave history actions layout */
+
+/* Pending review cards: only approve / reject controls in a dedicated row. */
+.reviewActions {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eee7f2;
+}
+
+.reviewActions button {
+  min-height: 40px;
+  padding: 9px 15px;
+  border-radius: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.rejectButton {
+  border: 1px solid #ef9aa4 !important;
+  background: #fff1f2 !important;
+  color: #b42335 !important;
+}
+
+.rejectButton:hover:not(:disabled) {
+  border-color: #e26776 !important;
+  background: #ffe4e6 !important;
+}
+
+.approveButton {
+  border: 1px solid #7fd6ae !important;
+  background: #ecfdf5 !important;
+  color: #087443 !important;
+}
+
+.approveButton:hover:not(:disabled) {
+  border-color: #4fbe8d !important;
+  background: #d1fae5 !important;
+}
+
+/* User leave history: status is separate from document actions. */
+.leaveFooter {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center !important;
+  gap: 12px !important;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #eee7f2;
+}
+
+.statusBadge {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px !important;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.statusBadge[data-status="pending"] {
+  border: 1px solid #f0ca7b;
+  background: #fff8e8;
+  color: #9a6200;
+}
+
+.statusBadge[data-status="approved"] {
+  border: 1px solid #86d8b2;
+  background: #ecfdf5;
+  color: #087443;
+}
+
+.statusBadge[data-status="rejected"] {
+  border: 1px solid #f0a0a9;
+  background: #fff1f2;
+  color: #b42335;
+}
+
+.statusBadge[data-status="cancelled"] {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.leaveActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.leaveActions a,
+.leaveActions button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d8cce3;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #5f4776;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.leaveActions a:hover,
+.leaveActions button:hover:not(:disabled) {
+  border-color: #aa91bf;
+  background: #f8f4fb;
+}
+
+.deleteLeaveButton {
+  width: auto !important;
+  border: 1px solid #ef4444 !important;
+  background: #fff1f2 !important;
+  color: #b91c1c !important;
+  box-shadow: 0 5px 14px rgba(185, 28, 28, 0.08);
+}
+
+.deleteLeaveButton:hover:not(:disabled) {
+  border-color: #dc2626 !important;
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.deleteLeaveButton:disabled {
+  opacity: 0.55;
+}
+
+@media (min-width: 801px) {
+  .reviewItem {
+    overflow: hidden;
+  }
+
+  .reviewItemTop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 14px;
+  }
+
+  .leaveItem {
+    overflow: hidden;
+  }
+
+  .leaveFooter {
+    width: 100%;
+  }
+
+  .leaveActions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 800px) {
+  .leaveFooter {
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+  }
+
+  .statusBadge {
+    width: fit-content;
+  }
+
+  .leaveActions {
+    justify-content: flex-start;
+  }
+
+  .leaveActions a,
+  .leaveActions button {
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .reviewActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .reviewActions button {
+    width: 100%;
+  }
+}
