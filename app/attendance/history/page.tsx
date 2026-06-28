@@ -244,8 +244,13 @@ export default function AttendanceHistoryPage() {
           </div>
 
           <div className={styles.headerActions}>
-            <button type="button" onClick={() => router.push("/attendance")}>กลับหน้าลงเวลา</button>
-            <button type="button" onClick={() => router.push("/attendance")}>กลับหน้าหลัก</button>
+            <button
+              type="button"
+              className={styles.desktopHomeButton}
+              onClick={() => router.push("/attendance")}
+            >
+              กลับหน้าหลัก
+            </button>
           </div>
         </header>
 

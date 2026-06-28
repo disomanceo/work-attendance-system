@@ -39,8 +39,14 @@ type AdminPendingLeaveRequest = {
   fiscal_year: number;
   submission_kind: string;
   attachment_path: string | null;
+  attachment_name?: string | null;
+  evidence_file_url?: string | null;
   medical_certificate_required: boolean;
-  status: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  created_at: string;
+  leave_number?: string | null;
+  working_document_url?: string | null;
+  pdf_file_url?: string | null;
   profiles: {
     full_name: string;
     position: string | null;
@@ -120,6 +126,77 @@ async function fetchWithTimeout(
   }
 }
 
+function formatPendingSubmittedAt(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return {
+      date: "ไม่พบวันที่ยื่น",
+      time: "",
+    };
+  }
+
+  return {
+    date: new Intl.DateTimeFormat("th-TH", {
+      timeZone: "Asia/Bangkok",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date),
+  };
+}
+function formatAdminLeaveDate(value: string, includeTime = false) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  const datePart = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+  }).format(date);
+
+  if (!includeTime) {
+    return datePart;
+  }
+
+  const timePart = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+
+  return `${datePart} ${timePart} น.`;
+}
+
+function adminLeaveStatusLabel(
+  status: AdminPendingLeaveRequest["status"]
+) {
+  const labels = {
+    pending: "รอพิจารณา",
+    approved: "อนุมัติแล้ว",
+    rejected: "ไม่อนุมัติ",
+    cancelled: "ยกเลิก",
+  };
+
+  return labels[status];
+}
+
+function adminLeaveTypeLabel(
+  type: AdminPendingLeaveRequest["leave_type"]
+) {
+  return type === "sick" ? "ลาป่วย" : "ลากิจ";
+}
 export default function LeavePage() {
   const supabase = useMemo(() => createClient(), []);
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
@@ -146,6 +223,8 @@ export default function LeavePage() {
   const [processingId, setProcessingId] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [adminLeavePage, setAdminLeavePage] = useState(1);
+  const [memberHistoryPage, setMemberHistoryPage] = useState(1);
 
   const getToken = useCallback(async () => {
     const {
@@ -193,7 +272,7 @@ export default function LeavePage() {
           cache: "no-store",
         }),
         canReviewLeave
-          ? fetchWithTimeout("/api/admin/leave?status=pending", {
+          ? fetchWithTimeout("/api/admin/leave?status=all", {
               headers: { Authorization: `Bearer ${token}` },
               cache: "no-store",
             })
@@ -327,6 +406,127 @@ export default function LeavePage() {
     return () => URL.revokeObjectURL(previewUrl);
   }, [attachment]);
 
+  const sortedAdminLeaveRequests = useMemo(() => {
+    const statusPriority: Record<
+      AdminPendingLeaveRequest["status"],
+      number
+    > = {
+      pending: 0,
+      approved: 1,
+      rejected: 2,
+      cancelled: 3,
+    };
+
+    return [...pendingRequests].sort((a, b) => {
+      const statusDifference =
+        statusPriority[a.status] - statusPriority[b.status];
+
+      if (statusDifference !== 0) {
+        return statusDifference;
+      }
+
+      return (
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime()
+      );
+    });
+  }, [pendingRequests]);
+
+  const adminLeavePageSize = 10;
+  const adminLeaveTotalPages = Math.max(
+    1,
+    Math.ceil(sortedAdminLeaveRequests.length / adminLeavePageSize)
+  );
+  const safeAdminLeavePage = Math.min(
+    adminLeavePage,
+    adminLeaveTotalPages
+  );
+  const pagedAdminLeaveRequests = sortedAdminLeaveRequests.slice(
+    (safeAdminLeavePage - 1) * adminLeavePageSize,
+    safeAdminLeavePage * adminLeavePageSize
+  );
+
+  useEffect(() => {
+    if (adminLeavePage > adminLeaveTotalPages) {
+      setAdminLeavePage(adminLeaveTotalPages);
+    }
+  }, [adminLeavePage, adminLeaveTotalPages]);
+
+  function openLeaveDocument(item: AdminPendingLeaveRequest) {
+    const url = item.pdf_file_url || item.working_document_url;
+
+    if (!url) {
+      setErrorMessage("ยังไม่มีไฟล์ใบลาสำหรับรายการนี้");
+      return;
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+  const pendingAdminLeaveRequests = useMemo(
+    () =>
+      [...pendingRequests]
+        .filter((item) => item.status === "pending")
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+        ),
+    [pendingRequests]
+  );
+
+  const adminLeaveHistoryRequests = useMemo(
+    () =>
+      [...pendingRequests]
+        .filter((item) => item.status !== "pending")
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+        ),
+    [pendingRequests]
+  );
+
+  const adminHistoryPageSize = 10;
+  const adminHistoryTotalPages = Math.max(
+    1,
+    Math.ceil(
+      adminLeaveHistoryRequests.length / adminHistoryPageSize
+    )
+  );
+  const safeAdminHistoryPage = Math.min(
+    adminLeavePage,
+    adminHistoryTotalPages
+  );
+  const pagedAdminHistoryRequests =
+    adminLeaveHistoryRequests.slice(
+      (safeAdminHistoryPage - 1) * adminHistoryPageSize,
+      safeAdminHistoryPage * adminHistoryPageSize
+    );
+
+  useEffect(() => {
+    if (adminLeavePage > adminHistoryTotalPages) {
+      setAdminLeavePage(adminHistoryTotalPages);
+    }
+  }, [adminLeavePage, adminHistoryTotalPages]);
+  const memberHistoryPageSize = 10;
+  const memberHistoryTotalPages = Math.max(
+    1,
+    Math.ceil(requests.length / memberHistoryPageSize)
+  );
+  const safeMemberHistoryPage = Math.min(
+    memberHistoryPage,
+    memberHistoryTotalPages
+  );
+  const pagedMemberHistoryRequests = requests.slice(
+    (safeMemberHistoryPage - 1) * memberHistoryPageSize,
+    safeMemberHistoryPage * memberHistoryPageSize
+  );
+
+  useEffect(() => {
+    if (memberHistoryPage > memberHistoryTotalPages) {
+      setMemberHistoryPage(memberHistoryTotalPages);
+    }
+  }, [memberHistoryPage, memberHistoryTotalPages]);
   async function submitLeave(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -341,7 +541,7 @@ export default function LeavePage() {
       form.set("endDate", endDate);
       form.set("reason", reason);
       form.set("lateSubmissionReason", "");
-      form.set("evidenceDescription", attachment ? evidenceDescription.trim() || "-" : "-");
+      form.set("evidenceDescription", evidenceDescription.trim());
       if (attachment) form.set("attachment", attachment);
 
       const response = await fetchWithTimeout("/api/leave", {
@@ -378,7 +578,12 @@ export default function LeavePage() {
     }
   }
 
-  async function deleteLeave(item: LeaveRequest) {
+  async function deleteLeave(
+    item: Pick<
+      LeaveRequest,
+      "id" | "leave_type" | "start_date" | "end_date"
+    >
+  ) {
     const confirmed = window.confirm(
       `ยืนยันลบ${leaveLabel(item.leave_type)} วันที่ ${item.start_date} ถึง ${item.end_date} ใช่หรือไม่?\n\nเมื่อลบแล้ว รายการนี้จะไม่ถูกนำไปนับในระบบลงเวลาและรายงาน PDF`
     );
@@ -577,48 +782,52 @@ export default function LeavePage() {
             </a>
 
             {summary && leaveSettings && (
-              <section
-                className={`${styles.leaveStatsCard} ${
-                  summary.combined.times >
-                    leaveSettings.combinedLeaveTimesLimit ||
-                  summary.combined.days >
-                    leaveSettings.combinedLeaveDaysLimit
-                    ? styles.leaveStatsExceeded
-                    : ""
-                }`}
-                aria-label="สถิติการลา"
-              >
-                <strong>สถิติการลา</strong>
-                <span>
-                  {summary.combined.times}/{leaveSettings.combinedLeaveTimesLimit} ครั้ง
-                  <b aria-hidden="true">•</b>
-                  {summary.combined.days}/{leaveSettings.combinedLeaveDaysLimit} วัน
-                </span>
-                <small>
-                  ลาแล้ว {summary.combined.times} ครั้ง รวม {summary.combined.days} วัน
-                </small>
-              </section>
+              <div className={styles.leaveStatsStack}>
+                <section
+                  className={`${styles.leaveStatsCard} ${
+                    summary.combined.times >
+                      leaveSettings.combinedLeaveTimesLimit ||
+                    summary.combined.days >
+                      leaveSettings.combinedLeaveDaysLimit
+                      ? styles.leaveStatsExceeded
+                      : ""
+                  }`}
+                  aria-label="สถิติการลา"
+                >
+                  <strong>สถิติการลา</strong>
+
+                  <span>
+                    {summary.combined.times}/
+                    {leaveSettings.combinedLeaveTimesLimit} ครั้ง
+                    <b aria-hidden="true">•</b>
+                    {summary.combined.days}/
+                    {leaveSettings.combinedLeaveDaysLimit} วัน
+                  </span>
+
+                  <small>
+                    ลาแล้ว {summary.combined.times} ครั้ง รวม{" "}
+                    {summary.combined.days} วัน
+                  </small>
+                </section>
+
+                <div
+                  className={styles.leaveStatsBreakdown}
+                  aria-label="สรุปวันลาป่วยและลากิจ"
+                >
+                  <article data-type="sick">
+                    <small>ลาป่วย</small>
+                    <strong>{summary.sick.days} วัน</strong>
+                  </article>
+
+                  <article data-type="personal">
+                    <small>ลากิจ</small>
+                    <strong>{summary.personal.days} วัน</strong>
+                  </article>
+                </div>
+              </div>
             )}
           </div>
 </header>
-
-      {summary && leaveSettings && (
-        <section className={styles.summaryGrid}>
-          <article>
-            <small>ลาป่วย</small>
-            <strong>
-              {summary.sick.days} วัน
-            </strong>
-          </article>
-
-          <article>
-            <small>ลากิจ</small>
-            <strong>
-              {summary.personal.days} วัน
-            </strong>
-          </article>
-        </section>
-      )}
       
 
 
@@ -841,184 +1050,521 @@ export default function LeavePage() {
               </div>
 
               {["director", "admin"].includes(profileRole) && (
-            <section className={styles.reviewSection}>
-              <div className={styles.reviewHeading}>
-                <div>
-                  <small>สำหรับผู้บริหาร</small>
-                  <h3>ใบลารอพิจารณา</h3>
+            <div className={styles.leaveManagementGroups}>
+              <section className={`${styles.compactLeaveSection} ${styles.pendingLeaveSection}`}>
+                <div className={styles.compactLeaveHeader}>
+                  <div>
+                    <small>รายการที่ต้องดำเนินการ</small>
+                    <h3>รายการใบลารอพิจารณา</h3>
+                  </div>
+                  <strong>{pendingAdminLeaveRequests.length} รายการ</strong>
                 </div>
-                <strong>{pendingRequests.length} รายการ</strong>
+
+                {pendingAdminLeaveRequests.length === 0 ? (
+                  <p className={styles.reviewEmpty}>ไม่มีใบลารอพิจารณา</p>
+                ) : (
+                  <>
+                    <div className={styles.twoRowLeaveHeader}>
+                      <span>ลำดับ</span>
+                      <span>วันที่ยื่น</span>
+                      <span>ชื่อ–ตำแหน่ง</span>
+                      <span>ประเภท</span>
+                      <span>วันลา</span>
+                    </div>
+
+                    <div className={styles.twoRowLeaveList}>
+                      {pendingAdminLeaveRequests.map((item, index) => (
+                        <article
+                          key={item.id}
+                          className={styles.twoRowLeaveItem}
+                          data-status={item.status}
+                        >
+                          <div className={styles.twoRowLeaveMain}>
+                            <strong
+                              className={styles.twoRowNumber}
+                              data-label="ลำดับ"
+                            >
+                              {index + 1}
+                            </strong>
+
+                            <time
+                              className={styles.twoRowSubmitted}
+                              data-label="วันที่ยื่น"
+                              dateTime={item.created_at}
+                            >
+                              {formatAdminLeaveDate(item.created_at, true)}
+                            </time>
+
+                            <div
+                              className={styles.twoRowPerson}
+                              data-label="ชื่อ–ตำแหน่ง"
+                            >
+                              <strong>
+                                {item.profiles?.full_name || "ไม่พบชื่อสมาชิก"}
+                              </strong>
+                              <small>
+                                {item.profiles?.position ||
+                                  item.profiles?.role ||
+                                  "-"}
+                              </small>
+                            </div>
+
+                            <span
+                              className={styles.twoRowType}
+                              data-label="ประเภท"
+                              data-type={item.leave_type}
+                            >
+                              {adminLeaveTypeLabel(item.leave_type)}
+                            </span>
+
+                            <span
+                              className={styles.twoRowLeavePeriod}
+                              data-label="วันลา"
+                            >
+                              {formatAdminLeaveDate(item.start_date)}
+                              {" – "}
+                              {formatAdminLeaveDate(item.end_date)}
+                              {" • "}
+                              <strong>{item.total_work_days} วัน</strong>
+                            </span>
+                          </div>
+
+                          <div className={styles.twoRowLeaveFooter}>
+                            <div className={styles.twoRowLeaveLeft}>
+                              <span
+                                className={styles.twoRowStatus}
+                                data-status={item.status}
+                              >
+                                {adminLeaveStatusLabel(item.status)}
+                              </span>
+
+                              <button
+                                type="button"
+                                className={styles.viewLeaveButton}
+                                onClick={() => openLeaveDocument(item)}
+                              >
+                                ดูใบลา
+                              </button>
+
+                              {item.attachment_path ? (
+                                <button
+                                  type="button"
+                                  className={styles.viewAttachmentButton}
+                                  onClick={() => void openAttachment(item.id)}
+                                >
+                                  ดูไฟล์แนบ
+                                </button>
+                              ) : (
+                                <span className={styles.twoRowNoAttachment}>
+                                  ไม่มีไฟล์แนบ
+                                </span>
+                              )}
+                            </div>
+
+                            <div className={styles.twoRowLeaveRight}>
+                              <button
+                                type="button"
+                                className={styles.approveButton}
+                                disabled={processingId === item.id}
+                                onClick={() =>
+                                  void reviewLeave(item.id, "approve")
+                                }
+                              >
+                                อนุมัติ
+                              </button>
+
+                              <button
+                                type="button"
+                                className={styles.rejectButton}
+                                disabled={processingId === item.id}
+                                onClick={() =>
+                                  void reviewLeave(item.id, "reject")
+                                }
+                              >
+                                ไม่อนุมัติ
+                              </button>
+
+                              <button
+                                type="button"
+                                className={styles.deleteLeaveButton}
+                                disabled={
+                                  deletingId === item.id ||
+                                  processingId === item.id
+                                }
+                                onClick={() => void deleteLeave(item)}
+                              >
+                                {deletingId === item.id
+                                  ? "กำลังลบ..."
+                                  : "ลบ"}
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </section>
+
+              <section className={`${styles.compactLeaveSection} ${styles.historyLeaveSection}`}>
+                <div className={styles.compactLeaveHeader}>
+                  <div>
+                    <small>รายการที่ดำเนินการแล้ว</small>
+                    <h3>ประวัติการลา</h3>
+                  </div>
+                  <strong>{adminLeaveHistoryRequests.length} รายการ</strong>
+                </div>
+
+                {adminLeaveHistoryRequests.length === 0 ? (
+                  <p className={styles.reviewEmpty}>ยังไม่มีประวัติการลา</p>
+                ) : (
+                  <>
+                    <div className={styles.twoRowLeaveHeader}>
+                      <span>ลำดับ</span>
+                      <span>วันที่ยื่น</span>
+                      <span>ชื่อ–ตำแหน่ง</span>
+                      <span>ประเภท</span>
+                      <span>วันลา</span>
+                    </div>
+
+                    <div className={styles.twoRowLeaveList}>
+                      {pagedAdminHistoryRequests.map((item, index) => {
+                        const rowNumber =
+                          (safeAdminHistoryPage - 1) *
+                            adminHistoryPageSize +
+                          index +
+                          1;
+
+                        return (
+                          <article
+                            key={item.id}
+                            className={styles.twoRowLeaveItem}
+                            data-status={item.status}
+                          >
+                            <div className={styles.twoRowLeaveMain}>
+                              <strong
+                                className={styles.twoRowNumber}
+                                data-label="ลำดับ"
+                              >
+                                {rowNumber}
+                              </strong>
+
+                              <time
+                                className={styles.twoRowSubmitted}
+                                data-label="วันที่ยื่น"
+                                dateTime={item.created_at}
+                              >
+                                {formatAdminLeaveDate(item.created_at, true)}
+                              </time>
+
+                              <div
+                                className={styles.twoRowPerson}
+                                data-label="ชื่อ–ตำแหน่ง"
+                              >
+                                <strong>
+                                  {item.profiles?.full_name || "ไม่พบชื่อสมาชิก"}
+                                </strong>
+                                <small>
+                                  {item.profiles?.position ||
+                                    item.profiles?.role ||
+                                    "-"}
+                                </small>
+                              </div>
+
+                              <span
+                                className={styles.twoRowType}
+                                data-label="ประเภท"
+                                data-type={item.leave_type}
+                              >
+                                {adminLeaveTypeLabel(item.leave_type)}
+                              </span>
+
+                              <span
+                                className={styles.twoRowLeavePeriod}
+                                data-label="วันลา"
+                              >
+                                {formatAdminLeaveDate(item.start_date)}
+                                {" – "}
+                                {formatAdminLeaveDate(item.end_date)}
+                                {" • "}
+                                <strong>{item.total_work_days} วัน</strong>
+                              </span>
+                            </div>
+
+                            <div className={styles.twoRowLeaveFooter}>
+                              <div className={styles.twoRowLeaveLeft}>
+                                <span
+                                  className={styles.twoRowStatus}
+                                  data-status={item.status}
+                                >
+                                  {adminLeaveStatusLabel(item.status)}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  className={styles.viewLeaveButton}
+                                  onClick={() => openLeaveDocument(item)}
+                                >
+                                  ดูใบลา
+                                </button>
+
+                                {item.attachment_path ? (
+                                  <button
+                                    type="button"
+                                    className={styles.viewAttachmentButton}
+                                    onClick={() =>
+                                      void openAttachment(item.id)
+                                    }
+                                  >
+                                    ดูไฟล์แนบ
+                                  </button>
+                                ) : (
+                                  <span className={styles.twoRowNoAttachment}>
+                                    ไม่มีไฟล์แนบ
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    <div className={styles.adminLeavePagination}>
+                      <span>
+                        แสดง{" "}
+                        {(safeAdminHistoryPage - 1) *
+                          adminHistoryPageSize +
+                          1}
+                        –
+                        {Math.min(
+                          safeAdminHistoryPage *
+                            adminHistoryPageSize,
+                          adminLeaveHistoryRequests.length
+                        )}{" "}
+                        จาก {adminLeaveHistoryRequests.length} รายการ
+                      </span>
+
+                      <div>
+                        <button
+                          type="button"
+                          disabled={safeAdminHistoryPage <= 1}
+                          onClick={() =>
+                            setAdminLeavePage((page) =>
+                              Math.max(1, page - 1)
+                            )
+                          }
+                        >
+                          ก่อนหน้า
+                        </button>
+
+                        <strong>
+                          หน้า {safeAdminHistoryPage}/
+                          {adminHistoryTotalPages}
+                        </strong>
+
+                        <button
+                          type="button"
+                          disabled={
+                            safeAdminHistoryPage >=
+                            adminHistoryTotalPages
+                          }
+                          onClick={() =>
+                            setAdminLeavePage((page) =>
+                              Math.min(
+                                adminHistoryTotalPages,
+                                page + 1
+                              )
+                            )
+                          }
+                        >
+                          ถัดไป
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+            </div>
+          )}
+
+{!["director", "admin"].includes(profileRole) && (
+            <section className={styles.memberOwnLeaveHistory}>
+              <div className={styles.memberOwnLeaveHeader}>
+                <h3>ประวัติการยื่นใบลาของฉัน</h3>
+                <strong>{requests.length} รายการ</strong>
               </div>
 
-              {pendingRequests.length === 0 ? (
-                <p className={styles.reviewEmpty}>
-                  ไม่มีใบลารอพิจารณา
-                </p>
+              {loading ? (
+                <p>กำลังโหลด...</p>
+              ) : requests.length === 0 ? (
+                <p>ยังไม่มีประวัติการยื่นใบลา</p>
               ) : (
-                <div className={styles.reviewList}>
-                  {pendingRequests.map((item) => (
-                    <article
-                      key={item.id}
-                      className={styles.reviewItem}
-                    >
-                      <div className={styles.reviewItemTop}>
-                        <div>
-                          <span className={styles.leaveType}>
-                            {item.leave_type === "sick"
-                              ? "ลาป่วย"
-                              : "ลากิจ"}
-                          </span>
-                          <h4>
-                            {item.profiles?.full_name ??
-                              "ไม่พบชื่อสมาชิก"}
-                          </h4>
-                          <p>
-                            {item.profiles?.position ||
-                              item.profiles?.role}
-                          </p>
-                        </div>
-                        <strong>
-                          {item.total_work_days} วันทำการ
-                        </strong>
-                      </div>
+                <>
+                  <div className={styles.memberOwnLeaveColumnHeader}>
+                    <span>ลำดับ</span>
+                    <span>วันที่ยื่น</span>
+                    <span>ประเภท</span>
+                    <span>ช่วงวันลา</span>
+                    <span>วัน</span>
+                  </div>
 
-                      <p>
-                        {item.start_date} ถึง {item.end_date}
-                      </p>
-                      <p>{item.reason}</p>
+<div className={styles.memberOwnLeaveList}>
+                    {pagedMemberHistoryRequests.map((item, index) => {
+                      const rowNumber =
+                        (safeMemberHistoryPage - 1) *
+                          memberHistoryPageSize +
+                        index +
+                        1;
 
-                      {item.medical_certificate_required && (
-                        <p className={styles.reviewWarning}>
-                          ต้องมีใบรับรองแพทย์
-                        </p>
-                      )}
-
-                      <div className={styles.reviewActions}>
-                        {item.attachment_path && (
-                          <button
-                            type="button"
-                            className={styles.evidenceButton}
-                            onClick={() =>
-                              void openAttachment(item.id)
-                            }
-                          >
-                            ดูหลักฐาน
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          className={styles.rejectButton}
-                          disabled={processingId === item.id}
-                          onClick={() =>
-                            void reviewLeave(item.id, "reject")
-                          }
+                      return (
+                        <article
+                          key={item.id}
+                          className={styles.memberOwnLeaveItem}
+                          data-status={item.status}
                         >
-                          ไม่อนุมัติ
-                        </button>
+                          <div className={styles.memberOwnLeaveMain}>
+                            <strong data-label="ลำดับ">{rowNumber}</strong>
 
-                        <button
-                          type="button"
-                          className={styles.approveButton}
-                          disabled={processingId === item.id}
-                          onClick={() =>
-                            void reviewLeave(item.id, "approve")
-                          }
-                        >
-                          {processingId === item.id
-                            ? "กำลังบันทึก..."
-                            : "อนุมัติ"}
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                            <time
+                              data-label="วันที่ยื่น"
+                              dateTime={item.created_at}
+                            >
+                              {formatAdminLeaveDate(item.created_at, true)}
+                            </time>
+
+                            <span data-label="ประเภท">
+                              {leaveLabel(item.leave_type)}
+                            </span>
+
+                            <span data-label="วันลา">
+                              {formatAdminLeaveDate(item.start_date)}
+                              {" – "}
+                              {formatAdminLeaveDate(item.end_date)}
+                            </span>
+
+                            <strong data-label="วัน">
+                              {item.total_work_days}
+                            </strong>
+                          </div>
+
+                          <div className={styles.memberOwnLeaveFooter}>
+                            <span
+                              className={styles.twoRowStatus}
+                              data-status={item.status}
+                            >
+                              {statusLabel(item.status)}
+                            </span>
+
+                            <div className={styles.memberOwnLeaveActions}>
+                              {item.working_document_url && (
+                                <a
+                                  href={item.working_document_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  ดูใบลา
+                                </a>
+                              )}
+
+                              {item.evidence_file_id && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void openAttachment(item.id)
+                                  }
+                                >
+                                  ดูไฟล์แนบ
+                                </button>
+                              )}
+
+                              {item.pdf_file_url && (
+                                <a
+                                  href={item.pdf_file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  ดู PDF
+                                </a>
+                              )}
+
+                              {item.status === "pending" && (
+                                <button
+                                  type="button"
+                                  className={styles.deleteLeaveButton}
+                                  disabled={deletingId === item.id}
+                                  onClick={() => void deleteLeave(item)}
+                                >
+                                  {deletingId === item.id
+                                    ? "กำลังลบ..."
+                                    : "ลบใบลา"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  <div className={styles.adminLeavePagination}>
+                    <span>
+                      แสดง{" "}
+                      {(safeMemberHistoryPage - 1) *
+                        memberHistoryPageSize +
+                        1}
+                      –
+                      {Math.min(
+                        safeMemberHistoryPage *
+                          memberHistoryPageSize,
+                        requests.length
+                      )}{" "}
+                      จาก {requests.length} รายการ
+                    </span>
+
+                    <div>
+                      <button
+                        type="button"
+                        disabled={safeMemberHistoryPage <= 1}
+                        onClick={() =>
+                          setMemberHistoryPage((page) =>
+                            Math.max(1, page - 1)
+                          )
+                        }
+                      >
+                        ก่อนหน้า
+                      </button>
+
+                      <strong>
+                        หน้า {safeMemberHistoryPage}/
+                        {memberHistoryTotalPages}
+                      </strong>
+
+                      <button
+                        type="button"
+                        disabled={
+                          safeMemberHistoryPage >=
+                          memberHistoryTotalPages
+                        }
+                        onClick={() =>
+                          setMemberHistoryPage((page) =>
+                            Math.min(
+                              memberHistoryTotalPages,
+                              page + 1
+                            )
+                          )
+                        }
+                      >
+                        ถัดไป
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </section>
           )}
 
-          {loading ? (
-            <p>กำลังโหลด...</p>
-          ) : requests.length === 0 ? (
-            <p>ยังไม่มีประวัติการลา</p>
-          ) : (
-            <div className={styles.list}>
-              {requests.map((item) => (
-                <article key={item.id} className={styles.leaveItem}>
-                  <div>
-                    <span className={styles.leaveType}>
-                      {leaveLabel(item.leave_type)}
-                    </span>
-                    <span className={styles.submission}>
-                      {submissionLabel(item.submission_kind)}
-                    </span>
-                  </div>
-
-                  <h3>
-                    {item.leave_number ||
-                      (item.sequence_number
-                        ? `${leaveLabel(item.leave_type)}ครั้งที่ ${
-                            item.sequence_number
-                          }`
-                        : leaveLabel(item.leave_type))}
-                  </h3>
-
-                  <p>
-                    {item.start_date} ถึง {item.end_date} ·{" "}
-                    {item.total_work_days} วันทำการ
-                  </p>
-                  <p>{item.reason}</p>
-
-                  <footer className={styles.leaveFooter}>
-                    <span className={styles.statusBadge} data-status={item.status}>
-                      {statusLabel(item.status)}
-                    </span>
-
-                    <div className={styles.leaveActions}>
-                      {item.status === "pending" &&
-                        item.working_document_url && (
-                          <a
-                            href={item.working_document_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            เปิดใบลารอพิจารณา
-                          </a>
-                        )}
-
-                      {item.evidence_file_id && (
-                        <button
-                          type="button"
-                          onClick={() => void openAttachment(item.id)}
-                        >
-                          ดูหลักฐานแนบ
-                        </button>
-                      )}
-
-                      {item.pdf_file_url && (
-                        <a
-                          href={item.pdf_file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          เปิด PDF ใบลา
-                        </a>
-                      )}
-
-                      <button
-                        type="button"
-                        className={styles.deleteLeaveButton}
-                        disabled={deletingId === item.id}
-                        onClick={() => void deleteLeave(item)}
-                      >
-                        {deletingId === item.id ? "กำลังลบ..." : "🗑 ลบใบลา"}
-                      </button>
-                    </div>
-                  </footer>
-                </article>
-              ))}
-            </div>
-          )}
+          
                     </div>
           )}
 </section>
