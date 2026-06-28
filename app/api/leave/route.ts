@@ -1,6 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { notifyLeaveSubmitted } from "@/lib/line/notifications";
+import {
+  issueDocumentNumber,
+  markDocumentNumberIssue,
+} from "@/lib/document-numbers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -397,15 +401,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let gasCreated:
-    | {
-        workingDocumentId?: string;
-        requestFolderId?: string;
-        evidenceFileId?: string;
-      }
-    | null = null;
-
-  try {
+  let reservedRequestId: string | null = null;
+  let reservedAdmin: SupabaseClient | null = null;
+try {
     const authorization = await authorize(request);
     if (!authorization.ok) {
       return NextResponse.json(
@@ -415,6 +413,9 @@ export async function POST(request: Request) {
     }
 
     const { admin, user, profile, cfg } = authorization;
+    reservedAdmin = admin;
+    reservedRequestId = crypto.randomUUID();
+    const requestId = reservedRequestId;
     const form = await request.formData();
 
     const leaveType = String(form.get("leaveType") ?? "") as LeaveType;
@@ -532,9 +533,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
     if (attachment) {
-
       if (attachment.size > MAX_FILE_SIZE) {
         return NextResponse.json(
           { ok: false, message: "ไฟล์แนบต้องมีขนาดไม่เกิน 5 MB" },
@@ -623,11 +622,29 @@ export async function POST(request: Request) {
       };
     }
 
+    const issuedNumber = await issueDocumentNumber(admin, {
+      seriesCode: "LEAVE",
+      documentType: "LEAVE",
+      referenceId: requestId,
+      issuedBy: user.id,
+      metadata: {
+        leaveType,
+        startDate: startDateValue,
+        endDate: endDateValue,
+        applicantName: profile.full_name,
+      },
+    });
+
     const gasResult = (await callGas(cfg.leaveGasUrl, {
       action: "leaveCreatePending",
       secret: cfg.leaveGasSecret,
       roleKey: profile.role,
       fiscalYear,
+      documentNumber: issuedNumber.formattedNumber,
+      documentRunningNumber: issuedNumber.runningNumber,
+      documentYear: issuedNumber.buddhistYear,
+      documentPrefix: issuedNumber.prefix,
+      documentMode: issuedNumber.mode,
       fullName: profile.full_name,
       position: profile.position || profile.role,
       leaveType,
@@ -647,21 +664,11 @@ export async function POST(request: Request) {
     })) as GasPendingResponse;
 
     if (
-      !gasResult.leaveNumber ||
       !gasResult.workingDocumentId ||
       !gasResult.requestFolderId
     ) {
       throw new Error("GAS ไม่คืนข้อมูลเอกสารใบลาที่จำเป็น");
     }
-
-    gasCreated = {
-      workingDocumentId: gasResult.workingDocumentId,
-      requestFolderId: gasResult.requestFolderId,
-      evidenceFileId: gasResult.evidenceFileId,
-    };
-
-    const requestId = crypto.randomUUID();
-
     const { data, error } = await admin
       .from("leave_requests")
       .insert({
@@ -680,7 +687,9 @@ export async function POST(request: Request) {
           submissionKind === "overdue" ? lateSubmissionReason : null,
         medical_certificate_required: medicalCertificateRequired,
 
-        leave_number: gasResult.leaveNumber,
+        sequence_number: issuedNumber.runningNumber,
+        leave_number: issuedNumber.formattedNumber,
+        document_number_issue_id: issuedNumber.issueId,
         working_document_id: gasResult.workingDocumentId,
         working_document_url: gasResult.workingDocumentUrl || null,
         drive_request_folder_id: gasResult.requestFolderId,
@@ -710,6 +719,12 @@ export async function POST(request: Request) {
       throw new Error("บันทึกใบลาไม่สำเร็จ");
     }
 
+    await markDocumentNumberIssue(admin, {
+      documentType: "LEAVE",
+      referenceId: requestId,
+      status: "COMPLETED",
+    });
+
     await notifyLeaveSubmitted({
       requestId: data.id,
       fullName: profile.full_name,
@@ -719,7 +734,7 @@ export async function POST(request: Request) {
       endDate: endDateValue,
       totalDays: totalWorkDays,
       reason,
-      leaveNumber: gasResult.leaveNumber,
+      leaveNumber: issuedNumber.formattedNumber,
     }).catch((lineError) => {
       console.error("LINE leave submitted notification error:", lineError);
     });
@@ -728,9 +743,17 @@ export async function POST(request: Request) {
       ok: true,
       request: data,
       previewSequence: Number(approvedCount ?? 0) + 1,
-      message: `ส่งใบลาเลขที่ ${gasResult.leaveNumber} เพื่อรอการพิจารณาเรียบร้อยแล้ว`,
+      message: `ส่งใบลาเลขที่ ${issuedNumber.formattedNumber} เพื่อรอการพิจารณาเรียบร้อยแล้ว`,
     });
   } catch (error) {
+    if (reservedAdmin && reservedRequestId) {
+      await markDocumentNumberIssue(reservedAdmin, {
+        documentType: "LEAVE",
+        referenceId: reservedRequestId,
+        status: "FAILED",
+        failureReason: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
     return NextResponse.json(
       {
         ok: false,
@@ -843,4 +866,3 @@ export async function DELETE(request: Request) {
     );
   }
 }
-
