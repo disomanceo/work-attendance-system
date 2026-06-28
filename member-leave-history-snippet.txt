@@ -1,0 +1,167 @@
+﻿{!["director", "admin"].includes(profileRole) && (
+            <section className={styles.memberOwnLeaveHistory}>
+              <div className={styles.memberOwnLeaveHeader}>
+                <h3>ประวัติการยื่นใบลาของฉัน</h3>
+                <strong>{requests.length} รายการ</strong>
+              </div>
+
+              {loading ? (
+                <p>กำลังโหลด...</p>
+              ) : requests.length === 0 ? (
+                <p>ยังไม่มีประวัติการยื่นใบลา</p>
+              ) : (
+                <>
+                  <div className={styles.memberOwnLeaveList}>
+                    {pagedMemberHistoryRequests.map((item, index) => {
+                      const rowNumber =
+                        (safeMemberHistoryPage - 1) *
+                          memberHistoryPageSize +
+                        index +
+                        1;
+
+                      return (
+                        <article
+                          key={item.id}
+                          className={styles.memberOwnLeaveItem}
+                          data-status={item.status}
+                        >
+                          <div className={styles.memberOwnLeaveMain}>
+                            <strong data-label="ลำดับ">{rowNumber}</strong>
+
+                            <time
+                              data-label="วันที่ยื่น"
+                              dateTime={item.created_at}
+                            >
+                              {formatAdminLeaveDate(item.created_at, true)}
+                            </time>
+
+                            <span data-label="ประเภท">
+                              {leaveLabel(item.leave_type)}
+                            </span>
+
+                            <span data-label="วันลา">
+                              {formatAdminLeaveDate(item.start_date)}
+                              {" – "}
+                              {formatAdminLeaveDate(item.end_date)}
+                            </span>
+
+                            <strong data-label="วัน">
+                              {item.total_work_days}
+                            </strong>
+                          </div>
+
+                          <div className={styles.memberOwnLeaveFooter}>
+                            <span
+                              className={styles.twoRowStatus}
+                              data-status={item.status}
+                            >
+                              {statusLabel(item.status)}
+                            </span>
+
+                            <div className={styles.memberOwnLeaveActions}>
+                              {item.working_document_url && (
+                                <a
+                                  href={item.working_document_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  ดูใบลา
+                                </a>
+                              )}
+
+                              {item.evidence_file_id && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void openAttachment(item.id)
+                                  }
+                                >
+                                  ดูไฟล์แนบ
+                                </button>
+                              )}
+
+                              {item.pdf_file_url && (
+                                <a
+                                  href={item.pdf_file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  ดู PDF
+                                </a>
+                              )}
+
+                              {item.status === "pending" && (
+                                <button
+                                  type="button"
+                                  className={styles.deleteLeaveButton}
+                                  disabled={deletingId === item.id}
+                                  onClick={() => void deleteLeave(item)}
+                                >
+                                  {deletingId === item.id
+                                    ? "กำลังลบ..."
+                                    : "ลบใบลา"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+
+                  <div className={styles.adminLeavePagination}>
+                    <span>
+                      แสดง{" "}
+                      {(safeMemberHistoryPage - 1) *
+                        memberHistoryPageSize +
+                        1}
+                      –
+                      {Math.min(
+                        safeMemberHistoryPage *
+                          memberHistoryPageSize,
+                        requests.length
+                      )}{" "}
+                      จาก {requests.length} รายการ
+                    </span>
+
+                    <div>
+                      <button
+                        type="button"
+                        disabled={safeMemberHistoryPage <= 1}
+                        onClick={() =>
+                          setMemberHistoryPage((page) =>
+                            Math.max(1, page - 1)
+                          )
+                        }
+                      >
+                        ก่อนหน้า
+                      </button>
+
+                      <strong>
+                        หน้า {safeMemberHistoryPage}/
+                        {memberHistoryTotalPages}
+                      </strong>
+
+                      <button
+                        type="button"
+                        disabled={
+                          safeMemberHistoryPage >=
+                          memberHistoryTotalPages
+                        }
+                        onClick={() =>
+                          setMemberHistoryPage((page) =>
+                            Math.min(
+                              memberHistoryTotalPages,
+                              page + 1
+                            )
+                          )
+                        }
+                      >
+                        ถัดไป
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          )}

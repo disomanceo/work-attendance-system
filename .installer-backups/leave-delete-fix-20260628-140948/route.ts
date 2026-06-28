@@ -351,6 +351,8 @@ export async function PATCH(request: Request) {
         working_document_id: null,
         working_document_url: null,
         drive_request_folder_id: null,
+        evidence_file_id: null,
+        evidence_file_url: null,
         attachment_bucket: null,
         attachment_path: null,
       })
@@ -360,12 +362,8 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error) {
-      console.error("Leave finalize database update error:", error);
-
       throw new Error(
-        `สร้าง PDF สำเร็จแล้ว แต่บันทึกผลลงฐานข้อมูลไม่สำเร็จ: ${error.message}` +
-          (error.details ? ` | ${error.details}` : "") +
-          (error.hint ? ` | ${error.hint}` : "")
+        "สร้าง PDF สำเร็จแล้ว แต่บันทึกผลลงฐานข้อมูลไม่สำเร็จ กรุณาติดต่อผู้ดูแล"
       );
     }
 
@@ -398,131 +396,6 @@ export async function PATCH(request: Request) {
       {
         ok: false,
         message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
-      },
-      { status: 500 }
-    );
-  }
-}
-export async function DELETE(request: Request) {
-  try {
-    const authorization = await authorize(request);
-
-    if (!authorization.ok) {
-      return NextResponse.json(
-        { ok: false, message: authorization.message },
-        { status: authorization.status }
-      );
-    }
-
-    const body = (await request.json()) as {
-      requestId?: string;
-      confirmation?: string;
-    };
-
-    if (!body.requestId) {
-      return NextResponse.json(
-        { ok: false, message: "ไม่พบรหัสใบลาที่ต้องการลบ" },
-        { status: 400 }
-      );
-    }
-
-    if (body.confirmation !== "ลบ") {
-      return NextResponse.json(
-        { ok: false, message: "กรุณาพิมพ์คำว่า ลบ เพื่อยืนยัน" },
-        { status: 400 }
-      );
-    }
-
-    const { admin, cfg } = authorization;
-
-    const { data: leave, error: leaveError } = await admin
-      .from("leave_requests")
-      .select(`
-        id,
-        status,
-        leave_number,
-        working_document_id,
-        drive_request_folder_id,
-        evidence_file_id,
-        document_number_issue_id
-      `)
-      .eq("id", body.requestId)
-      .maybeSingle();
-
-    if (leaveError) {
-      throw new Error(`อ่านข้อมูลใบลาไม่สำเร็จ: ${leaveError.message}`);
-    }
-
-    if (!leave) {
-      return NextResponse.json(
-        { ok: false, message: "ไม่พบใบลานี้ หรืออาจถูกลบไปแล้ว" },
-        { status: 404 }
-      );
-    }
-
-    if (leave.status !== "pending") {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "ลบได้เฉพาะใบลาที่อยู่ระหว่างรอพิจารณาเท่านั้น",
-        },
-        { status: 409 }
-      );
-    }
-
-    // พยายามลบเอกสารชั่วคราวใน Google Drive ก่อน
-    // ถ้าไฟล์ถูกย้าย/ลบไปแล้ว จะไม่ขัดขวางการลบข้อมูลค้าง
-    await callGas(cfg.leaveGasUrl, {
-      action: "leaveDiscardPending",
-      secret: cfg.leaveGasSecret,
-      workingDocumentId: leave.working_document_id || "",
-      evidenceFileId: leave.evidence_file_id || "",
-      requestFolderId: leave.drive_request_folder_id || "",
-    }).catch((cleanupError) => {
-      console.error("Delete pending leave Drive cleanup error:", cleanupError);
-    });
-
-    const { error: deleteError } = await admin
-      .from("leave_requests")
-      .delete()
-      .eq("id", leave.id)
-      .eq("status", "pending");
-
-    if (deleteError) {
-      throw new Error(`ลบข้อมูลใบลาไม่สำเร็จ: ${deleteError.message}`);
-    }
-
-    if (leave.document_number_issue_id) {
-      const { error: issueError } = await admin
-        .from("document_number_issues")
-        .update({
-          issue_status: "CANCELLED",
-          failure_reason: "ลบใบลาที่ค้างโดยผู้บริหาร",
-        })
-        .eq("id", leave.document_number_issue_id);
-
-      if (issueError) {
-        console.error(
-          "Update document number issue after delete error:",
-          issueError
-        );
-      }
-    }
-
-    return NextResponse.json({
-      ok: true,
-      message: `ลบใบลา ${leave.leave_number || ""} เรียบร้อยแล้ว`,
-    });
-  } catch (error) {
-    console.error("DELETE /api/admin/leave error:", error);
-
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "เกิดข้อผิดพลาดในการลบใบลา",
       },
       { status: 500 }
     );

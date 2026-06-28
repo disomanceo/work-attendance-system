@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./settings.module.css";
 import PositionWorkPolicySection from "./PositionWorkPolicySection";
-import DocumentNumberSection from "./DocumentNumberSection";
 
 type RoleKey = "director" | "teacher" | "staff" | "janitor";
 
@@ -805,8 +804,6 @@ export default function DirectorSettingsPage() {
           </button>
         </div>
       </form>
-
-      <DocumentNumberSection />
     </main>
   );
 }
