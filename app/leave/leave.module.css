@@ -2882,3 +2882,2314 @@
   }
 }
 /* COMPACT LEAVE STAT CARD V2 END */
+/* PENDING LEAVE RESPONSIVE DETAIL START */
+
+.reviewItem{
+  display:grid;
+  grid-template-columns:
+    104px
+    minmax(220px,1.25fr)
+    minmax(215px,1fr)
+    minmax(92px,.38fr)
+    minmax(150px,auto);
+  grid-template-rows:auto auto;
+  align-items:start;
+  gap:10px 14px;
+  width:100%;
+  min-width:0;
+  padding:14px;
+  overflow:visible;
+}
+
+.reviewSequence{
+  grid-column:1;
+  grid-row:1 / span 2;
+  display:grid;
+  align-content:start;
+  justify-items:center;
+  gap:4px;
+  min-width:0;
+  padding:10px 8px;
+  border:1px solid #d8e8df;
+  border-radius:12px;
+  background:#f6fbf8;
+  text-align:center;
+}
+
+.reviewSequence>strong{
+  display:grid;
+  place-items:center;
+  width:38px;
+  height:38px;
+  border-radius:10px;
+  background:#e4f5eb;
+  color:#176044;
+  font-size:20px;
+}
+
+.reviewSequence>span{
+  color:#61796e;
+  font-size:11px;
+  font-weight:800;
+}
+
+.reviewSequence time{
+  display:grid;
+  gap:2px;
+  color:#52685e;
+  font-size:11px;
+  line-height:1.35;
+}
+
+.reviewSequence time b{
+  color:#245f49;
+  font-size:12px;
+}
+
+.reviewItemTop{
+  display:contents;
+}
+
+.reviewItemTop>div{
+  grid-column:2;
+  grid-row:1;
+  min-width:0;
+}
+
+.reviewItemTop h4{
+  margin:4px 0 3px;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  font-size:16px;
+  line-height:1.35;
+}
+
+.reviewItemTop p{
+  margin:0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+.reviewItemTop>strong{
+  grid-column:4;
+  grid-row:1;
+  align-self:center;
+  justify-self:center;
+  min-width:78px;
+  padding:7px 8px;
+  border-radius:10px;
+  background:#e8f7ee;
+  color:#176044;
+  text-align:center;
+  white-space:normal;
+  line-height:1.25;
+}
+
+.reviewLeavePeriod{
+  grid-column:3;
+  grid-row:1;
+  display:grid;
+  gap:4px;
+  min-width:0;
+  margin:0!important;
+  padding:9px 10px;
+  border-radius:10px;
+  background:#f8fbf9;
+  color:#52685e!important;
+  overflow-wrap:anywhere;
+}
+
+.reviewLeavePeriod span,
+.reviewReason span{
+  color:#718278;
+  font-size:11px;
+  font-weight:900;
+}
+
+.reviewLeavePeriod b{
+  color:#304f42;
+  font-size:13px;
+  font-weight:700;
+}
+
+.reviewLeavePeriod strong{
+  width:max-content;
+  max-width:100%;
+  margin-top:2px;
+  padding:5px 9px;
+  border-radius:999px;
+  background:#dff5e7;
+  color:#176044;
+  font-size:12px;
+  white-space:normal;
+}
+
+.reviewReason{
+  grid-column:2 / 5;
+  grid-row:2;
+  display:grid!important;
+  gap:3px;
+  min-width:0;
+  margin:0!important;
+  padding:8px 10px;
+  border-radius:9px;
+  background:#f7faf8;
+  color:#52685e!important;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.reviewItem .reviewWarning{
+  grid-column:2 / 5;
+  display:inline-flex;
+  width:max-content;
+  max-width:100%;
+  white-space:normal;
+}
+
+.reviewActions{
+  grid-column:5;
+  grid-row:1 / span 2;
+  display:flex;
+  align-self:start;
+  justify-content:flex-end;
+  gap:7px;
+  min-width:0;
+  margin:0;
+  flex-wrap:wrap;
+}
+
+.reviewActions button{
+  flex:0 1 auto;
+  min-width:0;
+  max-width:100%;
+  min-height:36px;
+  padding:8px 11px;
+  white-space:normal;
+  line-height:1.2;
+  overflow-wrap:anywhere;
+}
+
+@media(max-width:1120px){
+  .reviewItem{
+    grid-template-columns:
+      96px
+      minmax(210px,1.2fr)
+      minmax(210px,1fr)
+      minmax(86px,.35fr);
+  }
+
+  .reviewActions{
+    grid-column:2 / -1;
+    grid-row:3;
+    justify-content:flex-end;
+  }
+
+  .reviewReason,
+  .reviewItem .reviewWarning{
+    grid-column:2 / -1;
+  }
+}
+
+@media(max-width:820px){
+  .reviewItem{
+    grid-template-columns:90px minmax(0,1fr) auto;
+    gap:9px 12px;
+  }
+
+  .reviewSequence{
+    grid-column:1;
+    grid-row:1 / span 3;
+  }
+
+  .reviewItemTop>div{
+    grid-column:2;
+    grid-row:1;
+  }
+
+  .reviewItemTop>strong{
+    grid-column:3;
+    grid-row:1;
+  }
+
+  .reviewLeavePeriod{
+    grid-column:2 / -1;
+    grid-row:2;
+  }
+
+  .reviewReason{
+    grid-column:2 / -1;
+    grid-row:3;
+  }
+
+  .reviewItem .reviewWarning{
+    grid-column:2 / -1;
+  }
+
+  .reviewActions{
+    grid-column:1 / -1;
+    grid-row:auto;
+    justify-content:stretch;
+  }
+
+  .reviewActions button{
+    flex:1 1 140px;
+  }
+}
+
+@media(max-width:560px){
+  .reviewItem{
+    grid-template-columns:minmax(0,1fr) auto;
+    padding:12px;
+  }
+
+  .reviewSequence{
+    grid-column:1;
+    grid-row:1;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:8px;
+    padding:8px;
+    text-align:left;
+  }
+
+  .reviewSequence>strong{
+    flex:0 0 34px;
+    width:34px;
+    height:34px;
+  }
+
+  .reviewSequence time{
+    margin-left:auto;
+    justify-items:end;
+    text-align:right;
+  }
+
+  .reviewItemTop>div{
+    grid-column:1 / -1;
+    grid-row:2;
+  }
+
+  .reviewItemTop>strong{
+    grid-column:2;
+    grid-row:1;
+    align-self:center;
+    min-width:70px;
+  }
+
+  .reviewLeavePeriod{
+    grid-column:1 / -1;
+    grid-row:3;
+  }
+
+  .reviewReason{
+    grid-column:1 / -1;
+    grid-row:4;
+  }
+
+  .reviewItem .reviewWarning{
+    grid-column:1 / -1;
+  }
+
+  .reviewActions{
+    grid-column:1 / -1;
+    grid-row:auto;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    width:100%;
+  }
+
+  .reviewActions button{
+    width:100%;
+    min-width:0;
+  }
+}
+
+@media(max-width:380px){
+  .reviewItem{
+    grid-template-columns:1fr;
+  }
+
+  .reviewSequence,
+  .reviewItemTop>div,
+  .reviewItemTop>strong,
+  .reviewLeavePeriod,
+  .reviewReason,
+  .reviewItem .reviewWarning,
+  .reviewActions{
+    grid-column:1;
+  }
+
+  .reviewItemTop>strong{
+    grid-row:auto;
+    justify-self:start;
+  }
+
+  .reviewActions{
+    grid-template-columns:1fr;
+  }
+
+  .reviewActions button{
+    grid-column:1!important;
+  }
+}
+
+/* PENDING LEAVE RESPONSIVE DETAIL END */
+/* LEAVE ACTION VISIBILITY AND STATUS COLORS START */
+
+/* กล่องใบลารอพิจารณา: สีเหลืองอำพัน */
+.reviewSection{
+  border:2px solid #f2c66d!important;
+  background:linear-gradient(180deg,#fffaf0 0%,#fff7df 100%)!important;
+  box-shadow:0 10px 28px rgba(178,119,24,.10)!important;
+}
+
+.reviewHeading h3{
+  color:#8a5608!important;
+}
+
+.reviewHeading strong{
+  background:#ffe9ad!important;
+  color:#7a4a00!important;
+}
+
+.reviewItem{
+  border:1px solid #efd28f!important;
+  border-left:5px solid #e7a928!important;
+  background:#fffdf8!important;
+}
+
+.reviewSequence{
+  border-color:#efd28f!important;
+  background:#fff5d8!important;
+}
+
+.reviewSequence>strong{
+  background:#ffe6a3!important;
+  color:#825100!important;
+}
+
+/* บังคับให้กลุ่มปุ่มกลับมาแสดง */
+.reviewActions{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:static!important;
+  z-index:3!important;
+  min-height:40px!important;
+  overflow:visible!important;
+  pointer-events:auto!important;
+}
+
+.reviewActions button{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:static!important;
+  min-height:38px!important;
+  min-width:96px!important;
+  padding:9px 13px!important;
+  border-style:solid!important;
+  border-width:1px!important;
+  border-radius:10px!important;
+  font-weight:900!important;
+  line-height:1.2!important;
+  white-space:normal!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+}
+
+/* ไม่อนุมัติ = แดง */
+.reviewActions .rejectButton{
+  border-color:#e7a3a3!important;
+  background:#fff0f0!important;
+  color:#a33434!important;
+}
+
+/* อนุมัติ = เขียว */
+.reviewActions .approveButton{
+  border-color:#8fd0a9!important;
+  background:#e5f7ec!important;
+  color:#17613e!important;
+}
+
+/* ดูหลักฐาน = ฟ้า */
+.reviewActions .evidenceButton{
+  border-color:#9cc8df!important;
+  background:#edf8fd!important;
+  color:#225f7d!important;
+}
+
+/*
+  ปุ่มลบอาจใช้ class เดิมหรือ inline style
+  จึงครอบคลุมทั้ง deleteLeaveButton และปุ่มที่มีสีแดง
+*/
+.reviewActions .deleteLeaveButton,
+.reviewActions button[style*="#dc2626"],
+.reviewActions button[style*="rgb(220, 38, 38)"]{
+  display:inline-flex!important;
+  border-color:#dc2626!important;
+  background:#fff1f2!important;
+  color:#b91c1c!important;
+}
+
+/* สถานะรอพิจารณาในประวัติ = เหลือง */
+.leaveItem[data-status="pending"]{
+  border:1px solid #efd28f!important;
+  border-left:5px solid #e7a928!important;
+  background:linear-gradient(135deg,#fffdf7,#fff8e7)!important;
+}
+
+/* สถานะอนุมัติแล้ว = เขียว */
+.leaveItem[data-status="approved"]{
+  border:1px solid #9dd7b4!important;
+  border-left:5px solid #2f9b65!important;
+  background:linear-gradient(135deg,#f6fff9,#eaf8f0)!important;
+}
+
+/* สถานะไม่อนุมัติ = แดงอ่อน */
+.leaveItem[data-status="rejected"]{
+  border:1px solid #e7b1b1!important;
+  border-left:5px solid #c94d4d!important;
+  background:linear-gradient(135deg,#fffafa,#fff0f0)!important;
+}
+
+/* สถานะยกเลิก = เทา */
+.leaveItem[data-status="cancelled"]{
+  border:1px solid #cfd6d2!important;
+  border-left:5px solid #83918a!important;
+  background:#f7f9f8!important;
+}
+
+/* ป้องกันปุ่มและข้อความทับกันบนจอขนาดกลาง */
+@media(max-width:1120px){
+  .reviewActions{
+    width:100%!important;
+    flex-wrap:wrap!important;
+    justify-content:flex-end!important;
+  }
+
+  .reviewActions button{
+    flex:0 1 auto!important;
+  }
+}
+
+/* Tablet และ Mobile: ปุ่มเต็มพื้นที่แบบแบ่งคอลัมน์ */
+@media(max-width:820px){
+  .reviewActions{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+    width:100%!important;
+  }
+
+  .reviewActions button{
+    width:100%!important;
+    min-width:0!important;
+  }
+}
+
+/* มือถือแคบ: ปุ่มเรียงแนวตั้ง */
+@media(max-width:420px){
+  .reviewActions{
+    grid-template-columns:1fr!important;
+  }
+
+  .reviewActions button{
+    grid-column:1!important;
+  }
+}
+
+/* LEAVE ACTION VISIBILITY AND STATUS COLORS END */
+/* UNIFIED ADMIN LEAVE TABLE START */
+
+.adminLeaveSection{
+  margin:0 0 20px;
+  padding:16px;
+  border:1px solid #dfe8e3;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 10px 28px rgba(24,69,54,.06);
+}
+
+.adminLeaveHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+.adminLeaveHeader small{
+  color:#718278;
+  font-weight:800;
+}
+
+.adminLeaveHeader h3{
+  margin:3px 0 0;
+  color:#194b39;
+}
+
+.adminLeaveHeader>strong{
+  padding:6px 11px;
+  border-radius:999px;
+  background:#e8f5ee;
+  color:#236448;
+  font-size:13px;
+  white-space:nowrap;
+}
+
+.adminLeaveTableWrap{
+  width:100%;
+  overflow-x:auto;
+  border:1px solid #e1e8e4;
+  border-radius:14px;
+}
+
+.adminLeaveTable{
+  width:100%;
+  min-width:1080px;
+  border-collapse:collapse;
+  table-layout:fixed;
+  background:#fff;
+}
+
+.adminLeaveTable th,
+.adminLeaveTable td{
+  padding:10px 9px;
+  border-bottom:1px solid #e6ece8;
+  vertical-align:middle;
+  text-align:left;
+  overflow-wrap:anywhere;
+}
+
+.adminLeaveTable th{
+  background:#f5f8f6;
+  color:#486257;
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.adminLeaveTable th:nth-child(1){width:56px}
+.adminLeaveTable th:nth-child(2){width:118px}
+.adminLeaveTable th:nth-child(3){width:180px}
+.adminLeaveTable th:nth-child(4){width:88px}
+.adminLeaveTable th:nth-child(5){width:170px}
+.adminLeaveTable th:nth-child(6){width:54px}
+.adminLeaveTable th:nth-child(7){width:112px}
+.adminLeaveTable th:nth-child(8){width:300px}
+
+.adminLeaveTable tbody tr{
+  transition:background .16s ease;
+}
+
+.adminLeaveTable tbody tr[data-status="pending"]{
+  background:#fffaf0;
+  box-shadow:inset 5px 0 #e5a820;
+}
+
+.adminLeaveTable tbody tr[data-status="approved"]{
+  background:#f2fbf6;
+  box-shadow:inset 5px 0 #2f9b65;
+}
+
+.adminLeaveTable tbody tr[data-status="rejected"]{
+  background:#fff5f5;
+  box-shadow:inset 5px 0 #c94d4d;
+}
+
+.adminLeaveTable tbody tr[data-status="cancelled"]{
+  background:#f6f8f7;
+  box-shadow:inset 5px 0 #89958f;
+}
+
+.adminLeaveTable tbody tr:hover{
+  filter:brightness(.985);
+}
+
+.adminLeaveName{
+  display:block;
+  color:#234c3d;
+  font-size:13px;
+  line-height:1.35;
+}
+
+.adminLeaveTable td small{
+  display:block;
+  margin-top:2px;
+  color:#718278;
+  font-size:11px;
+}
+
+.adminLeaveType,
+.adminLeaveStatus{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  max-width:100%;
+  padding:5px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+  white-space:normal;
+  text-align:center;
+}
+
+.adminLeaveType[data-type="personal"]{
+  background:#e8f5ee;
+  color:#1f684b;
+}
+
+.adminLeaveType[data-type="sick"]{
+  background:#fff0f0;
+  color:#a23f3f;
+}
+
+.adminLeaveStatus[data-status="pending"]{
+  background:#ffe7a6;
+  color:#7c4c00;
+}
+
+.adminLeaveStatus[data-status="approved"]{
+  background:#dff4e7;
+  color:#17613e;
+}
+
+.adminLeaveStatus[data-status="rejected"]{
+  background:#fde2e2;
+  color:#9c3434;
+}
+
+.adminLeaveStatus[data-status="cancelled"]{
+  background:#e5e9e7;
+  color:#59645f;
+}
+
+.adminLeaveActions{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex-wrap:wrap;
+  min-width:0;
+}
+
+.adminLeaveActions button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:32px;
+  padding:6px 9px;
+  border:1px solid;
+  border-radius:8px;
+  background:#fff;
+  font:inherit;
+  font-size:11px;
+  font-weight:900;
+  line-height:1.15;
+  white-space:nowrap;
+  cursor:pointer;
+}
+
+.adminLeaveActions button:disabled{
+  cursor:not-allowed;
+  opacity:.55;
+}
+
+.viewLeaveButton{
+  border-color:#bca9d3!important;
+  background:#f7f2fb!important;
+  color:#654b82!important;
+}
+
+.viewAttachmentButton{
+  border-color:#9cc8df!important;
+  background:#edf8fd!important;
+  color:#225f7d!important;
+}
+
+.adminLeaveActions .approveButton{
+  border-color:#8fd0a9!important;
+  background:#e5f7ec!important;
+  color:#17613e!important;
+}
+
+.adminLeaveActions .rejectButton{
+  border-color:#e7a3a3!important;
+  background:#fff0f0!important;
+  color:#a33434!important;
+}
+
+.adminLeaveActions .deleteLeaveButton{
+  border-color:#d4b5b5!important;
+  background:#fff!important;
+  color:#9b3c3c!important;
+}
+
+.noAttachmentText{
+  padding:5px 7px;
+  color:#8a9690;
+  font-size:10px;
+  white-space:nowrap;
+}
+
+.adminLeavePagination{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:12px;
+  color:#62786f;
+  font-size:12px;
+}
+
+.adminLeavePagination>div{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.adminLeavePagination button{
+  min-height:34px;
+  padding:7px 11px;
+  border:1px solid #bfd4c8;
+  border-radius:9px;
+  background:#fff;
+  color:#285f49;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.adminLeavePagination button:disabled{
+  cursor:not-allowed;
+  opacity:.45;
+}
+
+/* จอแคบ: เปลี่ยนจากตารางเป็นการ์ด ไม่ให้ข้อความและปุ่มทับกัน */
+@media(max-width:820px){
+  .adminLeaveTableWrap{
+    overflow:visible;
+    border:0;
+  }
+
+  .adminLeaveTable{
+    min-width:0;
+    border-collapse:separate;
+    border-spacing:0 10px;
+  }
+
+  .adminLeaveTable thead{
+    display:none;
+  }
+
+  .adminLeaveTable,
+  .adminLeaveTable tbody,
+  .adminLeaveTable tr,
+  .adminLeaveTable td{
+    display:block;
+    width:100%;
+  }
+
+  .adminLeaveTable tbody tr{
+    padding:10px 12px;
+    border:1px solid #e1e8e4;
+    border-radius:13px;
+    overflow:hidden;
+  }
+
+  .adminLeaveTable td{
+    display:grid;
+    grid-template-columns:94px minmax(0,1fr);
+    gap:8px;
+    padding:6px 0;
+    border-bottom:1px dashed #e4eae6;
+  }
+
+  .adminLeaveTable td:last-child{
+    border-bottom:0;
+  }
+
+  .adminLeaveTable td::before{
+    content:attr(data-label);
+    color:#718278;
+    font-size:11px;
+    font-weight:900;
+  }
+
+  .adminLeaveActions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+
+  .adminLeaveActions button{
+    width:100%;
+    min-width:0;
+    min-height:36px;
+    white-space:normal;
+  }
+
+  .noAttachmentText{
+    display:flex;
+    align-items:center;
+    min-height:36px;
+    white-space:normal;
+  }
+
+  .adminLeavePagination{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .adminLeavePagination>div{
+    width:100%;
+    justify-content:space-between;
+  }
+}
+
+@media(max-width:430px){
+  .adminLeaveSection{
+    padding:12px;
+  }
+
+  .adminLeaveTable td{
+    grid-template-columns:82px minmax(0,1fr);
+  }
+
+  .adminLeaveActions{
+    grid-template-columns:1fr;
+  }
+}
+
+/* UNIFIED ADMIN LEAVE TABLE END */
+/* COMPACT TWO ROW LEAVE LIST START */
+
+.compactLeaveSection{
+  width:100%;
+  min-width:0;
+  margin:0 0 18px;
+  padding:14px;
+  border:1px solid #dfe8e3;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 10px 26px rgba(24,69,54,.055);
+  overflow:hidden;
+  font-family:"Leelawadee UI","Tahoma","Noto Sans Thai",sans-serif;
+}
+
+.compactLeaveHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.compactLeaveHeader small{
+  color:#728178;
+  font-size:11px;
+  font-weight:700;
+}
+
+.compactLeaveHeader h3{
+  margin:2px 0 0;
+  color:#194b39;
+  font-size:18px;
+  font-weight:800;
+  line-height:1.25;
+}
+
+.compactLeaveHeader>strong{
+  flex:0 0 auto;
+  padding:5px 10px;
+  border-radius:999px;
+  background:#e8f5ee;
+  color:#236448;
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.compactLeaveColumnHeader,
+.compactLeaveInfo{
+  display:grid;
+  grid-template-columns:
+    42px
+    112px
+    minmax(150px,1.35fr)
+    68px
+    minmax(128px,1fr)
+    42px
+    92px;
+  align-items:center;
+  gap:7px;
+  width:100%;
+  min-width:0;
+}
+
+.compactLeaveColumnHeader{
+  padding:7px 9px;
+  border:1px solid #e1e8e4;
+  border-radius:10px 10px 0 0;
+  background:#f4f7f5;
+  color:#52685e;
+  font-size:10px;
+  font-weight:800;
+}
+
+.compactLeaveList{
+  display:grid;
+  gap:7px;
+  width:100%;
+  min-width:0;
+  margin-top:7px;
+}
+
+.compactLeaveItem{
+  width:100%;
+  min-width:0;
+  padding:9px 10px 8px;
+  border:1px solid #e0e7e3;
+  border-left:5px solid #8aa096;
+  border-radius:11px;
+  background:#fff;
+  overflow:hidden;
+}
+
+.compactLeaveItem[data-status="pending"]{
+  border-color:#edd49b;
+  border-left-color:#dfa623;
+  background:#fffaf0;
+}
+
+.compactLeaveItem[data-status="approved"]{
+  border-color:#a9d8bb;
+  border-left-color:#2f9964;
+  background:#f3fbf6;
+}
+
+.compactLeaveItem[data-status="rejected"]{
+  border-color:#e6b4b4;
+  border-left-color:#c84d4d;
+  background:#fff6f6;
+}
+
+.compactLeaveItem[data-status="cancelled"]{
+  border-color:#cfd7d3;
+  border-left-color:#89958f;
+  background:#f7f9f8;
+}
+
+.compactLeaveInfo{
+  min-height:32px;
+  color:#304f42;
+  font-size:11px;
+  line-height:1.25;
+}
+
+.compactLeaveInfo>*{
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+
+.compactLeaveNumber{
+  text-align:center;
+  color:#285d48;
+  font-size:12px;
+  font-weight:800;
+}
+
+.compactLeaveSubmitted{
+  color:#52685e;
+  font-size:10.5px;
+  font-weight:600;
+}
+
+.compactLeavePerson{
+  display:grid;
+  gap:1px;
+  min-width:0;
+}
+
+.compactLeavePerson strong{
+  color:#234c3d;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.25;
+  white-space:normal;
+}
+
+.compactLeavePerson small{
+  color:#718278;
+  font-size:10px;
+  font-weight:500;
+  line-height:1.2;
+}
+
+.compactLeaveType,
+.compactLeaveStatus{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  max-width:100%;
+  padding:4px 7px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  text-align:center;
+  white-space:normal;
+}
+
+.compactLeaveType[data-type="personal"]{
+  background:#e8f5ee;
+  color:#1f684b;
+}
+
+.compactLeaveType[data-type="sick"]{
+  background:#fff0f0;
+  color:#9d3c3c;
+}
+
+.compactLeavePeriod{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  color:#405b50;
+  font-size:10.5px;
+  font-weight:600;
+  white-space:normal;
+}
+
+.compactLeavePeriod b{
+  color:#819188;
+  font-weight:500;
+}
+
+.compactLeaveDays{
+  text-align:center;
+  color:#285d48;
+  font-size:12px;
+  font-weight:800;
+}
+
+.compactLeaveStatus[data-status="pending"]{
+  background:#ffe8aa;
+  color:#7b4c00;
+}
+
+.compactLeaveStatus[data-status="approved"]{
+  background:#dcf3e5;
+  color:#17603e;
+}
+
+.compactLeaveStatus[data-status="rejected"]{
+  background:#fbe1e1;
+  color:#963232;
+}
+
+.compactLeaveStatus[data-status="cancelled"]{
+  background:#e5e9e7;
+  color:#59645f;
+}
+
+.compactLeaveActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+  width:100%;
+  min-width:0;
+  margin-top:7px;
+  padding-top:7px;
+  border-top:1px dashed rgba(99,123,112,.22);
+  flex-wrap:wrap;
+}
+
+.compactLeaveActions button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+  min-height:29px;
+  padding:5px 8px;
+  border:1px solid;
+  border-radius:7px;
+  font:inherit;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.15;
+  white-space:normal;
+  cursor:pointer;
+}
+
+.compactLeaveActions button:disabled{
+  cursor:not-allowed;
+  opacity:.55;
+}
+
+.compactLeaveActions .viewLeaveButton{
+  border-color:#baa8cf!important;
+  background:#f7f2fb!important;
+  color:#60487d!important;
+}
+
+.compactLeaveActions .viewAttachmentButton{
+  border-color:#9cc8df!important;
+  background:#edf8fd!important;
+  color:#225f7d!important;
+}
+
+.compactLeaveActions .approveButton{
+  border-color:#8fcfab!important;
+  background:#e5f7ec!important;
+  color:#17613e!important;
+}
+
+.compactLeaveActions .rejectButton{
+  border-color:#e4a6a6!important;
+  background:#fff0f0!important;
+  color:#9f3535!important;
+}
+
+.compactLeaveActions .deleteLeaveButton{
+  border-color:#d5b6b6!important;
+  background:#fff!important;
+  color:#963838!important;
+}
+
+.compactLeaveActions .noAttachmentText{
+  padding:4px 7px;
+  color:#87938d;
+  font-size:9.5px;
+  white-space:normal;
+}
+
+.compactLeaveSection .adminLeavePagination{
+  margin-top:10px;
+  font-family:"Leelawadee UI","Tahoma","Noto Sans Thai",sans-serif;
+}
+
+/* ปรับให้ยังอยู่ในกรอบเมื่อพื้นที่แคบ */
+@media(max-width:1040px){
+  .compactLeaveColumnHeader,
+  .compactLeaveInfo{
+    grid-template-columns:
+      36px
+      102px
+      minmax(135px,1.3fr)
+      62px
+      minmax(112px,.95fr)
+      36px
+      82px;
+    gap:5px;
+  }
+
+  .compactLeaveColumnHeader{
+    font-size:9.5px;
+  }
+
+  .compactLeaveInfo{
+    font-size:10.5px;
+  }
+}
+
+/* Tablet และมือถือ: ไม่มี Scroll bar เปลี่ยนเป็นบล็อกในกรอบเดิม */
+@media(max-width:760px){
+  .compactLeaveColumnHeader{
+    display:none;
+  }
+
+  .compactLeaveInfo{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px 10px;
+  }
+
+  .compactLeaveInfo>*{
+    display:grid;
+    grid-template-columns:82px minmax(0,1fr);
+    align-items:start;
+    gap:6px;
+    text-align:left;
+  }
+
+  .compactLeaveInfo>*::before{
+    content:attr(data-label);
+    color:#718278;
+    font-size:9.5px;
+    font-weight:800;
+  }
+
+  .compactLeaveType,
+  .compactLeaveStatus{
+    width:100%;
+    justify-content:flex-start;
+    border-radius:7px;
+  }
+
+  .compactLeavePeriod{
+    display:grid;
+    grid-template-columns:82px minmax(0,1fr);
+  }
+
+  .compactLeavePeriod::before{
+    grid-column:1;
+  }
+
+  .compactLeavePeriod b{
+    display:none;
+  }
+
+  .compactLeaveActions{
+    justify-content:stretch;
+  }
+
+  .compactLeaveActions button{
+    flex:1 1 120px;
+  }
+}
+
+@media(max-width:480px){
+  .compactLeaveSection{
+    padding:11px;
+  }
+
+  .compactLeaveInfo{
+    grid-template-columns:1fr;
+  }
+
+  .compactLeaveActions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .compactLeaveActions button{
+    width:100%;
+  }
+}
+
+@media(max-width:360px){
+  .compactLeaveActions{
+    grid-template-columns:1fr;
+  }
+}
+
+/* COMPACT TWO ROW LEAVE LIST END */
+/* SPLIT LEAVE MANAGEMENT GROUPS START */
+
+.leaveManagementGroups{
+  display:grid;
+  gap:16px;
+  width:100%;
+  min-width:0;
+}
+
+.pendingLeaveSection{
+  border-color:#edcf84!important;
+  background:#fffdf8!important;
+}
+
+.pendingLeaveSection .compactLeaveHeader h3{
+  color:#7b4d06;
+}
+
+.pendingLeaveSection .compactLeaveHeader>strong{
+  background:#ffe8aa;
+  color:#7b4c00;
+}
+
+.historyLeaveSection{
+  border-color:#cfe0d6!important;
+  background:#fbfdfc!important;
+}
+
+.historyLeaveSection .compactLeaveHeader h3{
+  color:#205f45;
+}
+
+.historyLeaveSection .compactLeaveHeader>strong{
+  background:#e1f3e8;
+  color:#1e6547;
+}
+
+.historyContent{
+  width:100%;
+  min-width:0;
+  overflow:hidden;
+}
+
+.historyContent>.list{
+  display:none!important;
+}
+
+.pendingLeaveSection .adminLeavePagination{
+  display:none!important;
+}
+
+.historyLeaveSection .adminLeavePagination{
+  display:flex;
+}
+
+.pendingLeaveSection,
+.historyLeaveSection,
+.compactLeaveList,
+.compactLeaveItem,
+.compactLeaveInfo,
+.compactLeaveActions{
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+
+@media(max-width:760px){
+  .leaveManagementGroups{
+    gap:12px;
+  }
+
+  .pendingLeaveSection,
+  .historyLeaveSection{
+    padding:11px;
+  }
+}
+
+/* SPLIT LEAVE MANAGEMENT GROUPS END */
+/* FINAL TWO ROW LEAVE LAYOUT START */
+
+.twoRowLeaveHeader,
+.twoRowLeaveMain{
+  display:grid;
+  grid-template-columns:
+    38px
+    106px
+    minmax(150px,1.6fr)
+    62px
+    minmax(125px,1fr);
+  align-items:center;
+  gap:6px;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+
+.twoRowLeaveHeader{
+  margin:0;
+  padding:7px 9px;
+  border:1px solid #dfe7e2;
+  border-bottom:0;
+  border-radius:10px 10px 0 0;
+  background:#f1f5f2;
+  color:#52685e;
+  font-size:9.5px;
+  font-weight:800;
+  line-height:1.2;
+}
+
+.twoRowLeaveList{
+  display:grid;
+  width:100%;
+  min-width:0;
+  border:1px solid #dfe7e2;
+  border-radius:0 0 10px 10px;
+  overflow:hidden;
+}
+
+.twoRowLeaveItem{
+  width:100%;
+  min-width:0;
+  padding:8px 9px;
+  border-bottom:1px solid #e2e8e4;
+  background:#fff;
+  box-sizing:border-box;
+}
+
+.twoRowLeaveItem:last-child{
+  border-bottom:0;
+}
+
+.twoRowLeaveItem[data-status="pending"]{
+  background:#fffaf0;
+  box-shadow:inset 4px 0 #dfa623;
+}
+
+.twoRowLeaveItem[data-status="approved"]{
+  background:#f3fbf6;
+  box-shadow:inset 4px 0 #2f9964;
+}
+
+.twoRowLeaveItem[data-status="rejected"]{
+  background:#fff6f6;
+  box-shadow:inset 4px 0 #c84d4d;
+}
+
+.twoRowLeaveItem[data-status="cancelled"]{
+  background:#f7f9f8;
+  box-shadow:inset 4px 0 #89958f;
+}
+
+.twoRowLeaveMain{
+  min-height:30px;
+  color:#304f42;
+  font-size:10px;
+  line-height:1.25;
+}
+
+.twoRowLeaveMain>*{
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+
+.twoRowNumber{
+  text-align:center;
+  color:#285d48;
+  font-size:11px;
+  font-weight:800;
+}
+
+.twoRowSubmitted{
+  color:#52685e;
+  font-size:9.5px;
+  font-weight:600;
+  white-space:normal;
+}
+
+.twoRowPerson{
+  display:grid;
+  gap:1px;
+  min-width:0;
+}
+
+.twoRowPerson strong{
+  color:#234c3d;
+  font-size:11px;
+  font-weight:800;
+  line-height:1.25;
+  white-space:normal;
+}
+
+.twoRowPerson small{
+  color:#718278;
+  font-size:9px;
+  font-weight:500;
+  line-height:1.2;
+}
+
+.twoRowType{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  max-width:100%;
+  padding:3px 6px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:800;
+  text-align:center;
+}
+
+.twoRowType[data-type="personal"]{
+  background:#e8f5ee;
+  color:#1f684b;
+}
+
+.twoRowType[data-type="sick"]{
+  background:#fff0f0;
+  color:#9d3c3c;
+}
+
+.twoRowLeavePeriod{
+  color:#405b50;
+  font-size:9.5px;
+  font-weight:600;
+  white-space:normal;
+}
+
+.twoRowLeavePeriod strong{
+  color:#285d48;
+  font-size:10px;
+  font-weight:800;
+}
+
+.twoRowLeaveFooter{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  width:100%;
+  min-width:0;
+  margin-top:6px;
+  padding-top:6px;
+  border-top:1px dashed rgba(99,123,112,.22);
+  box-sizing:border-box;
+}
+
+.twoRowLeaveLeft,
+.twoRowLeaveRight{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+
+.twoRowLeaveRight{
+  justify-content:flex-end;
+  margin-left:auto;
+}
+
+.twoRowStatus{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:76px;
+  min-height:28px;
+  padding:4px 6px;
+  border-radius:7px;
+  font-size:9px;
+  font-weight:800;
+  line-height:1.15;
+  text-align:center;
+  box-sizing:border-box;
+}
+
+.twoRowStatus[data-status="pending"]{
+  background:#ffe8aa;
+  color:#7b4c00;
+}
+
+.twoRowStatus[data-status="approved"]{
+  background:#dcf3e5;
+  color:#17603e;
+}
+
+.twoRowStatus[data-status="rejected"]{
+  background:#fbe1e1;
+  color:#963232;
+}
+
+.twoRowStatus[data-status="cancelled"]{
+  background:#e5e9e7;
+  color:#59645f;
+}
+
+.twoRowLeaveFooter button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:74px;
+  min-width:74px;
+  height:28px;
+  padding:3px 5px;
+  border:1px solid;
+  border-radius:7px;
+  font:inherit;
+  font-size:9px;
+  font-weight:800;
+  line-height:1.1;
+  text-align:center;
+  white-space:normal;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+
+.twoRowLeaveFooter button:disabled{
+  cursor:not-allowed;
+  opacity:.55;
+}
+
+.twoRowLeaveFooter .viewLeaveButton{
+  border-color:#baa8cf!important;
+  background:#f7f2fb!important;
+  color:#60487d!important;
+}
+
+.twoRowLeaveFooter .viewAttachmentButton{
+  border-color:#9cc8df!important;
+  background:#edf8fd!important;
+  color:#225f7d!important;
+}
+
+.twoRowLeaveFooter .approveButton{
+  border-color:#8fcfab!important;
+  background:#e5f7ec!important;
+  color:#17613e!important;
+}
+
+.twoRowLeaveFooter .rejectButton{
+  border-color:#e4a6a6!important;
+  background:#fff0f0!important;
+  color:#9f3535!important;
+}
+
+.twoRowLeaveFooter .deleteLeaveButton{
+  border-color:#d5b6b6!important;
+  background:#fff!important;
+  color:#963838!important;
+}
+
+.twoRowNoAttachment{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:74px;
+  min-width:74px;
+  min-height:28px;
+  padding:3px 5px;
+  border:1px dashed #c9d2cd;
+  border-radius:7px;
+  color:#87938d;
+  font-size:8.5px;
+  text-align:center;
+  box-sizing:border-box;
+}
+
+.pendingLeaveSection,
+.historyLeaveSection,
+.twoRowLeaveHeader,
+.twoRowLeaveList,
+.twoRowLeaveItem,
+.twoRowLeaveMain,
+.twoRowLeaveFooter{
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+}
+
+@media(max-width:1080px){
+  .twoRowLeaveHeader,
+  .twoRowLeaveMain{
+    grid-template-columns:
+      32px
+      94px
+      minmax(125px,1.45fr)
+      54px
+      minmax(105px,1fr);
+    gap:4px;
+  }
+
+  .twoRowLeaveHeader{
+    font-size:8.8px;
+  }
+
+  .twoRowSubmitted,
+  .twoRowLeavePeriod{
+    font-size:9px;
+  }
+
+  .twoRowPerson strong{
+    font-size:10.5px;
+  }
+
+  .twoRowLeaveFooter button,
+  .twoRowNoAttachment{
+    width:68px;
+    min-width:68px;
+  }
+
+  .twoRowStatus{
+    width:70px;
+  }
+}
+
+@media(max-width:760px){
+  .twoRowLeaveHeader{
+    display:none;
+  }
+
+  .twoRowLeaveList{
+    border-radius:10px;
+  }
+
+  .twoRowLeaveMain{
+    grid-template-columns:36px minmax(0,1fr);
+    gap:5px 8px;
+  }
+
+  .twoRowLeaveMain>*{
+    display:grid;
+    grid-template-columns:80px minmax(0,1fr);
+    gap:6px;
+    grid-column:1 / -1;
+    text-align:left;
+  }
+
+  .twoRowLeaveMain>*::before{
+    content:attr(data-label);
+    color:#718278;
+    font-size:9px;
+    font-weight:800;
+  }
+
+  .twoRowLeaveFooter{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .twoRowLeaveLeft,
+  .twoRowLeaveRight{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    width:100%;
+    margin:0;
+  }
+
+  .twoRowLeaveFooter button,
+  .twoRowNoAttachment,
+  .twoRowStatus{
+    width:100%;
+    min-width:0;
+  }
+}
+
+@media(max-width:430px){
+  .twoRowLeaveLeft,
+  .twoRowLeaveRight{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+/* FINAL TWO ROW LEAVE LAYOUT END */
+/* MEMBER OWN LEAVE HISTORY START */
+
+.memberOwnLeaveHistory{
+  display:grid;
+  gap:10px;
+  width:100%;
+  min-width:0;
+}
+
+.memberOwnLeaveHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.memberOwnLeaveHeader h3{
+  margin:0;
+  color:#264d3e;
+  font-size:16px;
+  font-weight:800;
+}
+
+.memberOwnLeaveHeader strong{
+  padding:5px 9px;
+  border-radius:999px;
+  background:#e8f5ee;
+  color:#236448;
+  font-size:10px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.memberOwnLeaveList{
+  display:grid;
+  gap:7px;
+  width:100%;
+  min-width:0;
+}
+
+.memberOwnLeaveItem{
+  width:100%;
+  min-width:0;
+  padding:9px;
+  border:1px solid #dfe7e2;
+  border-left:4px solid #8a9a92;
+  border-radius:10px;
+  background:#fff;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+
+.memberOwnLeaveItem[data-status="pending"]{
+  border-left-color:#dfa623;
+  background:#fffaf0;
+}
+
+.memberOwnLeaveItem[data-status="approved"]{
+  border-left-color:#2f9964;
+  background:#f3fbf6;
+}
+
+.memberOwnLeaveItem[data-status="rejected"]{
+  border-left-color:#c84d4d;
+  background:#fff6f6;
+}
+
+.memberOwnLeaveItem[data-status="cancelled"]{
+  border-left-color:#89958f;
+  background:#f7f9f8;
+}
+
+.memberOwnLeaveMain{
+  display:grid;
+  grid-template-columns:36px 96px 62px minmax(130px,1fr) 42px;
+  align-items:center;
+  gap:5px;
+  width:100%;
+  min-width:0;
+  color:#405b50;
+  font-size:9.5px;
+}
+
+.memberOwnLeaveMain>*{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+
+.memberOwnLeaveMain strong{
+  color:#285d48;
+  font-weight:800;
+}
+
+.memberOwnLeaveFooter{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  margin-top:6px;
+  padding-top:6px;
+  border-top:1px dashed rgba(99,123,112,.22);
+  flex-wrap:wrap;
+}
+
+.memberOwnLeaveActions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+  margin-left:auto;
+  flex-wrap:wrap;
+}
+
+.memberOwnLeaveActions a,
+.memberOwnLeaveActions button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:72px;
+  height:28px;
+  padding:3px 6px;
+  border:1px solid #b8c9c0;
+  border-radius:7px;
+  background:#fff;
+  color:#285d48;
+  font:inherit;
+  font-size:9px;
+  font-weight:800;
+  text-decoration:none;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+
+.memberOwnLeaveHistory .adminLeavePagination{
+  display:flex!important;
+}
+
+@media(max-width:760px){
+  .memberOwnLeaveMain{
+    grid-template-columns:1fr;
+    gap:5px;
+  }
+
+  .memberOwnLeaveMain>*{
+    display:grid;
+    grid-template-columns:82px minmax(0,1fr);
+    gap:6px;
+  }
+
+  .memberOwnLeaveMain>*::before{
+    content:attr(data-label);
+    color:#718278;
+    font-size:9px;
+    font-weight:800;
+  }
+
+  .memberOwnLeaveFooter{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .memberOwnLeaveActions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+    margin:0;
+  }
+
+  .memberOwnLeaveActions a,
+  .memberOwnLeaveActions button{
+    width:100%;
+    min-width:0;
+  }
+}
+
+/* MEMBER OWN LEAVE HISTORY END */
+/* INLINE LEAVE STATS AND MEMBER HEADER START */
+
+.leaveStatsInline{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  flex-wrap:wrap;
+}
+
+.leaveStatsInline>strong{
+  color:#36584a;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.leaveStatPill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:26px;
+  padding:4px 9px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.15;
+  white-space:nowrap;
+}
+
+.leaveStatPill[data-type="sick"]{
+  background:#fff0f0;
+  color:#9d3c3c;
+}
+
+.leaveStatPill[data-type="personal"]{
+  background:#e8f5ee;
+  color:#1f684b;
+}
+
+.leaveStatsCard>small{
+  display:block;
+  margin-top:4px;
+  color:#73837b;
+  font-size:9px;
+  line-height:1.2;
+}
+
+.memberOwnLeaveColumnHeader{
+  display:grid;
+  grid-template-columns:36px 96px 62px minmax(130px,1fr) 42px;
+  align-items:center;
+  gap:5px;
+  width:100%;
+  min-width:0;
+  padding:7px 9px;
+  border:1px solid #dfe7e2;
+  border-radius:9px;
+  background:#f1f5f2;
+  color:#52685e;
+  font-size:9px;
+  font-weight:800;
+  line-height:1.2;
+  box-sizing:border-box;
+}
+
+.memberOwnLeaveColumnHeader>*{
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+
+@media(max-width:760px){
+  .leaveStatsInline{
+    gap:5px;
+  }
+
+  .leaveStatPill{
+    min-height:24px;
+    padding:3px 7px;
+    font-size:9px;
+  }
+
+  .memberOwnLeaveColumnHeader{
+    display:none;
+  }
+}
+
+/* INLINE LEAVE STATS AND MEMBER HEADER END */
+/* LEAVE HEADER TWO LINE STATS START */
+
+.headerActions{
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-end;
+  gap:12px;
+  min-width:0;
+}
+
+.leaveStatsStack{
+  display:grid;
+  gap:6px;
+  width:max-content;
+  max-width:100%;
+  min-width:0;
+}
+
+.leaveStatsStack .leaveStatsCard{
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+
+.leaveStatsBreakdown{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+  width:100%;
+  min-width:0;
+}
+
+.leaveStatsBreakdown article{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-width:0;
+  min-height:34px;
+  padding:6px 10px;
+  border:1px solid #dfe8e3;
+  border-radius:10px;
+  background:#fff;
+  box-sizing:border-box;
+}
+
+.leaveStatsBreakdown article[data-type="sick"]{
+  border-color:#f0caca;
+  background:#fff5f5;
+}
+
+.leaveStatsBreakdown article[data-type="personal"]{
+  border-color:#c4dfcf;
+  background:#f1faf5;
+}
+
+.leaveStatsBreakdown small{
+  color:#60736a;
+  font-size:10px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.leaveStatsBreakdown strong{
+  color:#264d3e;
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.leaveStatsBreakdown article[data-type="sick"] strong{
+  color:#9d3c3c;
+}
+
+.leaveStatsBreakdown article[data-type="personal"] strong{
+  color:#1f684b;
+}
+
+/* คอมพิวเตอร์แสดงปุ่ม Dashboard */
+.dashboardButton{
+  display:inline-flex;
+}
+
+/* มือถือใช้เมนูสามขีด จึงซ่อนปุ่ม Dashboard */
+@media(max-width:800px){
+  .headerActions{
+    width:100%;
+    justify-content:stretch;
+  }
+
+  .dashboardButton{
+    display:none!important;
+  }
+
+  .leaveStatsStack{
+    width:100%;
+  }
+
+  .leaveStatsBreakdown{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .leaveStatsBreakdown article{
+    min-height:32px;
+    padding:5px 8px;
+  }
+}
+
+@media(max-width:380px){
+  .leaveStatsBreakdown small{
+    font-size:9px;
+  }
+
+  .leaveStatsBreakdown strong{
+    font-size:10px;
+  }
+}
+
+/* LEAVE HEADER TWO LINE STATS END */
+/* FIX LEAVE HEADER RIGHT COLUMN START */
+
+/*
+  Desktop:
+  - ปุ่ม Dashboard อยู่บน
+  - สถิติอยู่ด้านล่าง
+  - ทั้งสองส่วนกว้างเท่ากัน
+  - ไม่ใช้ max-content เพื่อป้องกันหลุดกรอบ
+*/
+.header{
+  min-width:0;
+}
+
+.headerTitle{
+  min-width:0;
+}
+
+.headerActions{
+  display:flex!important;
+  flex:0 1 290px;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  width:min(290px,100%)!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box;
+}
+
+.headerActions .dashboardButton{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  min-height:42px;
+  box-sizing:border-box;
+}
+
+.headerActions .leaveStatsStack{
+  display:grid!important;
+  gap:6px!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box;
+}
+
+.headerActions .leaveStatsCard{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box;
+}
+
+.headerActions .leaveStatsBreakdown{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:6px!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box;
+}
+
+.headerActions .leaveStatsBreakdown article{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+
+.headerActions .leaveStatsBreakdown small,
+.headerActions .leaveStatsBreakdown strong{
+  min-width:0;
+  white-space:nowrap;
+}
+
+/*
+  Tablet:
+  ลดความกว้างเล็กน้อย แต่ยังอยู่ในคอลัมน์ขวา
+*/
+@media(max-width:1050px) and (min-width:801px){
+  .headerActions{
+    flex-basis:250px;
+    width:min(250px,100%)!important;
+  }
+
+  .headerActions .leaveStatsBreakdown article{
+    padding-left:7px;
+    padding-right:7px;
+  }
+
+  .headerActions .leaveStatsBreakdown small{
+    font-size:9px;
+  }
+
+  .headerActions .leaveStatsBreakdown strong{
+    font-size:10px;
+  }
+}
+
+/*
+  Mobile:
+  - ซ่อนปุ่ม Dashboard
+  - ใช้เมนูสามขีด
+  - สถิติกว้างเต็มกรอบ
+*/
+@media(max-width:800px){
+  .headerActions{
+    flex:1 1 100%;
+    width:100%!important;
+    max-width:100%!important;
+  }
+
+  .headerActions .dashboardButton{
+    display:none!important;
+  }
+
+  .headerActions .leaveStatsStack{
+    width:100%!important;
+  }
+
+  .headerActions .leaveStatsCard,
+  .headerActions .leaveStatsBreakdown{
+    width:100%!important;
+    max-width:100%!important;
+  }
+}
+
+@media(max-width:380px){
+  .headerActions .leaveStatsBreakdown{
+    gap:5px!important;
+  }
+
+  .headerActions .leaveStatsBreakdown article{
+    padding:5px 6px;
+  }
+
+  .headerActions .leaveStatsBreakdown small{
+    font-size:8.5px;
+  }
+
+  .headerActions .leaveStatsBreakdown strong{
+    font-size:9.5px;
+  }
+}
+
+/* FIX LEAVE HEADER RIGHT COLUMN END */

@@ -37,3 +37,23 @@
 .emptyState{padding:48px 20px;text-align:center;color:#6d8178}
 @media(max-width:1000px){.summaryGrid{grid-template-columns:repeat(3,1fr)}.profileStrip{grid-template-columns:1fr 1fr}.profileStrip div:last-child{grid-column:1/-1}.toolbar{grid-template-columns:1fr 1fr}.primaryButton{width:100%}}
 @media(max-width:700px){.page{padding:12px}.panel{padding:16px;border-radius:18px}.pageHeader{flex-direction:column}.headerActions{width:100%}.headerActions button{flex:1}.profileStrip,.toolbar,.summaryGrid{grid-template-columns:1fr}.profileStrip div:last-child{grid-column:auto}.tableSection{padding:14px}.tableWrap{overflow:visible}.tableWrap table,.tableWrap thead,.tableWrap tbody,.tableWrap tr,.tableWrap th,.tableWrap td{display:block;min-width:0}.tableWrap thead{display:none}.tableWrap tr{margin-bottom:12px;padding:12px;border:1px solid rgba(47,141,105,.16);border-radius:15px;background:rgba(255,255,255,.82)}.tableWrap td{display:grid;grid-template-columns:95px 1fr;gap:10px;padding:8px 0;border:0}.tableWrap td::before{content:attr(data-label);color:#61776d;font-size:13px;font-weight:800}.tableHeader{align-items:flex-start}.tableHeader>span{white-space:nowrap}}
+/* ATTENDANCE HISTORY NAVIGATION START */
+
+.desktopHomeButton{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* มือถือใช้เมนูสามขีด จึงไม่แสดงปุ่มย้อนกลับซ้ำ */
+@media(max-width:700px){
+  .headerActions{
+    display:none!important;
+  }
+
+  .desktopHomeButton{
+    display:none!important;
+  }
+}
+
+/* ATTENDANCE HISTORY NAVIGATION END */

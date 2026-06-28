@@ -534,12 +534,6 @@ export async function POST(request: Request) {
     }
 
     if (attachment) {
-      if (evidenceDescriptionInput.length < 2) {
-        return NextResponse.json(
-          { ok: false, message: "กรุณาระบุหลักฐาน เช่น ใบรับรองแพทย์ หรือ รูปถ่าย" },
-          { status: 400 }
-        );
-      }
 
       if (attachment.size > MAX_FILE_SIZE) {
         return NextResponse.json(
@@ -645,7 +639,7 @@ export async function POST(request: Request) {
       applicantSignatureBase64:
         `data:${applicantSignature.mimeType};base64,${applicantSignature.base64}`,
       evidenceName: evidence?.name || "",
-      evidenceDescription: evidence ? evidenceDescriptionInput : "-",
+      evidenceDescription: evidenceDescriptionInput,
       evidenceMimeType: evidence?.mimeType || "",
       evidenceBase64: evidence
         ? `data:${evidence.mimeType};base64,${evidence.base64}`
