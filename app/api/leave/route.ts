@@ -598,6 +598,51 @@ try {
       );
     }
 
+    // ตรวจสอบการลงเวลาและไปราชการก่อนสร้างเอกสารใบลา
+    const [{ data: attendanceConflict }, { data: dutyConflict }] =
+      await Promise.all([
+        admin
+          .from("attendance_records")
+          .select("id,work_date,check_in_at")
+          .eq("user_id", user.id)
+          .gte("work_date", startDateValue)
+          .lte("work_date", endDateValue)
+          .not("check_in_at", "is", null)
+          .order("work_date", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+
+        admin
+          .from("official_duty_requests")
+          .select("id,duty_date,status")
+          .eq("user_id", user.id)
+          .in("status", ["pending", "approved"])
+          .gte("duty_date", startDateValue)
+          .lte("duty_date", endDateValue)
+          .order("duty_date", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+    if (attendanceConflict) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: `วันที่ ${attendanceConflict.work_date} ได้ลงเวลาปฏิบัติงานแล้ว จึงไม่สามารถยื่นลาครอบคลุมวันดังกล่าวได้`,
+        },
+        { status: 409 }
+      );
+    }
+
+    if (dutyConflict) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: `วันที่ ${dutyConflict.duty_date} มีคำขอไปราชการหรือได้รับอนุญาตแล้ว จึงไม่สามารถยื่นลาซ้ำได้`,
+        },
+        { status: 409 }
+      );
+    }
     const applicantSignature = await getSignatureAsset(
       cfg.profileGasUrl,
       cfg.profileGasSecret,

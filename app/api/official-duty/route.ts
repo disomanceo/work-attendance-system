@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import {
   authorizeOfficialDuty,
   callOfficialDutyGas,
@@ -76,6 +76,48 @@ export async function POST(request: Request) {
       );
     }
 
+    // ตรวจสอบข้อมูลลงเวลาเดิมก่อนสร้างคำขอ
+    const [{ data: checkedIn }, { data: activeLeave }] = await Promise.all([
+      auth.admin
+        .from("attendance_records")
+        .select("id,check_in_at")
+        .eq("user_id", auth.user.id)
+        .eq("work_date", dutyDate)
+        .not("check_in_at", "is", null)
+        .maybeSingle(),
+
+      auth.admin
+        .from("leave_requests")
+        .select("id,status")
+        .eq("user_id", auth.user.id)
+        .in("status", ["pending", "approved"])
+        .lte("start_date", dutyDate)
+        .gte("end_date", dutyDate)
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (checkedIn) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "วันที่เลือกได้ลงเวลาปฏิบัติงานแล้ว จึงไม่สามารถขอไปราชการได้",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (activeLeave) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "วันที่เลือกมีคำขอลาหรือการลาที่อนุมัติแล้ว จึงไม่สามารถขอไปราชการซ้ำได้",
+        },
+        { status: 409 }
+      );
+    }
     const { data: duplicate } = await auth.admin
       .from("official_duty_requests")
       .select("id,status")
@@ -171,3 +213,4 @@ export async function POST(request: Request) {
     );
   }
 }
+

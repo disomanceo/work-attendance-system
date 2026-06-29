@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   --sidebar-width: 292px;
   min-height: 100svh;
   color: #f8f5ff;
@@ -2732,5 +2732,132 @@
   .focusChartRow {
     grid-template-columns: 58px minmax(0, 1fr) 54px;
     gap: 8px;
+  }
+}
+
+/* GPS status panel */
+.focusGpsStatus {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 14px;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: 16px;
+  padding: 13px 14px;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.focusGpsStatusIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.focusGpsStatus div {
+  min-width: 0;
+}
+
+.focusGpsStatus strong,
+.focusGpsStatus small {
+  display: block;
+}
+
+.focusGpsStatus strong {
+  margin-bottom: 3px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.focusGpsStatus small {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.focusGpsIdle {
+  color: #6f6180;
+  background: rgba(248, 245, 252, 0.96);
+}
+
+.focusGpsIdle .focusGpsStatusIcon {
+  color: #7653c7;
+  background: rgba(118, 83, 199, 0.11);
+}
+
+.focusGpsChecking {
+  border-color: rgba(217, 164, 65, 0.38);
+  color: #7c5a17;
+  background: #fff8df;
+}
+
+.focusGpsChecking .focusGpsStatusIcon {
+  color: #9a6a08;
+  background: rgba(245, 190, 64, 0.2);
+  animation: gpsPulse 1s ease-in-out infinite;
+}
+
+.focusGpsInside {
+  border-color: rgba(47, 158, 101, 0.35);
+  color: #17653f;
+  background: #ebf8f1;
+}
+
+.focusGpsInside .focusGpsStatusIcon {
+  color: #ffffff;
+  background: #2f9e65;
+}
+
+.focusGpsOutside {
+  border-color: rgba(204, 67, 90, 0.36);
+  color: #9d2941;
+  background: #fff0f3;
+}
+
+.focusGpsOutside .focusGpsStatusIcon {
+  color: #ffffff;
+  background: #c94259;
+}
+
+@keyframes gpsPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 620px) {
+  .focusGpsStatus {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .focusGpsStatusIcon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .focusGpsStatus strong {
+    font-size: 13px;
+  }
+
+  .focusGpsStatus small {
+    font-size: 11px;
   }
 }
