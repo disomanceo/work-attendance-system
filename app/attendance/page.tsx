@@ -784,6 +784,16 @@ export default function AttendancePage() {
   if (["director", "admin"].includes(profile.role)) {
     menuItems.push(
       {
+        label: "พิจารณาไปราชการ",
+        icon: "▥",
+        href: "/admin/official-duty",
+      },
+      {
+        label: "พิจารณาใบลา",
+        icon: "▤",
+        href: "/admin/leave",
+      },
+      {
         label: "ตั้งค่า",
         icon: "⚙",
         href: "/admin/settings",
