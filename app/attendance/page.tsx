@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
+import OfficialDutyReviewPopup from "@/components/attendance/OfficialDutyReviewPopup";
 
 type Profile = {
   full_name: string;
@@ -73,6 +74,7 @@ type MonthlySummary = {
   normal: number;
   late: number;
   leave: number;
+  officialDuty: number;
 };
 
 type MonthlySummaryResponse = {
@@ -248,8 +250,14 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("attendance_sidebar_collapsed");
-    setSidebarCollapsed(saved === "true");
+    const timer = window.setTimeout(() => {
+      const saved = window.localStorage.getItem(
+        "attendance_sidebar_collapsed"
+      );
+      setSidebarCollapsed(saved === "true");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   const loadTodayLeave = useCallback(
@@ -398,7 +406,11 @@ export default function AttendancePage() {
   }, [loadTodayLeave, router, supabase]);
 
   useEffect(() => {
-    void loadAttendance();
+    const timer = window.setTimeout(() => {
+      void loadAttendance();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadAttendance]);
 
   useEffect(() => {
@@ -732,15 +744,7 @@ export default function AttendancePage() {
   }
 
   const isLate = record?.check_in_status === "late";
-  const isOfficialDuty =
-    record?.check_in_status === "official_duty";
-  const checkInStatusLabel = isOfficialDuty
-    ? "ไปราชการ"
-    : isLate
-      ? "มาสาย"
-      : "ปกติ";
   const hasCheckedIn = Boolean(record?.check_in_at);
-  const canViewReports = ["admin", "director"].includes(profile.role);
   const canManageMembers = ["admin", "director"].includes(profile.role);
   const historyHref =
     profile.role === "admin" || profile.role === "director"
@@ -765,6 +769,11 @@ export default function AttendancePage() {
       href: "/leave",
     },
     {
+      label: "ขออนุญาตไปราชการ",
+      icon: "✈",
+      href: "/official-duty",
+    },
+    {
       label: "ข้อมูลส่วนตัว",
       icon: "♙",
       href: "/account/profile",
@@ -773,12 +782,13 @@ export default function AttendancePage() {
   ];
 
   if (["director", "admin"].includes(profile.role)) {
-    menuItems.push({
-
-      label: "ตั้งค่า",
-      icon: "⚙",
-      href: "/admin/settings",
-    });
+    menuItems.push(
+      {
+        label: "ตั้งค่า",
+        icon: "⚙",
+        href: "/admin/settings",
+      }
+    );
   }
 
   if (canManageMembers) {
@@ -832,7 +842,13 @@ export default function AttendancePage() {
         <div className={styles.userCard}>
           <div className={styles.avatar}>
             {profileImageUrl ? (
-              <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+              <Image
+                  src={profileImageUrl}
+                  alt="รูปโปรไฟล์"
+                  width={56}
+                  height={56}
+                  unoptimized
+                />
             ) : (
               profile.full_name.trim().charAt(0) || "U"
             )}
@@ -900,7 +916,13 @@ export default function AttendancePage() {
           <div className={styles.mobileProfile}>
             <div className={styles.mobileAvatar}>
               {profileImageUrl ? (
-                <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+                <Image
+                  src={profileImageUrl}
+                  alt="รูปโปรไฟล์"
+                  width={56}
+                  height={56}
+                  unoptimized
+                />
               ) : (
                 profile.full_name.trim().charAt(0) || "U"
               )}
@@ -982,10 +1004,60 @@ export default function AttendancePage() {
                   </strong>
                   {!processing && <small>แตะเพื่อเช็กอิน</small>}
                 </button>
+                <div
+                  className={`${styles.focusGpsStatus} ${
+                    processing
+                      ? styles.focusGpsChecking
+                      : distanceMeters === null
+                        ? styles.focusGpsIdle
+                        : settings &&
+                            distanceMeters <= settings.allowed_radius_meters
+                          ? styles.focusGpsInside
+                          : styles.focusGpsOutside
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className={styles.focusGpsStatusIcon}>
+                    {processing
+                      ? "⌖"
+                      : distanceMeters === null
+                        ? "📍"
+                        : settings &&
+                            distanceMeters <= settings.allowed_radius_meters
+                          ? "✓"
+                          : "!"}
+                  </span>
 
-                <small className={styles.focusGpsHint}>
-                  ระบบจะตรวจสอบตำแหน่ง GPS ก่อนบันทึกเวลา
-                </small>
+                  <div>
+                    <strong>
+                      {processing
+                        ? "กำลังตรวจสอบตำแหน่ง GPS..."
+                        : distanceMeters === null
+                          ? "ยังไม่ได้ตรวจสอบตำแหน่ง"
+                          : `อยู่ห่างจากโรงเรียน ${distanceMeters.toLocaleString(
+                              "th-TH"
+                            )} เมตร`}
+                    </strong>
+
+                    <small>
+                      {processing
+                        ? "กรุณาอนุญาตให้เบราว์เซอร์เข้าถึงตำแหน่ง"
+                        : distanceMeters === null
+                          ? "แตะปุ่มลงเวลาเพื่อเช็กตำแหน่งของคุณ"
+                          : settings &&
+                              distanceMeters <= settings.allowed_radius_meters
+                            ? `อยู่ภายในพื้นที่ที่กำหนด ${settings.allowed_radius_meters.toLocaleString(
+                                "th-TH"
+                              )} เมตร`
+                            : settings
+                              ? `อยู่นอกพื้นที่ที่กำหนด ${settings.allowed_radius_meters.toLocaleString(
+                                  "th-TH"
+                                )} เมตร`
+                              : "ตรวจพบตำแหน่งของคุณแล้ว"}
+                    </small>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className={styles.focusCompletedState}>
@@ -1059,36 +1131,57 @@ export default function AttendancePage() {
                 {
                   label: "ปกติ",
                   value: monthlySummary?.normal ?? 0,
-                  className: styles.focusBarNormal,
+                  background:
+                    "linear-gradient(90deg, #16a34a, #4ade80)",
                 },
                 {
                   label: "มาสาย",
                   value: monthlySummary?.late ?? 0,
-                  className: styles.focusBarLate,
+                  background:
+                    "linear-gradient(90deg, #dc2626, #fb7185)",
                 },
                 {
                   label: "ลา",
                   value: monthlySummary?.leave ?? 0,
-                  className: styles.focusBarLeave,
+                  background:
+                    "linear-gradient(90deg, #7c3aed, #c084fc)",
+                },
+                {
+                  label: "ไปราชการ",
+                  value: monthlySummary?.officialDuty ?? 0,
+                  background:
+                    "linear-gradient(90deg, #0284c7, #38bdf8)",
                 },
               ].map((item) => {
                 const maxValue = Math.max(
                   monthlySummary?.normal ?? 0,
                   monthlySummary?.late ?? 0,
                   monthlySummary?.leave ?? 0,
+                  monthlySummary?.officialDuty ?? 0,
                   1
                 );
-                const width = `${Math.max((item.value / maxValue) * 100, item.value ? 8 : 0)}%`;
+
+                const width = `${Math.max(
+                  (item.value / maxValue) * 100,
+                  item.value ? 8 : 0
+                )}%`;
 
                 return (
-                  <div className={styles.focusChartRow} key={item.label}>
+                  <div
+                    className={styles.focusChartRow}
+                    key={item.label}
+                  >
                     <span>{item.label}</span>
+
                     <div className={styles.focusChartTrack}>
                       <i
-                        className={item.className}
-                        style={{ width }}
+                        style={{
+                          width,
+                          background: item.background,
+                        }}
                       />
                     </div>
+
                     <strong>{item.value} วัน</strong>
                   </div>
                 );
@@ -1196,9 +1289,16 @@ export default function AttendancePage() {
       )}
 
       <LeaveReviewPopup role={profile.role} />
+      <OfficialDutyReviewPopup role={profile.role} />
     </main>
   );
 }
+
+
+
+
+
+
 
 
 
