@@ -180,6 +180,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         match: (value) => value.startsWith("/admin/official-duty"),
       },
       {
+        label: "พิจารณาใบลา",
+        icon: "▤",
+        href: "/admin/leave",
+        match: (value) => value.startsWith("/admin/leave"),
+      },
+      {
         label: "ตั้งค่า",
         icon: "⚙",
         href: "/admin/settings",
