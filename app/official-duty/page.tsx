@@ -88,7 +88,6 @@ export default function OfficialDutyPage() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
     useState<"success" | "error">("success");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const canReview = Boolean(
     profile && ["director", "admin"].includes(profile.role)
@@ -199,11 +198,6 @@ export default function OfficialDutyPage() {
 
     return () => window.clearTimeout(timer);
   }, [loadMyRequests, loadProfile, loadReviewRequests, router]);
-
-  function navigateFromMobileMenu(path: string) {
-    setMobileMenuOpen(false);
-    router.push(path);
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -338,94 +332,6 @@ export default function OfficialDutyPage() {
         );
 
   return (
-      <>
-        <button
-          type="button"
-          className={styles.mobileMenuButton}
-          aria-label="เปิดเมนู"
-          aria-expanded={mobileMenuOpen}
-          onClick={() => setMobileMenuOpen(true)}
-        >
-          ☰
-        </button>
-
-        {mobileMenuOpen && (
-          <>
-            <button
-              type="button"
-              className={styles.mobileMenuOverlay}
-              aria-label="ปิดเมนู"
-              onClick={() => setMobileMenuOpen(false)}
-            />
-
-            <aside className={styles.mobileMenuDrawer}>
-              <div className={styles.mobileMenuHeader}>
-                <div>
-                  <small>เมนูระบบ</small>
-                  <strong>การปฏิบัติงาน</strong>
-                </div>
-
-                <button
-                  type="button"
-                  aria-label="ปิดเมนู"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  ×
-                </button>
-              </div>
-
-              {profile && (
-                <div className={styles.mobileMenuProfile}>
-                  <strong>{profile.full_name}</strong>
-                  <small>{profile.position || profile.role}</small>
-                </div>
-              )}
-
-              <nav className={styles.mobileMenuList}>
-                <button
-                  type="button"
-                  onClick={() => navigateFromMobileMenu("/attendance")}
-                >
-                  <span>⌂</span>
-                  <b>หน้าหลัก</b>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigateFromMobileMenu("/attendance")}
-                >
-                  <span>◷</span>
-                  <b>ลงเวลาปฏิบัติงาน</b>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigateFromMobileMenu("/leave")}
-                >
-                  <span>▤</span>
-                  <b>การลา</b>
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.mobileMenuActive}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span>✈</span>
-                  <b>ไปราชการ</b>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigateFromMobileMenu("/account/profile")}
-                >
-                  <span>♙</span>
-                  <b>ข้อมูลส่วนตัว</b>
-                </button>
-              </nav>
-            </aside>
-          </>
-        )}
     <main className={styles.page}>
       <header className={styles.header}>
         <button
@@ -757,9 +663,7 @@ export default function OfficialDutyPage() {
         </section>
       )}
     </main>
-  
-      </>
-    );
+  );
 }
 
 
