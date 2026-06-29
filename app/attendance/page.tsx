@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
 import OfficialDutyReviewPopup from "@/components/attendance/OfficialDutyReviewPopup";
+import AppSidebar from "@/components/layout/AppSidebar";
 import { getAppNavigationItems } from "@/components/layout/navigation";
 
 type Profile = {
@@ -83,14 +84,6 @@ type MonthlySummaryResponse = {
   message?: string;
   summary?: MonthlySummary;
 };
-type MenuItem = {
-  label: string;
-  icon: string;
-  href?: string;
-  active?: boolean;
-  soon?: boolean;
-};
-
 function getBangkokDate() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
@@ -719,18 +712,6 @@ export default function AttendancePage() {
     );
   }
 
-  function openMenu(item: MenuItem) {
-    if (item.soon || !item.href) {
-      setMessageType("success");
-      setMessage(`${item.label} อยู่ระหว่างพัฒนาระบบ`);
-      setSidebarOpen(false);
-      return;
-    }
-
-    setSidebarOpen(false);
-    router.push(item.href);
-  }
-
   if (loading) {
     return (
       <main className={styles.loading}>
@@ -746,14 +727,7 @@ export default function AttendancePage() {
 
   const isLate = record?.check_in_status === "late";
   const hasCheckedIn = Boolean(record?.check_in_at);
-  const menuItems: MenuItem[] = getAppNavigationItems(profile.role).map(
-    (item) => ({
-      label: item.label,
-      icon: item.icon,
-      href: item.href,
-      active: item.href === "/attendance",
-    })
-  );
+  const menuItems = getAppNavigationItems(profile.role);
 
   return (
     <main
@@ -779,84 +753,22 @@ export default function AttendancePage() {
         />
       )}
 
-      <aside
-        className={`${styles.sidebar} ${
-          sidebarOpen ? styles.sidebarOpen : ""
-        } ${sidebarCollapsed ? styles.sidebarCollapsed : ""}`}
-      >
-        <div className={styles.sidebarBrand}>
-          <button
-            type="button"
-            className={styles.collapseButton}
-            onClick={toggleSidebarCollapsed}
-            aria-label={sidebarCollapsed ? "ขยายเมนู" : "ย่อเมนู"}
-          >
-            {sidebarCollapsed ? "»" : "«"}
-          </button>
-        </div>
-
-        <div className={styles.userCard}>
-          <div className={styles.avatar}>
-            {profileImageUrl ? (
-              <Image
-                  src={profileImageUrl}
-                  alt="รูปโปรไฟล์"
-                  width={56}
-                  height={56}
-                  unoptimized
-                />
-            ) : (
-              profile.full_name.trim().charAt(0) || "U"
-            )}
-          </div>
-
-          {!sidebarCollapsed && (
-            <div>
-              <strong>{profile.full_name}</strong>
-              <small>
-                {profile.position || getRoleLabel(profile.role)}
-              </small>
-              <span>● ออนไลน์</span>
-            </div>
-          )}
-        </div>
-
-        {!sidebarCollapsed && (
-          <h2 className={styles.menuTitle}>เมนูของฉัน</h2>
-        )}
-
-        <nav className={styles.menuList} aria-label="เมนูของฉัน">
-          {menuItems.map((item) => (
-            <button
-              type="button"
-              key={item.label}
-              className={`${styles.menuItem} ${
-                item.active ? styles.menuItemActive : ""
-              } ${item.soon ? styles.menuItemSoon : ""}`}
-              onClick={() => openMenu(item)}
-              title={sidebarCollapsed ? item.label : undefined}
-            >
-              <span className={styles.menuIcon}>{item.icon}</span>
-
-              {!sidebarCollapsed && (
-                <>
-                  <b>{item.label}</b>
-                  {item.soon && <small>เร็ว ๆ นี้</small>}
-                </>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        <button
-          type="button"
-          className={styles.logoutButton}
-          onClick={() => void handleLogout()}
-        >
-          <span>⇥</span>
-          {!sidebarCollapsed && <b>ออกจากระบบ</b>}
-        </button>
-      </aside>
+      <AppSidebar
+        collapsed={sidebarCollapsed}
+        open={sidebarOpen}
+        items={menuItems}
+        pathname="/attendance"
+        profileImageUrl={profileImageUrl}
+        profileInitial={profile.full_name.trim().charAt(0) || "U"}
+        profileName={profile.full_name}
+        profileLabel={profile.position || getRoleLabel(profile.role)}
+        onToggleCollapsed={toggleSidebarCollapsed}
+        onNavigate={(href) => {
+          setSidebarOpen(false);
+          router.push(href);
+        }}
+        onLogout={() => void handleLogout()}
+      />
 
       <section className={styles.content}>
         <header className={styles.mobileTopBar}>
