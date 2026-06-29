@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
 import OfficialDutyReviewPopup from "@/components/attendance/OfficialDutyReviewPopup";
+import { getAppNavigationItems } from "@/components/layout/navigation";
 
 type Profile = {
   full_name: string;
@@ -745,69 +746,14 @@ export default function AttendancePage() {
 
   const isLate = record?.check_in_status === "late";
   const hasCheckedIn = Boolean(record?.check_in_at);
-  const canManageMembers = ["admin", "director"].includes(profile.role);
-  const historyHref =
-    profile.role === "admin" || profile.role === "director"
-      ? "/admin/attendance"
-      : "/attendance/history";
-
-  const menuItems: MenuItem[] = [
-    {
-      label: "หน้าหลัก",
-      icon: "◷",
-      href: "/attendance",
-      active: true,
-    },
-    {
-      label: "การลงเวลาปฏิบัติงาน",
-      icon: "▣",
-      href: historyHref,
-    },
-    {
-      label: "ขออนุญาตลาป่วย-ลากิจ",
-      icon: "▤",
-      href: "/leave",
-    },
-    {
-      label: "ขออนุญาตไปราชการ",
-      icon: "✈",
-      href: "/official-duty",
-    },
-    {
-      label: "ข้อมูลส่วนตัว",
-      icon: "♙",
-      href: "/account/profile",
-    },
-
-  ];
-
-  if (["director", "admin"].includes(profile.role)) {
-    menuItems.push(
-      {
-        label: "พิจารณาไปราชการ",
-        icon: "▥",
-        href: "/admin/official-duty",
-      },
-      {
-        label: "พิจารณาใบลา",
-        icon: "▤",
-        href: "/admin/leave",
-      },
-      {
-        label: "ตั้งค่า",
-        icon: "⚙",
-        href: "/admin/settings",
-      }
-    );
-  }
-
-  if (canManageMembers) {
-    menuItems.push({
-      label: "จัดการสมาชิก",
-      icon: "👥",
-      href: "/admin/members",
-    });
-  }
+  const menuItems: MenuItem[] = getAppNavigationItems(profile.role).map(
+    (item) => ({
+      label: item.label,
+      icon: item.icon,
+      href: item.href,
+      active: item.href === "/attendance",
+    })
+  );
 
   return (
     <main

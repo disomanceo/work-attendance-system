@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getAppNavigationItems } from "./navigation";
 import styles from "./AppShell.module.css";
 
 type Profile = {
@@ -11,13 +12,6 @@ type Profile = {
   role: string;
   account_status: string;
   profile_image_file_id: string | null;
-};
-
-type MenuItem = {
-  label: string;
-  icon: string;
-  href: string;
-  match: (pathname: string) => boolean;
 };
 
 function getRoleLabel(role: string) {
@@ -133,72 +127,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [profile?.profile_image_file_id, supabase]);
 
   const role = profile?.role ?? "";
-  const isManager = role === "admin" || role === "director";
-  const reportHref = isManager ? "/admin/attendance" : "/attendance/history";
-
-  const menuItems: MenuItem[] = [
-    {
-      label: "หน้าหลัก",
-      icon: "◷",
-      href: "/attendance",
-      match: (value) => value === "/attendance",
-    },
-    {
-      label: "การลงเวลาปฏิบัติงาน",
-      icon: "▣",
-      href: reportHref,
-      match: (value) =>
-        value.startsWith("/admin/attendance") ||
-        value.startsWith("/attendance/history"),
-    },
-    {
-      label: "ขออนุญาตลาป่วย-ลากิจ",
-      icon: "▤",
-      href: "/leave",
-      match: (value) => value.startsWith("/leave"),
-    },
-    {
-      label: "ขออนุญาตไปราชการ",
-      icon: "✈",
-      href: "/official-duty",
-      match: (value) => value.startsWith("/official-duty"),
-    },
-    {
-      label: "ข้อมูลส่วนตัว",
-      icon: "♙",
-      href: "/account/profile",
-      match: (value) => value.startsWith("/account"),
-    },
-  ];
-
-  if (isManager) {
-    menuItems.push(
-      {
-        label: "พิจารณาไปราชการ",
-        icon: "▥",
-        href: "/admin/official-duty",
-        match: (value) => value.startsWith("/admin/official-duty"),
-      },
-      {
-        label: "พิจารณาใบลา",
-        icon: "▤",
-        href: "/admin/leave",
-        match: (value) => value.startsWith("/admin/leave"),
-      },
-      {
-        label: "ตั้งค่า",
-        icon: "⚙",
-        href: "/admin/settings",
-        match: (value) => value.startsWith("/admin/settings"),
-      },
-      {
-        label: "จัดการสมาชิก",
-        icon: "👥",
-        href: "/admin/members",
-        match: (value) => value.startsWith("/admin/members"),
-      }
-    );
-  }
+  const menuItems = getAppNavigationItems(role);
 
   function toggleCollapsed() {
     const next = !sidebarCollapsed;
