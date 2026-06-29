@@ -134,9 +134,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const role = profile?.role ?? "";
   const isManager = role === "admin" || role === "director";
-  const reportHref = isManager
-    ? "/admin/attendance"
-    : "/attendance/history";
+  const reportHref = isManager ? "/admin/attendance" : "/attendance/history";
 
   const menuItems: MenuItem[] = [
     {
@@ -158,6 +156,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       icon: "▤",
       href: "/leave",
       match: (value) => value.startsWith("/leave"),
+    },
+    {
+      label: "ขออนุญาตไปราชการ",
+      icon: "✈",
+      href: "/official-duty",
+      match: (value) => value.startsWith("/official-duty"),
     },
     {
       label: "ข้อมูลส่วนตัว",
@@ -187,10 +191,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   function toggleCollapsed() {
     const next = !sidebarCollapsed;
     setSidebarCollapsed(next);
-    window.localStorage.setItem(
-      "attendance_sidebar_collapsed",
-      String(next)
-    );
+    window.localStorage.setItem("attendance_sidebar_collapsed", String(next));
   }
 
   async function logout() {

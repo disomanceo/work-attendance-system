@@ -14,16 +14,19 @@
   transition: margin-left 0.22s ease;
 }
 
-/* ซ่อนปุ่มและ Drawer 3 ขีดเดิมของหน้าที่ถูกครอบด้วย AppShell */
-.content > main > button[aria-label="เปิดเมนู"] {
+.content > main > button[aria-label="เปิดเมนู"],
+.content > button[aria-label="เปิดเมนู"] {
   display: none !important;
 }
 
-.content > main > button[aria-label="ปิดเมนู"] {
+.content > main > button[aria-label="ปิดเมนู"],
+.content > button[aria-label="ปิดเมนู"] {
   display: none !important;
 }
 
-.content > main > aside[aria-label="เมนูหลัก"] {
+.content > main > aside[aria-label="เมนูหลัก"],
+.content > main > aside[class*="mobileDrawer"],
+.content > aside[class*="mobileMenuDrawer"] {
   display: none !important;
 }
 
