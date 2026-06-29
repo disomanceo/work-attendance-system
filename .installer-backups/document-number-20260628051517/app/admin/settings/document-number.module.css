@@ -1,0 +1,20 @@
+.section{margin-top:28px;padding:24px;border:1px solid #e8e1f5;border-radius:22px;background:#fff;box-shadow:0 10px 30px rgba(73,45,112,.07)}
+.header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:20px}
+.header h2{margin:2px 0 6px;font-size:1.35rem;color:#2f2440}.header p{margin:0;color:#6d6577}
+.eyebrow{font-size:.78rem!important;font-weight:800;color:#7b4ab5!important;text-transform:uppercase}
+.addButton,.liveButton{border:0;border-radius:12px;background:#6f42a6;color:white;padding:11px 16px;font-weight:700;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px}
+.card{padding:18px;border:1px solid #ece5f5;border-radius:18px;background:#fcfaff}
+.cardTop{display:flex;justify-content:space-between;gap:12px}.card h3{margin:0 0 3px}.card small{color:#817789}
+.badge{height:max-content;padding:5px 9px;border-radius:999px;font-size:.75rem;font-weight:800}
+.test{background:#fff2cf;color:#8a5b00}.live{background:#ddf7e8;color:#13713d}
+.card dl{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:18px 0}
+.card dl div{padding:10px;border-radius:12px;background:white}.card dt{font-size:.75rem;color:#857b8f}.card dd{margin:3px 0 0;font-weight:800}
+.success,.error,.warning{padding:12px 14px;border-radius:12px;margin:12px 0}.success{background:#e4f8ec;color:#16683d}.error{background:#ffe8e8;color:#9b2626}.warning{background:#fff3d5;color:#855700}.loading{padding:20px;text-align:center}
+.overlay{position:fixed;inset:0;z-index:1000;background:rgba(24,16,35,.55);display:grid;place-items:center;padding:16px}
+.modal{width:min(520px,100%);max-height:90vh;overflow:auto;background:white;border-radius:20px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.25)}
+.modal h3{margin-top:0}.modal label{display:grid;gap:6px;margin:13px 0;font-weight:700;color:#44384f}
+.modal input{width:100%;box-sizing:border-box;border:1px solid #dcd3e8;border-radius:11px;padding:11px 12px;font:inherit}
+.twoCols{display:grid;grid-template-columns:1fr 1fr;gap:12px}.preview{padding:12px;background:#f5f0fb;border-radius:12px;font-weight:800}
+.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.actions button{border:0;border-radius:11px;padding:10px 15px;font-weight:700;cursor:pointer}.actions button:last-child{background:#6f42a6;color:#fff}.actions .danger{background:#b52b2b}
+@media(max-width:700px){.section{padding:16px}.header{display:grid}.addButton{width:100%}.twoCols{grid-template-columns:1fr}.card dl{grid-template-columns:1fr 1fr}}

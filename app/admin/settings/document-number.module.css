@@ -1,0 +1,313 @@
+.documentNumberSection {
+  width: min(100%, 540px);
+  margin: 20px auto 0;
+  padding: 18px;
+  border: 1px solid rgba(216, 180, 254, 0.16);
+  border-radius: 22px;
+  color: #f7f1ff;
+  background: rgba(255, 255, 255, 0.065);
+  box-shadow: 0 20px 55px rgba(2, 0, 8, 0.35);
+  backdrop-filter: blur(18px);
+}
+
+.documentNumberHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.documentNumberHeader span {
+  color: #d8b4fe;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+
+.documentNumberHeader h2 {
+  margin: 4px 0;
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.documentNumberHeader p {
+  margin: 0;
+  color: #b9a7cd;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.documentNumberHeader > button {
+  min-height: 38px;
+  flex: 0 0 auto;
+  padding: 0 13px;
+  border: 1px solid rgba(216, 180, 254, 0.24);
+  border-radius: 11px;
+  color: #fff;
+  background: rgba(168, 85, 247, 0.18);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.seriesList {
+  display: grid;
+  gap: 10px;
+}
+
+.seriesCard {
+  padding: 14px;
+  border: 1px solid rgba(216, 180, 254, 0.13);
+  border-radius: 16px;
+  background: rgba(9, 3, 17, 0.34);
+}
+
+.seriesTitle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.seriesTitle h3 {
+  margin: 0 0 3px;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.seriesTitle small {
+  color: #b9a7cd;
+}
+
+.liveBadge,
+.testBadge,
+.archivedBadge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.liveBadge {
+  color: #a7f3c2;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.testBadge {
+  color: #ffe09a;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.archivedBadge {
+  color: #d0c5d9;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.seriesDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.seriesDetails > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.seriesDetails span {
+  display: block;
+  margin-bottom: 3px;
+  color: #c8b8d8;
+  font-size: 0.72rem;
+}
+
+.seriesDetails strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.seriesActions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.seriesActions button {
+  min-height: 38px;
+  border-radius: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.editButton {
+  border: 1px solid rgba(216, 180, 254, 0.24);
+  color: #eadcff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.liveButton {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7, #6d28d9);
+}
+
+.successMessage,
+.errorMessage,
+.warningMessage {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 0.82rem;
+}
+
+.successMessage {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.errorMessage {
+  color: #fecdd3;
+  background: rgba(244, 63, 94, 0.12);
+}
+
+.warningMessage {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.loading {
+  padding: 20px 8px;
+  text-align: center;
+  color: #c8b8d8;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(3, 1, 8, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.modal {
+  width: min(100%, 520px);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(216, 180, 254, 0.18);
+  border-radius: 20px;
+  color: #f7f1ff;
+  background: #160923;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.58);
+}
+
+.modal h3 {
+  margin: 0 0 16px;
+  color: #fff;
+}
+
+.modal label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.modal label > span {
+  color: #d6c5e8;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.modal input {
+  width: 100%;
+  min-height: 43px;
+  border: 1px solid rgba(216, 180, 254, 0.18);
+  border-radius: 11px;
+  padding: 0 12px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+  outline: none;
+}
+
+.modal input:disabled {
+  opacity: 0.55;
+}
+
+.modal input:focus {
+  border-color: #c084fc;
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.13);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.numberPreview {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  color: #ead8ff;
+  background: rgba(168, 85, 247, 0.12);
+  font-weight: 800;
+}
+
+.modalActions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.modalActions button {
+  min-height: 44px;
+  border-radius: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.modalActions button:first-child {
+  border: 1px solid rgba(216, 180, 254, 0.22);
+  color: #e7d8f5;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modalActions button:last-child {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(135deg, #a855f7, #6d28d9);
+}
+
+.modalActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 600px) {
+  .documentNumberSection {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .documentNumberHeader {
+    flex-direction: column;
+  }
+
+  .documentNumberHeader > button {
+    width: 100%;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}

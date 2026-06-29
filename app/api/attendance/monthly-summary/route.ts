@@ -3,7 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
+type AttendanceRow = {
+  work_date: string;
+  check_in_status: string | null;
+};
+
 type LeaveRow = {
+  leave_type: string;
   start_date: string;
   end_date: string;
 };
@@ -24,15 +30,21 @@ function getBangkokMonthRange() {
   return { year, month, start, end };
 }
 
-function countWeekdaysInRange(
+function addWeekdaysToSet(
+  target: Set<string>,
   startDate: string,
   endDate: string,
   monthStart: string,
   monthEnd: string
 ) {
-  const start = new Date(`${startDate < monthStart ? monthStart : startDate}T00:00:00Z`);
-  const end = new Date(`${endDate > monthEnd ? monthEnd : endDate}T00:00:00Z`);
-  let count = 0;
+  const effectiveStart = startDate < monthStart ? monthStart : startDate;
+  const effectiveEnd = endDate > monthEnd ? monthEnd : endDate;
+  const start = new Date(`${effectiveStart}T00:00:00Z`);
+  const end = new Date(`${effectiveEnd}T00:00:00Z`);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+    return;
+  }
 
   for (
     const current = new Date(start);
@@ -40,10 +52,9 @@ function countWeekdaysInRange(
     current.setUTCDate(current.getUTCDate() + 1)
   ) {
     const day = current.getUTCDay();
-    if (day !== 0 && day !== 6) count += 1;
+    if (day === 0 || day === 6) continue;
+    target.add(current.toISOString().slice(0, 10));
   }
-
-  return count;
 }
 
 export async function GET(request: Request) {
@@ -56,8 +67,17 @@ export async function GET(request: Request) {
       throw new Error("Environment ไม่ครบ");
     }
 
-    const header = request.headers.get("authorization") ?? "";
-    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    const authorization = request.headers.get("authorization") ?? "";
+    const token = authorization.startsWith("Bearer ")
+      ? authorization.slice(7).trim()
+      : "";
+
+    if (!token) {
+      return NextResponse.json(
+        { ok: false, message: "กรุณาเข้าสู่ระบบ" },
+        { status: 401 }
+      );
+    }
 
     const auth = createClient(url, publishable, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -65,9 +85,10 @@ export async function GET(request: Request) {
 
     const {
       data: { user },
+      error: userError,
     } = await auth.auth.getUser(token);
 
-    if (!user) {
+    if (userError || !user) {
       return NextResponse.json(
         { ok: false, message: "กรุณาเข้าสู่ระบบ" },
         { status: 401 }
@@ -80,60 +101,106 @@ export async function GET(request: Request) {
 
     const range = getBangkokMonthRange();
 
-    const [{ data: attendance, error: attendanceError }, { data: leaves, error: leaveError }] =
-      await Promise.all([
-        admin
-          .from("attendance_records")
-          .select("work_date, check_in_status")
-          .eq("user_id", user.id)
-          .gte("work_date", range.start)
-          .lte("work_date", range.end),
-        admin
-          .from("leave_requests")
-          .select("start_date, end_date")
-          .eq("user_id", user.id)
-          .eq("status", "approved")
-          .lte("start_date", range.end)
-          .gte("end_date", range.start),
-      ]);
+    const [
+      { data: attendanceData, error: attendanceError },
+      { data: leaveData, error: leaveError },
+    ] = await Promise.all([
+      admin
+        .from("attendance_records")
+        .select("work_date, check_in_status")
+        .eq("user_id", user.id)
+        .gte("work_date", range.start)
+        .lte("work_date", range.end),
+      admin
+        .from("leave_requests")
+        .select("leave_type, start_date, end_date")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "approved"])
+        .lte("start_date", range.end)
+        .gte("end_date", range.start),
+    ]);
 
-    if (attendanceError) throw new Error("โหลดสรุปการลงเวลาไม่สำเร็จ");
-    if (leaveError) throw new Error("โหลดสรุปการลาไม่สำเร็จ");
+    if (attendanceError) {
+      console.error("Monthly attendance query error:", attendanceError);
+      throw new Error("โหลดสรุปการลงเวลาไม่สำเร็จ");
+    }
 
-    const normal = (attendance ?? []).filter(
-      (row) =>
-        row.check_in_status !== "late" &&
-        row.check_in_status !== "official_duty"
-    ).length;
+    if (leaveError) {
+      console.error("Monthly leave query error:", leaveError);
+      throw new Error("โหลดสรุปการลาไม่สำเร็จ");
+    }
 
-    const late = (attendance ?? []).filter(
-      (row) => row.check_in_status === "late"
-    ).length;
+    const attendance = (attendanceData ?? []) as AttendanceRow[];
+    const leaveRequests = (leaveData ?? []) as LeaveRow[];
 
-    const leave = ((leaves ?? []) as LeaveRow[]).reduce(
-      (total, row) =>
-        total +
-        countWeekdaysInRange(
+    const normalDates = new Set<string>();
+    const lateDates = new Set<string>();
+    const leaveDates = new Set<string>();
+    const officialDutyDates = new Set<string>();
+
+    for (const row of attendance) {
+      if (!row.work_date) continue;
+
+      if (row.check_in_status === "late") {
+        lateDates.add(row.work_date);
+      } else if (row.check_in_status === "official_duty") {
+        officialDutyDates.add(row.work_date);
+      } else {
+        normalDates.add(row.work_date);
+      }
+    }
+
+    for (const row of leaveRequests) {
+      const leaveType = String(row.leave_type ?? "").trim().toLowerCase();
+
+      if (leaveType === "official_duty") {
+        addWeekdaysToSet(
+          officialDutyDates,
           row.start_date,
           row.end_date,
           range.start,
           range.end
-        ),
-      0
-    );
+        );
+      } else if (leaveType === "sick" || leaveType === "personal") {
+        addWeekdaysToSet(
+          leaveDates,
+          row.start_date,
+          row.end_date,
+          range.start,
+          range.end
+        );
+      }
+    }
+
+    for (const date of officialDutyDates) {
+      normalDates.delete(date);
+      lateDates.delete(date);
+      leaveDates.delete(date);
+    }
+
+    for (const date of leaveDates) {
+      normalDates.delete(date);
+      lateDates.delete(date);
+    }
 
     return NextResponse.json({
       ok: true,
       year: range.year,
       month: range.month,
-      summary: { normal, late, leave },
+      summary: {
+        normal: normalDates.size,
+        late: lateDates.size,
+        leave: leaveDates.size,
+        officialDuty: officialDutyDates.size,
+      },
     });
   } catch (error) {
+    console.error("Monthly summary error:", error);
+
     return NextResponse.json(
       {
         ok: false,
-        message:
-          error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+        message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
       },
       { status: 500 }
     );
