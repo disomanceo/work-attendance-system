@@ -167,7 +167,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       label: "ข้อมูลส่วนตัว",
       icon: "♙",
       href: "/account/profile",
-      match: (value) => value.startsWith("/account/profile"),
+      match: (value) => value.startsWith("/account"),
     },
   ];
 
