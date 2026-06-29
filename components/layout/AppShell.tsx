@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import AppSidebar from "./AppSidebar";
 import { getAppNavigationItems } from "./navigation";
 import styles from "./AppShell.module.css";
 
@@ -128,6 +129,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const role = profile?.role ?? "";
   const menuItems = getAppNavigationItems(role);
+  const profileName = profile?.full_name || "กำลังโหลด...";
+  const profileLabel = profile?.position || getRoleLabel(role);
+  const profileInitial = profile?.full_name?.trim().charAt(0) || "U";
 
   function toggleCollapsed() {
     const next = !sidebarCollapsed;
@@ -165,76 +169,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         />
       )}
 
-      <aside
-        className={`${styles.sidebar} ${
-          sidebarOpen ? styles.sidebarOpen : ""
-        } ${sidebarCollapsed ? styles.sidebarCollapsed : ""}`}
-      >
-        <div className={styles.sidebarBrand}>
-          <button
-            type="button"
-            className={styles.collapseButton}
-            onClick={toggleCollapsed}
-            aria-label={sidebarCollapsed ? "ขยายเมนู" : "ย่อเมนู"}
-          >
-            {sidebarCollapsed ? "»" : "«"}
-          </button>
-        </div>
-
-        <div className={styles.userCard}>
-          <div className={styles.avatar}>
-            {profileImageUrl ? (
-              <img src={profileImageUrl} alt="รูปโปรไฟล์" />
-            ) : (
-              profile?.full_name?.trim().charAt(0) || "U"
-            )}
-          </div>
-
-          {!sidebarCollapsed && (
-            <div className={styles.userInfo}>
-              <strong>{profile?.full_name || "กำลังโหลด..."}</strong>
-              <small>
-                {profile?.position || getRoleLabel(profile?.role || "")}
-              </small>
-              <span>● ออนไลน์</span>
-            </div>
-          )}
-        </div>
-
-        {!sidebarCollapsed && (
-          <h2 className={styles.menuTitle}>เมนูของฉัน</h2>
-        )}
-
-        <nav className={styles.menuList} aria-label="เมนูของฉัน">
-          {menuItems.map((item) => {
-            const active = item.match(pathname);
-
-            return (
-              <button
-                type="button"
-                key={item.label}
-                className={`${styles.menuItem} ${
-                  active ? styles.menuItemActive : ""
-                }`}
-                onClick={() => router.push(item.href)}
-                title={sidebarCollapsed ? item.label : undefined}
-              >
-                <span className={styles.menuIcon}>{item.icon}</span>
-                {!sidebarCollapsed && <b>{item.label}</b>}
-              </button>
-            );
-          })}
-        </nav>
-
-        <button
-          type="button"
-          className={styles.logoutButton}
-          onClick={() => void logout()}
-        >
-          <span>⇥</span>
-          {!sidebarCollapsed && <b>ออกจากระบบ</b>}
-        </button>
-      </aside>
+      <AppSidebar
+        collapsed={sidebarCollapsed}
+        open={sidebarOpen}
+        items={menuItems}
+        pathname={pathname}
+        profileImageUrl={profileImageUrl}
+        profileInitial={profileInitial}
+        profileName={profileName}
+        profileLabel={profileLabel}
+        onToggleCollapsed={toggleCollapsed}
+        onNavigate={(href) => router.push(href)}
+        onLogout={() => void logout()}
+      />
 
       <div className={styles.content}>{children}</div>
     </div>
