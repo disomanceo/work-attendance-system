@@ -1617,18 +1617,6 @@
     border-top: 0;
   }
 
-  .mobileMenuButton,
-  .mobileMenuOverlay,
-  .mobileDrawer {
-    display: none !important;
-  }
-}
-
-/* Mobile: hamburger only, no bottom navigation. */
-.mobileMenuButton,
-.mobileMenuOverlay,
-.mobileDrawer {
-  display: none;
 }
 
 @media (max-width: 800px) {
@@ -1658,133 +1646,6 @@
     text-align: center;
   }
 
-  .mobileMenuButton {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 80;
-    display: flex;
-    width: 48px;
-    height: 48px;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 5px;
-    padding: 0;
-    border: 1px solid #d9cee4;
-    border-radius: 15px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 9px 24px rgba(87, 68, 110, 0.14);
-    cursor: pointer;
-  }
-
-  .mobileMenuButton span {
-    width: 21px;
-    height: 2px;
-    border-radius: 999px;
-    background: #68458c;
-  }
-
-  .mobileMenuOverlay {
-    position: fixed;
-    inset: 0;
-    z-index: 89;
-    display: block;
-    border: 0;
-    background: rgba(29, 18, 40, 0.46);
-    backdrop-filter: blur(3px);
-  }
-
-  .mobileDrawer {
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 90;
-    display: flex;
-    width: min(84vw, 320px);
-    flex-direction: column;
-    padding: 18px 14px calc(18px + env(safe-area-inset-bottom));
-    border-right: 1px solid #e2d9e9;
-    background: #ffffff;
-    box-shadow: 22px 0 54px rgba(40, 23, 55, 0.22);
-    animation: leaveDrawerIn 0.2s ease-out;
-  }
-
-  .mobileDrawerHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 6px 18px;
-    border-bottom: 1px solid #eee8f2;
-  }
-
-  .mobileDrawerHeader small,
-  .mobileDrawerHeader strong {
-    display: block;
-  }
-
-  .mobileDrawerHeader small {
-    color: #927fa2;
-    font-size: 11px;
-    font-weight: 800;
-  }
-
-  .mobileDrawerHeader strong {
-    margin-top: 3px;
-    color: #493858;
-    font-size: 15px;
-  }
-
-  .mobileDrawerHeader button {
-    display: grid;
-    width: 40px;
-    height: 40px;
-    place-items: center;
-    border: 1px solid #dfd5e7;
-    border-radius: 12px;
-    background: #faf8fc;
-    color: #68458c;
-    font-size: 26px;
-    cursor: pointer;
-  }
-
-  .mobileDrawerNav {
-    display: grid;
-    gap: 8px;
-    margin-top: 18px;
-  }
-
-  .mobileDrawerNav a {
-    display: flex;
-    min-height: 54px;
-    align-items: center;
-    gap: 12px;
-    padding: 11px 13px;
-    border: 1px solid transparent;
-    border-radius: 15px;
-    color: #665873;
-    text-decoration: none;
-  }
-
-  .mobileDrawerNav a > span {
-    display: grid;
-    width: 34px;
-    height: 34px;
-    place-items: center;
-    flex: 0 0 auto;
-    border-radius: 11px;
-    background: #f2edf6;
-    color: #76539a;
-    font-size: 19px;
-  }
-
-  .mobileDrawerNav .mobileDrawerActive {
-    border-color: #d8cbe5;
-    color: #5d367f;
-    background: linear-gradient(135deg, #f1eaf7, #faf8fc);
-    box-shadow: 0 8px 20px rgba(105, 82, 132, 0.1);
-  }
-
   .summaryGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
@@ -1804,17 +1665,6 @@
     margin-top: 4px;
   }
 }
-
-@keyframes leaveDrawerIn {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
 
 /* Leave desktop layout correction */
 
