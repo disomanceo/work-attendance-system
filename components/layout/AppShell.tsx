@@ -174,6 +174,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (isManager) {
     menuItems.push(
       {
+        label: "พิจารณาไปราชการ",
+        icon: "▥",
+        href: "/admin/official-duty",
+        match: (value) => value.startsWith("/admin/official-duty"),
+      },
+      {
         label: "ตั้งค่า",
         icon: "⚙",
         href: "/admin/settings",
