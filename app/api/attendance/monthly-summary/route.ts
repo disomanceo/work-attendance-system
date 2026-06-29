@@ -14,6 +14,11 @@ type LeaveRow = {
   end_date: string;
 };
 
+type OfficialDutyRow = {
+  duty_date: string;
+  status: string;
+};
+
 function getBangkokMonthRange() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
@@ -25,7 +30,9 @@ function getBangkokMonthRange() {
   const month = Number(parts.find((part) => part.type === "month")?.value);
   const start = `${year}-${String(month).padStart(2, "0")}-01`;
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const end = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const end = `${year}-${String(month).padStart(2, "0")}-${String(
+    lastDay
+  ).padStart(2, "0")}`;
 
   return { year, month, start, end };
 }
@@ -42,7 +49,11 @@ function addWeekdaysToSet(
   const start = new Date(`${effectiveStart}T00:00:00Z`);
   const end = new Date(`${effectiveEnd}T00:00:00Z`);
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    start > end
+  ) {
     return;
   }
 
@@ -55,6 +66,21 @@ function addWeekdaysToSet(
     if (day === 0 || day === 6) continue;
     target.add(current.toISOString().slice(0, 10));
   }
+}
+
+function addOfficialDutyDate(target: Set<string>, dutyDate: string) {
+  const date = new Date(`${dutyDate}T00:00:00Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return;
+  }
+
+  const day = date.getUTCDay();
+  if (day === 0 || day === 6) {
+    return;
+  }
+
+  target.add(dutyDate);
 }
 
 export async function GET(request: Request) {
@@ -104,6 +130,7 @@ export async function GET(request: Request) {
     const [
       { data: attendanceData, error: attendanceError },
       { data: leaveData, error: leaveError },
+      { data: officialDutyData, error: officialDutyError },
     ] = await Promise.all([
       admin
         .from("attendance_records")
@@ -111,6 +138,7 @@ export async function GET(request: Request) {
         .eq("user_id", user.id)
         .gte("work_date", range.start)
         .lte("work_date", range.end),
+
       admin
         .from("leave_requests")
         .select("leave_type, start_date, end_date")
@@ -118,6 +146,14 @@ export async function GET(request: Request) {
         .in("status", ["pending", "approved"])
         .lte("start_date", range.end)
         .gte("end_date", range.start),
+
+      admin
+        .from("official_duty_requests")
+        .select("duty_date, status")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "approved"])
+        .gte("duty_date", range.start)
+        .lte("duty_date", range.end),
     ]);
 
     if (attendanceError) {
@@ -130,8 +166,18 @@ export async function GET(request: Request) {
       throw new Error("โหลดสรุปการลาไม่สำเร็จ");
     }
 
+    if (officialDutyError) {
+      console.error(
+        "Monthly official duty query error:",
+        officialDutyError
+      );
+      throw new Error("โหลดสรุปการไปราชการไม่สำเร็จ");
+    }
+
     const attendance = (attendanceData ?? []) as AttendanceRow[];
     const leaveRequests = (leaveData ?? []) as LeaveRow[];
+    const officialDutyRequests =
+      (officialDutyData ?? []) as OfficialDutyRow[];
 
     const normalDates = new Set<string>();
     const lateDates = new Set<string>();
@@ -170,6 +216,11 @@ export async function GET(request: Request) {
           range.end
         );
       }
+    }
+
+    for (const row of officialDutyRequests) {
+      if (!row.duty_date) continue;
+      addOfficialDutyDate(officialDutyDates, row.duty_date);
     }
 
     for (const date of officialDutyDates) {
