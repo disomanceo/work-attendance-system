@@ -7,8 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
 import OfficialDutyReviewPopup from "@/components/attendance/OfficialDutyReviewPopup";
-import AppSidebar from "@/components/layout/AppSidebar";
-import { getAppNavigationItems } from "@/components/layout/navigation";
 
 type Profile = {
   full_name: string;
@@ -229,9 +227,7 @@ export default function AttendancePage() {
     "success"
   );
   const [distanceMeters, setDistanceMeters] = useState<number | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState("");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [lateReasonOpen, setLateReasonOpen] = useState(false);
   const [lateReason, setLateReason] = useState("");
   const [lateReasonError, setLateReasonError] = useState("");
@@ -241,17 +237,6 @@ export default function AttendancePage() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(
-        "attendance_sidebar_collapsed"
-      );
-      setSidebarCollapsed(saved === "true");
-    }, 0);
-
-    return () => window.clearTimeout(timer);
   }, []);
 
   const loadTodayLeave = useCallback(
@@ -697,21 +682,6 @@ export default function AttendancePage() {
       setProcessing(false);
     }
   }
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  }
-
-  function toggleSidebarCollapsed() {
-    const next = !sidebarCollapsed;
-    setSidebarCollapsed(next);
-    window.localStorage.setItem(
-      "attendance_sidebar_collapsed",
-      String(next)
-    );
-  }
-
   if (loading) {
     return (
       <main className={styles.loading}>
@@ -727,60 +697,13 @@ export default function AttendancePage() {
 
   const isLate = record?.check_in_status === "late";
   const hasCheckedIn = Boolean(record?.check_in_at);
-  const menuItems = getAppNavigationItems(profile.role);
 
   return (
     <main
-      className={`${styles.page} ${
-        sidebarCollapsed ? styles.sidebarCollapsedPage : ""
-      } ${hasCheckedIn ? styles.checkedInPage : ""}`}
+      className={`${styles.page} ${hasCheckedIn ? styles.checkedInPage : ""}`}
     >
-      <button
-        type="button"
-        className={styles.mobileMenuButton}
-        aria-label="เปิดเมนู"
-        onClick={() => setSidebarOpen(true)}
-      >
-        ☰
-      </button>
-
-      {sidebarOpen && (
-        <button
-          type="button"
-          className={styles.overlay}
-          aria-label="ปิดเมนู"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <AppSidebar
-        collapsed={sidebarCollapsed}
-        open={sidebarOpen}
-        items={menuItems}
-        pathname="/attendance"
-        profileImageUrl={profileImageUrl}
-        profileInitial={profile.full_name.trim().charAt(0) || "U"}
-        profileName={profile.full_name}
-        profileLabel={profile.position || getRoleLabel(profile.role)}
-        onToggleCollapsed={toggleSidebarCollapsed}
-        onNavigate={(href) => {
-          setSidebarOpen(false);
-          router.push(href);
-        }}
-        onLogout={() => void handleLogout()}
-      />
-
       <section className={styles.content}>
         <header className={styles.mobileTopBar}>
-          <button
-            type="button"
-            className={styles.mobileMenuButtonInline}
-            aria-label="เปิดเมนู"
-            onClick={() => setSidebarOpen(true)}
-          >
-            ☰
-          </button>
-
           <div className={styles.mobileProfile}>
             <div className={styles.mobileAvatar}>
               {profileImageUrl ? (

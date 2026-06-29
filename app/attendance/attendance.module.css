@@ -41,13 +41,7 @@
 
 .content {
   min-height: 100svh;
-  margin-left: var(--sidebar-width);
   padding: 20px 24px 44px;
-  transition: margin-left 0.22s ease;
-}
-
-.sidebarCollapsedPage .content {
-  margin-left: 86px;
 }
 
 .topBar {
@@ -557,14 +551,6 @@
   background: #a855f7;
 }
 
-.mobileMenuButton {
-  display: none;
-}
-
-.overlay {
-  display: none;
-}
-
 .loading {
   display: flex;
   min-height: 100svh;
@@ -604,37 +590,8 @@
     min-height: 100svh;
   }
 
-  .content,
-  .sidebarCollapsedPage .content {
-    margin-left: 0;
+  .content {
     padding: 74px 12px 32px;
-  }
-
-  .mobileMenuButton {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 45;
-    display: grid;
-    width: 44px;
-    height: 44px;
-    place-items: center;
-    border: 1px solid rgba(216, 180, 254, 0.24);
-    border-radius: 14px;
-    color: #fff;
-    background: rgba(32, 12, 57, 0.94);
-    box-shadow: 0 10px 28px rgba(4, 1, 10, 0.35);
-    font-size: 22px;
-  }
-
-  .overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 49;
-    display: block;
-    border: 0;
-    background: rgba(3, 1, 8, 0.72);
-    backdrop-filter: blur(4px);
   }
 
   .topBar {
@@ -733,13 +690,11 @@
       linear-gradient(180deg, #0c0614 0%, #12081f 55%, #090411 100%);
   }
 
-  .content,
-  .sidebarCollapsedPage .content {
+  .content {
     display: flex;
     min-height: 100svh;
     align-items: center;
     justify-content: center;
-    margin-left: 0;
     padding: 76px 16px 28px;
   }
 
@@ -868,15 +823,6 @@
     margin-bottom: 18px;
   }
 
-  .mobileMenuButton {
-    top: 16px;
-    left: 16px;
-    width: 48px;
-    height: 48px;
-    border-radius: 15px;
-    font-size: 24px;
-  }
-
 }
 
 @media (max-width: 420px) {
@@ -935,19 +881,6 @@
   margin-top: 3px;
   color: #bba9d3;
   font-size: 11px;
-}
-
-.mobileMenuButtonInline {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border: 1px solid rgba(216, 180, 254, 0.24);
-  border-radius: 15px;
-  color: #ffffff;
-  background: rgba(32, 12, 57, 0.94);
-  box-shadow: 0 10px 28px rgba(4, 1, 10, 0.35);
-  font-size: 24px;
 }
 
 .mobileFeedback {
@@ -1024,7 +957,7 @@
     display: flex;
     min-height: 72px;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 12px;
     padding: 12px 14px;
     border-bottom: 1px solid rgba(216, 180, 254, 0.16);
@@ -1032,12 +965,7 @@
     backdrop-filter: blur(18px);
   }
 
-  .mobileMenuButton {
-    display: none !important;
-  }
-
-  .content,
-  .sidebarCollapsedPage .content {
+  .content {
     padding-top: 96px;
   }
 
