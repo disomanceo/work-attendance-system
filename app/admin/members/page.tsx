@@ -193,6 +193,59 @@ export default function AdminMembersPage() {
     }
   }
 
+  async function deleteMember(member: Member) {
+    if (member.id === currentUserId) {
+      setMessageType("error");
+      setMessage("ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `ยืนยันลบสมาชิก ${member.full_name}?\nการลบนี้จะลบบัญชีเข้าสู่ระบบและข้อมูลโปรไฟล์ของสมาชิกนี้`
+    );
+
+    if (!confirmed) return;
+
+    setSavingId(member.id);
+    setMessage("");
+
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        router.replace("/login");
+        return;
+      }
+
+      const response = await fetch("/api/admin/members", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ id: member.id }),
+      });
+      const result = (await response.json()) as MembersResponse & {
+        deletedId?: string;
+      };
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "ไม่สามารถลบสมาชิกได้");
+      }
+
+      setMembers((current) =>
+        current.filter((item) => item.id !== member.id)
+      );
+      setMessageType("success");
+      setMessage(result.message || `ลบสมาชิก ${member.full_name} เรียบร้อยแล้ว`);
+    } catch (error) {
+      console.error("Delete member error:", error);
+      setMessageType("error");
+      setMessage(error instanceof Error ? error.message : "เกิดข้อผิดพลาดระหว่างลบสมาชิก");
+    } finally {
+      setSavingId("");
+    }
+  }
+
   if (loading) {
     return (
       <main className="dashboard-loading">
@@ -267,6 +320,32 @@ export default function AdminMembersPage() {
                         <h3 style={{ margin: 0, color: "#071d32", fontSize: 18 }}>{member.full_name}</h3>
                         {isCurrentUser && <span style={{ padding: "4px 8px", borderRadius: 999, color: "#0b5ed7", background: "#e8f3ff", fontSize: 12, fontWeight: 800 }}>บัญชีของคุณ</span>}
                         {isPending && <span style={{ padding: "4px 8px", borderRadius: 999, color: "#9a6700", background: "#fff0c2", fontSize: 12, fontWeight: 800 }}>สมาชิกใหม่</span>}
+                        {!isCurrentUser && (
+                          <button
+                            type="button"
+                            disabled={isSaving}
+                            title={`ลบสมาชิก ${member.full_name}`}
+                            aria-label={`ลบสมาชิก ${member.full_name}`}
+                            onClick={() => void deleteMember(member)}
+                            style={{
+                              display: "grid",
+                              width: 30,
+                              height: 30,
+                              placeItems: "center",
+                              border: "1px solid #fecaca",
+                              borderRadius: 999,
+                              color: "#b91c1c",
+                              background: "#fff5f5",
+                              fontSize: 18,
+                              fontWeight: 900,
+                              lineHeight: 1,
+                              cursor: isSaving ? "wait" : "pointer",
+                              opacity: isSaving ? 0.65 : 1,
+                            }}
+                          >
+                            -
+                          </button>
+                        )}
                       </div>
                       <p style={{ margin: "8px 0 0", color: "#667085" }}>{formatThaiPhone(member.phone)}</p>
                       <p style={{ margin: "5px 0 0", color: "#98a2b3", fontSize: 13 }}>สมัครเมื่อ {formatThaiDate(member.created_at)}</p>

@@ -17,6 +17,10 @@ type UpdateMemberBody = {
   position?: unknown;
 };
 
+type DeleteMemberBody = {
+  id?: unknown;
+};
+
 const ALLOWED_ROLES: MemberRole[] = [
   "admin",
   "director",
@@ -340,6 +344,116 @@ export async function PATCH(request: Request) {
       {
         ok: false,
         message: "เกิดข้อผิดพลาดระหว่างบันทึกข้อมูลสมาชิก",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const authResult = await requireAdmin(request);
+
+    if (!authResult.ok) {
+      return authResult.response;
+    }
+
+    const body = (await request.json()) as DeleteMemberBody;
+    const id = typeof body.id === "string" ? body.id.trim() : "";
+
+    if (!id) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ไม่พบรหัสสมาชิกที่ต้องการลบ",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (id === authResult.user.id) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { data: member, error: memberError } = await authResult.adminClient
+      .from("profiles")
+      .select("id, full_name")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (memberError) {
+      console.error("Find member before delete error:", memberError);
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ตรวจสอบสมาชิกก่อนลบไม่สำเร็จ",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!member) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ไม่พบสมาชิกที่ต้องการลบ",
+        },
+        { status: 404 }
+      );
+    }
+
+    const { error: deleteAuthError } =
+      await authResult.adminClient.auth.admin.deleteUser(id);
+
+    if (deleteAuthError) {
+      console.error("Delete member auth user error:", deleteAuthError);
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message: `ลบบัญชีเข้าสู่ระบบไม่สำเร็จ: ${deleteAuthError.message}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const { error: deleteProfileError } = await authResult.adminClient
+      .from("profiles")
+      .delete()
+      .eq("id", id);
+
+    if (deleteProfileError) {
+      console.error("Delete member profile cleanup error:", deleteProfileError);
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "ลบบัญชีเข้าสู่ระบบแล้ว แต่ลบข้อมูลโปรไฟล์ไม่สำเร็จ กรุณาตรวจสอบข้อมูลสมาชิกอีกครั้ง",
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      deletedId: id,
+      message: `ลบสมาชิก ${member.full_name || ""} เรียบร้อยแล้ว`,
+    });
+  } catch (error) {
+    console.error("Members DELETE API error:", error);
+
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "เกิดข้อผิดพลาดระหว่างลบสมาชิก",
       },
       { status: 500 }
     );
