@@ -193,12 +193,6 @@ export default function AdminMembersPage() {
     }
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  }
-
   if (loading) {
     return (
       <main className="dashboard-loading">
@@ -217,7 +211,6 @@ export default function AdminMembersPage() {
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button type="button" onClick={() => router.push("/attendance")}>กลับหน้าหลัก</button>
-          <button type="button" onClick={handleLogout}>ออกจากระบบ</button>
         </div>
       </header>
 
