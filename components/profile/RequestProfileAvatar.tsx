@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { getCachedProfileImageUrl } from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
 
 type RequestProfileAvatarProps = {
@@ -8,8 +9,6 @@ type RequestProfileAvatarProps = {
   name?: string | null;
   className: string;
 };
-
-const avatarUrlCache = new Map<string, string>();
 
 export default function RequestProfileAvatar({
   fileId,
@@ -32,36 +31,17 @@ export default function RequestProfileAvatar({
         return;
       }
 
-      const cachedUrl = avatarUrlCache.get(fileId);
-      if (cachedUrl) {
-        setImageUrl(cachedUrl);
-        return;
-      }
-
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session?.access_token) return;
-
       try {
-        const response = await fetch(
-          `/api/account/profile-assets?fileId=${encodeURIComponent(fileId)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            cache: "no-store",
-          }
+        const cachedUrl = await getCachedProfileImageUrl(
+          fileId,
+          session?.access_token
         );
 
-        if (!response.ok || cancelled) return;
-
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        avatarUrlCache.set(fileId, objectUrl);
-
-        if (!cancelled) setImageUrl(objectUrl);
+        if (!cancelled) setImageUrl(cachedUrl);
       } catch {
         if (!cancelled) setImageUrl("");
       }

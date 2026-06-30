@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { getCachedProfileImageUrl } from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
 import AppSidebar from "./AppSidebar";
 import { getAppNavigationItems } from "./navigation";
@@ -14,8 +15,6 @@ type Profile = {
   account_status: string;
   profile_image_file_id: string | null;
 };
-
-const profileImageCache = new Map<string, string>();
 
 function getRoleLabel(role: string) {
   const labels: Record<string, string> = {
@@ -99,37 +98,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const cachedUrl = profileImageCache.get(fileId);
-      if (cachedUrl) {
-        setProfileImageUrl(cachedUrl);
-        return;
-      }
-
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session?.access_token) return;
-
       try {
-        const response = await fetch(
-          `/api/account/profile-assets?fileId=${encodeURIComponent(fileId)}`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            cache: "no-store",
-          }
+        const imageUrl = await getCachedProfileImageUrl(
+          fileId,
+          session?.access_token
         );
 
-        if (!response.ok || cancelled) return;
-
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        profileImageCache.set(fileId, objectUrl);
-
         if (cancelled) return;
-        setProfileImageUrl(objectUrl);
+        setProfileImageUrl(imageUrl);
       } catch {
         if (!cancelled) setProfileImageUrl("");
       }

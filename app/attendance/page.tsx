@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCachedProfileImageUrl } from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
@@ -393,10 +394,12 @@ export default function AttendancePage() {
   }, [loadAttendance]);
 
   useEffect(() => {
-    let objectUrl = "";
+    let cancelled = false;
 
     async function loadProfileImage() {
-      if (!profile?.profile_image_file_id) {
+      const fileId = profile?.profile_image_file_id;
+
+      if (!fileId) {
         setProfileImageUrl("");
         return;
       }
@@ -407,31 +410,19 @@ export default function AttendancePage() {
 
       const accessToken = session?.access_token;
 
-      if (!accessToken) return;
+      try {
+        const imageUrl = await getCachedProfileImageUrl(fileId, accessToken);
 
-      const response = await fetch(
-        `/api/account/profile-assets?fileId=${encodeURIComponent(
-          profile.profile_image_file_id
-        )}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          cache: "no-store",
-        }
-      );
-
-      if (!response.ok) return;
-
-      const blob = await response.blob();
-      objectUrl = URL.createObjectURL(blob);
-      setProfileImageUrl(objectUrl);
+        if (!cancelled) setProfileImageUrl(imageUrl);
+      } catch {
+        if (!cancelled) setProfileImageUrl("");
+      }
     }
 
     void loadProfileImage();
 
     return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      cancelled = true;
     };
   }, [profile?.profile_image_file_id, supabase]);
 
