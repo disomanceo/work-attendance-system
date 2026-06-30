@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
 import styles from "./official-duty-admin.module.css";
 
 type OfficialDutyRequest = {
@@ -19,6 +20,12 @@ type OfficialDutyRequest = {
   review_note: string | null;
   reviewed_at: string | null;
   created_at: string;
+  profiles?: {
+    full_name: string;
+    position: string | null;
+    role: string;
+    profile_image_file_id: string | null;
+  } | null;
 };
 
 type ListResponse = {
@@ -233,9 +240,17 @@ export default function OfficialDutyAdminPage() {
           visibleRequests.map((request) => (
             <article className={styles.card} key={request.id}>
               <div className={styles.cardTop}>
-                <div>
-                  <h2>{request.full_name}</h2>
-                  <p>{request.position || "ไม่ระบุตำแหน่ง"}</p>
+                <div className={styles.requester}>
+                  <RequestProfileAvatar
+                    className={styles.requesterAvatar}
+                    fileId={request.profiles?.profile_image_file_id}
+                    name={request.full_name}
+                  />
+
+                  <div>
+                    <h2>{request.full_name}</h2>
+                    <p>{request.position || "ไม่ระบุตำแหน่ง"}</p>
+                  </div>
                 </div>
 
                 <span

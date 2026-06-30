@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
 import styles from "./LeaveReviewPopup.module.css";
 
 type PendingLeave = {
@@ -17,6 +18,7 @@ type PendingLeave = {
     full_name: string;
     position: string | null;
     role: string;
+    profile_image_file_id: string | null;
   } | null;
 };
 
@@ -254,9 +256,11 @@ export default function LeaveReviewPopup({ role }: Props) {
               <>
                 <article className={styles.leaveCard}>
                   <div className={styles.personRow}>
-                    <div className={styles.avatar}>
-                      {current.profiles?.full_name?.trim().charAt(0) || "U"}
-                    </div>
+                    <RequestProfileAvatar
+                      className={styles.avatar}
+                      fileId={current.profiles?.profile_image_file_id}
+                      name={current.profiles?.full_name}
+                    />
 
                     <div className={styles.personInfo}>
                       <strong>

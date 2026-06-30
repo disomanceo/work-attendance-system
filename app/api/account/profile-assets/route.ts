@@ -109,7 +109,7 @@ async function authorize(request: Request) {
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
     .select(
-      "id, full_name, account_status, profile_image_file_id, signature_file_id"
+      "id, full_name, role, account_status, profile_image_file_id, signature_file_id"
     )
     .eq("id", user.id)
     .single();
@@ -321,7 +321,26 @@ export async function GET(request: Request) {
       authResult.profile.signature_file_id,
     ].filter(Boolean);
 
-    if (!fileId || !allowedFileIds.includes(fileId)) {
+    const ownsRequestedFile = allowedFileIds.includes(fileId);
+    let canReadMemberProfileImage = false;
+
+    if (
+      fileId &&
+      !ownsRequestedFile &&
+      ["director", "admin"].includes(authResult.profile.role)
+    ) {
+      const { data: memberProfile } = await authResult.adminClient
+        .from("profiles")
+        .select("id")
+        .eq("account_status", "active")
+        .eq("profile_image_file_id", fileId)
+        .limit(1)
+        .maybeSingle();
+
+      canReadMemberProfileImage = Boolean(memberProfile);
+    }
+
+    if (!fileId || (!ownsRequestedFile && !canReadMemberProfileImage)) {
       return NextResponse.json(
         { ok: false, message: "ไม่มีสิทธิ์เปิดไฟล์นี้" },
         { status: 403 }

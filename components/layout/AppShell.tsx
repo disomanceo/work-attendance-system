@@ -15,6 +15,8 @@ type Profile = {
   profile_image_file_id: string | null;
 };
 
+const profileImageCache = new Map<string, string>();
+
 function getRoleLabel(role: string) {
   const labels: Record<string, string> = {
     admin: "ผู้ดูแลระบบ",
@@ -87,11 +89,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [router, supabase]);
 
   useEffect(() => {
-    let objectUrl = "";
+    let cancelled = false;
 
     async function loadProfileImage() {
-      if (!profile?.profile_image_file_id) {
+      const fileId = profile?.profile_image_file_id;
+
+      if (!fileId) {
         setProfileImageUrl("");
+        return;
+      }
+
+      const cachedUrl = profileImageCache.get(fileId);
+      if (cachedUrl) {
+        setProfileImageUrl(cachedUrl);
         return;
       }
 
@@ -101,29 +111,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       if (!session?.access_token) return;
 
-      const response = await fetch(
-        `/api/account/profile-assets?fileId=${encodeURIComponent(
-          profile.profile_image_file_id
-        )}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          cache: "no-store",
-        }
-      );
+      try {
+        const response = await fetch(
+          `/api/account/profile-assets?fileId=${encodeURIComponent(fileId)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            cache: "no-store",
+          }
+        );
 
-      if (!response.ok) return;
+        if (!response.ok || cancelled) return;
 
-      const blob = await response.blob();
-      objectUrl = URL.createObjectURL(blob);
-      setProfileImageUrl(objectUrl);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        profileImageCache.set(fileId, objectUrl);
+
+        if (cancelled) return;
+        setProfileImageUrl(objectUrl);
+      } catch {
+        if (!cancelled) setProfileImageUrl("");
+      }
     }
 
     void loadProfileImage();
 
     return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      cancelled = true;
     };
   }, [profile?.profile_image_file_id, supabase]);
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { AppNavigationItem } from "./navigation";
 import styles from "./AppShell.module.css";
 
@@ -30,6 +31,13 @@ export default function AppSidebar({
   onNavigate,
   onLogout,
 }: AppSidebarProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showProfileImage = profileImageUrl && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [profileImageUrl]);
+
   return (
     <aside
       className={`${styles.sidebar} ${open ? styles.sidebarOpen : ""} ${
@@ -49,8 +57,12 @@ export default function AppSidebar({
 
       <div className={styles.userCard}>
         <div className={styles.avatar}>
-          {profileImageUrl ? (
-            <img src={profileImageUrl} alt="รูปโปรไฟล์" />
+          {showProfileImage ? (
+            <img
+              src={profileImageUrl}
+              alt="รูปโปรไฟล์"
+              onError={() => setImageFailed(true)}
+            />
           ) : (
             profileInitial
           )}

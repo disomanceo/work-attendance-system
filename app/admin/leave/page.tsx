@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
 import styles from "./leave-admin.module.css";
 
 type AdminLeaveRequest = {
@@ -22,6 +23,7 @@ type AdminLeaveRequest = {
     full_name: string;
     position: string | null;
     role: string;
+    profile_image_file_id: string | null;
   } | null;
 };
 
@@ -146,12 +148,20 @@ export default function AdminLeavePage() {
           {requests.map((item) => (
             <article key={item.id} className={styles.card}>
               <div className={styles.cardTop}>
-                <div>
-                  <span>
-                    {item.leave_type === "sick" ? "ลาป่วย" : "ลากิจ"}
-                  </span>
-                  <h2>{item.profiles?.full_name ?? "ไม่พบชื่อสมาชิก"}</h2>
-                  <p>{item.profiles?.position || item.profiles?.role}</p>
+                <div className={styles.requester}>
+                  <RequestProfileAvatar
+                    className={styles.requesterAvatar}
+                    fileId={item.profiles?.profile_image_file_id}
+                    name={item.profiles?.full_name}
+                  />
+
+                  <div>
+                    <span>
+                      {item.leave_type === "sick" ? "ลาป่วย" : "ลากิจ"}
+                    </span>
+                    <h2>{item.profiles?.full_name ?? "ไม่พบชื่อสมาชิก"}</h2>
+                    <p>{item.profiles?.position || item.profiles?.role}</p>
+                  </div>
                 </div>
                 <strong>{item.total_work_days} วันทำการ</strong>
               </div>

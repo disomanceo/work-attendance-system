@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
 import styles from "./LeaveReviewPopup.module.css";
 
 type PendingOfficialDuty = {
@@ -15,6 +16,12 @@ type PendingOfficialDuty = {
   attachment_file_url: string | null;
   attachment_file_name: string | null;
   status: "pending";
+  profiles?: {
+    full_name: string;
+    position: string | null;
+    role: string;
+    profile_image_file_id: string | null;
+  } | null;
 };
 
 type Props = {
@@ -303,9 +310,11 @@ export default function OfficialDutyReviewPopup({ role }: Props) {
 
                 <article className={styles.leaveCard}>
                   <div className={styles.personRow}>
-                    <div className={styles.avatar}>
-                      {current.full_name?.trim().charAt(0) || "U"}
-                    </div>
+                    <RequestProfileAvatar
+                      className={styles.avatar}
+                      fileId={current.profiles?.profile_image_file_id}
+                      name={current.full_name}
+                    />
 
                     <div className={styles.personInfo}>
                       <strong>

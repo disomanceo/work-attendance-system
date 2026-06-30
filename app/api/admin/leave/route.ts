@@ -201,7 +201,8 @@ export async function GET(request: Request) {
         profiles!leave_requests_user_id_fkey (
           full_name,
           position,
-          role
+          role,
+          profile_image_file_id
         )
       `
       )
@@ -267,7 +268,8 @@ export async function PATCH(request: Request) {
         profiles!leave_requests_user_id_fkey (
           full_name,
           position,
-          role
+          role,
+          profile_image_file_id
         )
       `
       )

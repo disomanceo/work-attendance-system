@@ -23,7 +23,17 @@ export async function GET(request: Request) {
 
     const { data, error } = await auth.admin
       .from("official_duty_requests")
-      .select("*")
+      .select(
+        `
+        *,
+        profiles!official_duty_requests_user_id_fkey (
+          full_name,
+          position,
+          role,
+          profile_image_file_id
+        )
+      `
+      )
       .order("created_at", { ascending: false });
 
     if (error) throw new Error("โหลดคำขอไปราชการไม่สำเร็จ");

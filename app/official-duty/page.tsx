@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
 import styles from "./official-duty.module.css";
 
 type Profile = {
@@ -32,6 +33,12 @@ type OfficialDutyRequest = {
   reviewer_name: string | null;
   reviewed_at: string | null;
   created_at: string;
+  profiles?: {
+    full_name: string;
+    position: string | null;
+    role: string;
+    profile_image_file_id: string | null;
+  } | null;
 };
 
 type ApiResponse = {
@@ -562,9 +569,17 @@ export default function OfficialDutyPage() {
               {visibleReviewRequests.map((request) => (
                 <article className={styles.reviewCard} key={request.id}>
                   <div className={styles.reviewCardTop}>
-                    <div>
-                      <h3>{request.full_name || "ไม่ระบุชื่อ"}</h3>
-                      <p>{request.position || "ไม่ระบุตำแหน่ง"}</p>
+                    <div className={styles.requester}>
+                      <RequestProfileAvatar
+                        className={styles.requesterAvatar}
+                        fileId={request.profiles?.profile_image_file_id}
+                        name={request.full_name}
+                      />
+
+                      <div>
+                        <h3>{request.full_name || "ไม่ระบุชื่อ"}</h3>
+                        <p>{request.position || "ไม่ระบุตำแหน่ง"}</p>
+                      </div>
                     </div>
 
                     <span
