@@ -345,7 +345,7 @@ export default function AdminAttendancePage() {
           return;
         }
         if (response.status === 403) {
-          router.replace("/dashboard");
+          router.replace("/attendance");
           return;
         }
         throw new Error(result.message || "ไม่สามารถโหลดประวัติการลงเวลาได้");
