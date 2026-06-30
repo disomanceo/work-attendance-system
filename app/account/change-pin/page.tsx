@@ -84,8 +84,8 @@ export default function ChangePinPage() {
           <h1>เปลี่ยน PIN</h1>
         </div>
 
-        <button type="button" onClick={() => router.push("/dashboard")}>
-          กลับ Dashboard
+        <button type="button" onClick={() => router.push("/attendance")}>
+          กลับหน้าหลัก
         </button>
       </header>
 
