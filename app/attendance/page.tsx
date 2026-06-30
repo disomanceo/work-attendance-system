@@ -68,7 +68,19 @@ type TodayLeave = {
 type TodayLeaveResponse = {
   ok: boolean;
   message?: string;
-  leave?: TodayLeave | null;
+  blocked?: boolean;
+  leave?: {
+    id: string;
+    leave_type: "sick" | "personal" | string;
+    start_date: string;
+    end_date: string;
+    status: "pending" | "approved" | string;
+  } | null;
+  officialDuty?: {
+    id: string;
+    duty_date: string;
+    status: "pending" | "approved" | string;
+  } | null;
 };
 
 type MonthlySummary = {
@@ -146,6 +158,10 @@ function getLeaveDisplayLabel(leave: TodayLeave) {
   };
 
   return labels[leave.leave_type] ?? "การลา";
+}
+
+function getTodayStatusDetailHref(status: TodayLeave) {
+  return status.leave_type === "official_duty" ? "/official-duty" : "/leave";
 }
 
 function calculateDistanceMeters(
@@ -255,12 +271,17 @@ export default function AttendancePage() {
         throw new Error("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่");
       }
 
-      const response = await fetch("/api/leave/today", {
+      const response = await fetch(
+        `/api/attendance/day-status?date=${encodeURIComponent(
+          getBangkokDate()
+        )}`,
+        {
         headers: {
           Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
-      });
+        }
+      );
 
       const result = (await response.json()) as TodayLeaveResponse;
 
@@ -270,9 +291,36 @@ export default function AttendancePage() {
         );
       }
 
-      const leave = result.leave ?? null;
-      setTodayLeave(leave);
-      return leave;
+      let todayStatus: TodayLeave | null = null;
+
+      if (result.leave) {
+        todayStatus = {
+          id: result.leave.id,
+          leave_type: result.leave.leave_type,
+          start_date: result.leave.start_date,
+          end_date: result.leave.end_date,
+          status: result.leave.status,
+          label: getLeaveDisplayLabel({
+            ...result.leave,
+            label: "",
+            message: "",
+          }),
+          message: result.message || "",
+        };
+      } else if (result.officialDuty) {
+        todayStatus = {
+          id: result.officialDuty.id,
+          leave_type: "official_duty",
+          start_date: result.officialDuty.duty_date,
+          end_date: result.officialDuty.duty_date,
+          status: result.officialDuty.status,
+          label: "ไปราชการ",
+          message: result.message || "",
+        };
+      }
+
+      setTodayLeave(todayStatus);
+      return todayStatus;
     },
     [supabase]
   );
@@ -757,8 +805,13 @@ export default function AttendancePage() {
                 <span>{todayLeave.status === "approved" ? "✓" : "◷"}</span>
                 <h2>{getLeaveDisplayLabel(todayLeave)}</h2>
                 <p>{todayLeave.message}</p>
-                <button type="button" onClick={() => router.push("/leave")}>
-                  ดูรายละเอียดการลา
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(getTodayStatusDetailHref(todayLeave))
+                  }
+                >
+                  ดูรายละเอียด
                 </button>
               </div>
             ) : !record?.check_in_at ? (
