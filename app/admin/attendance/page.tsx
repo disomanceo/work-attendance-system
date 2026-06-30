@@ -987,8 +987,8 @@ export default function AdminAttendancePage() {
             <h1>รายงานการมาปฏิบัติราชการประจำวัน</h1>
             <p className={styles.subtitle}>ตรวจสอบสถานะการมาปฏิบัติราชการของบุคลากรโรงเรียนวัดไผ่มุ้ง</p>
           </div>
-          <button type="button" className={styles.backButton} onClick={() => router.push("/dashboard")}>
-            กลับ Dashboard
+          <button type="button" className={styles.backButton} onClick={() => router.push("/attendance")}>
+            กลับหน้าหลัก
           </button>
         </header>
 
