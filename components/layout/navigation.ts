@@ -43,6 +43,12 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/official-duty"),
     },
     {
+      label: "บันทึกข้อความ",
+      icon: "▦",
+      href: "/memo",
+      match: (value) => value.startsWith("/memo"),
+    },
+    {
       label: "ข้อมูลส่วนตัว",
       icon: "♙",
       href: "/account/profile",
@@ -63,6 +69,12 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
         icon: "▤",
         href: "/admin/leave",
         match: (value) => value.startsWith("/admin/leave"),
+      },
+      {
+        label: "พิจารณาบันทึกข้อความ",
+        icon: "▦",
+        href: "/admin/memo",
+        match: (value) => value.startsWith("/admin/memo"),
       },
       {
         label: "ตั้งค่า",
