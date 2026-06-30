@@ -19,6 +19,16 @@ type MemoRequest = {
   created_at: string;
   submitted_at: string | null;
   reviewed_at?: string | null;
+  logs?: MemoLog[];
+};
+
+type MemoLog = {
+  id: string;
+  actor_name: string | null;
+  from_status: string | null;
+  to_status: string;
+  note: string | null;
+  created_at: string;
 };
 
 type ApiResponse = {
@@ -63,6 +73,16 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "ไม่อนุมัติ" },
   { value: "draft", label: "ฉบับร่าง" },
 ];
+
+const TIMELINE_LABELS: Record<string, string> = {
+  draft: "บันทึกฉบับร่าง",
+  pending: "ส่งให้ผู้บริหารพิจารณา",
+  revision: "ส่งกลับแก้ไข",
+  approved: "อนุมัติ",
+  acknowledged: "รับทราบ",
+  rejected: "ไม่อนุมัติ",
+  cancelled: "ยกเลิก",
+};
 
 const PAGE_SIZE = 10;
 
@@ -702,24 +722,27 @@ export default function MemoPage() {
 
             <div className={styles.timeline}>
               <h3>ประวัติการพิจารณา</h3>
-              <ol>
-                <li>
-                  <span />
-                  <p>
-                    {selectedRequest
-                      ? `${formatThaiDateTime(
-                          selectedRequest.submitted_at
-                        )} ส่งเรื่องให้ผู้บริหาร`
-                      : "ยังไม่มีรายการ"}
-                  </p>
-                </li>
-                {selectedRequest?.review_note && (
-                  <li>
-                    <span />
-                    <p>{selectedRequest.review_note}</p>
-                  </li>
-                )}
-              </ol>
+              {selectedRequest?.logs?.length ? (
+                <ol>
+                  {selectedRequest.logs.map((log) => (
+                    <li key={log.id}>
+                      <span />
+                      <p>
+                        <strong>
+                          {formatThaiDateTime(log.created_at)}{" "}
+                          {TIMELINE_LABELS[log.to_status] ?? log.to_status}
+                        </strong>
+                        <small>
+                          {log.actor_name ? `โดย ${log.actor_name}` : ""}
+                          {log.note ? ` · ${log.note}` : ""}
+                        </small>
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className={styles.empty}>ยังไม่มีประวัติการดำเนินการ</p>
+              )}
             </div>
           </section>
         </section>

@@ -550,6 +550,19 @@
   line-height: 1.5;
 }
 
+.timeline strong,
+.timeline small {
+  display: block;
+}
+
+.timeline strong {
+  color: #25344d;
+}
+
+.timeline small {
+  color: #667085;
+}
+
 .mobileTabs {
   display: none;
 }

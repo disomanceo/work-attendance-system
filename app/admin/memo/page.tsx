@@ -18,6 +18,16 @@ type MemoRequest = {
   submitted_at: string | null;
   reviewed_at: string | null;
   review_note: string | null;
+  logs?: MemoLog[];
+};
+
+type MemoLog = {
+  id: string;
+  actor_name: string | null;
+  from_status: string | null;
+  to_status: string;
+  note: string | null;
+  created_at: string;
 };
 
 type ReviewAction = "approve" | "acknowledge" | "reject" | "send_back";
@@ -45,6 +55,16 @@ const FILTERS = [
   { value: "revision", label: "ส่งกลับแก้ไข" },
   { value: "rejected", label: "ไม่อนุมัติ" },
 ];
+
+const TIMELINE_LABELS: Record<string, string> = {
+  draft: "บันทึกฉบับร่าง",
+  pending: "ส่งให้ผู้บริหารพิจารณา",
+  revision: "ส่งกลับแก้ไข",
+  approved: "อนุมัติ",
+  acknowledged: "รับทราบ",
+  rejected: "ไม่อนุมัติ",
+  cancelled: "ยกเลิก",
+};
 
 function formatThaiDateTime(value: string | null) {
   if (!value) return "-";
@@ -319,6 +339,31 @@ export default function AdminMemoPage() {
                   </div>
                 )}
               </dl>
+
+              <div className={styles.timeline}>
+                <h3>ประวัติการดำเนินการ</h3>
+                {selectedRequest.logs?.length ? (
+                  <ol>
+                    {selectedRequest.logs.map((log) => (
+                      <li key={log.id}>
+                        <span />
+                        <p>
+                          <strong>
+                            {formatThaiDateTime(log.created_at)}{" "}
+                            {TIMELINE_LABELS[log.to_status] ?? log.to_status}
+                          </strong>
+                          <small>
+                            {log.actor_name ? `โดย ${log.actor_name}` : ""}
+                            {log.note ? ` · ${log.note}` : ""}
+                          </small>
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className={styles.empty}>ยังไม่มีประวัติการดำเนินการ</p>
+                )}
+              </div>
 
               {selectedRequest.status === "pending" ? (
                 <div className={styles.reviewBox}>

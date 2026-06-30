@@ -5,6 +5,7 @@ import {
   markDocumentNumberIssue,
 } from "@/lib/document-numbers";
 import { notifyMemoSubmitted } from "@/lib/line/memo-notifications";
+import { loadMemoLogsByRequest } from "@/lib/memo-logs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -183,9 +184,18 @@ export async function GET(request: Request) {
       throw new Error(error.message);
     }
 
+    const requests = data ?? [];
+    const logsByRequest = await loadMemoLogsByRequest(
+      auth.admin,
+      requests.map((item) => item.id)
+    );
+
     return NextResponse.json({
       ok: true,
-      requests: data ?? [],
+      requests: requests.map((item) => ({
+        ...item,
+        logs: logsByRequest.get(item.id) ?? [],
+      })),
     });
   } catch (error) {
     return NextResponse.json(

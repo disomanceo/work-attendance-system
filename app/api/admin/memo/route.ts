@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { notifyMemoReviewed } from "@/lib/line/memo-notifications";
+import { loadMemoLogsByRequest } from "@/lib/memo-logs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -159,11 +160,20 @@ export async function GET(request: Request) {
       throw new Error(error.message);
     }
 
+    const requests = data ?? [];
+    const logsByRequest = await loadMemoLogsByRequest(
+      auth.admin,
+      requests.map((item) => item.id)
+    );
+
     return NextResponse.json({
       ok: true,
-      requests: data ?? [],
+      requests: requests.map((item) => ({
+        ...item,
+        logs: logsByRequest.get(item.id) ?? [],
+      })),
       pendingCount:
-        (data ?? []).filter((item) => item.status === "pending").length,
+        requests.filter((item) => item.status === "pending").length,
     });
   } catch (error) {
     return NextResponse.json(
