@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+type ResetMode = "attendance_only" | "full_day";
+
+type ResetSummary = {
+  attendanceCount: number;
+  leaveCount: number;
+  officialDutyCount: number;
+};
 
 function getConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !publishableKey || !serviceRoleKey) {
@@ -26,6 +33,10 @@ function getAccessToken(request: Request) {
 
 function isValidDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function parseResetMode(value: unknown): ResetMode {
+  return value === "full_day" ? "full_day" : "attendance_only";
 }
 
 async function requireDirector(request: Request) {
@@ -56,16 +67,12 @@ async function requireDirector(request: Request) {
     };
   }
 
-  const authClient = createClient(
-    config.supabaseUrl,
-    config.publishableKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const authClient = createClient(config.supabaseUrl, config.publishableKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 
   const {
     data: { user },
@@ -85,16 +92,12 @@ async function requireDirector(request: Request) {
     };
   }
 
-  const adminClient = createClient(
-    config.supabaseUrl,
-    config.serviceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const adminClient = createClient(config.supabaseUrl, config.serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
@@ -127,6 +130,50 @@ async function requireDirector(request: Request) {
   };
 }
 
+async function countByDate(
+  adminClient: SupabaseClient,
+  workDate: string
+): Promise<ResetSummary> {
+  const [attendanceResult, leaveResult, officialDutyResult] =
+    await Promise.all([
+      adminClient
+        .from("attendance_records")
+        .select("id", { count: "exact", head: true })
+        .eq("work_date", workDate),
+      adminClient
+        .from("leave_requests")
+        .select("id", { count: "exact", head: true })
+        .lte("start_date", workDate)
+        .gte("end_date", workDate),
+      adminClient
+        .from("official_duty_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("duty_date", workDate),
+    ]);
+
+  if (attendanceResult.error) {
+    throw new Error(
+      `ตรวจสอบประวัติลงเวลาไม่สำเร็จ: ${attendanceResult.error.message}`
+    );
+  }
+
+  if (leaveResult.error) {
+    throw new Error(`ตรวจสอบใบลาไม่สำเร็จ: ${leaveResult.error.message}`);
+  }
+
+  if (officialDutyResult.error) {
+    throw new Error(
+      `ตรวจสอบใบไปราชการไม่สำเร็จ: ${officialDutyResult.error.message}`
+    );
+  }
+
+  return {
+    attendanceCount: attendanceResult.count ?? 0,
+    leaveCount: leaveResult.count ?? 0,
+    officialDutyCount: officialDutyResult.count ?? 0,
+  };
+}
+
 export async function GET(request: Request) {
   const auth = await requireDirector(request);
 
@@ -144,28 +191,29 @@ export async function GET(request: Request) {
     );
   }
 
-  const { count, error } = await auth.adminClient
-    .from("attendance_records")
-    .select("id", { count: "exact", head: true })
-    .eq("work_date", workDate);
+  try {
+    const summary = await countByDate(auth.adminClient, workDate);
 
-  if (error) {
+    return NextResponse.json({
+      ok: true,
+      date: workDate,
+      count: summary.attendanceCount,
+      ...summary,
+    });
+  } catch (error) {
     console.error("Count attendance reset records error:", error);
 
     return NextResponse.json(
       {
         ok: false,
-        message: "ไม่สามารถตรวจสอบจำนวนข้อมูลได้",
+        message:
+          error instanceof Error
+            ? error.message
+            : "ไม่สามารถตรวจสอบจำนวนข้อมูลได้",
       },
       { status: 500 }
     );
   }
-
-  return NextResponse.json({
-    ok: true,
-    date: workDate,
-    count: count ?? 0,
-  });
 }
 
 export async function DELETE(request: Request) {
@@ -178,12 +226,14 @@ export async function DELETE(request: Request) {
   let body: {
     date?: string;
     confirmation?: string;
+    mode?: ResetMode;
   };
 
   try {
     body = (await request.json()) as {
       date?: string;
       confirmation?: string;
+      mode?: ResetMode;
     };
   } catch {
     return NextResponse.json(
@@ -194,6 +244,7 @@ export async function DELETE(request: Request) {
 
   const workDate = body.date?.trim() ?? "";
   const confirmation = body.confirmation?.trim() ?? "";
+  const mode = parseResetMode(body.mode);
 
   if (!isValidDate(workDate)) {
     return NextResponse.json(
@@ -202,63 +253,135 @@ export async function DELETE(request: Request) {
     );
   }
 
-  if (confirmation !== workDate) {
+  if (confirmation !== "ยืนยัน") {
     return NextResponse.json(
       {
         ok: false,
-        message: "การยืนยันวันที่ไม่ตรงกับวันที่ที่ต้องการรีเซ็ต",
+        message: 'กรุณาพิมพ์คำว่า "ยืนยัน" ให้ตรง',
       },
       { status: 400 }
     );
   }
 
-  const { count, error: countError } = await auth.adminClient
-    .from("attendance_records")
-    .select("id", { count: "exact", head: true })
-    .eq("work_date", workDate);
+  try {
+    const summary = await countByDate(auth.adminClient, workDate);
+    const total =
+      mode === "full_day"
+        ? summary.attendanceCount +
+          summary.leaveCount +
+          summary.officialDutyCount
+        : summary.attendanceCount;
 
-  if (countError) {
-    console.error("Count reset records error:", countError);
+    if (total === 0) {
+      return NextResponse.json({
+        ok: true,
+        deletedCount: 0,
+        deleted: {
+          attendance: 0,
+          leave: 0,
+          officialDuty: 0,
+        },
+        message: "ไม่พบข้อมูลในวันที่เลือก",
+      });
+    }
 
-    return NextResponse.json(
-      {
-        ok: false,
-        message: "ไม่สามารถตรวจสอบข้อมูลก่อนรีเซ็ตได้",
-      },
-      { status: 500 }
-    );
-  }
+    let deletedLeave = 0;
+    let deletedOfficialDuty = 0;
 
-  const total = count ?? 0;
+    if (mode === "full_day") {
+      const { data: leaves, error: leaveListError } = await auth.adminClient
+        .from("leave_requests")
+        .select("id, document_number_issue_id")
+        .lte("start_date", workDate)
+        .gte("end_date", workDate);
 
-  if (total === 0) {
+      if (leaveListError) {
+        throw new Error(`โหลดใบลาที่ต้องลบไม่สำเร็จ: ${leaveListError.message}`);
+      }
+
+      const documentIssueIds = (leaves ?? [])
+        .map((leave) => leave.document_number_issue_id)
+        .filter((id): id is string => Boolean(id));
+
+      const { error: officialDutyDeleteError, count: officialDutyDeleted } =
+        await auth.adminClient
+          .from("official_duty_requests")
+          .delete({ count: "exact" })
+          .eq("duty_date", workDate);
+
+      if (officialDutyDeleteError) {
+        throw new Error(
+          `ลบใบไปราชการไม่สำเร็จ: ${officialDutyDeleteError.message}`
+        );
+      }
+
+      deletedOfficialDuty = officialDutyDeleted ?? 0;
+
+      const { error: leaveDeleteError, count: leaveDeleted } =
+        await auth.adminClient
+          .from("leave_requests")
+          .delete({ count: "exact" })
+          .lte("start_date", workDate)
+          .gte("end_date", workDate);
+
+      if (leaveDeleteError) {
+        throw new Error(`ลบใบลาไม่สำเร็จ: ${leaveDeleteError.message}`);
+      }
+
+      deletedLeave = leaveDeleted ?? 0;
+
+      if (documentIssueIds.length > 0) {
+        const { error: issueError } = await auth.adminClient
+          .from("document_number_issues")
+          .update({
+            issue_status: "CANCELLED",
+            failure_reason: `รีเซ็ตข้อมูลทั้งวัน ${workDate}`,
+          })
+          .in("id", documentIssueIds);
+
+        if (issueError) {
+          console.error("Update reset document number issues error:", issueError);
+        }
+      }
+    }
+
+    const { error: deleteError, count: attendanceDeleted } =
+      await auth.adminClient
+        .from("attendance_records")
+        .delete({ count: "exact" })
+        .eq("work_date", workDate);
+
+    if (deleteError) {
+      throw new Error(`รีเซ็ตประวัติลงเวลาไม่สำเร็จ: ${deleteError.message}`);
+    }
+
+    const deletedAttendance = attendanceDeleted ?? 0;
+
     return NextResponse.json({
       ok: true,
-      deletedCount: 0,
-      message: "ไม่พบข้อมูลการลงเวลาในวันที่เลือก",
+      deletedCount: deletedAttendance + deletedLeave + deletedOfficialDuty,
+      deleted: {
+        attendance: deletedAttendance,
+        leave: deletedLeave,
+        officialDuty: deletedOfficialDuty,
+      },
+      message:
+        mode === "full_day"
+          ? `รีเซ็ตข้อมูลทั้งวันแล้ว: ลงเวลา ${deletedAttendance} รายการ, ใบลา ${deletedLeave} รายการ, ไปราชการ ${deletedOfficialDuty} รายการ`
+          : `รีเซ็ตประวัติการลงเวลา ${deletedAttendance} รายการเรียบร้อยแล้ว`,
     });
-  }
-
-  const { error: deleteError } = await auth.adminClient
-    .from("attendance_records")
-    .delete()
-    .eq("work_date", workDate);
-
-  if (deleteError) {
-    console.error("Reset attendance history error:", deleteError);
+  } catch (error) {
+    console.error("Reset attendance history error:", error);
 
     return NextResponse.json(
       {
         ok: false,
-        message: "ไม่สามารถรีเซ็ตประวัติการลงเวลาได้",
+        message:
+          error instanceof Error
+            ? error.message
+            : "ไม่สามารถรีเซ็ตข้อมูลได้",
       },
       { status: 500 }
     );
   }
-
-  return NextResponse.json({
-    ok: true,
-    deletedCount: total,
-    message: `รีเซ็ตประวัติการลงเวลา ${total} รายการเรียบร้อยแล้ว`,
-  });
 }

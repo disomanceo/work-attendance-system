@@ -9,6 +9,12 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import {
+  getCachedProfileAssetUrl,
+  getCachedProfileImageUrl,
+  setCachedProfileAssetUrl,
+  setCachedProfileImageUrl,
+} from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./profile.module.css";
 
@@ -132,9 +138,6 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    let profileObjectUrl = "";
-    let signatureObjectUrl = "";
-
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -160,43 +163,27 @@ export default function ProfilePage() {
       const accessToken = session?.access_token;
       if (!accessToken) return;
 
-      async function loadAsset(fileId: string, setter: (value: string) => void) {
-        const response = await fetch(
-          `/api/account/profile-assets?fileId=${encodeURIComponent(fileId)}`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            cache: "no-store",
-          }
-        );
-
-        if (!response.ok) return "";
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setter(url);
-        return url;
-      }
-
       if (profileData.profile_image_file_id) {
-        profileObjectUrl = await loadAsset(
+        const cachedProfileUrl = await getCachedProfileImageUrl(
           profileData.profile_image_file_id,
-          setProfileUrl
+          accessToken
         );
+
+        setProfileUrl(cachedProfileUrl);
       }
 
       if (profileData.signature_file_id) {
-        signatureObjectUrl = await loadAsset(
+        const cachedSignatureUrl = await getCachedProfileAssetUrl(
+          "signature",
           profileData.signature_file_id,
-          setSignatureUrl
+          accessToken
         );
+
+        setSignatureUrl(cachedSignatureUrl);
       }
     }
 
     void load();
-
-    return () => {
-      if (profileObjectUrl) URL.revokeObjectURL(profileObjectUrl);
-      if (signatureObjectUrl) URL.revokeObjectURL(signatureObjectUrl);
-    };
   }, [router, supabase]);
 
   async function uploadFile(file: File, type: AssetType) {
@@ -211,10 +198,8 @@ export default function ProfilePage() {
 
       const immediateUrl = URL.createObjectURL(file);
       if (type === "profile") {
-        if (profileUrl) URL.revokeObjectURL(profileUrl);
         setProfileUrl(immediateUrl);
       } else {
-        if (signatureUrl) URL.revokeObjectURL(signatureUrl);
         setSignatureUrl(immediateUrl);
       }
 
@@ -233,6 +218,12 @@ export default function ProfilePage() {
       const result = await response.json();
       if (!response.ok || !result.ok) {
         throw new Error(result.message || "อัปโหลดไฟล์ไม่สำเร็จ");
+      }
+
+      if (type === "profile") {
+        setCachedProfileImageUrl(result.fileId, immediateUrl);
+      } else {
+        setCachedProfileAssetUrl("signature", result.fileId, immediateUrl);
       }
 
       setProfile((current) => {

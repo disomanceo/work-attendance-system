@@ -1,16 +1,40 @@
-const profileImageUrlCache = new Map<string, string>();
-const pendingProfileImageRequests = new Map<string, Promise<string>>();
+type ProfileAssetType = "profile" | "signature";
 
-export async function getCachedProfileImageUrl(
+const profileAssetUrlCache = new Map<string, string>();
+const pendingProfileAssetRequests = new Map<string, Promise<string>>();
+
+function getAssetCacheKey(
+  assetType: ProfileAssetType,
+  fileId: string | null | undefined
+) {
+  return fileId ? `${assetType}:${fileId}` : "";
+}
+
+export function setCachedProfileAssetUrl(
+  assetType: ProfileAssetType,
+  fileId: string | null | undefined,
+  objectUrl: string
+) {
+  const cacheKey = getAssetCacheKey(assetType, fileId);
+
+  if (!cacheKey || !objectUrl) return;
+
+  profileAssetUrlCache.set(cacheKey, objectUrl);
+}
+
+export async function getCachedProfileAssetUrl(
+  assetType: ProfileAssetType,
   fileId: string | null | undefined,
   accessToken: string | null | undefined
 ) {
-  if (!fileId || !accessToken) return "";
+  const cacheKey = getAssetCacheKey(assetType, fileId);
 
-  const cachedUrl = profileImageUrlCache.get(fileId);
+  if (!cacheKey || !fileId || !accessToken) return "";
+
+  const cachedUrl = profileAssetUrlCache.get(cacheKey);
   if (cachedUrl) return cachedUrl;
 
-  const pendingRequest = pendingProfileImageRequests.get(fileId);
+  const pendingRequest = pendingProfileAssetRequests.get(cacheKey);
   if (pendingRequest) return pendingRequest;
 
   const request = fetch(
@@ -27,13 +51,27 @@ export async function getCachedProfileImageUrl(
 
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
-      profileImageUrlCache.set(fileId, objectUrl);
+      profileAssetUrlCache.set(cacheKey, objectUrl);
       return objectUrl;
     })
     .finally(() => {
-      pendingProfileImageRequests.delete(fileId);
+      pendingProfileAssetRequests.delete(cacheKey);
     });
 
-  pendingProfileImageRequests.set(fileId, request);
+  pendingProfileAssetRequests.set(cacheKey, request);
   return request;
+}
+
+export function setCachedProfileImageUrl(
+  fileId: string | null | undefined,
+  objectUrl: string
+) {
+  setCachedProfileAssetUrl("profile", fileId, objectUrl);
+}
+
+export async function getCachedProfileImageUrl(
+  fileId: string | null | undefined,
+  accessToken: string | null | undefined
+) {
+  return getCachedProfileAssetUrl("profile", fileId, accessToken);
 }

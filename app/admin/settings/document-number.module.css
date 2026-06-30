@@ -311,3 +311,154 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ORCHID DOCUMENT SETTINGS START */
+.documentNumberSection {
+  width: 100%;
+  max-width: none;
+  margin: 16px 0 0;
+  padding: 20px;
+  border: 1px solid rgba(106, 44, 193, 0.12);
+  border-radius: 14px;
+  color: #21143f;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 16px 40px rgba(66, 27, 122, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.documentNumberHeader {
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.documentNumberHeader span {
+  color: #6a2cc1;
+}
+
+.documentNumberHeader h2,
+.seriesTitle h3,
+.modal h3 {
+  color: #32106b;
+}
+
+.documentNumberHeader p,
+.seriesTitle small,
+.seriesDetails span,
+.loading {
+  color: #746782;
+}
+
+.documentNumberHeader > button {
+  min-height: 40px;
+  border-color: rgba(106, 44, 193, 0.18);
+  border-radius: 10px;
+  color: #4b168f;
+  background: #f3eaff;
+}
+
+.seriesList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.seriesCard {
+  border-color: rgba(106, 44, 193, 0.1);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ffffff, #fbf8ff);
+  box-shadow: 0 8px 22px rgba(66, 27, 122, 0.05);
+}
+
+.seriesDetails > div {
+  background: #f8f3ff;
+}
+
+.seriesDetails strong {
+  color: #2f155e;
+}
+
+.liveBadge {
+  color: #17603f;
+  background: #dcfce7;
+}
+
+.testBadge {
+  color: #8a5a00;
+  background: #fff4cf;
+}
+
+.archivedBadge {
+  color: #6f647d;
+  background: #eee7f8;
+}
+
+.editButton {
+  border-color: rgba(106, 44, 193, 0.16);
+  color: #4b168f;
+  background: #ffffff;
+}
+
+.liveButton,
+.modalActions button:last-child {
+  background: linear-gradient(135deg, #9d4edd, #6a2cc1);
+}
+
+.modalOverlay {
+  background: rgba(28, 14, 54, 0.48);
+}
+
+.modal {
+  border-color: rgba(106, 44, 193, 0.14);
+  color: #21143f;
+  background: #ffffff;
+}
+
+.modal label > span {
+  color: #59476d;
+}
+
+.modal input {
+  color-scheme: light;
+  border-color: rgba(106, 44, 193, 0.16);
+  color: #24153f;
+  background: #ffffff;
+}
+
+.modal input:focus {
+  border-color: #9d4edd;
+  box-shadow: 0 0 0 4px rgba(157, 78, 221, 0.12);
+}
+
+.numberPreview {
+  color: #32106b;
+  background: #f3eaff;
+}
+
+.modalActions button:first-child {
+  border-color: rgba(106, 44, 193, 0.14);
+  color: #59476d;
+  background: #ffffff;
+}
+
+.successMessage {
+  color: #17603f;
+  background: rgba(232, 249, 239, 0.92);
+}
+
+.errorMessage {
+  color: #a23548;
+  background: rgba(255, 241, 242, 0.94);
+}
+
+.warningMessage {
+  color: #8a5a00;
+  background: #fff4cf;
+}
+
+@media (max-width: 760px) {
+  .seriesList {
+    grid-template-columns: 1fr;
+  }
+}
+/* ORCHID DOCUMENT SETTINGS END */

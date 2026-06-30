@@ -33,6 +33,14 @@ type ApiResponse = {
   settings?: AttendanceSettings;
 };
 
+type ResetMode = "attendance_only" | "full_day";
+
+type ResetSummary = {
+  attendanceCount: number;
+  leaveCount: number;
+  officialDutyCount: number;
+};
+
 const ROLE_ROWS: Array<{
   key: RoleKey;
   title: string;
@@ -95,7 +103,10 @@ export default function DirectorSettingsPage() {
   const [messageType, setMessageType] =
     useState<"success" | "error">("success");
   const [resetDate, setResetDate] = useState("");
-  const [resetCount, setResetCount] = useState<number | null>(null);
+  const [resetMode, setResetMode] =
+    useState<ResetMode>("attendance_only");
+  const [resetSummary, setResetSummary] =
+    useState<ResetSummary | null>(null);
   const [checkingReset, setCheckingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -276,6 +287,9 @@ export default function DirectorSettingsPage() {
       const result = (await response.json()) as {
         ok: boolean;
         count?: number;
+        attendanceCount?: number;
+        leaveCount?: number;
+        officialDutyCount?: number;
         message?: string;
       };
 
@@ -285,12 +299,23 @@ export default function DirectorSettingsPage() {
         );
       }
 
-      const count = result.count ?? 0;
-      setResetCount(count);
+      const summary = {
+        attendanceCount: result.attendanceCount ?? result.count ?? 0,
+        leaveCount: result.leaveCount ?? 0,
+        officialDutyCount: result.officialDutyCount ?? 0,
+      };
+      const total =
+        resetMode === "full_day"
+          ? summary.attendanceCount +
+            summary.leaveCount +
+            summary.officialDutyCount
+          : summary.attendanceCount;
 
-      if (count === 0) {
+      setResetSummary(summary);
+
+      if (total === 0) {
         setMessageType("error");
-        setMessage("ไม่พบประวัติการลงเวลาในวันที่เลือก");
+        setMessage("ไม่พบข้อมูลที่ต้องรีเซ็ตในวันที่เลือก");
         return;
       }
 
@@ -309,11 +334,9 @@ export default function DirectorSettingsPage() {
   }
 
   async function confirmResetHistory() {
-    if (resetConfirmation !== resetDate) {
+    if (resetConfirmation.trim() !== "ยืนยัน") {
       setMessageType("error");
-      setMessage(
-        `กรุณาพิมพ์วันที่ ${resetDate} ให้ตรงเพื่อยืนยัน`
-      );
+      setMessage('กรุณาพิมพ์คำว่า "ยืนยัน" ให้ตรง');
       return;
     }
 
@@ -341,6 +364,7 @@ export default function DirectorSettingsPage() {
           body: JSON.stringify({
             date: resetDate,
             confirmation: resetConfirmation,
+            mode: resetMode,
           }),
         }
       );
@@ -363,7 +387,7 @@ export default function DirectorSettingsPage() {
         result.message ||
           "รีเซ็ตประวัติการลงเวลาเรียบร้อยแล้ว"
       );
-      setResetCount(null);
+      setResetSummary(null);
       setResetConfirmation("");
       setShowResetConfirm(false);
     } catch (error) {
@@ -437,15 +461,38 @@ export default function DirectorSettingsPage() {
     );
   }
 
+  const gpsSummary = settings.gps_enabled
+    ? `เปิดใช้งาน / ${settings.allowed_radius_meters} เมตร`
+    : "ปิดใช้งาน";
+  const coordinateSummary =
+    settings.latitude !== null && settings.longitude !== null
+      ? `${settings.latitude}, ${settings.longitude}`
+      : "ยังไม่ได้กำหนดพิกัด";
+  const fiscalSummary = settings.active_fiscal_year
+    ? `พ.ศ. ${settings.active_fiscal_year}`
+    : "ยังไม่ได้กำหนด";
+  const fiscalRangeSummary =
+    settings.fiscal_year_start_date && settings.fiscal_year_end_date
+      ? `${settings.fiscal_year_start_date} - ${settings.fiscal_year_end_date}`
+      : "ยังไม่ได้กำหนดช่วงวันที่";
+  const resetTotal =
+    resetSummary === null
+      ? 0
+      : resetMode === "full_day"
+      ? resetSummary.attendanceCount +
+        resetSummary.leaveCount +
+        resetSummary.officialDutyCount
+      : resetSummary.attendanceCount;
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <span>DIRECTOR SETTINGS</span>
-          <h1>ตั้งค่าการลงเวลา</h1>
+          <span>SYSTEM SETTINGS</span>
+          <h1>ตั้งค่าระบบ</h1>
           <p>
-            กำหนดตำแหน่งโรงเรียน การตรวจ GPS
-            และเวลาปฏิบัติงานของแต่ละตำแหน่ง
+            จัดกลุ่มการตั้งค่าที่จำเป็นของระบบลงเวลา
+            สิทธิ์การลา เลขเอกสาร และข้อมูลที่มีผลกับรายงาน
           </p>
         </div>
 
@@ -469,147 +516,151 @@ export default function DirectorSettingsPage() {
         </div>
       )}
 
-      <form className={styles.settingsGrid} onSubmit={saveSettings}>
-        <section className={`${styles.card} ${styles.gpsCard}`}>
-          <div className={styles.cardHeading}>
-            <div>
-              <h2>การตรวจจับตำแหน่ง GPS</h2>
-              <p>
-                เปิดเพื่อตรวจระยะห่างจากพิกัดโรงเรียนก่อนบันทึกเวลา
-              </p>
-            </div>
+      <div className={styles.settingsWorkspace}>
+        <div className={styles.primaryColumn}>
+          <form className={styles.settingsGrid} onSubmit={saveSettings}>
+            <section className={`${styles.card} ${styles.gpsCard}`}>
+              <div className={styles.cardHeading}>
+                <div>
+                  <span className={styles.cardIcon}>⌖</span>
+                  <h2>ตำแหน่งและ GPS</h2>
+                  <p>
+                    เปิดเพื่อตรวจระยะห่างจากพิกัดโรงเรียนก่อนบันทึกเวลา
+                  </p>
+                </div>
 
-            <label className={styles.switch}>
-              <input
-                type="checkbox"
-                checked={settings.gps_enabled}
-                onChange={(event) =>
-                  setSettings((current) => ({
-                    ...current,
-                    gps_enabled: event.target.checked,
-                  }))
-                }
-              />
-              <span />
-            </label>
-          </div>
-
-          <div
-            className={`${styles.gpsSettings} ${
-              !settings.gps_enabled ? styles.disabled : ""
-            }`}
-          >
-            <div className={styles.locationHeading}>
-              <div>
-                <h3>พิกัดสถานที่ลงเวลา</h3>
-                <p>
-                  สามารถพิมพ์พิกัดเองหรือใช้ตำแหน่งปัจจุบันของอุปกรณ์
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className={styles.locationButton}
-                disabled={!settings.gps_enabled || locating}
-                onClick={useCurrentLocation}
-              >
-                {locating
-                  ? "กำลังค้นหาพิกัด..."
-                  : "ใช้ตำแหน่งปัจจุบัน"}
-              </button>
-            </div>
-
-            <div className={styles.coordinateGrid}>
-              <label>
-                <span>ละติจูด</span>
-                <input
-                  type="number"
-                  step="0.0000001"
-                  min="-90"
-                  max="90"
-                  disabled={!settings.gps_enabled}
-                  value={settings.latitude ?? ""}
-                  placeholder="เช่น 14.3971234"
-                  onChange={(event) =>
-                    setSettings((current) => ({
-                      ...current,
-                      latitude:
-                        event.target.value === ""
-                          ? null
-                          : Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-
-              <label>
-                <span>ลองจิจูด</span>
-                <input
-                  type="number"
-                  step="0.0000001"
-                  min="-180"
-                  max="180"
-                  disabled={!settings.gps_enabled}
-                  value={settings.longitude ?? ""}
-                  placeholder="เช่น 100.1612345"
-                  onChange={(event) =>
-                    setSettings((current) => ({
-                      ...current,
-                      longitude:
-                        event.target.value === ""
-                          ? null
-                          : Number(event.target.value),
-                    }))
-                  }
-                />
-              </label>
-
-              <label>
-                <span>ระยะที่อนุญาต</span>
-                <div className={styles.radiusInput}>
+                <label className={styles.switch}>
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    disabled={!settings.gps_enabled}
-                    value={settings.allowed_radius_meters}
+                    type="checkbox"
+                    checked={settings.gps_enabled}
                     onChange={(event) =>
                       setSettings((current) => ({
                         ...current,
-                        allowed_radius_meters: Number(
-                          event.target.value
-                        ),
+                        gps_enabled: event.target.checked,
                       }))
                     }
                   />
-                  <b>เมตร</b>
-                </div>
-              </label>
-            </div>
-          </div>
-        </section>
+                  <span />
+                </label>
+              </div>
 
-        <PositionWorkPolicySection
-          roles={ROLE_ROWS}
-          getStartTime={(role) =>
-            String(
-              settings[
-                `${role}_start_time` as keyof AttendanceSettings
-              ]
-            )
-          }
-          getEndTime={(role) =>
-            String(
-              settings[
-                `${role}_end_time` as keyof AttendanceSettings
-              ]
-            )
-          }
-          onTimeChange={updateTime}
-        />
+              <div
+                className={`${styles.gpsSettings} ${
+                  !settings.gps_enabled ? styles.disabled : ""
+                }`}
+              >
+                <div className={styles.locationHeading}>
+                  <div>
+                    <h3>พิกัดสถานที่ลงเวลา</h3>
+                    <p>
+                      สามารถพิมพ์พิกัดเองหรือใช้ตำแหน่งปัจจุบันของอุปกรณ์
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.locationButton}
+                    disabled={!settings.gps_enabled || locating}
+                    onClick={useCurrentLocation}
+                  >
+                    {locating
+                      ? "กำลังค้นหาพิกัด..."
+                      : "ใช้ตำแหน่งปัจจุบัน"}
+                  </button>
+                </div>
+
+                <div className={styles.coordinateGrid}>
+                  <label>
+                    <span>ละติจูด</span>
+                    <input
+                      type="number"
+                      step="0.0000001"
+                      min="-90"
+                      max="90"
+                      disabled={!settings.gps_enabled}
+                      value={settings.latitude ?? ""}
+                      placeholder="เช่น 14.3971234"
+                      onChange={(event) =>
+                        setSettings((current) => ({
+                          ...current,
+                          latitude:
+                            event.target.value === ""
+                              ? null
+                              : Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>ลองจิจูด</span>
+                    <input
+                      type="number"
+                      step="0.0000001"
+                      min="-180"
+                      max="180"
+                      disabled={!settings.gps_enabled}
+                      value={settings.longitude ?? ""}
+                      placeholder="เช่น 100.1612345"
+                      onChange={(event) =>
+                        setSettings((current) => ({
+                          ...current,
+                          longitude:
+                            event.target.value === ""
+                              ? null
+                              : Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    <span>ระยะที่อนุญาต</span>
+                    <div className={styles.radiusInput}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        disabled={!settings.gps_enabled}
+                        value={settings.allowed_radius_meters}
+                        onChange={(event) =>
+                          setSettings((current) => ({
+                            ...current,
+                            allowed_radius_meters: Number(
+                              event.target.value
+                            ),
+                          }))
+                        }
+                      />
+                      <b>เมตร</b>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            <PositionWorkPolicySection
+              roles={ROLE_ROWS}
+              getStartTime={(role) =>
+                String(
+                  settings[
+                    `${role}_start_time` as keyof AttendanceSettings
+                  ]
+                )
+              }
+              getEndTime={(role) =>
+                String(
+                  settings[
+                    `${role}_end_time` as keyof AttendanceSettings
+                  ]
+                )
+              }
+              onTimeChange={updateTime}
+            />
 
         <section className={`${styles.card} ${styles.fiscalCard}`} id="fiscal-year-settings">
           <div className={styles.sectionHeading}>
+            <span className={styles.cardIcon}>◷</span>
             <h2>ปีงบประมาณอ้างอิง</h2>
             <p>
               กำหนดปีงบประมาณที่ใช้กับระบบลา จำนวนครั้งลา
@@ -686,9 +737,59 @@ export default function DirectorSettingsPage() {
             </span>
             <h2>รีเซ็ตประวัติการลงเวลา</h2>
             <p>
-              ใช้เมื่อต้องการล้างข้อมูลลงเวลาที่ผิดพลาดของทั้งวัน
-              หลังรีเซ็ต บุคลากรสามารถลงเวลาใหม่ในวันดังกล่าวได้
+              ใช้เมื่อต้องการล้างข้อมูลของวันที่เลือก
+              เลือกได้ว่าจะรีเซ็ตเฉพาะลงเวลา หรือเคลียร์ทั้งวันพร้อมรายการที่เกี่ยวข้อง
             </p>
+          </div>
+
+          <div className={styles.resetModeGroup}>
+            <label
+              className={
+                resetMode === "attendance_only"
+                  ? styles.resetModeActive
+                  : ""
+              }
+            >
+              <input
+                type="radio"
+                name="resetMode"
+                value="attendance_only"
+                checked={resetMode === "attendance_only"}
+                onChange={() => {
+                  setResetMode("attendance_only");
+                  setResetSummary(null);
+                  setShowResetConfirm(false);
+                }}
+              />
+              <span>
+                <strong>รีเซ็ตเฉพาะการลงเวลา</strong>
+                <small>ลบเฉพาะรายการเช็คอิน/เช็คเอาท์ของวันที่เลือก</small>
+              </span>
+            </label>
+
+            <label
+              className={
+                resetMode === "full_day"
+                  ? styles.resetModeActive
+                  : ""
+              }
+            >
+              <input
+                type="radio"
+                name="resetMode"
+                value="full_day"
+                checked={resetMode === "full_day"}
+                onChange={() => {
+                  setResetMode("full_day");
+                  setResetSummary(null);
+                  setShowResetConfirm(false);
+                }}
+              />
+              <span>
+                <strong>รีเซ็ตทั้งวัน</strong>
+                <small>ลบใบไปราชการ ใบลา และประวัติลงเวลาที่เกี่ยวข้องกับวันนั้น</small>
+              </span>
+            </label>
           </div>
 
           <div className={styles.resetRow}>
@@ -699,7 +800,8 @@ export default function DirectorSettingsPage() {
                 value={resetDate}
                 onChange={(event) => {
                   setResetDate(event.target.value);
-                  setResetCount(null);
+                  setResetSummary(null);
+                  setShowResetConfirm(false);
                 }}
               />
             </label>
@@ -716,10 +818,13 @@ export default function DirectorSettingsPage() {
             </button>
           </div>
 
-          {resetCount !== null && resetCount > 0 && (
-            <p className={styles.resetCount}>
-              พบข้อมูลในวันที่เลือก {resetCount} รายการ
-            </p>
+          {resetSummary !== null && (
+            <div className={styles.resetSummary}>
+              <strong>พบข้อมูลที่จะรีเซ็ต {resetTotal} รายการ</strong>
+              <span>ลงเวลา {resetSummary.attendanceCount} รายการ</span>
+              <span>ใบลา {resetSummary.leaveCount} รายการ</span>
+              <span>ไปราชการ {resetSummary.officialDutyCount} รายการ</span>
+            </div>
           )}
         </section>
 
@@ -735,10 +840,23 @@ export default function DirectorSettingsPage() {
               <h2>ยืนยันการรีเซ็ตข้อมูล</h2>
 
               <p>
-                ระบบจะลบประวัติการลงเวลาทั้งหมดของวันที่{" "}
-                <strong>{resetDate}</strong> จำนวน{" "}
-                <strong>{resetCount ?? 0}</strong> รายการ
+                ระบบจะรีเซ็ตข้อมูลวันที่ <strong>{resetDate}</strong>{" "}
+                แบบ{" "}
+                <strong>
+                  {resetMode === "full_day"
+                    ? "รีเซ็ตทั้งวัน"
+                    : "รีเซ็ตเฉพาะการลงเวลา"}
+                </strong>{" "}
+                จำนวน <strong>{resetTotal}</strong> รายการ
               </p>
+
+              {resetSummary && (
+                <div className={styles.confirmSummary}>
+                  <span>ลงเวลา {resetSummary.attendanceCount} รายการ</span>
+                  <span>ใบลา {resetSummary.leaveCount} รายการ</span>
+                  <span>ไปราชการ {resetSummary.officialDutyCount} รายการ</span>
+                </div>
+              )}
 
               <p className={styles.warningText}>
                 การดำเนินการนี้ไม่สามารถย้อนกลับได้
@@ -746,12 +864,12 @@ export default function DirectorSettingsPage() {
 
               <label>
                 <span>
-                  พิมพ์วันที่ <b>{resetDate}</b> เพื่อยืนยัน
+                  พิมพ์คำว่า <b>ยืนยัน</b> เพื่อยืนยัน
                 </span>
                 <input
                   type="text"
                   value={resetConfirmation}
-                  placeholder={resetDate}
+                  placeholder="ยืนยัน"
                   onChange={(event) =>
                     setResetConfirmation(event.target.value)
                   }
@@ -776,7 +894,7 @@ export default function DirectorSettingsPage() {
                   className={styles.confirmResetButton}
                   disabled={
                     resetting ||
-                    resetConfirmation !== resetDate
+                    resetConfirmation.trim() !== "ยืนยัน"
                   }
                   onClick={() =>
                     void confirmResetHistory()
@@ -793,20 +911,65 @@ export default function DirectorSettingsPage() {
 
         <div className={styles.saveBar}>
           <div>
-            <strong>ระบบจะใช้ค่าที่บันทึกทันที</strong>
+            <strong>บันทึกการตั้งค่ารวม</strong>
             <p>
-              พิกัดใช้ตรวจ GPS เวลาเริ่มใช้ตรวจมาสาย
-              และเวลาเลิกงานใช้สร้างเอกสารประจำวัน
+              ใช้กับตำแหน่ง GPS เวลาทำงาน และปีงบประมาณ
+              ส่วนสิทธิ์ตามตำแหน่งกับเลขเอกสารมีปุ่มบันทึกแยก
             </p>
           </div>
 
           <button type="submit" disabled={saving}>
-            {saving ? "กำลังบันทึก..." : "บันทึกการตั้งค่า"}
+            {saving ? "กำลังบันทึก..." : "บันทึกการตั้งค่ารวม"}
           </button>
         </div>
-      </form>
+          </form>
 
-      <DocumentNumberSection />
+          <DocumentNumberSection />
+        </div>
+
+        <aside className={styles.overviewPanel}>
+          <div className={styles.overviewHeader}>
+            <span>ภาพรวม</span>
+            <h2>สถานะการตั้งค่า</h2>
+          </div>
+
+          <div className={styles.overviewList}>
+            <div>
+              <span>GPS</span>
+              <strong>{gpsSummary}</strong>
+              <small>{coordinateSummary}</small>
+            </div>
+
+            <div>
+              <span>เวลาครู</span>
+              <strong>
+                {settings.teacher_start_time} - {settings.teacher_end_time}
+              </strong>
+              <small>ใช้ตรวจการมาสายและการลงเวลา</small>
+            </div>
+
+            <div>
+              <span>เวลาภารโรง</span>
+              <strong>
+                {settings.janitor_start_time} - {settings.janitor_end_time}
+              </strong>
+              <small>กำหนดแยกจากครูและเจ้าหน้าที่</small>
+            </div>
+
+            <div>
+              <span>ปีงบประมาณ</span>
+              <strong>{fiscalSummary}</strong>
+              <small>{fiscalRangeSummary}</small>
+            </div>
+
+            <div>
+              <span>การบันทึกแยก</span>
+              <strong>สิทธิ์ตามตำแหน่ง / เลขเอกสาร</strong>
+              <small>มีปุ่มบันทึกของแต่ละหมวด</small>
+            </div>
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }

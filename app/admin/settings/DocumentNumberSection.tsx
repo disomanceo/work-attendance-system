@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./document-number.module.css";
 
@@ -37,6 +37,8 @@ const DEFAULT_FORM: SeriesForm = {
   padding: 3,
 };
 
+const GO_LIVE_CONFIRMATION = "เริ่มใช้งานจริง";
+
 export default function DocumentNumberSection() {
   const supabase = useMemo(() => createClient(), []);
   const [series, setSeries] = useState<Series[]>([]);
@@ -44,8 +46,7 @@ export default function DocumentNumberSection() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [formMode, setFormMode] =
-    useState<"add" | "edit" | null>(null);
+  const [formMode, setFormMode] = useState<"add" | "edit" | null>(null);
   const [form, setForm] = useState<SeriesForm>(DEFAULT_FORM);
   const [goLive, setGoLive] = useState<Series | null>(null);
   const [liveForm, setLiveForm] = useState({
@@ -126,7 +127,7 @@ export default function DocumentNumberSection() {
     setFormMode("edit");
   }
 
-  async function saveSeries(event: React.FormEvent) {
+  async function saveSeries(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
     setMessage("");
@@ -154,14 +155,12 @@ export default function DocumentNumberSection() {
         );
       }
 
-      setMessage(result.message);
+      setMessage(result.message || "บันทึกชุดเลขเอกสารเรียบร้อยแล้ว");
       setFormMode(null);
       await load();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "บันทึกชุดเลขไม่สำเร็จ"
+        error instanceof Error ? error.message : "บันทึกชุดเลขไม่สำเร็จ"
       );
     } finally {
       setSaving(false);
@@ -179,7 +178,7 @@ export default function DocumentNumberSection() {
     setGoLive(item);
   }
 
-  async function confirmGoLive(event: React.FormEvent) {
+  async function confirmGoLive(event: FormEvent) {
     event.preventDefault();
     if (!goLive) return;
 
@@ -189,36 +188,29 @@ export default function DocumentNumberSection() {
 
     try {
       const token = await getToken();
-      const response = await fetch(
-        "/api/admin/document-sequences/go-live",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            seriesId: goLive.id,
-            ...liveForm,
-          }),
-        }
-      );
+      const response = await fetch("/api/admin/document-sequences/go-live", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          seriesId: goLive.id,
+          ...liveForm,
+        }),
+      });
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
-        throw new Error(
-          result.message || "เริ่มใช้งานจริงไม่สำเร็จ"
-        );
+        throw new Error(result.message || "เริ่มใช้งานจริงไม่สำเร็จ");
       }
 
-      setMessage(result.message);
+      setMessage(result.message || "เริ่มใช้งานจริงเรียบร้อยแล้ว");
       setGoLive(null);
       await load();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "เริ่มใช้งานจริงไม่สำเร็จ"
+        error instanceof Error ? error.message : "เริ่มใช้งานจริงไม่สำเร็จ"
       );
     } finally {
       setSaving(false);
@@ -230,18 +222,19 @@ export default function DocumentNumberSection() {
       <div className={styles.documentNumberHeader}>
         <div>
           <span>DOCUMENT NUMBER</span>
-          <h2>การจัดการเลขเอกสาร</h2>
-          <p>กำหนดรูปแบบและเลขเริ่มต้นของเอกสารแต่ละประเภท</p>
+          <h2>เลขเอกสาร</h2>
+          <p>
+            กำหนดชุดเลขเอกสาร คำนำหน้า ปี พ.ศ.
+            และเลขเริ่มต้นสำหรับเอกสารแต่ละประเภท
+          </p>
         </div>
 
         <button type="button" onClick={openAdd}>
-          + เพิ่ม
+          + เพิ่มชุดเลข
         </button>
       </div>
 
-      {message && (
-        <div className={styles.successMessage}>{message}</div>
-      )}
+      {message && <div className={styles.successMessage}>{message}</div>}
       {errorMessage && (
         <div className={styles.errorMessage}>{errorMessage}</div>
       )}
@@ -281,7 +274,7 @@ export default function DocumentNumberSection() {
                   <strong>{item.prefix || "-"}</strong>
                 </div>
                 <div>
-                  <span>ปี</span>
+                  <span>ปี พ.ศ.</span>
                   <strong>{item.buddhist_year}</strong>
                 </div>
                 <div>
@@ -322,9 +315,7 @@ export default function DocumentNumberSection() {
         <div className={styles.modalOverlay}>
           <form className={styles.modal} onSubmit={saveSeries}>
             <h3>
-              {formMode === "edit"
-                ? "แก้ไขชุดเลขเอกสาร"
-                : "เพิ่มชุดเลขเอกสาร"}
+              {formMode === "edit" ? "แก้ไขชุดเลขเอกสาร" : "เพิ่มชุดเลขเอกสาร"}
             </h3>
 
             <label>
@@ -444,7 +435,7 @@ export default function DocumentNumberSection() {
             <h3>เริ่มใช้งานจริง</h3>
 
             <div className={styles.warningMessage}>
-              ระบบจะสำรองชุดเลขทดสอบและเริ่มชุดเลขจริงใหม่
+              ระบบจะสำรองชุดเลขทดสอบและเริ่มชุดเลขใช้งานจริงใหม่
             </div>
 
             <label>
@@ -504,7 +495,9 @@ export default function DocumentNumberSection() {
             </label>
 
             <label>
-              <span>พิมพ์ “เริ่มใช้งานจริง” เพื่อยืนยัน</span>
+              <span>
+                พิมพ์ “{GO_LIVE_CONFIRMATION}” เพื่อยืนยัน
+              </span>
               <input
                 value={liveForm.confirmation}
                 onChange={(event) =>
@@ -527,8 +520,7 @@ export default function DocumentNumberSection() {
               <button
                 type="submit"
                 disabled={
-                  saving ||
-                  liveForm.confirmation !== "เริ่มใช้งานจริง"
+                  saving || liveForm.confirmation !== GO_LIVE_CONFIRMATION
                 }
               >
                 {saving ? "กำลังดำเนินการ..." : "ยืนยัน"}

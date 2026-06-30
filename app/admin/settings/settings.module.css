@@ -431,6 +431,67 @@
   font-weight: 800;
 }
 
+.resetModeGroup {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.resetModeGroup label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(251, 113, 133, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.resetModeGroup input {
+  margin-top: 4px;
+}
+
+.resetModeGroup strong {
+  display: block;
+  color: #ffe4e6;
+}
+
+.resetModeGroup small {
+  display: block;
+  margin-top: 3px;
+  color: #fecdd3;
+  line-height: 1.45;
+}
+
+.resetModeActive {
+  border-color: rgba(251, 113, 133, 0.45) !important;
+  background: rgba(190, 24, 93, 0.18) !important;
+}
+
+.resetSummary,
+.confirmSummary {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(251, 113, 133, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.resetSummary strong {
+  color: #ffe4e6;
+}
+
+.resetSummary span,
+.confirmSummary span {
+  color: #fecdd3;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .confirmOverlay {
   position: fixed;
   inset: 0;
@@ -892,3 +953,485 @@
 @media(max-width:760px){.settingsGrid{grid-template-columns:1fr}.settingsGrid>.card,.settingsGrid>.dangerCard{grid-column:auto;min-height:0}.policyGrid{grid-template-columns:1fr}.policyCard{min-height:0}}
 @media(max-width:430px){.policyFields{grid-template-columns:1fr}}
 /* SETTINGS FULL LAYOUT END */
+
+/* ORCHID SETTINGS REDESIGN START */
+.page {
+  color-scheme: light;
+  min-height: 100svh;
+  padding: 28px 24px 46px;
+  color: #21143f;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(199, 125, 255, 0.26), transparent 27%),
+    radial-gradient(circle at 5% 14%, rgba(234, 217, 255, 0.92), transparent 30%),
+    linear-gradient(180deg, #fbf8ff 0%, #f4edff 48%, #ffffff 100%);
+  background-attachment: fixed;
+}
+
+.page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(75, 0, 130, 0.035) 25%, transparent 25%) 0 0 / 18px 18px,
+    linear-gradient(135deg, transparent 75%, rgba(75, 0, 130, 0.025) 75%) 0 0 / 18px 18px;
+}
+
+.header,
+.successMessage,
+.errorMessage,
+.settingsWorkspace {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1320px);
+  max-width: 1320px;
+}
+
+.header {
+  min-height: 116px;
+  margin: 0 auto;
+  padding: 24px 26px;
+  border: 1px solid rgba(106, 44, 193, 0.13);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(243, 235, 255, 0.82));
+  box-shadow:
+    0 18px 46px rgba(66, 27, 122, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(18px) saturate(132%);
+}
+
+.header span {
+  color: #6a2cc1;
+  letter-spacing: 1.4px;
+}
+
+.header h1 {
+  margin: 4px 0 6px;
+  color: #32106b;
+  font-size: clamp(2rem, 3vw, 3.15rem);
+  line-height: 1.05;
+}
+
+.header p,
+.card p,
+.saveBar p,
+.policyHeader p {
+  color: #6d6380;
+}
+
+.header button {
+  min-height: 42px;
+  border-color: rgba(106, 44, 193, 0.16);
+  border-radius: 11px;
+  color: #4b168f;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(66, 27, 122, 0.08);
+}
+
+.settingsWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
+  margin: 18px auto 0;
+}
+
+.primaryColumn {
+  min-width: 0;
+}
+
+.settingsGrid {
+  width: 100%;
+  margin: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settingsGrid > .card,
+.policySection,
+.saveBar,
+.overviewPanel {
+  border: 1px solid rgba(106, 44, 193, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 16px 40px rgba(66, 27, 122, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.settingsGrid > .card {
+  min-height: 0;
+  padding: 20px;
+}
+
+.cardHeading,
+.sectionHeading,
+.policyHeader {
+  min-height: 0;
+}
+
+.cardHeading h2,
+.sectionHeading h2,
+.policyHeader h2,
+.overviewHeader h2 {
+  color: #32106b;
+}
+
+.cardHeading h2,
+.sectionHeading h2,
+.policyHeader h2 {
+  margin-top: 6px;
+}
+
+.cardIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  color: #6a2cc1;
+  background: #f0e5ff;
+  box-shadow: inset 0 0 0 1px rgba(106, 44, 193, 0.13);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.gpsSettings {
+  margin-top: 16px;
+  padding: 16px;
+  border-color: rgba(106, 44, 193, 0.1);
+  border-radius: 12px;
+  background: #fbf8ff;
+}
+
+.locationHeading {
+  align-items: flex-start;
+}
+
+.locationHeading h3 {
+  color: #32106b;
+}
+
+.locationButton {
+  min-height: 40px;
+  border-color: rgba(106, 44, 193, 0.18);
+  border-radius: 10px;
+  color: #4b168f;
+  background: #f3eaff;
+  box-shadow: none;
+}
+
+.coordinateGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coordinateGrid input,
+.timeGrid input,
+.resetRow input,
+.confirmModal input,
+.policyInput {
+  min-height: 42px;
+  border-color: rgba(106, 44, 193, 0.16);
+  border-radius: 10px;
+  color: #24153f;
+  background: #ffffff;
+}
+
+.coordinateGrid input:focus,
+.timeGrid input:focus,
+.resetRow input:focus,
+.confirmModal input:focus,
+.policyInput:focus {
+  border-color: #9d4edd;
+  box-shadow: 0 0 0 4px rgba(157, 78, 221, 0.12);
+}
+
+.coordinateGrid label > span,
+.timeGrid span,
+.resetRow label span,
+.policyFields span {
+  color: #59476d;
+}
+
+.radiusInput b {
+  border-color: rgba(106, 44, 193, 0.16);
+  color: #59476d;
+  background: #f8f3ff;
+}
+
+.switch {
+  width: 54px;
+  height: 30px;
+}
+
+.switch span {
+  background: #e7dcf7;
+}
+
+.switch span::after {
+  width: 22px;
+  height: 22px;
+}
+
+.switch input:checked + span {
+  background: linear-gradient(135deg, #9d4edd, #6a2cc1);
+}
+
+.switch input:checked + span::after {
+  transform: translateX(24px);
+}
+
+.policySection {
+  grid-column: 1 / -1;
+  padding: 20px;
+}
+
+.policyGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.policyCard {
+  min-height: 0;
+  border-color: rgba(106, 44, 193, 0.1);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ffffff, #fbf8ff);
+  box-shadow: 0 8px 22px rgba(66, 27, 122, 0.05);
+}
+
+.policyCard h3 {
+  color: #32106b;
+}
+
+.policySaveButton,
+.saveBar button {
+  border-radius: 11px;
+  background: linear-gradient(135deg, #9d4edd, #6a2cc1);
+  box-shadow: 0 12px 24px rgba(106, 44, 193, 0.23);
+}
+
+.fiscalCard .timeGrid {
+  grid-template-columns: 1fr;
+}
+
+.dangerCard {
+  border-color: rgba(220, 82, 82, 0.16);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 248, 0.9));
+}
+
+.dangerEyebrow {
+  color: #c6455a;
+}
+
+.resetCheckButton {
+  min-height: 42px;
+  border-radius: 10px;
+  border-color: rgba(198, 69, 90, 0.22);
+  color: #a23548;
+  background: #fff0f3;
+}
+
+.resetModeGroup label {
+  border-color: rgba(198, 69, 90, 0.18);
+  background: #fff8fa;
+}
+
+.resetModeGroup strong {
+  color: #8f2f44;
+}
+
+.resetModeGroup small {
+  color: #8c6870;
+}
+
+.resetModeActive {
+  border-color: rgba(198, 69, 90, 0.36) !important;
+  background: #fff0f3 !important;
+}
+
+.resetSummary,
+.confirmSummary {
+  border-color: rgba(198, 69, 90, 0.18);
+  background: #fff8fa;
+}
+
+.resetSummary strong {
+  color: #8f2f44;
+}
+
+.resetSummary span,
+.confirmSummary span {
+  color: #8c5160;
+}
+
+.saveBar {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 229, 255, 0.88));
+}
+
+.saveBar strong {
+  color: #32106b;
+}
+
+.successMessage {
+  margin-top: 14px;
+  border-color: rgba(27, 170, 103, 0.22);
+  color: #17603f;
+  background: rgba(232, 249, 239, 0.92);
+}
+
+.errorMessage {
+  margin-top: 14px;
+  border-color: rgba(220, 82, 82, 0.22);
+  color: #a23548;
+  background: rgba(255, 241, 242, 0.94);
+}
+
+.overviewPanel {
+  position: sticky;
+  top: 18px;
+  padding: 18px;
+}
+
+.overviewHeader span {
+  color: #6a2cc1;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.overviewHeader h2 {
+  margin: 4px 0 14px;
+  font-size: 1.1rem;
+}
+
+.overviewList {
+  display: grid;
+  gap: 10px;
+}
+
+.overviewList > div {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid rgba(106, 44, 193, 0.1);
+  border-radius: 12px;
+  background: #fbf8ff;
+}
+
+.overviewList span {
+  color: #6a2cc1;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.overviewList strong {
+  color: #2f155e;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.overviewList small {
+  color: #746782;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.loading {
+  color: #32106b;
+  background: linear-gradient(180deg, #fbf8ff, #f4edff);
+}
+
+.confirmOverlay {
+  background: rgba(28, 14, 54, 0.48);
+}
+
+.confirmModal {
+  color: #21143f;
+  border-color: rgba(198, 69, 90, 0.22);
+  background: #ffffff;
+}
+
+.confirmModal h2 {
+  color: #8f2f44;
+}
+
+.confirmModal p,
+.confirmModal label span {
+  color: #665a75;
+}
+
+.cancelResetButton {
+  color: #59476d;
+  background: #ffffff;
+  border-color: rgba(106, 44, 193, 0.14);
+}
+
+@media (max-width: 1180px) {
+  .settingsWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .overviewPanel {
+    position: static;
+    order: -1;
+  }
+
+  .overviewList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .page {
+    padding: 16px 12px 32px;
+  }
+
+  .header {
+    padding: 18px;
+  }
+
+  .settingsGrid,
+  .policyGrid,
+  .overviewList {
+    grid-template-columns: 1fr;
+  }
+
+  .coordinateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsGrid > .card,
+  .policySection,
+  .saveBar,
+  .overviewPanel {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .cardHeading,
+  .locationHeading,
+  .saveBar,
+  .resetRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .locationButton,
+  .resetCheckButton,
+  .saveBar button,
+  .header button {
+    width: 100%;
+  }
+
+  .policyFields {
+    grid-template-columns: 1fr;
+  }
+}
+/* ORCHID SETTINGS REDESIGN END */

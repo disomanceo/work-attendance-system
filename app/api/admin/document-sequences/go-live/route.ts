@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
+const GO_LIVE_CONFIRMATION = "เริ่มใช้งานจริง";
+
 function config() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -12,15 +14,22 @@ function config() {
 
 async function authorize(request: Request) {
   const cfg = config();
-  if (!cfg) return { ok: false as const, status: 500, message: "ตั้งค่า Supabase ไม่ครบ" };
+  if (!cfg) {
+    return { ok: false as const, status: 500, message: "ตั้งค่า Supabase ไม่ครบ" };
+  }
 
   const header = request.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   const auth = createClient(cfg.url, cfg.publishable, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: { user } } = await auth.auth.getUser(token);
-  if (!user) return { ok: false as const, status: 401, message: "กรุณาเข้าสู่ระบบ" };
+  const {
+    data: { user },
+  } = await auth.auth.getUser(token);
+
+  if (!user) {
+    return { ok: false as const, status: 401, message: "กรุณาเข้าสู่ระบบ" };
+  }
 
   const admin = createClient(cfg.url, cfg.service, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -31,10 +40,18 @@ async function authorize(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile || profile.account_status !== "active" ||
-      !["director", "admin"].includes(String(profile.role))) {
-    return { ok: false as const, status: 403, message: "ไม่มีสิทธิ์เริ่มใช้งานจริง" };
+  if (
+    !profile ||
+    profile.account_status !== "active" ||
+    !["director", "admin"].includes(String(profile.role))
+  ) {
+    return {
+      ok: false as const,
+      status: 403,
+      message: "ไม่มีสิทธิ์เริ่มใช้งานจริง",
+    };
   }
+
   return { ok: true as const, admin, profile };
 }
 
@@ -42,7 +59,10 @@ export async function POST(request: Request) {
   try {
     const auth = await authorize(request);
     if (!auth.ok) {
-      return NextResponse.json({ ok: false, message: auth.message }, { status: auth.status });
+      return NextResponse.json(
+        { ok: false, message: auth.message },
+        { status: auth.status }
+      );
     }
 
     const body = await request.json();
@@ -53,20 +73,39 @@ export async function POST(request: Request) {
     const reason = String(body.reason ?? "").trim();
     const confirmation = String(body.confirmation ?? "").trim();
 
-    if (confirmation !== "เริ่มใช้งานจริง") {
+    if (confirmation !== GO_LIVE_CONFIRMATION) {
       return NextResponse.json(
-        { ok: false, message: 'กรุณาพิมพ์คำว่า "เริ่มใช้งานจริง" ให้ตรง' },
+        {
+          ok: false,
+          message: `กรุณาพิมพ์คำว่า "${GO_LIVE_CONFIRMATION}" ให้ตรง`,
+        },
         { status: 400 }
       );
     }
+
     if (reason.length < 5) {
-      return NextResponse.json({ ok: false, message: "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร" },
+        { status: 400 }
+      );
     }
-    if (!Number.isInteger(buddhistYear) || buddhistYear < 2500 || buddhistYear > 2700) {
-      return NextResponse.json({ ok: false, message: "ปี พ.ศ. ไม่ถูกต้อง" }, { status: 400 });
+
+    if (
+      !Number.isInteger(buddhistYear) ||
+      buddhistYear < 2500 ||
+      buddhistYear > 2700
+    ) {
+      return NextResponse.json(
+        { ok: false, message: "ปี พ.ศ. ไม่ถูกต้อง" },
+        { status: 400 }
+      );
     }
+
     if (!Number.isInteger(startNumber) || startNumber < 1) {
-      return NextResponse.json({ ok: false, message: "เลขเริ่มต้นไม่ถูกต้อง" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "เลขเริ่มต้นไม่ถูกต้อง" },
+        { status: 400 }
+      );
     }
 
     const { data: oldSeries, error: oldError } = await auth.admin
@@ -97,7 +136,6 @@ export async function POST(request: Request) {
       issueCount: oldIssues?.length ?? 0,
     };
 
-    // สำรองข้อมูลก่อนทุกครั้ง
     const { error: backupError } = await auth.admin
       .from("document_number_backups")
       .insert({
@@ -107,9 +145,11 @@ export async function POST(request: Request) {
         issues_snapshot: oldIssues ?? [],
         backed_up_by: auth.profile.id,
       });
-    if (backupError) throw new Error(`สำรองข้อมูลไม่สำเร็จ: ${backupError.message}`);
 
-    // ปิดชุด TEST เดิม
+    if (backupError) {
+      throw new Error(`สำรองข้อมูลไม่สำเร็จ: ${backupError.message}`);
+    }
+
     const { error: archiveError } = await auth.admin
       .from("document_number_series")
       .update({
@@ -120,6 +160,7 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", oldSeries.id);
+
     if (archiveError) throw new Error(archiveError.message);
 
     await auth.admin
@@ -127,7 +168,6 @@ export async function POST(request: Request) {
       .update({ issue_status: "TEST_ARCHIVED" })
       .eq("series_id", oldSeries.id);
 
-    // สร้างชุด LIVE ใหม่
     const { data: newSeries, error: createError } = await auth.admin
       .from("document_number_series")
       .insert({
@@ -147,12 +187,14 @@ export async function POST(request: Request) {
       .single();
 
     if (createError || !newSeries) {
-      // พยายามเปิดชุดเก่ากลับ หากสร้างชุดใหม่ไม่สำเร็จ
       await auth.admin
         .from("document_number_series")
         .update({ mode: "TEST", is_active: true, archived_at: null })
         .eq("id", oldSeries.id);
-      throw new Error(createError?.message || "สร้างชุดเลขใช้งานจริงไม่สำเร็จ");
+
+      throw new Error(
+        createError?.message || "สร้างชุดเลขใช้งานจริงไม่สำเร็จ"
+      );
     }
 
     const afterSnapshot = { series: newSeries };
@@ -169,6 +211,7 @@ export async function POST(request: Request) {
         before_snapshot: beforeSnapshot,
         after_snapshot: afterSnapshot,
       });
+
     if (logError) console.error("document_number_reset_logs:", logError);
 
     return NextResponse.json({
@@ -179,7 +222,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, message: error instanceof Error ? error.message : "เริ่มใช้งานจริงไม่สำเร็จ" },
+      {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "เริ่มใช้งานจริงไม่สำเร็จ",
+      },
       { status: 500 }
     );
   }
