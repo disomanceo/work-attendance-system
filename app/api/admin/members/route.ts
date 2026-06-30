@@ -210,6 +210,7 @@ export async function GET(request: Request) {
           updated_at
         `
       )
+      .not("phone", "like", "deleted:%")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -407,7 +408,7 @@ export async function DELETE(request: Request) {
 
     const { data: member, error: memberError } = await authResult.adminClient
       .from("profiles")
-      .select("id, full_name")
+      .select("id, full_name, phone")
       .eq("id", id)
       .maybeSingle();
 
@@ -435,36 +436,37 @@ export async function DELETE(request: Request) {
 
     const { error: deleteAuthError } =
       await authResult.adminClient.auth.admin.deleteUser(id, true);
+    const authDeleteWarning = deleteAuthError
+      ? getErrorMessage(
+          deleteAuthError,
+          "Supabase Auth ไม่ตอบรายละเอียดกลับมา"
+        )
+      : "";
 
     if (deleteAuthError) {
       console.error("Delete member auth user error:", deleteAuthError);
-
-      return NextResponse.json(
-        {
-          ok: false,
-          message: `ลบบัญชีเข้าสู่ระบบไม่สำเร็จ: ${getErrorMessage(
-            deleteAuthError,
-            "Supabase Auth ไม่อนุญาตให้ลบบัญชีนี้"
-          )}`,
-        },
-        { status: 400 }
-      );
     }
 
-    const { error: deleteProfileError } = await authResult.adminClient
+    const { error: archiveProfileError } = await authResult.adminClient
       .from("profiles")
-      .delete()
+      .update({
+        account_status: "suspended",
+        phone: member.phone?.startsWith("deleted:")
+          ? member.phone
+          : `deleted:${id}`,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", id);
 
-    if (deleteProfileError) {
-      console.error("Delete member profile cleanup error:", deleteProfileError);
+    if (archiveProfileError) {
+      console.error("Archive member profile error:", archiveProfileError);
 
       return NextResponse.json(
         {
           ok: false,
-          message: `ลบบัญชีเข้าสู่ระบบแล้ว แต่ลบข้อมูลโปรไฟล์ไม่สำเร็จ: ${getErrorMessage(
-            deleteProfileError,
-            "ข้อมูลสมาชิกอาจถูกใช้อ้างอิงอยู่ในเอกสารหรือประวัติระบบ"
+          message: `ปิดบัญชีเข้าสู่ระบบแล้ว แต่ซ่อนสมาชิกไม่สำเร็จ: ${getErrorMessage(
+            archiveProfileError,
+            "กรุณาตรวจสอบข้อมูลสมาชิกอีกครั้ง"
           )}`,
         },
         { status: 500 }
@@ -474,7 +476,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({
       ok: true,
       deletedId: id,
-      message: `ลบสมาชิก ${member.full_name || ""} เรียบร้อยแล้ว`,
+      message: authDeleteWarning
+        ? `ซ่อนสมาชิก ${member.full_name || ""} แล้ว แต่ Supabase Auth แจ้งเตือน: ${authDeleteWarning}`
+        : `ลบสมาชิก ${member.full_name || ""} เรียบร้อยแล้ว`,
     });
   } catch (error) {
     console.error("Members DELETE API error:", error);
