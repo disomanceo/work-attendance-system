@@ -4,6 +4,7 @@ import {
   issueDocumentNumber,
   markDocumentNumberIssue,
 } from "@/lib/document-numbers";
+import { notifyMemoSubmitted } from "@/lib/line/memo-notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -354,6 +355,18 @@ export async function POST(request: Request) {
         documentType: "MEMO",
         referenceId: requestId,
         status: "COMPLETED",
+      });
+
+      await notifyMemoSubmitted({
+        requestId,
+        fullName: auth.profile.full_name,
+        position: auth.profile.position,
+        subject,
+        reason,
+        memoNumber,
+        submittedAt: now,
+      }).catch((lineError) => {
+        console.error("LINE memo submitted notification error:", lineError);
       });
     }
 

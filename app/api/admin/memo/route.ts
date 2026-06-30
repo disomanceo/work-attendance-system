@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { notifyMemoReviewed } from "@/lib/line/memo-notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -271,6 +272,18 @@ export async function PATCH(request: Request) {
       fromStatus: memo.status as MemoStatus,
       toStatus: status,
       note,
+    });
+
+    await notifyMemoReviewed({
+      requestId: memo.id,
+      fullName: data.full_name,
+      subject: data.subject,
+      memoNumber: data.memo_number,
+      status,
+      reviewerName: auth.profile.full_name,
+      reviewNote: note || null,
+    }).catch((lineError) => {
+      console.error("LINE memo reviewed notification error:", lineError);
     });
 
     return NextResponse.json({
