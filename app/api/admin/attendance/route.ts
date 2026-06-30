@@ -14,6 +14,24 @@ type AttendanceRecord = {
   note: string | null;
 };
 
+type LeaveRequest = {
+  id: string;
+  user_id: string;
+  leave_type: "personal" | "sick" | string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+};
+
+type OfficialDutyRequest = {
+  id: string;
+  user_id: string;
+  duty_date: string;
+  reason: string | null;
+};
+
+type DailyStatus = "present" | "sick" | "personal" | "official_duty" | "absent";
+
 type Profile = {
   id: string;
   full_name: string;
@@ -52,6 +70,30 @@ function getAccessToken(request: Request) {
 
 function isValidDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function leaveLabel(leaveType: string) {
+  return leaveType === "sick" ? "ลาป่วย" : "ลากิจ";
+}
+
+function addIsoDay(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const next = new Date(year, month - 1, day + 1);
+
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(next.getDate()).padStart(2, "0")}`;
+}
+
+function getDateRange(startDate: string, endDate: string) {
+  const dates: string[] = [];
+
+  for (let date = startDate; date <= endDate; date = addIsoDay(date)) {
+    dates.push(date);
+  }
+
+  return dates;
 }
 
 async function requireAdmin(request: Request) {
@@ -188,8 +230,12 @@ export async function GET(request: Request) {
       );
     }
 
-    const { data: attendanceData, error: attendanceError } =
-      await authResult.adminClient
+    const [
+      { data: attendanceData, error: attendanceError },
+      { data: leaveData, error: leaveError },
+      { data: officialDutyData, error: officialDutyError },
+    ] = await Promise.all([
+      authResult.adminClient
         .from("attendance_records")
         .select(
           `
@@ -208,7 +254,20 @@ export async function GET(request: Request) {
         .gte("work_date", startDate)
         .lte("work_date", endDate)
         .order("work_date", { ascending: false })
-        .order("check_in_at", { ascending: true });
+        .order("check_in_at", { ascending: true }),
+      authResult.adminClient
+        .from("leave_requests")
+        .select("id, user_id, leave_type, start_date, end_date, reason")
+        .in("status", ["pending", "approved"])
+        .lte("start_date", endDate)
+        .gte("end_date", startDate),
+      authResult.adminClient
+        .from("official_duty_requests")
+        .select("id, user_id, duty_date, reason")
+        .in("status", ["pending", "approved"])
+        .gte("duty_date", startDate)
+        .lte("duty_date", endDate),
+    ]);
 
     if (attendanceError) {
       console.error(
@@ -225,67 +284,212 @@ export async function GET(request: Request) {
       );
     }
 
-    const records = (attendanceData ?? []) as AttendanceRecord[];
+    if (leaveError) {
+      console.error("Load admin attendance leave error:", leaveError);
 
-    const userIds = Array.from(
-      new Set(records.map((record) => record.user_id))
-    );
-
-    let profiles: Profile[] = [];
-
-    if (userIds.length > 0) {
-      const { data: profileData, error: profilesError } =
-        await authResult.adminClient
-          .from("profiles")
-          .select(
-            `
-              id,
-              full_name,
-              phone,
-              position,
-              role,
-              account_status
-            `
-          )
-          .in("id", userIds);
-
-      if (profilesError) {
-        console.error(
-          "Load attendance profiles error:",
-          profilesError
-        );
-
-        return NextResponse.json(
-          {
-            ok: false,
-            message: "ไม่สามารถโหลดข้อมูลบุคลากรได้",
-          },
-          { status: 500 }
-        );
-      }
-
-      profiles = (profileData ?? []) as Profile[];
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ไม่สามารถโหลดข้อมูลการลาได้",
+        },
+        { status: 500 }
+      );
     }
 
-    const profileMap = new Map(
-      profiles.map((profile) => [profile.id, profile])
+    if (officialDutyError) {
+      console.error(
+        "Load admin attendance official duty error:",
+        officialDutyError
+      );
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ไม่สามารถโหลดข้อมูลไปราชการได้",
+        },
+        { status: 500 }
+      );
+    }
+
+    const records = (attendanceData ?? []) as AttendanceRecord[];
+    const leaveRequests = (leaveData ?? []) as LeaveRequest[];
+    const officialDutyRequests =
+      (officialDutyData ?? []) as OfficialDutyRequest[];
+
+    const { data: profileData, error: profilesError } =
+      await authResult.adminClient
+        .from("profiles")
+        .select(
+          `
+            id,
+            full_name,
+            phone,
+            position,
+            role,
+            account_status
+          `
+        )
+        .eq("account_status", "active")
+        .order("full_name", { ascending: true });
+
+    if (profilesError) {
+      console.error("Load attendance profiles error:", profilesError);
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ไม่สามารถโหลดข้อมูลบุคลากรได้",
+        },
+        { status: 500 }
+      );
+    }
+
+    const profiles = (profileData ?? []) as Profile[];
+
+    const attendanceByKey = new Map(
+      records.map((record) => [`${record.user_id}:${record.work_date}`, record])
+    );
+    const leaveByKey = new Map<string, LeaveRequest>();
+    const officialDutyByKey = new Map<string, OfficialDutyRequest>();
+
+    for (const request of leaveRequests) {
+      for (
+        let date = request.start_date;
+        date <= request.end_date;
+        date = addIsoDay(date)
+      ) {
+        if (date < startDate || date > endDate) {
+          continue;
+        }
+
+        const key = `${request.user_id}:${date}`;
+        if (!leaveByKey.has(key)) {
+          leaveByKey.set(key, request);
+        }
+      }
+    }
+
+    for (const request of officialDutyRequests) {
+      const key = `${request.user_id}:${request.duty_date}`;
+      officialDutyByKey.set(key, request);
+    }
+
+    const report = profiles.flatMap((profile) =>
+      getDateRange(startDate, endDate).map((date) => {
+        const key = `${profile.id}:${date}`;
+        const officialDuty = officialDutyByKey.get(key);
+        const leave = leaveByKey.get(key);
+        const record = attendanceByKey.get(key);
+
+        if (officialDuty) {
+          return {
+            id: `official-duty-${officialDuty.id}`,
+            user_id: profile.id,
+            work_date: date,
+            check_in_at: null,
+            check_out_at: null,
+            check_in_distance_meters: null,
+            check_out_distance_meters: null,
+            check_in_status: "official_duty",
+            check_out_status: null,
+            note: "ไปราชการ",
+            full_name: profile.full_name,
+            phone: profile.phone,
+            position: profile.position,
+            role: profile.role,
+            account_status: profile.account_status,
+            daily_status: "official_duty" as DailyStatus,
+          };
+        }
+
+        if (leave) {
+          const status =
+            leave.leave_type === "sick" ? "sick" : "personal";
+          const label = leaveLabel(leave.leave_type);
+
+          return {
+            id: `leave-${leave.id}-${date}`,
+            user_id: profile.id,
+            work_date: date,
+            check_in_at: null,
+            check_out_at: null,
+            check_in_distance_meters: null,
+            check_out_distance_meters: null,
+            check_in_status: status,
+            check_out_status: null,
+            note: label,
+            full_name: profile.full_name,
+            phone: profile.phone,
+            position: profile.position,
+            role: profile.role,
+            account_status: profile.account_status,
+            daily_status: status as DailyStatus,
+          };
+        }
+
+        if (record?.check_in_at) {
+          return {
+            ...record,
+            full_name: profile.full_name,
+            phone: profile.phone,
+            position: profile.position,
+            role: profile.role,
+            account_status: profile.account_status,
+            daily_status: "present" as DailyStatus,
+          };
+        }
+
+        return {
+          id: `absent-${profile.id}-${date}`,
+          user_id: profile.id,
+          work_date: date,
+          check_in_at: null,
+          check_out_at: null,
+          check_in_distance_meters: null,
+          check_out_distance_meters: null,
+          check_in_status: "absent",
+          check_out_status: null,
+          note: "ไม่มาปฏิบัติราชการ",
+          full_name: profile.full_name,
+          phone: profile.phone,
+          position: profile.position,
+          role: profile.role,
+          account_status: profile.account_status,
+          daily_status: "absent" as DailyStatus,
+        };
+      })
     );
 
-    const report = records.map((record) => {
-      const profile = profileMap.get(record.user_id);
+    report.sort((left, right) => {
+      if (left.work_date !== right.work_date) {
+        return right.work_date.localeCompare(left.work_date);
+      }
 
-      return {
-        ...record,
-        full_name: profile?.full_name ?? "ไม่พบชื่อสมาชิก",
-        phone: profile?.phone ?? "",
-        position: profile?.position ?? null,
-        role: profile?.role ?? "",
-        account_status: profile?.account_status ?? "",
-      };
+      const leftTime = left.check_in_at ?? "9999";
+      const rightTime = right.check_in_at ?? "9999";
+
+      if (leftTime !== rightTime) {
+        return leftTime.localeCompare(rightTime);
+      }
+
+      return left.full_name.localeCompare(right.full_name, "th");
     });
 
     const summary = {
       total: report.length,
+      totalPersonnel: profiles.length,
+      present: report.filter((record) => Boolean(record.check_in_at))
+        .length,
+      sickLeave: report.filter((record) => record.daily_status === "sick")
+        .length,
+      personalLeave: report.filter(
+        (record) => record.daily_status === "personal"
+      ).length,
+      officialDuty: report.filter(
+        (record) => record.daily_status === "official_duty"
+      ).length,
+      absent: report.filter((record) => record.daily_status === "absent")
+        .length,
       complete: report.filter(
         (record) => record.check_in_at && record.check_out_at
       ).length,

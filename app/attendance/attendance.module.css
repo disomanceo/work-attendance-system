@@ -2133,6 +2133,26 @@
   color: #bba9d3;
 }
 
+.focusCheckOutButton {
+  min-width: 190px;
+  min-height: 48px;
+  margin-top: 16px;
+  padding: 0 18px;
+  border: 1px solid rgba(251, 146, 60, 0.38);
+  border-radius: 14px;
+  color: #fff7ed;
+  background: linear-gradient(135deg, #f97316, #dc2626);
+  box-shadow: 0 16px 34px rgba(220, 38, 38, 0.28);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.focusCheckOutButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .focusLeaveState > span {
   background: linear-gradient(145deg, #3b82f6, #1d4ed8);
 }

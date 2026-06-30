@@ -24,6 +24,29 @@ type Profile = {
   signature_file_id: string | null;
 };
 
+type AttendanceSettings = {
+  director_end_time?: string | null;
+  teacher_end_time?: string | null;
+  staff_end_time?: string | null;
+  janitor_end_time?: string | null;
+};
+
+type LeaveRequest = {
+  id: string;
+  user_id: string;
+  leave_type: "personal" | "sick" | string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+};
+
+type OfficialDutyRequest = {
+  id: string;
+  user_id: string;
+  duty_date: string;
+  reason: string | null;
+};
+
 type GasPdfResponse = {
   ok: boolean;
   found?: boolean;
@@ -105,12 +128,94 @@ function formatThaiTime(value: string | null) {
   }).format(new Date(value));
 }
 
+function normalizeTime(value: string | null | undefined, fallback: string) {
+  const match = value?.trim().match(/^(\d{1,2}):(\d{2})/);
+
+  if (!match) return fallback;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+
+  if (
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return fallback;
+  }
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function getRoleEndTime(role: string, settings: AttendanceSettings | null) {
+  const normalizedRole = role.trim().toLowerCase();
+
+  if (normalizedRole === "janitor") {
+    return normalizeTime(settings?.janitor_end_time, "18:00");
+  }
+
+  if (normalizedRole === "director" || normalizedRole === "admin") {
+    return normalizeTime(settings?.director_end_time, "16:30");
+  }
+
+  if (normalizedRole === "teacher") {
+    return normalizeTime(settings?.teacher_end_time, "16:30");
+  }
+
+  return normalizeTime(settings?.staff_end_time, "16:30");
+}
+
 function attendanceStatus(record: AttendanceRecord) {
   if (!record.check_in_at) return "";
   if (record.check_in_status === "late") return "มาสาย";
   if (record.check_out_status === "early") return "ออกก่อนเวลา";
-  if (!record.check_out_at) return "ยังไม่ลงเวลาออก";
   return "ปกติ";
+}
+
+function reportAttendanceStatus(record: AttendanceRecord) {
+  if (!record.check_in_at) return "";
+  if (record.check_in_status === "late") return "มาสาย";
+  if (record.check_out_status === "early") return "ออกก่อนเวลา";
+  return "ปกติ";
+}
+
+function leaveLabel(leaveType: string) {
+  return leaveType === "sick" ? "ลาป่วย" : "ลากิจ";
+}
+
+function getAbsenceReason(
+  profileId: string,
+  leaveByUser: Map<string, LeaveRequest>,
+  officialDutyByUser: Map<string, OfficialDutyRequest>
+) {
+  const leave = leaveByUser.get(profileId);
+
+  if (leave) {
+    const label = leaveLabel(leave.leave_type);
+    return leave.reason?.trim()
+      ? `${label}: ${leave.reason.trim()}`
+      : label;
+  }
+
+  const officialDuty = officialDutyByUser.get(profileId);
+
+  if (officialDuty) {
+    return officialDuty.reason?.trim()
+      ? `ไปราชการ: ${officialDuty.reason.trim()}`
+      : "ไปราชการ";
+  }
+
+  return "";
+}
+
+function getAbsenceLabel(status: string) {
+  if (status === "sick") return "ลาป่วย";
+  if (status === "personal") return "ลากิจ";
+  if (status === "official_duty") return "ไปราชการ";
+  return "ไม่มาปฏิบัติราชการ";
 }
 
 function formatLateReason(note: string | null) {
@@ -305,6 +410,25 @@ async function buildDailyPdf(
     }
   );
 
+  const settingsPromise = adminClient
+    .from("attendance_settings")
+    .select("director_end_time, teacher_end_time, staff_end_time, janitor_end_time")
+    .eq("id", 1)
+    .maybeSingle();
+
+  const leavePromise = adminClient
+    .from("leave_requests")
+    .select("id, user_id, leave_type, start_date, end_date, reason")
+    .in("status", ["pending", "approved"])
+    .lte("start_date", date)
+    .gte("end_date", date);
+
+  const officialDutyPromise = adminClient
+    .from("official_duty_requests")
+    .select("id, user_id, duty_date, reason")
+    .in("status", ["pending", "approved"])
+    .eq("duty_date", date);
+
   const { data: attendanceData, error: attendanceError } =
     await adminClient
       .from("attendance_records")
@@ -348,7 +472,29 @@ async function buildDailyPdf(
     throw new Error("ไม่สามารถโหลดข้อมูลบุคลากรได้");
   }
 
+  const { data: settingsData } = await settingsPromise;
+
+  const [
+    { data: leaveData, error: leaveError },
+    { data: officialDutyData, error: officialDutyError },
+  ] = await Promise.all([
+    leavePromise,
+    officialDutyPromise,
+  ]);
+
+  if (leaveError) {
+    throw new Error("ไม่สามารถโหลดข้อมูลการลาประจำวันที่เลือกได้");
+  }
+
+  if (officialDutyError) {
+    throw new Error("ไม่สามารถโหลดข้อมูลไปราชการประจำวันที่เลือกได้");
+  }
+
+  const settings = (settingsData ?? null) as AttendanceSettings | null;
   const profiles = (profileData ?? []) as Profile[];
+  const leaveRequests = (leaveData ?? []) as LeaveRequest[];
+  const officialDutyRequests =
+    (officialDutyData ?? []) as OfficialDutyRequest[];
 
   const directorProfile =
     profiles.find(
@@ -374,6 +520,12 @@ async function buildDailyPdf(
   const attendanceMap = new Map(
     attendance.map((record) => [record.user_id, record])
   );
+  const leaveByUser = new Map(
+    leaveRequests.map((request) => [request.user_id, request])
+  );
+  const officialDutyByUser = new Map(
+    officialDutyRequests.map((request) => [request.user_id, request])
+  );
 
   const presentRecords = attendance
     .filter((record) => Boolean(record.check_in_at))
@@ -385,6 +537,7 @@ async function buildDailyPdf(
 
   const rows = presentRecords.map((record, index) => {
     const profile = profileMap.get(record.user_id);
+    const scheduledEndTime = getRoleEndTime(profile?.role ?? "", settings);
 
     return {
       order: index + 1,
@@ -393,8 +546,8 @@ async function buildDailyPdf(
         profile?.position ||
         getRoleLabel(profile?.role ?? ""),
       checkIn: formatThaiTime(record.check_in_at),
-      status: attendanceStatus(record),
-      checkOut: formatThaiTime(record.check_out_at),
+      status: reportAttendanceStatus(record) || attendanceStatus(record),
+      checkOut: formatThaiTime(record.check_out_at) || scheduledEndTime,
       signature: "",
       note:
         record.check_in_status === "late"
@@ -407,19 +560,26 @@ async function buildDailyPdf(
     .filter((profile) => !attendanceMap.get(profile.id)?.check_in_at)
     .map((profile) => {
       const record = attendanceMap.get(profile.id);
-      const note = record?.note?.trim() ?? "";
+      const note =
+        record?.note?.trim() ||
+        getAbsenceReason(profile.id, leaveByUser, officialDutyByUser);
 
       return {
         fullName: profile.full_name,
+        status:
+          leaveByUser.get(profile.id)?.leave_type ??
+          (officialDutyByUser.has(profile.id)
+            ? "official_duty"
+            : "absent"),
         reason: note,
       };
     });
 
   const noteItems = absentPeople
-    .filter((person) => person.reason)
+    .filter((person) => person.status !== "absent")
     .map(
       (person) =>
-        `${person.fullName} (${person.reason})`
+        `${person.fullName} (${getAbsenceLabel(person.status)})`
     );
 
   const normalizeReason = (value: string) =>
@@ -463,7 +623,8 @@ async function buildDailyPdf(
       personalLeave,
       officialDuty,
       late,
-      absent: absentPeople.length,
+      absent: absentPeople.filter((person) => person.status === "absent")
+        .length,
     },
   };
 

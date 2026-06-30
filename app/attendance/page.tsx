@@ -135,6 +135,34 @@ function normalizeTime(value: string) {
   return value.slice(0, 8);
 }
 
+function getRoleStartTime(role: string, settings: AttendanceSettings) {
+  const roleStartTimeMap: Record<string, string> = {
+    director: settings.director_start_time,
+    teacher: settings.teacher_start_time,
+    staff: settings.staff_start_time,
+    janitor: settings.janitor_start_time,
+    admin: settings.director_start_time,
+  };
+
+  return (
+    roleStartTimeMap[role] ??
+    settings.teacher_start_time ??
+    settings.late_after_time
+  );
+}
+
+function getRoleEndTime(role: string, settings: AttendanceSettings) {
+  const roleEndTimeMap: Record<string, string> = {
+    director: settings.director_end_time,
+    teacher: settings.teacher_end_time,
+    staff: settings.staff_end_time,
+    janitor: settings.janitor_end_time,
+    admin: settings.director_end_time,
+  };
+
+  return roleEndTimeMap[role] ?? settings.teacher_end_time;
+}
+
 function getRoleLabel(role: string) {
   const labels: Record<string, string> = {
     admin: "ผู้ดูแลระบบ",
@@ -608,20 +636,8 @@ export default function AttendancePage() {
       const { position, distance } = await verifyLocation();
       const currentTime = getBangkokTime();
 
-      const roleStartTimeMap: Record<string, string> = {
-        director: settings.director_start_time,
-        teacher: settings.teacher_start_time,
-        staff: settings.staff_start_time,
-        janitor: settings.janitor_start_time,
-        admin: settings.director_start_time,
-      };
-
       const currentRole = profile?.role ?? "teacher";
-
-      const roleStartTime =
-        roleStartTimeMap[currentRole] ??
-        settings.teacher_start_time ??
-        settings.late_after_time;
+      const roleStartTime = getRoleStartTime(currentRole, settings);
 
       const isLateCheckIn =
         currentTime > normalizeTime(roleStartTime);
@@ -657,6 +673,66 @@ export default function AttendancePage() {
         error instanceof Error
           ? error.message
           : "ลงเวลาเข้าไม่สำเร็จ"
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function handleCheckOut() {
+    setProcessing(true);
+    setMessage("");
+
+    try {
+      if (!record?.id || !record.check_in_at) {
+        throw new Error("ยังไม่มีข้อมูลเช็คอินของวันนี้");
+      }
+
+      if (record.check_out_at) {
+        throw new Error("วันนี้คุณลงเวลาเลิกงานแล้ว");
+      }
+
+      if (!settings) {
+        throw new Error("ยังโหลดการตั้งค่าไม่สำเร็จ");
+      }
+
+      const currentRole = profile?.role ?? "teacher";
+      const roleEndTime = getRoleEndTime(currentRole, settings);
+
+      if (getBangkokTime() < normalizeTime(roleEndTime)) {
+        throw new Error(`ยังไม่ถึงเวลาเลิกงาน ${roleEndTime.slice(0, 5)} น.`);
+      }
+
+      const checkOutAt = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from("attendance_records")
+        .update({
+          check_out_at: checkOutAt,
+          check_out_status: "manual",
+          updated_at: checkOutAt,
+        })
+        .eq("id", record.id)
+        .is("check_out_at", null)
+        .select(
+          "id, check_in_at, check_out_at, check_in_status, check_out_status"
+        )
+        .single();
+
+      if (error) throw error;
+
+      setRecord(data);
+      setMessageType("success");
+      setMessage(
+        `บันทึกเวลาเลิกงานจริง ${formatThaiTime(checkOutAt)} น. เรียบร้อยแล้ว`
+      );
+    } catch (error) {
+      console.error("Check-out error:", error);
+      setMessageType("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "ลงเวลาเลิกงานไม่สำเร็จ"
       );
     } finally {
       setProcessing(false);
@@ -736,6 +812,16 @@ export default function AttendancePage() {
 
   const isLate = record?.check_in_status === "late";
   const hasCheckedIn = Boolean(record?.check_in_at);
+  const roleEndTime =
+    settings && profile
+      ? getRoleEndTime(profile.role, settings)
+      : "";
+  const canCheckOut =
+    Boolean(settings) &&
+    Boolean(record?.check_in_at) &&
+    !record?.check_out_at &&
+    !todayLeave &&
+    getBangkokTime() >= normalizeTime(roleEndTime);
 
   return (
     <main
@@ -899,7 +985,25 @@ export default function AttendancePage() {
                 <span>✓</span>
                 <h2>ลงเวลาเรียบร้อยแล้ว</h2>
                 <strong>เวลาเข้า {formatThaiTime(record.check_in_at)} น.</strong>
-                <p>{formatThaiDate(now)}</p>
+                {record.check_out_at ? (
+                  <p>เวลาเลิกงาน {formatThaiTime(record.check_out_at)} น.</p>
+                ) : canCheckOut ? (
+                  <button
+                    type="button"
+                    className={styles.focusCheckOutButton}
+                    disabled={processing}
+                    onClick={() => void handleCheckOut()}
+                  >
+                    {processing
+                      ? "กำลังบันทึกเวลาออก..."
+                      : "ลงเวลาเลิกงาน"}
+                  </button>
+                ) : (
+                  <p>
+                    ปุ่มลงเวลาเลิกงานจะแสดงหลัง{" "}
+                    {roleEndTime.slice(0, 5)} น.
+                  </p>
+                )}
               </div>
             )}
           </article>
@@ -914,6 +1018,17 @@ export default function AttendancePage() {
               <div>
                 <small>เวลาเข้า</small>
                 <strong>{formatThaiTime(record?.check_in_at ?? null)} น.</strong>
+              </div>
+
+              <div>
+                <small>เวลาเลิกงาน</small>
+                <strong>
+                  {record?.check_out_at
+                    ? `${formatThaiTime(record.check_out_at)} น.`
+                    : record?.check_in_at
+                      ? `รอหลัง ${roleEndTime.slice(0, 5)} น.`
+                      : "--"}
+                </strong>
               </div>
 
               <div>

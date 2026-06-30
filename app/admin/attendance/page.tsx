@@ -495,7 +495,15 @@ export default function AdminAttendancePage() {
           (statusFilter === "normal" &&
             attendanceStatus.label === "ปกติ") ||
           (statusFilter === "late" &&
-            attendanceStatus.label === "มาสาย");
+            attendanceStatus.label === "มาสาย") ||
+          (statusFilter === "sick" &&
+            attendanceStatus.label === "ลาป่วย") ||
+          (statusFilter === "personal" &&
+            attendanceStatus.label === "ลากิจ") ||
+          (statusFilter === "official_duty" &&
+            attendanceStatus.label === "ไปราชการ") ||
+          (statusFilter === "absent" &&
+            attendanceStatus.label === "ไม่มาปฏิบัติราชการ");
 
         return matchesSearch && matchesStatus;
       })
@@ -515,6 +523,60 @@ export default function AdminAttendancePage() {
         return left.full_name.localeCompare(right.full_name, "th");
       });
   }, [records, searchText, statusFilter]);
+
+  const filteredStatusRecords = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
+
+    return records
+      .filter((record) => !record.check_in_at)
+      .filter((record) => {
+        const attendanceStatus = getAttendanceStatus(record);
+
+        const matchesSearch =
+          !keyword ||
+          record.full_name.toLowerCase().includes(keyword) ||
+          (record.position ?? "").toLowerCase().includes(keyword) ||
+          getRoleLabel(record.role).toLowerCase().includes(keyword);
+
+        const matchesStatus =
+          statusFilter === "all" ||
+          statusFilter === "normal" ||
+          statusFilter === "late" ||
+          (statusFilter === "sick" &&
+            attendanceStatus.label === "ลาป่วย") ||
+          (statusFilter === "personal" &&
+            attendanceStatus.label === "ลากิจ") ||
+          (statusFilter === "official_duty" &&
+            attendanceStatus.label === "ไปราชการ") ||
+          (statusFilter === "absent" &&
+            attendanceStatus.label === "ไม่มาปฏิบัติราชการ");
+
+        return matchesSearch && matchesStatus;
+      })
+      .sort((left, right) => {
+        const leftStatus = getAttendanceStatus(left).label;
+        const rightStatus = getAttendanceStatus(right).label;
+
+        if (leftStatus !== rightStatus) {
+          return leftStatus.localeCompare(rightStatus, "th");
+        }
+
+        return left.full_name.localeCompare(right.full_name, "th");
+      });
+  }, [records, searchText, statusFilter]);
+
+  const statusNoteText = useMemo(() => {
+    if (filteredStatusRecords.length === 0) {
+      return "";
+    }
+
+    return filteredStatusRecords
+      .map((record) => {
+        const status = getAttendanceStatus(record);
+        return `${record.full_name} (${status.label})`;
+      })
+      .join(", ");
+  }, [filteredStatusRecords]);
 
 
 
@@ -1187,33 +1249,27 @@ export default function AdminAttendancePage() {
               <div className={styles.primarySummaryGrid}>
                 <div className={styles.cardTotal}>
                   <span>บุคลากรทั้งหมด</span>
-                  <strong>{summary.totalPersonnel ?? summary.total}</strong>
-                  <small>คน</small>
+                  <strong>{summary.totalPersonnel ?? summary.total}<small>คน</small></strong>
                 </div>
                 <div className={styles.cardPresent}>
                   <span>มาปฏิบัติราชการ</span>
-                  <strong>{summary.present ?? summary.complete}</strong>
-                  <small>คน</small>
+                  <strong>{summary.present ?? summary.complete}<small>คน</small></strong>
                 </div>
                 <div className={styles.cardSick}>
                   <span>ลาป่วย</span>
-                  <strong>{summary.sickLeave ?? 0}</strong>
-                  <small>คน</small>
+                  <strong>{summary.sickLeave ?? 0}<small>คน</small></strong>
                 </div>
                 <div className={styles.cardPersonal}>
                   <span>ลากิจ</span>
-                  <strong>{summary.personalLeave ?? 0}</strong>
-                  <small>คน</small>
+                  <strong>{summary.personalLeave ?? 0}<small>คน</small></strong>
                 </div>
                 <div className={styles.cardDuty}>
                   <span>ไปราชการ</span>
-                  <strong>{summary.officialDuty ?? 0}</strong>
-                  <small>คน</small>
+                  <strong>{summary.officialDuty ?? 0}<small>คน</small></strong>
                 </div>
                 <div className={styles.cardAbsent}>
                   <span>ไม่มาปฏิบัติราชการ</span>
-                  <strong>{summary.absent ?? 0}</strong>
-                  <small>คน</small>
+                  <strong>{summary.absent ?? 0}<small>คน</small></strong>
                 </div>
               </div>
             </section>
@@ -1221,7 +1277,7 @@ export default function AdminAttendancePage() {
             <section className={styles.listCard}>
               <div className={styles.cardHeader}>
                 <div>
-                  <h2>รายชื่อบุคลากรและสถานะการปฏิบัติราชการ</h2>
+                  <h2>รายชื่อผู้มาปฏิบัติงาน</h2>
                   <p>{reportMode === "monthly" ? `${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}` : formatThaiLongDate(selectedDate)}</p>
                 </div>
                 <span>{filteredRecords.length} คนที่เช็กอินแล้ว</span>
@@ -1262,6 +1318,14 @@ export default function AdminAttendancePage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+              <div className={styles.statusNoteBox}>
+                <strong>หมายเหตุ</strong>
+                <p>
+                  {loading
+                    ? "กำลังโหลดข้อมูล..."
+                    : statusNoteText || "ไม่มีรายการลา ไปราชการ หรือไม่มาปฏิบัติราชการ"}
+                </p>
               </div>
             </section>
           </div>

@@ -22,6 +22,22 @@ type AttendanceRecord = {
   note: string | null;
 };
 
+type LeaveRequest = {
+  id: string;
+  user_id: string;
+  leave_type: "personal" | "sick" | string;
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+};
+
+type OfficialDutyRequest = {
+  id: string;
+  user_id: string;
+  duty_date: string;
+  reason: string | null;
+};
+
 function getServerConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -177,6 +193,56 @@ function statusLabel(record: AttendanceRecord | undefined) {
   return "ปกติ";
 }
 
+function leaveLabel(leaveType: string) {
+  return leaveType === "sick" ? "ลาป่วย" : "ลากิจ";
+}
+
+function getDailyStatus(
+  profileId: string,
+  record: AttendanceRecord | undefined,
+  leaveByUser: Map<string, LeaveRequest>,
+  officialDutyByUser: Map<string, OfficialDutyRequest>
+) {
+  if (record?.check_in_at) {
+    return statusLabel(record);
+  }
+
+  const leave = leaveByUser.get(profileId);
+
+  if (leave) {
+    return leaveLabel(leave.leave_type);
+  }
+
+  if (officialDutyByUser.has(profileId)) {
+    return "ไปราชการ";
+  }
+
+  return statusLabel(record);
+}
+
+function getDailyNote(
+  profileId: string,
+  record: AttendanceRecord | undefined,
+  leaveByUser: Map<string, LeaveRequest>,
+  officialDutyByUser: Map<string, OfficialDutyRequest>
+) {
+  if (record?.note?.trim()) {
+    return record.note.trim();
+  }
+
+  const leave = leaveByUser.get(profileId);
+
+  if (leave) {
+    return leaveLabel(leave.leave_type);
+  }
+
+  if (officialDutyByUser.has(profileId)) {
+    return "ไปราชการ";
+  }
+
+  return "";
+}
+
 export async function GET(request: Request) {
   try {
     const config = getServerConfig();
@@ -222,6 +288,8 @@ export async function GET(request: Request) {
       { data: profileData, error: profileError },
       { data: attendanceData, error: attendanceError },
       { data: settingsData, error: settingsError },
+      { data: leaveData, error: leaveError },
+      { data: officialDutyData, error: officialDutyError },
     ] = await Promise.all([
       supabase
         .from("profiles")
@@ -239,6 +307,17 @@ export async function GET(request: Request) {
         .select("*")
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("leave_requests")
+        .select("id, user_id, leave_type, start_date, end_date, reason")
+        .in("status", ["pending", "approved"])
+        .lte("start_date", date)
+        .gte("end_date", date),
+      supabase
+        .from("official_duty_requests")
+        .select("id, user_id, duty_date, reason")
+        .in("status", ["pending", "approved"])
+        .eq("duty_date", date),
     ]);
 
     if (profileError) {
@@ -261,13 +340,38 @@ export async function GET(request: Request) {
       console.warn("Daily report settings warning:", settingsError);
     }
 
+    if (leaveError) {
+      console.error("Daily report leave error:", leaveError);
+      return NextResponse.json(
+        { ok: false, message: "ไม่สามารถโหลดข้อมูลการลาประจำวันที่เลือกได้" },
+        { status: 500 }
+      );
+    }
+
+    if (officialDutyError) {
+      console.error("Daily report official duty error:", officialDutyError);
+      return NextResponse.json(
+        { ok: false, message: "ไม่สามารถโหลดข้อมูลไปราชการประจำวันที่เลือกได้" },
+        { status: 500 }
+      );
+    }
+
     const profiles = (profileData ?? []) as Profile[];
     const attendance = (attendanceData ?? []) as AttendanceRecord[];
+    const leaveRequests = (leaveData ?? []) as LeaveRequest[];
+    const officialDutyRequests =
+      (officialDutyData ?? []) as OfficialDutyRequest[];
     const settings =
       (settingsData as Record<string, unknown> | null | undefined) ?? null;
 
     const attendanceByUser = new Map(
       attendance.map((record) => [record.user_id, record])
+    );
+    const leaveByUser = new Map(
+      leaveRequests.map((request) => [request.user_id, request])
+    );
+    const officialDutyByUser = new Map(
+      officialDutyRequests.map((request) => [request.user_id, request])
     );
 
 
@@ -284,9 +388,21 @@ export async function GET(request: Request) {
         scheduledEndTime: roleTimes.endTime,
         checkInTime: formatTimeBangkok(record?.check_in_at ?? null),
         actualCheckOutTime: formatTimeBangkok(record?.check_out_at ?? null),
-        reportCheckOutTime: record?.check_in_at ? roleTimes.endTime : "",
-        status: statusLabel(record),
-        note: record?.note ?? "",
+        reportCheckOutTime: record?.check_in_at
+          ? formatTimeBangkok(record?.check_out_at ?? null) || roleTimes.endTime
+          : "",
+        status: getDailyStatus(
+          profile.id,
+          record,
+          leaveByUser,
+          officialDutyByUser
+        ),
+        note: getDailyNote(
+          profile.id,
+          record,
+          leaveByUser,
+          officialDutyByUser
+        ),
         checkInStatus: record?.check_in_status ?? "",
         checkOutStatus: record?.check_out_status ?? "",
       };
@@ -308,12 +424,23 @@ export async function GET(request: Request) {
     const summary = {
       total: allPeople.length,
       present: people.length,
-      sickLeave: 0,
-      personalLeave: 0,
-      officialDuty: 0,
-      permittedLeave: 0,
+      sickLeave: allPeople.filter(
+        (person) => leaveByUser.get(person.userId)?.leave_type === "sick"
+      ).length,
+      personalLeave: allPeople.filter(
+        (person) => leaveByUser.get(person.userId)?.leave_type === "personal"
+      ).length,
+      officialDuty: allPeople.filter((person) =>
+        officialDutyByUser.has(person.userId)
+      ).length,
+      permittedLeave: leaveRequests.length + officialDutyRequests.length,
       late: people.filter((person) => person.status === "มาสาย").length,
-      absent: allPeople.length - people.length,
+      absent: allPeople.filter(
+        (person) =>
+          !person.checkInTime &&
+          !leaveByUser.has(person.userId) &&
+          !officialDutyByUser.has(person.userId)
+      ).length,
     };
 
     return NextResponse.json({
