@@ -62,6 +62,30 @@ function getAccessToken(request: Request) {
   return authorization.slice("Bearer ".length).trim();
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+
+  if (typeof error === "string" && error.trim()) {
+    return error.trim();
+  }
+
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+
+    for (const key of ["message", "msg", "error_description", "error"]) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    const serialized = JSON.stringify(record);
+    if (serialized && serialized !== "{}") return serialized;
+  }
+
+  return fallback;
+}
+
 async function requireAdmin(request: Request) {
   const config = getServerConfig();
 
@@ -410,7 +434,7 @@ export async function DELETE(request: Request) {
     }
 
     const { error: deleteAuthError } =
-      await authResult.adminClient.auth.admin.deleteUser(id);
+      await authResult.adminClient.auth.admin.deleteUser(id, true);
 
     if (deleteAuthError) {
       console.error("Delete member auth user error:", deleteAuthError);
@@ -418,7 +442,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: `ลบบัญชีเข้าสู่ระบบไม่สำเร็จ: ${deleteAuthError.message}`,
+          message: `ลบบัญชีเข้าสู่ระบบไม่สำเร็จ: ${getErrorMessage(
+            deleteAuthError,
+            "Supabase Auth ไม่อนุญาตให้ลบบัญชีนี้"
+          )}`,
         },
         { status: 400 }
       );
@@ -435,8 +462,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message:
-            "ลบบัญชีเข้าสู่ระบบแล้ว แต่ลบข้อมูลโปรไฟล์ไม่สำเร็จ กรุณาตรวจสอบข้อมูลสมาชิกอีกครั้ง",
+          message: `ลบบัญชีเข้าสู่ระบบแล้ว แต่ลบข้อมูลโปรไฟล์ไม่สำเร็จ: ${getErrorMessage(
+            deleteProfileError,
+            "ข้อมูลสมาชิกอาจถูกใช้อ้างอิงอยู่ในเอกสารหรือประวัติระบบ"
+          )}`,
         },
         { status: 500 }
       );
