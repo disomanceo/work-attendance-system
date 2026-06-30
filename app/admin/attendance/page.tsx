@@ -165,7 +165,7 @@ function getAttendanceStatus(record: AttendanceReportRecord) {
   if (record.check_out_status === "early") {
     return { label: "ออกก่อนเวลา", tone: "warning" as const };
   }
-  return { label: "มาปฏิบัติราชการ", tone: "success" as const };
+  return { label: "ปกติ", tone: "success" as const };
 }
 
 
@@ -493,7 +493,7 @@ export default function AdminAttendancePage() {
         const matchesStatus =
           statusFilter === "all" ||
           (statusFilter === "normal" &&
-            attendanceStatus.label === "มาปฏิบัติราชการ") ||
+            attendanceStatus.label === "ปกติ") ||
           (statusFilter === "late" &&
             attendanceStatus.label === "มาสาย");
 
@@ -1049,7 +1049,7 @@ export default function AdminAttendancePage() {
             <label>สถานะการลงเวลา</label>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">ทั้งหมด</option>
-              <option value="normal">มาปฏิบัติราชการ</option>
+              <option value="normal">ปกติ</option>
               <option value="late">มาสาย</option>
               <option value="sick">ลาป่วย</option>
               <option value="personal">ลากิจ</option>
