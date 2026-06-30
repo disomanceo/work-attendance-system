@@ -106,7 +106,7 @@ export default function AdminMembersPage() {
           return;
         }
         if (response.status === 403) {
-          router.replace("/dashboard");
+          router.replace("/attendance");
           return;
         }
         throw new Error(result.message || "ไม่สามารถโหลดข้อมูลสมาชิกได้");
@@ -216,7 +216,7 @@ export default function AdminMembersPage() {
           <h1>จัดการสมาชิก</h1>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => router.push("/dashboard")}>กลับ Dashboard</button>
+          <button type="button" onClick={() => router.push("/attendance")}>กลับหน้าหลัก</button>
           <button type="button" onClick={handleLogout}>ออกจากระบบ</button>
         </div>
       </header>
