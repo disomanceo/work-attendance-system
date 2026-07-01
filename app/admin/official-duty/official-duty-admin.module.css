@@ -225,6 +225,12 @@
   text-decoration: none;
 }
 
+.documentLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .reviewPanel {
   display: grid;
   gap: 14px;

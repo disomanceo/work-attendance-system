@@ -12,10 +12,19 @@ type OfficialDutyRequest = {
   full_name: string;
   position: string | null;
   duty_date: string;
+  duty_end_date: string | null;
+  total_days: number | null;
+  subject: string | null;
+  location: string | null;
+  evidence_description: string | null;
   reason: string;
   note: string | null;
   attachment_file_url: string | null;
   attachment_file_name: string | null;
+  official_duty_number: string | null;
+  working_document_url: string | null;
+  pdf_file_url: string | null;
+  pdf_file_name: string | null;
   status: "pending" | "approved" | "rejected" | string;
   reviewer_name: string | null;
   review_note: string | null;
@@ -54,6 +63,11 @@ function formatThaiDate(value: string) {
     month: "long",
     year: "numeric",
   }).format(new Date(`${value}T00:00:00+07:00`));
+}
+
+function formatThaiDateRange(startDate: string, endDate?: string | null) {
+  if (!endDate || endDate === startDate) return formatThaiDate(startDate);
+  return `${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}`;
 }
 
 export default function OfficialDutyAdminPage() {
@@ -267,12 +281,33 @@ export default function OfficialDutyAdminPage() {
 
               <dl className={styles.details}>
                 <div>
-                  <dt>วันที่ไปราชการ</dt>
-                  <dd>{formatThaiDate(request.duty_date)}</dd>
+                  <dt>เลขที่เอกสาร</dt>
+                  <dd>{request.official_duty_number || "-"}</dd>
                 </div>
                 <div>
-                  <dt>เหตุผลหรือภารกิจ</dt>
-                  <dd>{request.reason}</dd>
+                  <dt>วันที่ไป-กลับ</dt>
+                  <dd>
+                    {formatThaiDateRange(
+                      request.duty_date,
+                      request.duty_end_date
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>จำนวนวัน</dt>
+                  <dd>{request.total_days || 1} วัน</dd>
+                </div>
+                <div>
+                  <dt>เรื่องไปราชการ</dt>
+                  <dd>{request.subject || request.reason}</dd>
+                </div>
+                <div>
+                  <dt>สถานที่</dt>
+                  <dd>{request.location || "-"}</dd>
+                </div>
+                <div>
+                  <dt>หลักฐาน</dt>
+                  <dd>{request.evidence_description || "-"}</dd>
                 </div>
                 {request.note && (
                   <div>
@@ -282,19 +317,43 @@ export default function OfficialDutyAdminPage() {
                 )}
               </dl>
 
-              {request.attachment_file_url && (
-                <a
-                  className={styles.attachment}
-                  href={request.attachment_file_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  เปิดไฟล์แนบ
-                  {request.attachment_file_name
-                    ? ` (${request.attachment_file_name})`
-                    : ""}
-                </a>
-              )}
+              <div className={styles.documentLinks}>
+                {request.working_document_url && (
+                  <a
+                    className={styles.attachment}
+                    href={request.working_document_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    เปิดเอกสารรอพิจารณา
+                  </a>
+                )}
+
+                {request.pdf_file_url && (
+                  <a
+                    className={styles.attachment}
+                    href={request.pdf_file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {request.pdf_file_name || "เปิด PDF"}
+                  </a>
+                )}
+
+                {request.attachment_file_url && (
+                  <a
+                    className={styles.attachment}
+                    href={request.attachment_file_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    เปิดไฟล์แนบ
+                    {request.attachment_file_name
+                      ? ` (${request.attachment_file_name})`
+                      : ""}
+                  </a>
+                )}
+              </div>
 
               {request.status === "pending" ? (
                 <div className={styles.reviewPanel}>

@@ -16,6 +16,7 @@ type LeaveRow = {
 
 type OfficialDutyRow = {
   duty_date: string;
+  duty_end_date: string | null;
   status: string;
 };
 
@@ -66,21 +67,6 @@ function addWeekdaysToSet(
     if (day === 0 || day === 6) continue;
     target.add(current.toISOString().slice(0, 10));
   }
-}
-
-function addOfficialDutyDate(target: Set<string>, dutyDate: string) {
-  const date = new Date(`${dutyDate}T00:00:00Z`);
-
-  if (Number.isNaN(date.getTime())) {
-    return;
-  }
-
-  const day = date.getUTCDay();
-  if (day === 0 || day === 6) {
-    return;
-  }
-
-  target.add(dutyDate);
 }
 
 export async function GET(request: Request) {
@@ -149,11 +135,11 @@ export async function GET(request: Request) {
 
       admin
         .from("official_duty_requests")
-        .select("duty_date, status")
+        .select("duty_date, duty_end_date, status")
         .eq("user_id", user.id)
         .in("status", ["pending", "approved"])
-        .gte("duty_date", range.start)
-        .lte("duty_date", range.end),
+        .lte("duty_date", range.end)
+        .gte("duty_end_date", range.start),
     ]);
 
     if (attendanceError) {
@@ -220,7 +206,13 @@ export async function GET(request: Request) {
 
     for (const row of officialDutyRequests) {
       if (!row.duty_date) continue;
-      addOfficialDutyDate(officialDutyDates, row.duty_date);
+      addWeekdaysToSet(
+        officialDutyDates,
+        row.duty_date,
+        row.duty_end_date || row.duty_date,
+        range.start,
+        range.end
+      );
     }
 
     for (const date of officialDutyDates) {

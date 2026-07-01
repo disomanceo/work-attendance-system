@@ -304,6 +304,12 @@
   text-decoration: none;
 }
 
+.documentLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .status {
   white-space: nowrap;
   border-radius: 999px;

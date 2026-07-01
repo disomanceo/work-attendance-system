@@ -27,6 +27,8 @@ type OfficialDutyRequest = {
   id: string;
   user_id: string;
   duty_date: string;
+  duty_end_date: string | null;
+  subject: string | null;
   reason: string | null;
 };
 
@@ -263,10 +265,10 @@ export async function GET(request: Request) {
         .gte("end_date", startDate),
       authResult.adminClient
         .from("official_duty_requests")
-        .select("id, user_id, duty_date, reason")
+        .select("id, user_id, duty_date, duty_end_date, subject, reason")
         .in("status", ["pending", "approved"])
-        .gte("duty_date", startDate)
-        .lte("duty_date", endDate),
+        .lte("duty_date", endDate)
+        .gte("duty_end_date", startDate),
     ]);
 
     if (attendanceError) {
@@ -370,8 +372,22 @@ export async function GET(request: Request) {
     }
 
     for (const request of officialDutyRequests) {
-      const key = `${request.user_id}:${request.duty_date}`;
-      officialDutyByKey.set(key, request);
+      const dutyEndDate = request.duty_end_date || request.duty_date;
+
+      for (
+        let date = request.duty_date;
+        date <= dutyEndDate;
+        date = addIsoDay(date)
+      ) {
+        if (date < startDate || date > endDate) {
+          continue;
+        }
+
+        const key = `${request.user_id}:${date}`;
+        if (!officialDutyByKey.has(key)) {
+          officialDutyByKey.set(key, request);
+        }
+      }
     }
 
     const report = profiles.flatMap((profile) =>

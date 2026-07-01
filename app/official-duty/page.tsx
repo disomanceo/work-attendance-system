@@ -25,10 +25,19 @@ type OfficialDutyRequest = {
   full_name?: string;
   position?: string | null;
   duty_date: string;
+  duty_end_date: string | null;
+  total_days: number | null;
+  subject: string | null;
+  location: string | null;
+  evidence_description: string | null;
   reason: string;
   note: string | null;
   attachment_file_url: string | null;
   attachment_file_name: string | null;
+  official_duty_number: string | null;
+  working_document_url: string | null;
+  pdf_file_url: string | null;
+  pdf_file_name: string | null;
   status: "pending" | "approved" | "rejected" | string;
   review_note: string | null;
   reviewer_name: string | null;
@@ -67,6 +76,22 @@ function formatThaiDate(value: string) {
   }).format(new Date(`${value}T00:00:00+07:00`));
 }
 
+function formatThaiDateRange(startDate: string, endDate?: string | null) {
+  if (!endDate || endDate === startDate) return formatThaiDate(startDate);
+  return `${formatThaiDate(startDate)} - ${formatThaiDate(endDate)}`;
+}
+
+function countInclusiveDays(startDate: string, endDate: string) {
+  if (!startDate || !endDate) return 0;
+  const start = new Date(`${startDate}T00:00:00+07:00`);
+  const end = new Date(`${endDate}T00:00:00+07:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  return Math.max(
+    1,
+    Math.floor((end.getTime() - start.getTime()) / 86400000) + 1
+  );
+}
+
 export default function OfficialDutyPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -77,8 +102,11 @@ export default function OfficialDutyPage() {
   const [reviewFilter, setReviewFilter] =
     useState<ReviewFilter>("pending");
 
-  const [dutyDate, setDutyDate] = useState("");
-  const [reason, setReason] = useState("");
+  const [dutyStartDate, setDutyStartDate] = useState("");
+  const [dutyEndDate, setDutyEndDate] = useState("");
+  const [subject, setSubject] = useState("");
+  const [location, setLocation] = useState("");
+  const [evidenceDescription, setEvidenceDescription] = useState("");
   const [note, setNote] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
 
@@ -211,15 +239,33 @@ export default function OfficialDutyPage() {
     event.preventDefault();
     setMessage("");
 
-    if (!dutyDate) {
+    if (!dutyStartDate) {
       setMessageType("error");
-      setMessage("กรุณาเลือกวันที่ไปราชการ");
+      setMessage("กรุณาเลือกวันที่ไป");
       return;
     }
 
-    if (reason.trim().length < 3) {
+    if (!dutyEndDate) {
       setMessageType("error");
-      setMessage("กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร");
+      setMessage("กรุณาเลือกวันที่กลับ");
+      return;
+    }
+
+    if (dutyEndDate < dutyStartDate) {
+      setMessageType("error");
+      setMessage("วันที่กลับต้องไม่ก่อนวันที่ไป");
+      return;
+    }
+
+    if (subject.trim().length < 3) {
+      setMessageType("error");
+      setMessage("กรุณาระบุเรื่องไปราชการอย่างน้อย 3 ตัวอักษร");
+      return;
+    }
+
+    if (location.trim().length < 2) {
+      setMessageType("error");
+      setMessage("กรุณาระบุสถานที่ไปราชการ");
       return;
     }
 
@@ -235,8 +281,11 @@ export default function OfficialDutyPage() {
       const token = await getAccessToken();
       const formData = new FormData();
 
-      formData.set("dutyDate", dutyDate);
-      formData.set("reason", reason.trim());
+      formData.set("dutyStartDate", dutyStartDate);
+      formData.set("dutyEndDate", dutyEndDate);
+      formData.set("subject", subject.trim());
+      formData.set("location", location.trim());
+      formData.set("evidenceDescription", evidenceDescription.trim());
       formData.set("note", note.trim());
 
       if (attachment) {
@@ -256,8 +305,11 @@ export default function OfficialDutyPage() {
         );
       }
 
-      setDutyDate("");
-      setReason("");
+      setDutyStartDate("");
+      setDutyEndDate("");
+      setSubject("");
+      setLocation("");
+      setEvidenceDescription("");
       setNote("");
       setAttachment(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -423,33 +475,65 @@ export default function OfficialDutyPage() {
             </div>
 
             <label>
-              วันที่ไปราชการ <b>*</b>
+              วันที่ไป <b>*</b>
               <input
                 type="date"
-                value={dutyDate}
-                onChange={(event) => setDutyDate(event.target.value)}
+                value={dutyStartDate}
+                onChange={(event) => {
+                  setDutyStartDate(event.target.value);
+                  if (!dutyEndDate || dutyEndDate < event.target.value) {
+                    setDutyEndDate(event.target.value);
+                  }
+                }}
                 required
               />
             </label>
 
             <label>
-              เหตุผลหรือภารกิจ <b>*</b>
-              <textarea
-                rows={5}
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder="เช่น เข้าร่วมประชุม อบรม หรือปฏิบัติภารกิจราชการ"
+              วันที่กลับ <b>*</b>
+              <input
+                type="date"
+                value={dutyEndDate}
+                min={dutyStartDate || undefined}
+                onChange={(event) => setDutyEndDate(event.target.value)}
                 required
               />
+              {dutyStartDate && dutyEndDate && (
+                <small>
+                  รวม {countInclusiveDays(dutyStartDate, dutyEndDate)} วัน
+                </small>
+              )}
             </label>
 
             <label>
-              หมายเหตุเพิ่มเติม
+              เรื่องไปราชการ <b>*</b>
               <textarea
                 rows={3}
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="เช่น เข้าร่วมอบรมเชิงปฏิบัติการ"
+                required
+              />
+            </label>
+
+            <label>
+              สถานที่ <b>*</b>
+              <input
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+                placeholder="เช่น สำนักงานเขตพื้นที่การศึกษาสุพรรณบุรี"
+                required
+              />
+            </label>
+
+            <label>
+              หลักฐานไปราชการ
+              <input
+                value={evidenceDescription}
+                onChange={(event) =>
+                  setEvidenceDescription(event.target.value)
+                }
+                placeholder="เช่น หนังสือเชิญ หรือ กำหนดการ"
               />
             </label>
 
@@ -464,6 +548,16 @@ export default function OfficialDutyPage() {
                 }
               />
               <small>รองรับ JPG, PNG และ PDF ขนาดไม่เกิน 5 MB</small>
+            </label>
+
+            <label>
+              หมายเหตุเพิ่มเติม
+              <textarea
+                rows={2}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
+              />
             </label>
 
             <button
@@ -494,7 +588,13 @@ export default function OfficialDutyPage() {
                     key={request.id}
                   >
                     <div className={styles.requestTop}>
-                      <strong>{formatThaiDate(request.duty_date)}</strong>
+                      <strong>
+                        {request.official_duty_number || "-"} ·{" "}
+                        {formatThaiDateRange(
+                          request.duty_date,
+                          request.duty_end_date
+                        )}
+                      </strong>
                       <span
                         className={`${styles.status} ${
                           styles[`status_${request.status}`] ?? ""
@@ -504,7 +604,17 @@ export default function OfficialDutyPage() {
                       </span>
                     </div>
 
-                    <p>{request.reason}</p>
+                    <p>{request.subject || request.reason}</p>
+
+                    {request.location && (
+                      <small>สถานที่: {request.location}</small>
+                    )}
+
+                    <small>จำนวนวัน: {request.total_days || 1} วัน</small>
+
+                    {request.evidence_description && (
+                      <small>หลักฐาน: {request.evidence_description}</small>
+                    )}
 
                     {request.note && (
                       <small>หมายเหตุ: {request.note}</small>
@@ -520,15 +630,37 @@ export default function OfficialDutyPage() {
                       <small>ความเห็น: {request.review_note}</small>
                     )}
 
-                    {request.attachment_file_url && (
-                      <a
-                        href={request.attachment_file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        เปิดไฟล์แนบ
-                      </a>
-                    )}
+                    <div className={styles.documentLinks}>
+                      {request.working_document_url && (
+                        <a
+                          href={request.working_document_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          เปิดเอกสารรอพิจารณา
+                        </a>
+                      )}
+
+                      {request.pdf_file_url && (
+                        <a
+                          href={request.pdf_file_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {request.pdf_file_name || "เปิด PDF"}
+                        </a>
+                      )}
+
+                      {request.attachment_file_url && (
+                        <a
+                          href={request.attachment_file_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          เปิดไฟล์แนบ
+                        </a>
+                      )}
+                    </div>
                   </article>
                 ))}
               </div>
@@ -596,12 +728,33 @@ export default function OfficialDutyPage() {
 
                   <dl className={styles.details}>
                     <div>
-                      <dt>วันที่ไปราชการ</dt>
-                      <dd>{formatThaiDate(request.duty_date)}</dd>
+                      <dt>เลขที่เอกสาร</dt>
+                      <dd>{request.official_duty_number || "-"}</dd>
                     </div>
                     <div>
-                      <dt>เหตุผลหรือภารกิจ</dt>
-                      <dd>{request.reason}</dd>
+                      <dt>วันที่ไป-กลับ</dt>
+                      <dd>
+                        {formatThaiDateRange(
+                          request.duty_date,
+                          request.duty_end_date
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>จำนวนวัน</dt>
+                      <dd>{request.total_days || 1} วัน</dd>
+                    </div>
+                    <div>
+                      <dt>เรื่องไปราชการ</dt>
+                      <dd>{request.subject || request.reason}</dd>
+                    </div>
+                    <div>
+                      <dt>สถานที่</dt>
+                      <dd>{request.location || "-"}</dd>
+                    </div>
+                    <div>
+                      <dt>หลักฐาน</dt>
+                      <dd>{request.evidence_description || "-"}</dd>
                     </div>
                     {request.note && (
                       <div>
@@ -611,16 +764,40 @@ export default function OfficialDutyPage() {
                     )}
                   </dl>
 
-                  {request.attachment_file_url && (
-                    <a
-                      className={styles.attachment}
-                      href={request.attachment_file_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      เปิดไฟล์แนบ
-                    </a>
-                  )}
+                  <div className={styles.documentLinks}>
+                    {request.working_document_url && (
+                      <a
+                        className={styles.attachment}
+                        href={request.working_document_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        เปิดเอกสารรอพิจารณา
+                      </a>
+                    )}
+
+                    {request.pdf_file_url && (
+                      <a
+                        className={styles.attachment}
+                        href={request.pdf_file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {request.pdf_file_name || "เปิด PDF"}
+                      </a>
+                    )}
+
+                    {request.attachment_file_url && (
+                      <a
+                        className={styles.attachment}
+                        href={request.attachment_file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        เปิดไฟล์แนบ
+                      </a>
+                    )}
+                  </div>
 
                   {request.status === "pending" ? (
                     <div className={styles.reviewPanel}>

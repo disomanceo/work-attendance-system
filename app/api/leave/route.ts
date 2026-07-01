@@ -614,11 +614,11 @@ try {
 
         admin
           .from("official_duty_requests")
-          .select("id,duty_date,status")
+          .select("id,duty_date,duty_end_date,status")
           .eq("user_id", user.id)
           .in("status", ["pending", "approved"])
-          .gte("duty_date", startDateValue)
           .lte("duty_date", endDateValue)
+          .gte("duty_end_date", startDateValue)
           .order("duty_date", { ascending: true })
           .limit(1)
           .maybeSingle(),

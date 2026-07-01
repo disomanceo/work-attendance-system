@@ -39,7 +39,7 @@ export async function authorizeOfficialDuty(request: Request) {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("id,full_name,position,role,account_status")
+    .select("id,full_name,position,role,account_status,signature_file_id")
     .eq("id", user.id)
     .maybeSingle();
 

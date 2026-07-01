@@ -46,10 +46,11 @@ export async function GET(request: Request) {
 
         auth.admin
           .from("official_duty_requests")
-          .select("id,status,duty_date")
+          .select("id,status,duty_date,duty_end_date")
           .eq("user_id", auth.user.id)
           .in("status", ["pending", "approved"])
-          .eq("duty_date", date)
+          .lte("duty_date", date)
+          .gte("duty_end_date", date)
           .limit(1)
           .maybeSingle(),
       ]);

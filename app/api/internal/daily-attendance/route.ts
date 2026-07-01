@@ -35,6 +35,8 @@ type OfficialDutyRequest = {
   id: string;
   user_id: string;
   duty_date: string;
+  duty_end_date: string | null;
+  subject: string | null;
   reason: string | null;
 };
 
@@ -315,9 +317,10 @@ export async function GET(request: Request) {
         .gte("end_date", date),
       supabase
         .from("official_duty_requests")
-        .select("id, user_id, duty_date, reason")
+        .select("id, user_id, duty_date, duty_end_date, subject, reason")
         .in("status", ["pending", "approved"])
-        .eq("duty_date", date),
+        .lte("duty_date", date)
+        .gte("duty_end_date", date),
     ]);
 
     if (profileError) {
