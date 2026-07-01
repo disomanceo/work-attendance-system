@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { notifyMemoReviewed } from "@/lib/line/memo-notifications";
 import { loadMemoLogsByRequest } from "@/lib/memo-logs";
+import {
+  callMemoGas,
+  getMemoDocumentConfig,
+  getProfileSignatureAsset,
+  type MemoFinalizeResponse,
+} from "@/lib/memo-document-gas";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,6 +28,7 @@ type Profile = {
   position: string | null;
   role: string;
   account_status: string;
+  signature_file_id: string | null;
 };
 
 function getConfig() {
@@ -77,7 +84,7 @@ async function authorize(request: Request) {
   });
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, full_name, position, role, account_status")
+    .select("id, full_name, position, role, account_status, signature_file_id")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -220,7 +227,9 @@ export async function PATCH(request: Request) {
 
     const { data: memo, error: memoError } = await auth.admin
       .from("memo_requests")
-      .select("id, status")
+      .select(
+        "id, status, memo_number, full_name, position, subject, reason, body, attachment_description, working_document_id, working_document_url"
+      )
       .eq("id", body.requestId)
       .maybeSingle();
 
@@ -258,15 +267,82 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const now = new Date().toISOString();
+    const updatePayload: Record<string, unknown> = {
+      status,
+      reviewed_by: auth.profile.id,
+      reviewed_at: now,
+      review_note: note || null,
+      updated_at: now,
+    };
+    const memoDocumentConfig = getMemoDocumentConfig();
+
+    if (memoDocumentConfig && memo.working_document_id) {
+      if (action === "send_back") {
+        await callMemoGas(memoDocumentConfig.memoGasUrl, {
+          action: "memoDiscardPending",
+          secret: memoDocumentConfig.memoGasSecret,
+          workingDocumentId: memo.working_document_id,
+        }).catch((cleanupError) => {
+          console.error("Discard pending memo document error:", cleanupError);
+        });
+
+        updatePayload.working_document_id = null;
+        updatePayload.working_document_url = null;
+      } else {
+        if (!auth.profile.signature_file_id) {
+          return NextResponse.json(
+            {
+              ok: false,
+              message:
+                "กรุณาอัปโหลดลายเซ็นในข้อมูลส่วนตัวก่อนพิจารณาบันทึกข้อความ",
+            },
+            { status: 400 }
+          );
+        }
+
+        const reviewerSignature = await getProfileSignatureAsset(
+          memoDocumentConfig.profileGasUrl,
+          memoDocumentConfig.profileGasSecret,
+          auth.profile.signature_file_id,
+          "ลายเซ็นผู้พิจารณา"
+        );
+
+        const gasResult = (await callMemoGas(memoDocumentConfig.memoGasUrl, {
+          action: "memoFinalize",
+          secret: memoDocumentConfig.memoGasSecret,
+          workingDocumentId: memo.working_document_id,
+          memoNumber: memo.memo_number || "",
+          fullName: memo.full_name,
+          position: memo.position || "",
+          subject: memo.subject,
+          reason: memo.reason,
+          memoText: memo.body,
+          attachmentDescription: memo.attachment_description || "-",
+          decision: status,
+          reviewerName: auth.profile.full_name,
+          reviewerPosition: auth.profile.position || auth.profile.role,
+          reviewerNote: note,
+          reviewedAt: now,
+          reviewerSignatureBase64:
+            `data:${reviewerSignature.mimeType};base64,${reviewerSignature.base64}`,
+        })) as MemoFinalizeResponse;
+
+        if (!gasResult.pdfFileId || !gasResult.pdfFileUrl) {
+          throw new Error("GAS สร้าง PDF บันทึกข้อความไม่สำเร็จหรือไม่คืน File ID");
+        }
+
+        updatePayload.pdf_file_id = gasResult.pdfFileId;
+        updatePayload.pdf_file_url = gasResult.pdfFileUrl;
+        updatePayload.pdf_file_name = gasResult.pdfFileName || null;
+        updatePayload.working_document_id = null;
+        updatePayload.working_document_url = null;
+      }
+    }
+
     const { data, error } = await auth.admin
       .from("memo_requests")
-      .update({
-        status,
-        reviewed_by: auth.profile.id,
-        reviewed_at: new Date().toISOString(),
-        review_note: note || null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", memo.id)
       .eq("status", "pending")
       .select("*")

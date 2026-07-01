@@ -6,9 +6,23 @@ import {
 } from "@/lib/document-numbers";
 import { notifyMemoSubmitted } from "@/lib/line/memo-notifications";
 import { loadMemoLogsByRequest } from "@/lib/memo-logs";
+import {
+  callMemoGas,
+  getMemoDocumentConfig,
+  getProfileSignatureAsset,
+  type MemoPendingResponse,
+} from "@/lib/memo-document-gas";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const MEMO_ATTACHMENT_BUCKET = "memo-attachments";
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+]);
 
 type MemoAction = "draft" | "submit";
 type MemoStatus =
@@ -26,6 +40,7 @@ type Profile = {
   position: string | null;
   role: string;
   account_status: string;
+  signature_file_id: string | null;
 };
 
 type ExistingMemo = {
@@ -34,6 +49,13 @@ type ExistingMemo = {
   document_number_issue_id: string | null;
   memo_number: string | null;
   sequence_number: number | null;
+  attachment_bucket: string | null;
+  attachment_path: string | null;
+  attachment_file_name: string | null;
+  attachment_mime_type: string | null;
+  attachment_size_bytes: number | null;
+  working_document_id: string | null;
+  working_document_url: string | null;
 };
 
 function getConfig() {
@@ -89,7 +111,7 @@ async function authorize(request: Request) {
   });
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, full_name, position, role, account_status")
+    .select("id, full_name, position, role, account_status, signature_file_id")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -214,6 +236,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   let issuedReferenceId: string | null = null;
   let issuedAdmin: SupabaseClient | null = null;
+  let uploadedAttachmentPath: string | null = null;
+  let uploadAdmin: SupabaseClient | null = null;
+  let replacedAttachmentBucket: string | null = null;
+  let replacedAttachmentPath: string | null = null;
+  let pendingMemoDocumentId: string | null = null;
+  let pendingMemoGasUrl: string | null = null;
+  let pendingMemoGasSecret: string | null = null;
 
   try {
     const auth = await authorize(request);
@@ -225,22 +254,54 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as {
-      id?: string;
-      action?: MemoAction;
-      subject?: string;
-      reason?: string;
-      memoText?: string;
-      attachmentDescription?: string;
-    };
+    const contentType = request.headers.get("content-type") ?? "";
+    let body:
+      | {
+          id?: string;
+          action?: MemoAction;
+          subject?: string;
+          reason?: string;
+          memoText?: string;
+          attachmentDescription?: string;
+          attachment?: File | null;
+        }
+      | null = null;
 
-    const action = body.action === "submit" ? "submit" : "draft";
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      const attachmentValue = form.get("attachment");
+
+      body = {
+        id: String(form.get("id") ?? "") || undefined,
+        action: String(form.get("action") ?? "") as MemoAction,
+        subject: String(form.get("subject") ?? ""),
+        reason: String(form.get("reason") ?? ""),
+        memoText: String(form.get("memoText") ?? ""),
+        attachmentDescription: String(form.get("attachmentDescription") ?? ""),
+        attachment:
+          attachmentValue instanceof File && attachmentValue.size > 0
+            ? attachmentValue
+            : null,
+      };
+    } else {
+      body = (await request.json()) as {
+        id?: string;
+        action?: MemoAction;
+        subject?: string;
+        reason?: string;
+        memoText?: string;
+        attachmentDescription?: string;
+      };
+    }
+
+    const action = body?.action === "submit" ? "submit" : "draft";
     const subject = String(body.subject ?? "").trim();
     const reason = String(body.reason ?? "").trim();
     const memoText = String(body.memoText ?? "").trim();
     const attachmentDescription = String(
       body.attachmentDescription ?? ""
     ).trim();
+    const attachment = body.attachment ?? null;
     const validation = validateMemoInput({
       subject,
       reason,
@@ -259,7 +320,9 @@ export async function POST(request: Request) {
     if (body.id) {
       const { data, error } = await auth.admin
         .from("memo_requests")
-        .select("id, status, document_number_issue_id, memo_number, sequence_number")
+        .select(
+          "id, status, document_number_issue_id, memo_number, sequence_number, attachment_bucket, attachment_path, attachment_file_name, attachment_mime_type, attachment_size_bytes, working_document_id, working_document_url"
+        )
         .eq("id", body.id)
         .eq("user_id", auth.profile.id)
         .maybeSingle();
@@ -296,6 +359,51 @@ export async function POST(request: Request) {
     let memoNumber = existing?.memo_number ?? null;
     let issueId = existing?.document_number_issue_id ?? null;
     let sequenceNumber = existing?.sequence_number ?? null;
+    let attachmentBucket = existing?.attachment_bucket ?? null;
+    let attachmentPath = existing?.attachment_path ?? null;
+    let attachmentFileName = existing?.attachment_file_name ?? null;
+    let attachmentMimeType = existing?.attachment_mime_type ?? null;
+    let attachmentSizeBytes = existing?.attachment_size_bytes ?? null;
+
+    if (attachment) {
+      if (attachment.size > MAX_ATTACHMENT_SIZE) {
+        return NextResponse.json(
+          { ok: false, message: "ไฟล์แนบต้องมีขนาดไม่เกิน 10 MB" },
+          { status: 400 }
+        );
+      }
+
+      if (!ALLOWED_ATTACHMENT_TYPES.has(attachment.type)) {
+        return NextResponse.json(
+          { ok: false, message: "รองรับเฉพาะไฟล์ PDF, JPG และ PNG" },
+          { status: 400 }
+        );
+      }
+
+      const extension = attachment.name.split(".").pop()?.toLowerCase() || "bin";
+      const safeExtension = extension.replace(/[^a-z0-9]/g, "") || "bin";
+      const attachmentPathValue = `${auth.profile.id}/${requestId}/${crypto.randomUUID()}.${safeExtension}`;
+      const { error: uploadError } = await auth.admin.storage
+        .from(MEMO_ATTACHMENT_BUCKET)
+        .upload(attachmentPathValue, attachment, {
+          contentType: attachment.type || "application/octet-stream",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      uploadedAttachmentPath = attachmentPathValue;
+      uploadAdmin = auth.admin;
+      replacedAttachmentBucket = existing?.attachment_bucket ?? null;
+      replacedAttachmentPath = existing?.attachment_path ?? null;
+      attachmentBucket = MEMO_ATTACHMENT_BUCKET;
+      attachmentPath = attachmentPathValue;
+      attachmentFileName = attachment.name;
+      attachmentMimeType = attachment.type || "application/octet-stream";
+      attachmentSizeBytes = attachment.size;
+    }
 
     if (action === "submit" && !issueId) {
       issuedReferenceId = requestId;
@@ -317,6 +425,68 @@ export async function POST(request: Request) {
       sequenceNumber = issued.runningNumber;
     }
 
+    let workingDocumentId = existing?.working_document_id ?? null;
+    let workingDocumentUrl = existing?.working_document_url ?? null;
+    const memoDocumentConfig =
+      action === "submit" ? getMemoDocumentConfig() : null;
+
+    if (memoDocumentConfig && action === "submit") {
+      if (!auth.profile.signature_file_id) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message:
+              "กรุณาอัปโหลดลายเซ็นในข้อมูลส่วนตัวก่อนส่งบันทึกข้อความ",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (workingDocumentId) {
+        await callMemoGas(memoDocumentConfig.memoGasUrl, {
+          action: "memoDiscardPending",
+          secret: memoDocumentConfig.memoGasSecret,
+          workingDocumentId,
+        }).catch((cleanupError) => {
+          console.error("Discard old pending memo document error:", cleanupError);
+        });
+      }
+
+      const applicantSignature = await getProfileSignatureAsset(
+        memoDocumentConfig.profileGasUrl,
+        memoDocumentConfig.profileGasSecret,
+        auth.profile.signature_file_id,
+        "ลายเซ็นผู้ยื่น"
+      );
+
+      const gasResult = (await callMemoGas(memoDocumentConfig.memoGasUrl, {
+        action: "memoCreatePending",
+        secret: memoDocumentConfig.memoGasSecret,
+        roleKey: auth.profile.role,
+        documentNumber: memoNumber,
+        documentRunningNumber: sequenceNumber,
+        fullName: auth.profile.full_name,
+        position: auth.profile.position || auth.profile.role,
+        subject,
+        reason,
+        memoText,
+        attachmentDescription: attachmentDescription || "-",
+        submittedAt: now,
+        applicantSignatureBase64:
+          `data:${applicantSignature.mimeType};base64,${applicantSignature.base64}`,
+      })) as MemoPendingResponse;
+
+      if (!gasResult.workingDocumentId) {
+        throw new Error("GAS ไม่คืนข้อมูล Google Docs ของบันทึกข้อความ");
+      }
+
+      pendingMemoDocumentId = gasResult.workingDocumentId;
+      pendingMemoGasUrl = memoDocumentConfig.memoGasUrl;
+      pendingMemoGasSecret = memoDocumentConfig.memoGasSecret;
+      workingDocumentId = gasResult.workingDocumentId;
+      workingDocumentUrl = gasResult.workingDocumentUrl || null;
+    }
+
     const payload = {
       id: requestId,
       user_id: auth.profile.id,
@@ -326,10 +496,17 @@ export async function POST(request: Request) {
       reason,
       body: memoText,
       attachment_description: attachmentDescription || null,
+      attachment_bucket: attachmentBucket,
+      attachment_path: attachmentPath,
+      attachment_file_name: attachmentFileName,
+      attachment_mime_type: attachmentMimeType,
+      attachment_size_bytes: attachmentSizeBytes,
       status: nextStatus,
       memo_number: memoNumber,
       sequence_number: sequenceNumber,
       document_number_issue_id: issueId,
+      working_document_id: workingDocumentId,
+      working_document_url: workingDocumentUrl,
       submitted_at: action === "submit" ? now : null,
       updated_at: now,
     };
@@ -350,6 +527,17 @@ export async function POST(request: Request) {
 
     if (error || !data) {
       throw new Error(error?.message || "บันทึกข้อความไม่สำเร็จ");
+    }
+
+    pendingMemoDocumentId = null;
+
+    if (replacedAttachmentBucket && replacedAttachmentPath) {
+      await auth.admin.storage
+        .from(replacedAttachmentBucket)
+        .remove([replacedAttachmentPath])
+        .catch((cleanupError) => {
+          console.error("Remove replaced memo attachment error:", cleanupError);
+        });
     }
 
     await logMemoStatus(auth.admin, {
@@ -389,6 +577,13 @@ export async function POST(request: Request) {
           : "บันทึกฉบับร่างแล้ว",
     });
   } catch (error) {
+    if (uploadAdmin && uploadedAttachmentPath) {
+      await uploadAdmin.storage
+        .from(MEMO_ATTACHMENT_BUCKET)
+        .remove([uploadedAttachmentPath])
+        .catch(() => undefined);
+    }
+
     if (issuedAdmin && issuedReferenceId) {
       await markDocumentNumberIssue(issuedAdmin, {
         documentType: "MEMO",
@@ -397,6 +592,14 @@ export async function POST(request: Request) {
         failureReason:
           error instanceof Error ? error.message : "บันทึกข้อความไม่สำเร็จ",
       });
+    }
+
+    if (pendingMemoGasUrl && pendingMemoGasSecret && pendingMemoDocumentId) {
+      await callMemoGas(pendingMemoGasUrl, {
+        action: "memoDiscardPending",
+        secret: pendingMemoGasSecret,
+        workingDocumentId: pendingMemoDocumentId,
+      }).catch(() => undefined);
     }
 
     return NextResponse.json(

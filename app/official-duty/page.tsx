@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
+import FeedbackToast from "@/components/ui/FeedbackToast";
 import styles from "./official-duty.module.css";
 
 type Profile = {
@@ -392,6 +393,8 @@ export default function OfficialDutyPage() {
           </button>
         </nav>
       )}
+
+      <FeedbackToast message={message} type={messageType} />
 
       {message && (
         <div

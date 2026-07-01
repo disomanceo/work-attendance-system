@@ -1,8 +1,16 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import FeedbackToast from "@/components/ui/FeedbackToast";
 import styles from "./memo.module.css";
 
 type MemoRequest = {
@@ -19,6 +27,14 @@ type MemoRequest = {
   created_at: string;
   submitted_at: string | null;
   reviewed_at?: string | null;
+  attachment_bucket?: string | null;
+  attachment_path?: string | null;
+  attachment_file_name?: string | null;
+  attachment_mime_type?: string | null;
+  attachment_size_bytes?: number | null;
+  working_document_url?: string | null;
+  pdf_file_url?: string | null;
+  pdf_file_name?: string | null;
   logs?: MemoLog[];
 };
 
@@ -44,11 +60,14 @@ type MemoFormProps = {
   reason: string;
   memoText: string;
   attachmentDescription: string;
+  attachment: File | null;
+  attachmentInputRef: React.RefObject<HTMLInputElement | null>;
   saving: boolean;
   onSubjectChange: (value: string) => void;
   onReasonChange: (value: string) => void;
   onMemoTextChange: (value: string) => void;
   onAttachmentDescriptionChange: (value: string) => void;
+  onAttachmentChange: (file: File | null) => void;
   onSaveDraft: () => void;
   onCancelEdit: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -122,11 +141,14 @@ function MemoForm({
   reason,
   memoText,
   attachmentDescription,
+  attachment,
+  attachmentInputRef,
   saving,
   onSubjectChange,
   onReasonChange,
   onMemoTextChange,
   onAttachmentDescriptionChange,
+  onAttachmentChange,
   onSaveDraft,
   onCancelEdit,
   onSubmit,
@@ -185,8 +207,23 @@ function MemoForm({
       </label>
 
       <div className={styles.uploadBox}>
-        <strong>ไฟล์แนบ</strong>
-        <p>ระบบแนบไฟล์จริงจะต่อในเฟสเอกสาร/PDF ถัดไป</p>
+        <input
+          ref={attachmentInputRef}
+          id="memo-attachment"
+          type="file"
+          accept="application/pdf,image/jpeg,image/png"
+          onChange={(event) =>
+            onAttachmentChange(event.target.files?.[0] ?? null)
+          }
+        />
+        <label htmlFor="memo-attachment">
+          <strong>{attachment ? attachment.name : "ไฟล์แนบ"}</strong>
+          <p>
+            {attachment
+              ? `${(attachment.size / 1024 / 1024).toFixed(2)} MB`
+              : "รองรับ PDF, JPG, PNG ขนาดไม่เกิน 10 MB"}
+          </p>
+        </label>
       </div>
 
       <div className={styles.formActions}>
@@ -230,6 +267,8 @@ export default function MemoPage() {
   const [reason, setReason] = useState("");
   const [memoText, setMemoText] = useState("");
   const [attachmentDescription, setAttachmentDescription] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
@@ -343,6 +382,10 @@ export default function MemoPage() {
     setReason("");
     setMemoText("");
     setAttachmentDescription("");
+    setAttachment(null);
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = "";
+    }
   }
 
   function editDraft(item: MemoRequest) {
@@ -355,6 +398,10 @@ export default function MemoPage() {
     setReason(item.reason);
     setMemoText(item.body);
     setAttachmentDescription(item.attachment_description ?? "");
+    setAttachment(null);
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = "";
+    }
   }
 
   async function saveMemo(action: "draft" | "submit") {
@@ -363,20 +410,19 @@ export default function MemoPage() {
 
     try {
       const token = await getAccessToken();
+      const formData = new FormData();
+      if (editingId) formData.set("id", editingId);
+      formData.set("action", action);
+      formData.set("subject", subject);
+      formData.set("reason", reason);
+      formData.set("memoText", memoText);
+      formData.set("attachmentDescription", attachmentDescription);
+      if (attachment) formData.set("attachment", attachment);
+
       const response = await fetch("/api/memo", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: editingId || undefined,
-          action,
-          subject,
-          reason,
-          memoText,
-          attachmentDescription,
-        }),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
       const result = (await response.json()) as ApiResponse;
 
@@ -401,6 +447,36 @@ export default function MemoPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await saveMemo("submit");
+  }
+
+  async function openAttachment(requestId: string) {
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(
+        `/api/memo/attachment?requestId=${encodeURIComponent(requestId)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as
+          | { message?: string }
+          | null;
+        throw new Error(result?.message || "เปิดไฟล์แนบไม่สำเร็จ");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "เปิดไฟล์แนบไม่สำเร็จ"
+      );
+      setMessageType("error");
+    }
   }
 
   return (
@@ -433,6 +509,8 @@ export default function MemoPage() {
         </label>
       </div>
 
+      <FeedbackToast message={message} type={messageType} />
+
       {message && (
         <div
           className={`${styles.message} ${
@@ -451,11 +529,14 @@ export default function MemoPage() {
             reason={reason}
             memoText={memoText}
             attachmentDescription={attachmentDescription}
+            attachment={attachment}
+            attachmentInputRef={attachmentInputRef}
             saving={saving}
             onSubjectChange={setSubject}
             onReasonChange={setReason}
             onMemoTextChange={setMemoText}
             onAttachmentDescriptionChange={setAttachmentDescription}
+            onAttachmentChange={setAttachment}
             onSaveDraft={() => void saveMemo("draft")}
             onCancelEdit={resetForm}
             onSubmit={handleSubmit}
@@ -669,7 +750,7 @@ export default function MemoPage() {
 
           <section className={styles.detailPanel}>
             <div className={styles.pdfPreview}>
-              <h3>ตัวอย่างเอกสาร PDF (บันทึกข้อความ)</h3>
+              <h3>ตัวอย่างบันทึกข้อความ</h3>
               <div className={styles.documentMock}>
                 <span>ตราครุฑ</span>
                 <strong>บันทึกข้อความ</strong>
@@ -717,6 +798,38 @@ export default function MemoPage() {
                     )}
                   </dd>
                 </div>
+                <div>
+                  <dt>ไฟล์แนบ</dt>
+                  <dd>
+                    {selectedRequest?.attachment_path ? (
+                      <button
+                        type="button"
+                        className={styles.linkButton}
+                        onClick={() => void openAttachment(selectedRequest.id)}
+                      >
+                        {selectedRequest.attachment_file_name || "เปิดไฟล์แนบ"}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </dd>
+                </div>
+                {selectedRequest?.pdf_file_url && (
+                  <div>
+                    <dt>PDF</dt>
+                    <dd>
+                      <button
+                        type="button"
+                        className={styles.linkButton}
+                        onClick={() =>
+                          window.open(selectedRequest.pdf_file_url || "", "_blank")
+                        }
+                      >
+                        {selectedRequest.pdf_file_name || "เปิด PDF"}
+                      </button>
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import FeedbackToast from "@/components/ui/FeedbackToast";
 import styles from "../../memo/memo.module.css";
 
 type MemoRequest = {
@@ -18,6 +19,14 @@ type MemoRequest = {
   submitted_at: string | null;
   reviewed_at: string | null;
   review_note: string | null;
+  attachment_bucket?: string | null;
+  attachment_path?: string | null;
+  attachment_file_name?: string | null;
+  attachment_mime_type?: string | null;
+  attachment_size_bytes?: number | null;
+  working_document_url?: string | null;
+  pdf_file_url?: string | null;
+  pdf_file_name?: string | null;
   logs?: MemoLog[];
 };
 
@@ -154,6 +163,17 @@ export default function AdminMemoPage() {
   async function reviewMemo(action: ReviewAction) {
     if (!selectedRequest) return;
 
+    const confirmMessage =
+      action === "approve"
+        ? "ยืนยันอนุมัติบันทึกข้อความรายการนี้"
+        : action === "acknowledge"
+          ? "ยืนยันรับทราบบันทึกข้อความรายการนี้"
+          : action === "send_back"
+            ? "ยืนยันส่งกลับให้แก้ไขบันทึกข้อความรายการนี้"
+            : "ยืนยันไม่อนุมัติบันทึกข้อความรายการนี้";
+
+    if (!window.confirm(confirmMessage)) return;
+
     setSavingId(selectedRequest.id);
     setMessage("");
 
@@ -193,6 +213,36 @@ export default function AdminMemoPage() {
     }
   }
 
+  async function openAttachment(requestId: string) {
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(
+        `/api/memo/attachment?requestId=${encodeURIComponent(requestId)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as
+          | { message?: string }
+          | null;
+        throw new Error(result?.message || "เปิดไฟล์แนบไม่สำเร็จ");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "เปิดไฟล์แนบไม่สำเร็จ"
+      );
+      setMessageType("error");
+    }
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -200,6 +250,8 @@ export default function AdminMemoPage() {
           <h1>พิจารณาบันทึกข้อความ</h1>
         </div>
       </header>
+
+      <FeedbackToast message={message} type={messageType} />
 
       {message && (
         <div
@@ -324,8 +376,39 @@ export default function AdminMemoPage() {
                 </div>
                 <div>
                   <dt>สิ่งที่แนบมาด้วย</dt>
-                  <dd>{selectedRequest.attachment_description || "-"}</dd>
+                  <dd>
+                    {selectedRequest.attachment_description || "-"}
+                    {selectedRequest.attachment_path && (
+                      <>
+                        <br />
+                        <button
+                          type="button"
+                          className={styles.linkButton}
+                          onClick={() => void openAttachment(selectedRequest.id)}
+                        >
+                          {selectedRequest.attachment_file_name ||
+                            "เปิดไฟล์แนบ"}
+                        </button>
+                      </>
+                    )}
+                  </dd>
                 </div>
+                {selectedRequest.pdf_file_url && (
+                  <div>
+                    <dt>PDF</dt>
+                    <dd>
+                      <button
+                        type="button"
+                        className={styles.linkButton}
+                        onClick={() =>
+                          window.open(selectedRequest.pdf_file_url || "", "_blank")
+                        }
+                      >
+                        {selectedRequest.pdf_file_name || "เปิด PDF"}
+                      </button>
+                    </dd>
+                  </div>
+                )}
                 {selectedRequest.review_note && (
                   <div>
                     <dt>ความเห็นเดิม</dt>

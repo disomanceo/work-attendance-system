@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
+import FeedbackToast from "@/components/ui/FeedbackToast";
 import styles from "./leave-admin.module.css";
 
 type AdminLeaveRequest = {
@@ -33,6 +34,8 @@ export default function AdminLeavePage() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] =
+    useState<"success" | "error">("success");
 
   const token = useCallback(async () => {
     const {
@@ -55,6 +58,7 @@ export default function AdminLeavePage() {
       }
       setRequests(result.requests);
     } catch (error) {
+      setMessageType("error");
       setMessage(
         error instanceof Error ? error.message : "โหลดรายการไม่สำเร็จ"
       );
@@ -77,6 +81,7 @@ export default function AdminLeavePage() {
         : "";
 
     if (action === "reject" && note.length < 5) {
+      setMessageType("error");
       setMessage("กรุณาระบุเหตุผลที่ไม่อนุมัติอย่างน้อย 5 ตัวอักษร");
       return;
     }
@@ -98,9 +103,11 @@ export default function AdminLeavePage() {
       if (!response.ok || !result.ok) {
         throw new Error(result.message || "บันทึกผลไม่สำเร็จ");
       }
+      setMessageType("success");
       setMessage(result.message);
       await load();
     } catch (error) {
+      setMessageType("error");
       setMessage(
         error instanceof Error ? error.message : "บันทึกผลไม่สำเร็จ"
       );
@@ -119,6 +126,7 @@ export default function AdminLeavePage() {
       }
     );
     if (!response.ok) {
+      setMessageType("error");
       setMessage("เปิดไฟล์แนบไม่สำเร็จ");
       return;
     }
@@ -137,6 +145,7 @@ export default function AdminLeavePage() {
         <a href="/attendance">กลับหน้าหลัก</a>
       </header>
 
+      <FeedbackToast message={message} type={messageType} />
       {message && <div className={styles.message}>{message}</div>}
 
       {loading ? (

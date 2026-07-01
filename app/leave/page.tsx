@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import FeedbackToast from "@/components/ui/FeedbackToast";
 import styles from "./leave.module.css";
 type LeaveRequest = {
   id: string;
@@ -757,6 +758,10 @@ export default function LeavePage() {
 
 
 
+      <FeedbackToast
+        message={errorMessage || message}
+        type={errorMessage ? "error" : "success"}
+      />
       {message && <div className={styles.success}>{message}</div>}
       {errorMessage && <div className={styles.error}>{errorMessage}</div>}
 

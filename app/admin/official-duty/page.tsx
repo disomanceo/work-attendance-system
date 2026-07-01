@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
+import FeedbackToast from "@/components/ui/FeedbackToast";
 import styles from "./official-duty-admin.module.css";
 
 type OfficialDutyRequest = {
@@ -202,6 +203,8 @@ export default function OfficialDutyAdminPage() {
           <small>รายการรอพิจารณา</small>
         </div>
       </header>
+
+      <FeedbackToast message={message} type={messageType} />
 
       {message && (
         <div
