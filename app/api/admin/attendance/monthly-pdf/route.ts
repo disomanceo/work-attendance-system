@@ -4,6 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type WeeklyPdfPeriod = {
+  startDay: number;
+  endDay: number;
+  found: boolean;
+  fileName?: string;
+};
+
 type GasResponse = {
   ok: boolean;
   found?: boolean;
@@ -15,6 +22,7 @@ type GasResponse = {
   includedDays?: number[];
   missingDays?: number[];
   dailyPdfDays?: number[];
+  weeklyPdfPeriods?: WeeklyPdfPeriod[];
   monthlyPdfFound?: boolean;
   monthClosed?: boolean;
   canCloseMonth?: boolean;
@@ -23,6 +31,16 @@ type GasResponse = {
   deletedDailyDocs?: number;
   deletedMonthlyDocs?: number;
 };
+
+type GasMode =
+  | "metadata"
+  | "file"
+  | "weekly-metadata"
+  | "weekly-file"
+  | "build"
+  | "build-weekly"
+  | "status"
+  | "close";
 
 function getConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -39,6 +57,24 @@ function getConfig() {
 
 function isValidMonth(value: string) {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+function parseWeekRange(url: URL) {
+  const startDay = Number(url.searchParams.get("startDay") ?? "");
+  const endDay = Number(url.searchParams.get("endDay") ?? "");
+
+  if (
+    !Number.isInteger(startDay) ||
+    !Number.isInteger(endDay) ||
+    startDay < 1 ||
+    startDay > 31 ||
+    endDay < startDay ||
+    endDay > 31
+  ) {
+    return null;
+  }
+
+  return { startDay, endDay };
 }
 
 async function authorizeAdmin(
@@ -84,7 +120,7 @@ async function authorizeAdmin(
     return {
       ok: false as const,
       status: 403,
-      message: "ไม่มีสิทธิ์จัดการรายงานรวมเดือน",
+      message: "ไม่มีสิทธิ์จัดการรายงาน PDF",
     };
   }
 
@@ -94,30 +130,38 @@ async function authorizeAdmin(
 async function callGas(
   config: NonNullable<ReturnType<typeof getConfig>>,
   month: string,
-  mode: "metadata" | "file" | "build" | "status" | "close"
+  mode: GasMode,
+  weekRange?: { startDay: number; endDay: number }
 ) {
-  const actionByMode = {
+  const actionByMode: Record<GasMode, string> = {
     metadata: "monthlyPdf",
     file: "monthlyPdf",
+    "weekly-metadata": "weeklyPdf",
+    "weekly-file": "weeklyPdf",
     build: "buildMonthlyPdf",
+    "build-weekly": "buildWeeklyPdf",
     status: "monthStatus",
     close: "closeMonth",
-  } as const;
+  };
 
   const url = new URL(config.gasUrl);
   url.searchParams.set("action", actionByMode[mode]);
   url.searchParams.set("month", month);
   url.searchParams.set(
     "mode",
-    mode === "file" ? "file" : "metadata"
+    mode === "file" || mode === "weekly-file" ? "file" : "metadata"
   );
   url.searchParams.set("secret", config.gasSecret);
+
+  if (weekRange) {
+    url.searchParams.set("startDay", String(weekRange.startDay));
+    url.searchParams.set("endDay", String(weekRange.endDay));
+  }
 
   const response = await fetch(url.toString(), {
     cache: "no-store",
     redirect: "follow",
   });
-
   const text = await response.text();
   let result: GasResponse;
 
@@ -130,12 +174,49 @@ async function callGas(
   }
 
   if (!response.ok || !result.ok) {
-    throw new Error(
-      result.message || "ไม่สามารถเรียก GAS รายงานรวมเดือนได้"
-    );
+    throw new Error(result.message || "ไม่สามารถเรียก GAS รายงาน PDF ได้");
   }
 
   return result;
+}
+
+function metadataResponse(result: GasResponse) {
+  return NextResponse.json({
+    ok: true,
+    found: Boolean(result.found),
+    message: result.message,
+    fileName: result.fileName,
+    size: result.size ?? null,
+    modifiedTime: result.modifiedTime ?? null,
+  });
+}
+
+function pdfResponse(result: GasResponse, fallbackName: string) {
+  if (!result.found || !result.base64) {
+    return NextResponse.json(
+      {
+        ok: true,
+        found: false,
+        message: result.message || "ยังไม่พบรายงาน PDF",
+      },
+      { status: 404 }
+    );
+  }
+
+  const body = Buffer.from(result.base64, "base64");
+  const fileName = result.fileName || fallbackName;
+
+  return new NextResponse(body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Length": String(body.length),
+      "Cache-Control": "private, no-store, max-age=0",
+      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(
+        fileName
+      )}`,
+    },
+  });
 }
 
 async function handle(request: Request, allowWrite: boolean) {
@@ -176,11 +257,13 @@ async function handle(request: Request, allowWrite: boolean) {
     if (mode === "status") {
       const result = await callGas(config, month, "status");
 
-      // สำคัญ: ป้องกันหน้า React ล่มเมื่อ GAS ไม่ส่งบางฟิลด์กลับมา
       return NextResponse.json({
         ok: true,
         dailyPdfDays: Array.isArray(result.dailyPdfDays)
           ? result.dailyPdfDays
+          : [],
+        weeklyPdfPeriods: Array.isArray(result.weeklyPdfPeriods)
+          ? result.weeklyPdfPeriods
           : [],
         monthlyPdfFound: Boolean(result.monthlyPdfFound),
         monthClosed: Boolean(result.monthClosed),
@@ -190,67 +273,70 @@ async function handle(request: Request, allowWrite: boolean) {
       });
     }
 
+    if (allowWrite && mode === "build-weekly") {
+      const weekRange = parseWeekRange(url);
+
+      if (!weekRange) {
+        return NextResponse.json(
+          { ok: false, message: "กรุณาระบุ startDay และ endDay ให้ถูกต้อง" },
+          { status: 400 }
+        );
+      }
+
+      const result = await callGas(config, month, "build-weekly", weekRange);
+      return NextResponse.json(result);
+    }
+
     if (allowWrite && (mode === "build" || mode === "close")) {
+      const result = await callGas(config, month, mode as "build" | "close");
+      return NextResponse.json(result);
+    }
+
+    if (mode === "weekly-metadata" || mode === "weekly-file") {
+      const weekRange = parseWeekRange(url);
+
+      if (!weekRange) {
+        return NextResponse.json(
+          { ok: false, message: "กรุณาระบุ startDay และ endDay ให้ถูกต้อง" },
+          { status: 400 }
+        );
+      }
+
       const result = await callGas(
         config,
         month,
-        mode as "build" | "close"
+        mode as "weekly-metadata" | "weekly-file",
+        weekRange
       );
-      return NextResponse.json(result);
+
+      if (mode === "weekly-metadata") {
+        return metadataResponse(result);
+      }
+
+      return pdfResponse(
+        result,
+        `weekly-attendance-${month}-${weekRange.startDay}-${weekRange.endDay}.pdf`
+      );
     }
 
     if (mode !== "metadata" && mode !== "file") {
       return NextResponse.json(
         {
           ok: false,
-          message: "mode ต้องเป็น metadata, file, status, build หรือ close",
+          message:
+            "mode ต้องเป็น metadata, file, weekly-metadata, weekly-file, status, build, build-weekly หรือ close",
         },
         { status: 400 }
       );
     }
 
-    const result = await callGas(
-      config,
-      month,
-      mode as "metadata" | "file"
-    );
+    const result = await callGas(config, month, mode as "metadata" | "file");
 
     if (mode === "metadata") {
-      return NextResponse.json({
-        ok: true,
-        found: Boolean(result.found),
-        message: result.message,
-        fileName: result.fileName,
-        size: result.size ?? null,
-        modifiedTime: result.modifiedTime ?? null,
-      });
+      return metadataResponse(result);
     }
 
-    if (!result.found || !result.base64) {
-      return NextResponse.json(
-        {
-          ok: true,
-          found: false,
-          message: result.message || "ยังไม่พบรายงานรวมเดือน",
-        },
-        { status: 404 }
-      );
-    }
-
-    const body = Buffer.from(result.base64, "base64");
-    const fileName = result.fileName || `monthly-attendance-${month}.pdf`;
-
-    return new NextResponse(body, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Length": String(body.length),
-        "Cache-Control": "private, no-store, max-age=0",
-        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(
-          fileName
-        )}`,
-      },
-    });
+    return pdfResponse(result, `monthly-attendance-${month}.pdf`);
   } catch (error) {
     console.error("Monthly PDF API error:", error);
 
@@ -260,7 +346,7 @@ async function handle(request: Request, allowWrite: boolean) {
         message:
           error instanceof Error
             ? error.message
-            : "เกิดข้อผิดพลาดในรายงานรวมเดือน",
+            : "เกิดข้อผิดพลาดในรายงาน PDF",
       },
       { status: 500 }
     );

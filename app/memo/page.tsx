@@ -72,6 +72,7 @@ type ApiResponse = {
 
 type MemoFormProps = {
   editingId: string;
+  submittedDate: string;
   subject: string;
   reason: string;
   memoText: string;
@@ -79,6 +80,7 @@ type MemoFormProps = {
   attachment: File | null;
   attachmentInputRef: React.RefObject<HTMLInputElement | null>;
   saving: boolean;
+  onSubmittedDateChange: (value: string) => void;
   onSubjectChange: (value: string) => void;
   onReasonChange: (value: string) => void;
   onMemoTextChange: (value: string) => void;
@@ -128,6 +130,15 @@ function formatThaiDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function getTodayInputDate() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function formatThaiDateTime(value: string | null) {
   if (!value) return "-";
 
@@ -149,6 +160,7 @@ function compactText(value: string, length = 28) {
 
 function MemoForm({
   editingId,
+  submittedDate,
   subject,
   reason,
   memoText,
@@ -156,6 +168,7 @@ function MemoForm({
   attachment,
   attachmentInputRef,
   saving,
+  onSubmittedDateChange,
   onSubjectChange,
   onReasonChange,
   onMemoTextChange,
@@ -172,7 +185,12 @@ function MemoForm({
 
       <label className={styles.field}>
         วันที่ยื่น <span>*</span>
-        <input value={formatThaiDate(new Date().toISOString())} readOnly />
+        <input
+          type="date"
+          value={submittedDate}
+          onChange={(event) => onSubmittedDateChange(event.target.value)}
+          required
+        />
       </label>
 
       <label className={styles.field}>
@@ -266,6 +284,7 @@ export default function MemoPage() {
   const [requests, setRequests] = useState<MemoRequest[]>([]);
   const [documents, setDocuments] = useState<DocumentRegistryItem[]>([]);
   const [editingId, setEditingId] = useState("");
+  const [submittedDate, setSubmittedDate] = useState(getTodayInputDate());
   const [subject, setSubject] = useState("");
   const [reason, setReason] = useState("");
   const [memoText, setMemoText] = useState("");
@@ -419,6 +438,7 @@ export default function MemoPage() {
 
   function resetForm() {
     setEditingId("");
+    setSubmittedDate(getTodayInputDate());
     setSubject("");
     setReason("");
     setMemoText("");
@@ -435,6 +455,9 @@ export default function MemoPage() {
     }
 
     setEditingId(item.id);
+    setSubmittedDate(
+      item.submitted_at ? item.submitted_at.slice(0, 10) : getTodayInputDate()
+    );
     setSubject(item.subject);
     setReason(item.reason);
     setMemoText(item.body);
@@ -454,6 +477,7 @@ export default function MemoPage() {
       const formData = new FormData();
       if (editingId) formData.set("id", editingId);
       formData.set("action", action);
+      formData.set("submittedDate", submittedDate);
       formData.set("subject", subject);
       formData.set("reason", reason);
       formData.set("memoText", memoText);
@@ -566,6 +590,7 @@ export default function MemoPage() {
         <aside className={styles.leftColumn}>
           <MemoForm
             editingId={editingId}
+            submittedDate={submittedDate}
             subject={subject}
             reason={reason}
             memoText={memoText}
@@ -573,6 +598,7 @@ export default function MemoPage() {
             attachment={attachment}
             attachmentInputRef={attachmentInputRef}
             saving={saving}
+            onSubmittedDateChange={setSubmittedDate}
             onSubjectChange={setSubject}
             onReasonChange={setReason}
             onMemoTextChange={setMemoText}

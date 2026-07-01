@@ -54,6 +54,8 @@ type GasPdfResponse = {
   fileName?: string;
   replaced?: boolean;
   recordCount?: number;
+  includedDays?: number[];
+  missingDays?: number[];
 };
 
 function getBangkokDate() {
@@ -63,6 +65,22 @@ function getBangkokDate() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+function getWeekPeriodForDate(date: string) {
+  const [yearText, monthText, dayText] = date.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const periods = [
+    { startDay: 1, endDay: Math.min(7, daysInMonth) },
+    { startDay: 8, endDay: Math.min(14, daysInMonth) },
+    { startDay: 15, endDay: Math.min(21, daysInMonth) },
+    { startDay: 22, endDay: daysInMonth },
+  ];
+
+  return periods.find((period) => period.endDay === day) ?? null;
 }
 
 function formatThaiTime(value: string | null) {
@@ -435,12 +453,47 @@ export async function GET(request: Request) {
       );
     }
 
+    const weekPeriod = getWeekPeriodForDate(today);
+    let weeklyResult: GasPdfResponse | null = null;
+
+    if (weekPeriod) {
+      const weeklyUrl = new URL(gasUrl);
+      weeklyUrl.searchParams.set("action", "buildWeeklyPdf");
+      weeklyUrl.searchParams.set("month", today.slice(0, 7));
+      weeklyUrl.searchParams.set("mode", "metadata");
+      weeklyUrl.searchParams.set("startDay", String(weekPeriod.startDay));
+      weeklyUrl.searchParams.set("endDay", String(weekPeriod.endDay));
+      weeklyUrl.searchParams.set("secret", gasSecret);
+
+      const weeklyResponse = await fetch(weeklyUrl.toString(), {
+        method: "GET",
+        cache: "no-store",
+        redirect: "follow",
+      });
+      const weeklyText = await weeklyResponse.text();
+
+      try {
+        weeklyResult = JSON.parse(weeklyText) as GasPdfResponse;
+      } catch {
+        weeklyResult = {
+          ok: false,
+          message: "GAS ส่งผลการสร้าง PDF รวมสัปดาห์กลับมาไม่ถูกต้อง",
+        };
+      }
+
+      if (!weeklyResponse.ok || !weeklyResult.ok) {
+        console.error("Attendance weekly PDF cron error:", weeklyResult);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       date: today,
       fileName: result.fileName,
       replaced: Boolean(result.replaced),
       recordCount: result.recordCount ?? rows.length,
+      weeklyFileName: weeklyResult?.ok ? weeklyResult.fileName : undefined,
+      weeklyMessage: weeklyResult?.message,
       message:
         result.message || "สร้างรายงาน PDF อัตโนมัติสำเร็จ",
     });

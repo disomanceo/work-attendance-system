@@ -5043,3 +5043,37 @@
 }
 
 /* FIX LEAVE HEADER RIGHT COLUMN END */
+
+/* Unified purple page header */
+.header {
+  padding: 20px 22px !important;
+  border: 1px solid rgba(216, 180, 254, 0.38) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, #4c1d95 0%, #7e22ce 58%, #a855f7 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 20px 46px rgba(76, 29, 149, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.headerTitle h1,
+.headerTitle p {
+  color: #ffffff !important;
+}
+
+.headerActions .dashboardButton,
+.headerActions .leaveStatsCard,
+.headerActions .leaveStatsBreakdown article {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.headerActions .leaveStatsCard strong,
+.headerActions .leaveStatsCard span,
+.headerActions .leaveStatsCard small,
+.headerActions .leaveStatsBreakdown small,
+.headerActions .leaveStatsBreakdown strong {
+  color: #ffffff !important;
+}

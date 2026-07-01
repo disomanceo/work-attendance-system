@@ -55,11 +55,19 @@ type DailyPdfInfo = {
   modifiedTime?: string;
 };
 
-type ReportMode = "daily" | "monthly";
+type ReportMode = "daily" | "weekly" | "monthly";
+
+type WeeklyPdfPeriod = {
+  startDay: number;
+  endDay: number;
+  found: boolean;
+  fileName?: string;
+};
 
 type MonthFileStatus = {
   ok: boolean;
   dailyPdfDays: number[];
+  weeklyPdfPeriods: WeeklyPdfPeriod[];
   monthlyPdfFound: boolean;
   monthClosed: boolean;
   canCloseMonth: boolean;
@@ -101,6 +109,15 @@ function parseLocalDate(value: string) {
 
 function toIsoDate(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function getWeeklyPeriods(daysInMonth: number) {
+  return [
+    { startDay: 1, endDay: Math.min(7, daysInMonth) },
+    { startDay: 8, endDay: Math.min(14, daysInMonth) },
+    { startDay: 15, endDay: Math.min(21, daysInMonth) },
+    { startDay: 22, endDay: daysInMonth },
+  ].filter((period) => period.startDay <= period.endDay);
 }
 
 function formatThaiLongDate(value: string) {
@@ -200,6 +217,7 @@ export default function AdminAttendancePage() {
   const [monthFileStatus, setMonthFileStatus] = useState<MonthFileStatus>({
     ok: true,
     dailyPdfDays: [],
+    weeklyPdfPeriods: [],
     monthlyPdfFound: false,
     monthClosed: false,
     canCloseMonth: false,
@@ -217,6 +235,7 @@ export default function AdminAttendancePage() {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [deletingDailyPdf, setDeletingDailyPdf] = useState(false);
   const [buildingDailyPdf, setBuildingDailyPdf] = useState(false);
+  const [buildingWeeklyKey, setBuildingWeeklyKey] = useState("");
   const [pdfInfo, setPdfInfo] = useState<DailyPdfInfo | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState("");
   const [message, setMessage] = useState("");
@@ -240,6 +259,21 @@ export default function AdminAttendancePage() {
     [selectedDateParts]
   );
 
+  const weeklyPeriods = useMemo(
+    () => getWeeklyPeriods(daysInSelectedMonth),
+    [daysInSelectedMonth]
+  );
+
+  const selectedWeeklyPeriod = useMemo(
+    () =>
+      weeklyPeriods.find(
+        (period) =>
+          selectedDateParts.day >= period.startDay &&
+          selectedDateParts.day <= period.endDay
+      ) ?? weeklyPeriods[0],
+    [selectedDateParts.day, weeklyPeriods]
+  );
+
   const selectedMonthValue = `${selectedDateParts.year}-${String(
     selectedDateParts.monthIndex + 1
   ).padStart(2, "0")}`;
@@ -257,6 +291,19 @@ export default function AdminAttendancePage() {
 
   function chooseMonthlyReport() {
     setReportMode("monthly");
+    setCalendarOpen(false);
+  }
+
+  function chooseWeeklyReport(period: { startDay: number; endDay: number }) {
+    setReportMode("weekly");
+    chooseDate(
+      toIsoDate(
+        selectedDateParts.year,
+        selectedDateParts.monthIndex,
+        period.startDay
+      )
+    );
+    setReportMode("weekly");
     setCalendarOpen(false);
   }
 
@@ -292,12 +339,21 @@ export default function AdminAttendancePage() {
         );
       }
 
-      setMonthFileStatus(result);
+      setMonthFileStatus({
+        ...result,
+        dailyPdfDays: Array.isArray(result.dailyPdfDays)
+          ? result.dailyPdfDays
+          : [],
+        weeklyPdfPeriods: Array.isArray(result.weeklyPdfPeriods)
+          ? result.weeklyPdfPeriods
+          : [],
+      });
     } catch (error) {
       console.error("Load month file status error:", error);
       setMonthFileStatus({
         ok: false,
         dailyPdfDays: [],
+        weeklyPdfPeriods: [],
         monthlyPdfFound: false,
         monthClosed: false,
         canCloseMonth: false,
@@ -391,6 +447,8 @@ export default function AdminAttendancePage() {
       const metadataEndpoint =
         reportMode === "monthly"
           ? `/api/admin/attendance/monthly-pdf?month=${encodeURIComponent(selectedMonthValue)}&mode=metadata`
+          : reportMode === "weekly" && selectedWeeklyPeriod
+            ? `/api/admin/attendance/monthly-pdf?month=${encodeURIComponent(selectedMonthValue)}&mode=weekly-metadata&startDay=${selectedWeeklyPeriod.startDay}&endDay=${selectedWeeklyPeriod.endDay}`
           : `/api/admin/attendance/daily-pdf?date=${encodeURIComponent(selectedDate)}&mode=metadata`;
 
       const metadataResponse = await fetch(
@@ -418,6 +476,8 @@ export default function AdminAttendancePage() {
       const fileEndpoint =
         reportMode === "monthly"
           ? `/api/admin/attendance/monthly-pdf?month=${encodeURIComponent(selectedMonthValue)}&mode=file`
+          : reportMode === "weekly" && selectedWeeklyPeriod
+            ? `/api/admin/attendance/monthly-pdf?month=${encodeURIComponent(selectedMonthValue)}&mode=weekly-file&startDay=${selectedWeeklyPeriod.startDay}&endDay=${selectedWeeklyPeriod.endDay}`
           : `/api/admin/attendance/daily-pdf?date=${encodeURIComponent(selectedDate)}&mode=file`;
 
       const fileResponse = await fetch(
@@ -452,7 +512,7 @@ export default function AdminAttendancePage() {
     } finally {
       setLoadingPdf(false);
     }
-  }, [pdfPreviewUrl, reportMode, router, selectedDate, selectedMonthValue, supabase]);
+  }, [pdfPreviewUrl, reportMode, router, selectedDate, selectedMonthValue, selectedWeeklyPeriod, supabase]);
 
   useEffect(() => {
     void loadReportPdf();
@@ -679,6 +739,8 @@ export default function AdminAttendancePage() {
       const endpoint =
         reportMode === "monthly"
           ? `/api/admin/attendance/monthly-pdf?month=${encodeURIComponent(selectedMonthValue)}&mode=file`
+          : reportMode === "weekly" && selectedWeeklyPeriod
+            ? `/api/admin/attendance/monthly-pdf?month=${encodeURIComponent(selectedMonthValue)}&mode=weekly-file&startDay=${selectedWeeklyPeriod.startDay}&endDay=${selectedWeeklyPeriod.endDay}`
           : `/api/admin/attendance/daily-pdf?date=${encodeURIComponent(selectedDate)}&mode=file`;
 
       const response = await fetch(
@@ -707,6 +769,8 @@ export default function AdminAttendancePage() {
         pdfInfo.fileName ||
         (reportMode === "monthly"
           ? `บัญชีลงเวลาปฏิบัติราชการ_${THAI_MONTHS[selectedDateParts.monthIndex]}_${selectedDateParts.year + 543}.pdf`
+          : reportMode === "weekly" && selectedWeeklyPeriod
+            ? `บัญชีลงเวลาปฏิบัติราชการ_${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay}_${THAI_MONTHS[selectedDateParts.monthIndex]}_${selectedDateParts.year + 543}.pdf`
           : `บัญชีลงเวลาปฏิบัติราชการ_${selectedDate}.pdf`);
 
       document.body.appendChild(link);
@@ -890,6 +954,71 @@ export default function AdminAttendancePage() {
     }
   }
 
+  async function buildWeeklyReport(period: { startDay: number; endDay: number }) {
+    const key = `${period.startDay}-${period.endDay}`;
+    setBuildingWeeklyKey(key);
+    setMessage("");
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        router.replace("/login");
+        return;
+      }
+
+      const response = await fetch(
+        `/api/admin/attendance/monthly-pdf?month=${encodeURIComponent(
+          selectedMonthValue
+        )}&mode=build-weekly&startDay=${period.startDay}&endDay=${period.endDay}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          cache: "no-store",
+        }
+      );
+
+      const result = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        fileName?: string;
+        includedDays?: number[];
+        missingDays?: number[];
+      };
+
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          result.message || "ไม่สามารถสร้างรายงานรวมสัปดาห์ได้"
+        );
+      }
+
+      chooseWeeklyReport(period);
+      setMessage(
+        `${result.message || "สร้างรายงานรวมสัปดาห์เรียบร้อยแล้ว"}${
+          result.missingDays?.length
+            ? ` — วันที่ยังไม่มีรายงาน: ${result.missingDays.join(", ")}`
+            : ""
+        }`
+      );
+
+      await loadMonthStatus();
+    } catch (error) {
+      console.error("Build weekly report error:", error);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถสร้างรายงานรวมสัปดาห์ได้"
+      );
+    } finally {
+      setBuildingWeeklyKey("");
+    }
+  }
+
   async function buildMonthlyReport() {
     setBuildingMonthly(true);
     setMessage("");
@@ -1046,7 +1175,7 @@ export default function AdminAttendancePage() {
         <header className={styles.pageHeader}>
           <div>
             <p className={styles.eyebrow}>DAILY ATTENDANCE REPORT</p>
-            <h1>รายงานการมาปฏิบัติราชการประจำวัน</h1>
+            <h1>การลงเวลาปฏิบัติงาน</h1>
             <p className={styles.subtitle}>ตรวจสอบสถานะการมาปฏิบัติราชการของบุคลากรโรงเรียนวัดไผ่มุ้ง</p>
           </div>
           <button type="button" className={styles.backButton} onClick={() => router.push("/attendance")}>
@@ -1138,17 +1267,84 @@ export default function AdminAttendancePage() {
               <span>เลือกวันที่เพื่อดูรายงานรายวัน หรือสร้าง PDF รวมเดือน</span>
             </div>
             <div className={styles.monthActionButtons}>
+              <div className={styles.weekReportButtons}>
+                {weeklyPeriods.map((period) => {
+                  const key = `${period.startDay}-${period.endDay}`;
+                  const status = monthFileStatus.weeklyPdfPeriods.find(
+                    (item) =>
+                      item.startDay === period.startDay &&
+                      item.endDay === period.endDay
+                  );
+                  const found = Boolean(status?.found);
+                  const active =
+                    reportMode === "weekly" &&
+                    selectedWeeklyPeriod?.startDay === period.startDay &&
+                    selectedWeeklyPeriod?.endDay === period.endDay;
+
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={[
+                        styles.weekReportButton,
+                        found ? styles.weekReportReady : styles.weekReportMissing,
+                        active ? styles.weekReportActive : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={() =>
+                        found ? chooseWeeklyReport(period) : buildWeeklyReport(period)
+                      }
+                      disabled={Boolean(buildingWeeklyKey)}
+                      title={
+                        found
+                          ? `ช่วง ${key}: มี PDF รวมช่วงแล้ว`
+                          : `ช่วง ${key}: ยังไม่มี PDF กดเพื่อสร้าง`
+                      }
+                    >
+                      <span>{key}</span>
+                      <small>
+                        {buildingWeeklyKey === key
+                          ? "กำลังสร้าง"
+                          : found
+                            ? "พร้อม"
+                            : "ยังไม่มี"}
+                      </small>
+                    </button>
+                  );
+                })}
+              </div>
+
               <button
                 type="button"
-                className={styles.buildMonthButton}
-                onClick={buildMonthlyReport}
+                className={[
+                  styles.buildMonthButton,
+                  monthFileStatus.monthlyPdfFound
+                    ? styles.monthReportReady
+                    : styles.monthReportMissing,
+                  reportMode === "monthly" ? styles.monthReportActive : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onClick={
+                  monthFileStatus.monthlyPdfFound
+                    ? chooseMonthlyReport
+                    : buildMonthlyReport
+                }
                 disabled={buildingMonthly || closingMonth || monthFileStatus.monthClosed}
+                title={
+                  monthFileStatus.monthlyPdfFound
+                    ? "มี PDF รวมเดือนแล้ว กดเพื่อเปิดดู"
+                    : "ยังไม่มี PDF รวมเดือน กดเพื่อสร้าง"
+                }
               >
                 {buildingMonthly
                   ? "กำลังสร้าง PDF รวมเดือน..."
                   : monthFileStatus.monthClosed
                     ? "ปิดเดือนแล้ว"
-                    : "สร้าง PDF รวมเดือน"}
+                    : monthFileStatus.monthlyPdfFound
+                      ? "PDF รวมเดือนพร้อม"
+                      : "สร้าง PDF รวมเดือน"}
               </button>
 
               <button
@@ -1278,7 +1474,13 @@ export default function AdminAttendancePage() {
               <div className={styles.cardHeader}>
                 <div>
                   <h2>รายชื่อผู้มาปฏิบัติงาน</h2>
-                  <p>{reportMode === "monthly" ? `${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}` : formatThaiLongDate(selectedDate)}</p>
+                  <p>
+                    {reportMode === "monthly"
+                      ? `${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                      : reportMode === "weekly" && selectedWeeklyPeriod
+                        ? `${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay} ${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                        : formatThaiLongDate(selectedDate)}
+                  </p>
                 </div>
                 <span>{filteredRecords.length} คนที่เช็กอินแล้ว</span>
               </div>
@@ -1333,8 +1535,20 @@ export default function AdminAttendancePage() {
           <aside className={styles.previewCard}>
             <div className={styles.previewHeader}>
               <div>
-                <h2>{reportMode === "monthly" ? "รายงาน PDF รวมทั้งเดือน" : "ไฟล์รายงาน PDF ที่บันทึกไว้"}</h2>
-                <p>{reportMode === "monthly" ? `รวมรายงานเดือน${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}` : "ไฟล์หลักฐานจาก Google Drive ประจำวันที่เลือก"}</p>
+                <h2>
+                  {reportMode === "monthly"
+                    ? "รายงาน PDF รวมทั้งเดือน"
+                    : reportMode === "weekly"
+                      ? "รายงาน PDF รวมช่วง"
+                      : "ไฟล์รายงาน PDF ที่บันทึกไว้"}
+                </h2>
+                <p>
+                  {reportMode === "monthly"
+                    ? `รวมรายงานเดือน${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                    : reportMode === "weekly" && selectedWeeklyPeriod
+                      ? `รวมรายงานวันที่ ${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay} ${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                      : "ไฟล์หลักฐานจาก Google Drive ประจำวันที่เลือก"}
+                </p>
               </div>
 
               <div className={styles.previewActions}>
@@ -1418,7 +1632,13 @@ export default function AdminAttendancePage() {
                 <iframe
                   className={styles.pdfFrame}
                   src={pdfPreviewUrl}
-                  title={reportMode === "monthly" ? `รายงานรวมเดือน ${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}` : `ตัวอย่างรายงาน PDF ${formatThaiLongDate(selectedDate)}`}
+                  title={
+                    reportMode === "monthly"
+                      ? `รายงานรวมเดือน ${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                      : reportMode === "weekly" && selectedWeeklyPeriod
+                        ? `รายงานรวมช่วง ${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay} ${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                        : `ตัวอย่างรายงาน PDF ${formatThaiLongDate(selectedDate)}`
+                  }
                 />
               ) : (
                 <div className={styles.previewEmpty}>
@@ -1428,7 +1648,13 @@ export default function AdminAttendancePage() {
                       ? "กำลังโหลดตัวอย่างไฟล์"
                       : "ไม่มีไฟล์สำหรับแสดงตัวอย่าง"}
                   </h3>
-                  <p>{reportMode === "monthly" ? `${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}` : formatThaiLongDate(selectedDate)}</p>
+                  <p>
+                    {reportMode === "monthly"
+                      ? `${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                      : reportMode === "weekly" && selectedWeeklyPeriod
+                        ? `${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay} ${THAI_MONTHS[selectedDateParts.monthIndex]} ${selectedDateParts.year + 543}`
+                        : formatThaiLongDate(selectedDate)}
+                  </p>
                 </div>
               )}
             </div>

@@ -616,6 +616,62 @@
   justify-content: flex-end;
 }
 
+.weekReportButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.weekReportButton {
+  display: inline-grid;
+  grid-template-rows: auto auto;
+  min-width: 72px;
+  min-height: 42px;
+  padding: 5px 10px;
+  border: 1px solid #cbd3dd;
+  border-radius: 10px;
+  background: #f3f5f8;
+  color: #667085;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.weekReportButton span {
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.weekReportButton small {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+.weekReportReady {
+  border-color: #45a66e !important;
+  background: #eaf8f0 !important;
+  color: #176b3b !important;
+}
+
+.weekReportMissing {
+  border-color: #d5dbe4 !important;
+  background: #f5f7f9 !important;
+  color: #8792a2 !important;
+}
+
+.weekReportActive {
+  border-color: #2f70c0 !important;
+  background: #2f70c0 !important;
+  color: #ffffff !important;
+}
+
+.weekReportButton:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
 .closeMonthButton {
   border: 1px solid #d79a34;
   border-radius: 11px;
@@ -1524,4 +1580,52 @@
   .backButton {
     display: none !important;
   }
+}
+
+/* Monthly PDF status button */
+.monthReportReady {
+  border: 1px solid #45a66e !important;
+  background: #eaf8f0 !important;
+  color: #176b3b !important;
+}
+
+.monthReportMissing {
+  border: 1px solid #d5dbe4 !important;
+  background: #f5f7f9 !important;
+  color: #8792a2 !important;
+}
+
+.monthReportActive {
+  border-color: #2f70c0 !important;
+  background: #2f70c0 !important;
+  color: #ffffff !important;
+}
+
+/* Unified purple page header */
+.pageHeader {
+  padding: 20px 22px !important;
+  border: 1px solid rgba(216, 180, 254, 0.36) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, #4c1d95 0%, #7e22ce 56%, #a855f7 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 20px 46px rgba(76, 29, 149, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.pageHeader h1,
+.pageHeader .subtitle,
+.pageHeader .eyebrow {
+  color: #ffffff !important;
+}
+
+.pageHeader .eyebrow {
+  opacity: 0.82;
+}
+
+.pageHeader .backButton {
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
 }

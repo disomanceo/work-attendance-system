@@ -546,3 +546,50 @@
     min-width: 0;
   }
 }
+
+/* Unified purple page header and compact form */
+.header {
+  padding: 18px 20px !important;
+  border: 1px solid rgba(216, 180, 254, 0.38) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, #4c1d95 0%, #7e22ce 58%, #a855f7 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 20px 46px rgba(76, 29, 149, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.headerTitle span,
+.headerTitle h1,
+.headerTitle p {
+  color: #ffffff !important;
+}
+
+.headerTitle span {
+  opacity: 0.82;
+}
+
+.backButton,
+.profileBox {
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.profileBox small {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.card label,
+.reviewPanel label {
+  gap: 5px !important;
+  margin-bottom: 12px !important;
+}
+
+.card input,
+.card textarea,
+.reviewPanel textarea {
+  margin-top: 0 !important;
+  padding: 10px 12px !important;
+}

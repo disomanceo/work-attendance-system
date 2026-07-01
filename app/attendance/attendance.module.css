@@ -2520,3 +2520,23 @@
     font-size: 11px;
   }
 }
+
+/* Unified purple page header */
+.topBar {
+  border: 1px solid rgba(216, 180, 254, 0.34) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, rgba(76, 29, 149, 0.96), rgba(126, 34, 206, 0.94) 56%, rgba(168, 85, 247, 0.9)) !important;
+  box-shadow:
+    0 20px 48px rgba(76, 29, 149, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+.topBar span {
+  color: #e9d5ff !important;
+}
+
+.topBar h1,
+.topBar p {
+  color: #ffffff !important;
+}

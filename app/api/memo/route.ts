@@ -154,6 +154,20 @@ function validateMemoInput(input: {
   return "";
 }
 
+function parseSubmittedDate(value: string | undefined) {
+  const date = String(value ?? "").trim();
+
+  if (!date) {
+    return null;
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error("กรุณาระบุวันที่ยื่นให้ถูกต้อง");
+  }
+
+  return `${date}T00:00:00.000+07:00`;
+}
+
 async function logMemoStatus(
   admin: SupabaseClient,
   input: {
@@ -262,6 +276,7 @@ export async function POST(request: Request) {
           subject?: string;
           reason?: string;
           memoText?: string;
+          submittedDate?: string;
           attachmentDescription?: string;
           attachment?: File | null;
         }
@@ -277,6 +292,7 @@ export async function POST(request: Request) {
         subject: String(form.get("subject") ?? ""),
         reason: String(form.get("reason") ?? ""),
         memoText: String(form.get("memoText") ?? ""),
+        submittedDate: String(form.get("submittedDate") ?? ""),
         attachmentDescription: String(form.get("attachmentDescription") ?? ""),
         attachment:
           attachmentValue instanceof File && attachmentValue.size > 0
@@ -290,6 +306,7 @@ export async function POST(request: Request) {
         subject?: string;
         reason?: string;
         memoText?: string;
+        submittedDate?: string;
         attachmentDescription?: string;
       };
     }
@@ -298,6 +315,8 @@ export async function POST(request: Request) {
     const subject = String(body.subject ?? "").trim();
     const reason = String(body.reason ?? "").trim();
     const memoText = String(body.memoText ?? "").trim();
+    const submittedAt =
+      parseSubmittedDate(body.submittedDate) ?? new Date().toISOString();
     const attachmentDescription = String(
       body.attachmentDescription ?? ""
     ).trim();
@@ -471,7 +490,7 @@ export async function POST(request: Request) {
         reason,
         memoText,
         attachmentDescription: attachmentDescription || "-",
-        submittedAt: now,
+        submittedAt,
         applicantSignatureBase64:
           `data:${applicantSignature.mimeType};base64,${applicantSignature.base64}`,
       })) as MemoPendingResponse;
@@ -507,7 +526,7 @@ export async function POST(request: Request) {
       document_number_issue_id: issueId,
       working_document_id: workingDocumentId,
       working_document_url: workingDocumentUrl,
-      submitted_at: action === "submit" ? now : null,
+      submitted_at: action === "submit" ? submittedAt : null,
       updated_at: now,
     };
 
@@ -562,7 +581,7 @@ export async function POST(request: Request) {
         subject,
         reason,
         memoNumber,
-        submittedAt: now,
+        submittedAt,
       }).catch((lineError) => {
         console.error("LINE memo submitted notification error:", lineError);
       });

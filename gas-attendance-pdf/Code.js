@@ -1,4 +1,5 @@
 const ATTENDANCE_REPORT_CONFIG = {
+  VERSION: "2.1.1",
   // ใส่โฟลเดอร์หลัก, โฟลเดอร์ปี หรือโฟลเดอร์เดือนก็ได้
   START_FOLDER_ID: "1AMMUrclwyrnZnFUmQ5v3fsfUz9zWOHxl",
   SECRET_PROPERTY: "DAILY_PDF_SECRET",
@@ -32,6 +33,7 @@ function doGet(e) {
       return jsonOutput_({
         ok: true,
         service: "attendance-report",
+        version: ATTENDANCE_REPORT_CONFIG.VERSION,
         now: new Date().toISOString(),
       });
     }
@@ -50,8 +52,16 @@ function doGet(e) {
       return handleMonthlyPdf_(e);
     }
 
+    if (action === "weeklyPdf") {
+      return handleWeeklyPdf_(e);
+    }
+
     if (action === "buildMonthlyPdf") {
       return handleBuildMonthlyPdf_(e);
+    }
+
+    if (action === "buildWeeklyPdf") {
+      return handleBuildWeeklyPdf_(e);
     }
 
     if (action === "monthStatus") {
@@ -170,11 +180,7 @@ function handleBuildDailyPdf_(payload) {
     monthName: THAI_MONTHS[month - 1],
   };
 
-  const monthFolder = findMonthFolder_(monthInfo);
-
-  if (!monthFolder) {
-    throw new Error("ไม่พบโฟลเดอร์ของเดือนที่เลือก");
-  }
+  const monthFolder = getOrCreateMonthFolder_(monthInfo);
 
   const documentName =
     "บัญชีลงเวลาปฏิบัติราชการ_" +
@@ -289,6 +295,7 @@ function handleBuildDailyPdf_(payload) {
   return jsonOutput_({
     ok: true,
     found: true,
+    version: ATTENDANCE_REPORT_CONFIG.VERSION,
     replaced: replaced,
     recordCount: rows.length,
     elapsedMs: Date.now() - startedAt,
@@ -1324,6 +1331,35 @@ function handleMonthlyPdf_(e) {
   return fileResponse_(file, mode, fileName);
 }
 
+function handleWeeklyPdf_(e) {
+  const month = String(e?.parameter?.month || "").trim();
+  const mode = String(e?.parameter?.mode || "metadata").trim();
+  const monthInfo = parseMonth_(month);
+  const range = parseWeekRange_(e, monthInfo);
+  const fileName = weeklyPdfName_(
+    monthInfo,
+    range.startDay,
+    range.endDay
+  );
+  const monthFolder = findMonthFolder_(monthInfo);
+
+  if (!monthFolder) {
+    return jsonOutput_({
+      ok: true,
+      found: false,
+      message: "ยังไม่พบไฟล์ " + fileName,
+    });
+  }
+
+  const file = firstFileByNameAndMime_(
+    monthFolder,
+    fileName,
+    MimeType.PDF
+  );
+
+  return fileResponse_(file, mode, fileName);
+}
+
 function handleMonthStatus_(e) {
   const month = String(e?.parameter?.month || "").trim();
   const monthInfo = parseMonth_(month);
@@ -1333,10 +1369,11 @@ function handleMonthStatus_(e) {
     return jsonOutput_({
       ok: true,
       dailyPdfDays: [],
+      weeklyPdfPeriods: weeklyPeriodStatus_(null, monthInfo),
       monthlyPdfFound: false,
       monthClosed: false,
       canCloseMonth: isMonthEnded_(monthInfo),
-      message: "ไม่พบโฟลเดอร์ของเดือนที่เลือก",
+      message: "ยังไม่มีโฟลเดอร์เดือนนี้ ระบบจะสร้างให้อัตโนมัติเมื่อสร้าง PDF",
     });
   }
 
@@ -1374,6 +1411,10 @@ function handleMonthStatus_(e) {
     monthlyFileName,
     MimeType.PDF
   );
+  const weeklyPdfPeriods = weeklyPeriodStatus_(
+    monthFolder,
+    monthInfo
+  );
 
   const monthClosed =
     Boolean(monthlyPdf) && dailyPdfDays.length === 0;
@@ -1381,6 +1422,7 @@ function handleMonthStatus_(e) {
   return jsonOutput_({
     ok: true,
     dailyPdfDays: dailyPdfDays,
+    weeklyPdfPeriods: weeklyPdfPeriods,
     monthlyPdfFound: Boolean(monthlyPdf),
     monthlyFileName: monthlyPdf
       ? monthlyPdf.getName()
@@ -1519,23 +1561,57 @@ function isDailyReportDocName_(name, monthInfo) {
 function handleBuildMonthlyPdf_(e) {
   const month = String(e?.parameter?.month || "").trim();
   const monthInfo = parseMonth_(month);
-  const monthFolder = findMonthFolder_(monthInfo);
-
-  if (!monthFolder) {
-    throw new Error("ไม่พบโฟลเดอร์ของเดือนที่เลือก");
-  }
-
   const daysInMonth = new Date(
     monthInfo.year,
     monthInfo.month,
     0
   ).getDate();
 
+  return buildCombinedPdf_(
+    monthInfo,
+    1,
+    daysInMonth,
+    monthlyDocName_(monthInfo),
+    monthlyPdfName_(monthInfo),
+    "สร้างรายงานรวมเดือนเรียบร้อยแล้ว"
+  );
+}
+
+function handleBuildWeeklyPdf_(e) {
+  const month = String(e?.parameter?.month || "").trim();
+  const monthInfo = parseMonth_(month);
+  const range = parseWeekRange_(e, monthInfo);
+
+  return buildCombinedPdf_(
+    monthInfo,
+    range.startDay,
+    range.endDay,
+    weeklyDocName_(monthInfo, range.startDay, range.endDay),
+    weeklyPdfName_(monthInfo, range.startDay, range.endDay),
+    "สร้างรายงานรวมช่วง " +
+      range.startDay +
+      "-" +
+      range.endDay +
+      " " +
+      monthInfo.monthName +
+      " เรียบร้อยแล้ว"
+  );
+}
+
+function buildCombinedPdf_(
+  monthInfo,
+  startDay,
+  endDay,
+  combinedDocName,
+  combinedPdfName,
+  successMessage
+) {
+  const monthFolder = getOrCreateMonthFolder_(monthInfo);
   const sourceDocs = [];
   const includedDays = [];
   const missingDays = [];
 
-  for (let day = 1; day <= daysInMonth; day += 1) {
+  for (let day = startDay; day <= endDay; day += 1) {
     const dailyDocName =
       "บัญชีลงเวลาปฏิบัติราชการ_" +
       pad2_(day) +
@@ -1562,17 +1638,14 @@ function handleBuildMonthlyPdf_(e) {
 
   if (sourceDocs.length === 0) {
     throw new Error(
-      "ยังไม่มี Google Docs รายวันสำหรับนำมารวมในเดือนนี้"
+      "ยังไม่มี Google Docs รายวันสำหรับนำมารวมในช่วงที่เลือก"
     );
   }
 
-  const monthlyDocName = monthlyDocName_(monthInfo);
-  const monthlyPdfName = monthlyPdfName_(monthInfo);
+  trashFilesByName_(monthFolder, combinedDocName);
+  trashFilesByName_(monthFolder, combinedPdfName);
 
-  trashFilesByName_(monthFolder, monthlyDocName);
-  trashFilesByName_(monthFolder, monthlyPdfName);
-
-  const destinationDocument = DocumentApp.create(monthlyDocName);
+  const destinationDocument = DocumentApp.create(combinedDocName);
   const destinationFile = DriveApp.getFileById(
     destinationDocument.getId()
   );
@@ -1602,7 +1675,7 @@ function handleBuildMonthlyPdf_(e) {
     destinationDocument.getId()
   )
     .getAs(MimeType.PDF)
-    .setName(monthlyPdfName);
+    .setName(combinedPdfName);
 
   const pdfFile = monthFolder.createFile(pdfBlob);
 
@@ -1615,7 +1688,8 @@ function handleBuildMonthlyPdf_(e) {
     ok: true,
     found: true,
     message:
-      "สร้างรายงานรวมเดือนเรียบร้อยแล้ว จำนวน " +
+      successMessage +
+      " จำนวน " +
       includedDays.length +
       " วัน",
     fileName: pdfFile.getName(),
@@ -1752,6 +1826,40 @@ function findMonthFolder_(monthInfo) {
   );
 }
 
+function getOrCreateMonthFolder_(monthInfo) {
+  const found = findMonthFolder_(monthInfo);
+
+  if (found) {
+    return found;
+  }
+
+  const start = DriveApp.getFolderById(
+    ATTENDANCE_REPORT_CONFIG.START_FOLDER_ID
+  );
+  const yearName = "ปี " + monthInfo.buddhistYear;
+  let yearFolder = null;
+
+  if (start.getName() === yearName) {
+    yearFolder = start;
+  } else {
+    yearFolder = findFolderRecursive_(start, yearName, 0);
+  }
+
+  if (!yearFolder) {
+    yearFolder = start.createFolder(yearName);
+  }
+
+  const existingMonthFolders = yearFolder.getFoldersByName(
+    monthInfo.monthName
+  );
+
+  if (existingMonthFolders.hasNext()) {
+    return existingMonthFolders.next();
+  }
+
+  return yearFolder.createFolder(monthInfo.monthName);
+}
+
 function findFolderRecursive_(folder, targetName, depth) {
   if (
     depth > ATTENDANCE_REPORT_CONFIG.MAX_FOLDER_DEPTH
@@ -1865,6 +1973,98 @@ function monthlyDocName_(info) {
 
 function monthlyPdfName_(info) {
   return monthlyDocName_(info) + ".pdf";
+}
+
+function weeklyPeriods_(monthInfo) {
+  const daysInMonth = new Date(
+    monthInfo.year,
+    monthInfo.month,
+    0
+  ).getDate();
+
+  return [
+    { startDay: 1, endDay: Math.min(7, daysInMonth) },
+    { startDay: 8, endDay: Math.min(14, daysInMonth) },
+    { startDay: 15, endDay: Math.min(21, daysInMonth) },
+    { startDay: 22, endDay: daysInMonth },
+  ].filter(function (period) {
+    return period.startDay <= period.endDay;
+  });
+}
+
+function weeklyPeriodStatus_(monthFolder, monthInfo) {
+  return weeklyPeriods_(monthInfo).map(function (period) {
+    const fileName = weeklyPdfName_(
+      monthInfo,
+      period.startDay,
+      period.endDay
+    );
+    const file = monthFolder
+      ? firstFileByNameAndMime_(
+          monthFolder,
+          fileName,
+          MimeType.PDF
+        )
+      : null;
+
+    return {
+      startDay: period.startDay,
+      endDay: period.endDay,
+      found: Boolean(file),
+      fileName: file ? file.getName() : fileName,
+    };
+  });
+}
+
+function parseWeekRange_(e, monthInfo) {
+  const daysInMonth = new Date(
+    monthInfo.year,
+    monthInfo.month,
+    0
+  ).getDate();
+  const startDay = Number(e?.parameter?.startDay || 0);
+  const endDay = Number(e?.parameter?.endDay || 0);
+  const matchesPreset = weeklyPeriods_(monthInfo).some(
+    function (period) {
+      return (
+        period.startDay === startDay &&
+        period.endDay === endDay
+      );
+    }
+  );
+
+  if (
+    !matchesPreset ||
+    startDay < 1 ||
+    endDay > daysInMonth ||
+    startDay > endDay
+  ) {
+    throw new Error(
+      "กรุณาระบุช่วงรายสัปดาห์เป็น 1-7, 8-14, 15-21 หรือ 22-สิ้นเดือน"
+    );
+  }
+
+  return {
+    startDay: startDay,
+    endDay: endDay,
+  };
+}
+
+function weeklyDocName_(info, startDay, endDay) {
+  return (
+    "บัญชีลงเวลาปฏิบัติราชการ_" +
+    startDay +
+    "-" +
+    endDay +
+    "_" +
+    info.monthName +
+    "_" +
+    info.buddhistYear
+  );
+}
+
+function weeklyPdfName_(info, startDay, endDay) {
+  return weeklyDocName_(info, startDay, endDay) + ".pdf";
 }
 
 function pad2_(value) {
