@@ -39,12 +39,13 @@ type MemoLog = {
   created_at: string;
 };
 
-type ReviewAction = "approve" | "acknowledge" | "reject" | "send_back";
+type ReviewAction = "approve" | "reject";
 
 type ApiResponse = {
   ok: boolean;
   message?: string;
   requests?: MemoRequest[];
+  request?: MemoRequest;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -55,15 +56,6 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "ไม่อนุมัติ",
   cancelled: "ยกเลิก",
 };
-
-const FILTERS = [
-  { value: "pending", label: "รอพิจารณา" },
-  { value: "all", label: "ทั้งหมด" },
-  { value: "approved", label: "อนุมัติ" },
-  { value: "acknowledged", label: "รับทราบ" },
-  { value: "revision", label: "ส่งกลับแก้ไข" },
-  { value: "rejected", label: "ไม่อนุมัติ" },
-];
 
 const TIMELINE_LABELS: Record<string, string> = {
   draft: "บันทึกฉบับร่าง",
@@ -94,7 +86,6 @@ export default function AdminMemoPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [requests, setRequests] = useState<MemoRequest[]>([]);
-  const [filter, setFilter] = useState("pending");
   const [selectedId, setSelectedId] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [loading, setLoading] = useState(true);
@@ -124,7 +115,7 @@ export default function AdminMemoPage() {
 
     try {
       const token = await getAccessToken();
-      const response = await fetch(`/api/admin/memo?status=${filter}`, {
+      const response = await fetch("/api/admin/memo?status=all", {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
@@ -150,7 +141,7 @@ export default function AdminMemoPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, getAccessToken]);
+  }, [getAccessToken]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -160,21 +151,30 @@ export default function AdminMemoPage() {
     return () => window.clearTimeout(timer);
   }, [loadRequests]);
 
-  async function reviewMemo(action: ReviewAction) {
-    if (!selectedRequest) return;
+  async function reviewMemo(item: MemoRequest, action: ReviewAction) {
+    if (item.status !== "pending") return;
 
     const confirmMessage =
       action === "approve"
         ? "ยืนยันอนุมัติบันทึกข้อความรายการนี้"
-        : action === "acknowledge"
-          ? "ยืนยันรับทราบบันทึกข้อความรายการนี้"
-          : action === "send_back"
-            ? "ยืนยันส่งกลับให้แก้ไขบันทึกข้อความรายการนี้"
-            : "ยืนยันไม่อนุมัติบันทึกข้อความรายการนี้";
+        : "ยืนยันไม่อนุมัติบันทึกข้อความรายการนี้";
 
     if (!window.confirm(confirmMessage)) return;
 
-    setSavingId(selectedRequest.id);
+    const note =
+      action === "reject" && item.id !== selectedId
+        ? window.prompt("ระบุเหตุผลไม่อนุมัติ", reviewNote)?.trim() ?? ""
+        : reviewNote.trim();
+
+    if (action === "reject" && note.length < 3) {
+      setSelectedId(item.id);
+      setMessage("กรุณาระบุเหตุผลไม่อนุมัติอย่างน้อย 3 ตัวอักษร");
+      setMessageType("error");
+      return;
+    }
+
+    setSelectedId(item.id);
+    setSavingId(item.id);
     setMessage("");
 
     try {
@@ -186,9 +186,9 @@ export default function AdminMemoPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          requestId: selectedRequest.id,
+          requestId: item.id,
           action,
-          note: reviewNote,
+          note,
         }),
       });
       const result = (await response.json()) as ApiResponse;
@@ -200,7 +200,15 @@ export default function AdminMemoPage() {
       setMessage(result.message || "บันทึกผลการพิจารณาแล้ว");
       setMessageType("success");
       setReviewNote("");
-      await loadRequests();
+      if (result.request) {
+        setRequests((current) =>
+          current.map((request) =>
+            request.id === result.request?.id
+              ? { ...request, ...result.request, logs: request.logs }
+              : request
+          )
+        );
+      }
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -272,26 +280,6 @@ export default function AdminMemoPage() {
             </div>
           </div>
 
-          <div className={styles.filterBar}>
-            {FILTERS.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                className={
-                  filter === item.value
-                    ? styles.activeFilterButton
-                    : styles.filterButton
-                }
-                onClick={() => {
-                  setFilter(item.value);
-                  setReviewNote("");
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
           <div className={styles.tableWrap}>
             <table className={styles.registryTable}>
               <thead>
@@ -300,17 +288,19 @@ export default function AdminMemoPage() {
                   <th>ผู้ยื่น</th>
                   <th>เรื่อง</th>
                   <th>วันที่ส่ง</th>
+                  <th>PDF</th>
+                  <th>ไฟล์แนบ</th>
                   <th>สถานะ</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5}>กำลังโหลดข้อมูล...</td>
+                    <td colSpan={7}>กำลังโหลดข้อมูล...</td>
                   </tr>
                 ) : requests.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>ไม่มีรายการบันทึกข้อความในหมวดนี้</td>
+                    <td colSpan={7}>ไม่มีรายการบันทึกข้อความ</td>
                   </tr>
                 ) : (
                   requests.map((item) => (
@@ -329,9 +319,68 @@ export default function AdminMemoPage() {
                       <td>{compactText(item.subject)}</td>
                       <td>{formatThaiDateTime(item.submitted_at)}</td>
                       <td>
-                        <span className={`${styles.status} ${styles[item.status]}`}>
-                          {STATUS_LABELS[item.status] ?? item.status}
-                        </span>
+                        {item.pdf_file_url ? (
+                          <button
+                            type="button"
+                            className={styles.linkButton}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              window.open(item.pdf_file_url || "", "_blank");
+                            }}
+                          >
+                            PDF
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>
+                        {item.attachment_path ? (
+                          <button
+                            type="button"
+                            className={styles.linkButton}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void openAttachment(item.id);
+                            }}
+                          >
+                            ไฟล์แนบ
+                          </button>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>
+                        {item.status === "pending" ? (
+                          <div className={styles.inlineActions}>
+                            <button
+                              type="button"
+                              className={styles.approveMiniButton}
+                              disabled={savingId === item.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void reviewMemo(item, "approve");
+                              }}
+                            >
+                              อนุมัติ
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.rejectMiniButton}
+                              disabled={savingId === item.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void reviewMemo(item, "reject");
+                              }}
+                            >
+                              ไม่อนุมัติ
+                            </button>
+                          </div>
+                        ) : (
+                          <span className={`${styles.status} ${styles[item.status]}`}>
+                            {STATUS_LABELS[item.status] ?? item.status}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -464,31 +513,15 @@ export default function AdminMemoPage() {
                       type="button"
                       className={styles.primaryButton}
                       disabled={savingId === selectedRequest.id}
-                      onClick={() => void reviewMemo("approve")}
+                      onClick={() => void reviewMemo(selectedRequest, "approve")}
                     >
                       อนุมัติ
                     </button>
                     <button
                       type="button"
-                      className={styles.secondaryButton}
-                      disabled={savingId === selectedRequest.id}
-                      onClick={() => void reviewMemo("acknowledge")}
-                    >
-                      รับทราบ
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      disabled={savingId === selectedRequest.id}
-                      onClick={() => void reviewMemo("send_back")}
-                    >
-                      ส่งกลับแก้ไข
-                    </button>
-                    <button
-                      type="button"
                       className={styles.dangerButton}
                       disabled={savingId === selectedRequest.id}
-                      onClick={() => void reviewMemo("reject")}
+                      onClick={() => void reviewMemo(selectedRequest, "reject")}
                     >
                       ไม่อนุมัติ
                     </button>

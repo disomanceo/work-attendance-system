@@ -17,7 +17,7 @@ function doGet() {
   return jsonOutput_({
     ok: true,
     service: "Work Attendance Memo Document Service",
-    version: "1.0.1",
+    version: "1.0.5",
     timestamp: new Date().toISOString()
   });
 }
@@ -96,16 +96,14 @@ function memoCreatePending_(payload) {
     );
 
     replaceFieldsInDocument_(document, [
-      field_(["MEMO_NUMBER", "DOCUMENT_NUMBER", "เลขที่เอกสาร", "เลขที่ใบลา"], payload.documentNumber),
+      field_(["เลขที่ใบลา", "MEMO_NUMBER", "DOCUMENT_NUMBER", "เลขที่เอกสาร"], formatThaiText_(payload.documentNumber)),
       field_(["FULL_NAME", "APPLICANT_NAME", "ชื่อผู้ลา", "ชื่อผู้ยื่น"], payload.fullName),
       field_(["POSITION", "APPLICANT_POSITION", "ตำแหน่ง"], payload.position || ""),
-      field_(["SUBJECT", "MEMO_SUBJECT", "เรื่อง"], payload.subject),
-      field_(["REASON", "MEMO_REASON", "เหตุผล"], payload.reason),
-      field_(["MEMO_TEXT", "BODY", "DETAIL", "ด้วยเหตุนี้", "รายละเอียด"], payload.memoText),
-      field_(["ATTACHMENT_DESCRIPTION", "ATTACHMENT", "หลักฐาน", "สิ่งที่แนบมาด้วย"], payload.attachmentDescription || "-"),
-      field_(["SUBMITTED_DATE", "REQUEST_DATE", "วันที่ยื่น"], formatThaiDateTime_(payload.submittedAt || new Date())),
-      field_(["REVIEWER_NOTE", "DIRECTOR_NOTE", "ความคิดเห็นผู้อำนวยการ"], ""),
-      field_(["DECISION", "REVIEW_RESULT", "ผลการพิจารณา"], "รอพิจารณา")
+      field_(["เรื่องบันทึกข้อความ", "SUBJECT", "MEMO_SUBJECT", "เรื่อง"], payload.subject),
+      field_(["เหตุผลบันทึกข้อความ", "REASON", "MEMO_REASON", "เหตุผล"], payload.reason),
+      field_(["จึงไม่สามารถ", "ด้วยเหตุนี้", "MEMO_TEXT", "BODY", "DETAIL", "รายละเอียด"], payload.memoText),
+      field_(["หลักฐานบันทึกข้อความ", "หลักฐาน", "ATTACHMENT_DESCRIPTION", "ATTACHMENT", "สิ่งที่แนบมาด้วย"], payload.attachmentDescription || "-"),
+      field_(["วันที่ยื่น", "SUBMITTED_DATE", "REQUEST_DATE"], formatThaiLongDate_(payload.submittedAt || new Date()))
     ]);
 
     document.saveAndClose();
@@ -151,8 +149,8 @@ function memoFinalize_(payload) {
     field_(["REVIEWER_NAME", "DIRECTOR_NAME", "ชื่อผู้อำนวยการ", "ชื่อผู้พิจารณา"], payload.reviewerName || ""),
     field_(["REVIEWER_POSITION", "DIRECTOR_POSITION", "ตำแหน่งผู้อำนวยการ", "ตำแหน่งผู้พิจารณา"], payload.reviewerPosition || ""),
     field_(["REVIEWER_NOTE", "DIRECTOR_NOTE", "ความคิดเห็นผู้อำนวยการ"], payload.reviewerNote || ""),
-    field_(["DECISION", "REVIEW_RESULT", "ผลการพิจารณา"], decisionLabel_(payload.decision)),
-    field_(["REVIEWED_DATE", "APPROVED_DATE", "วันที่พิจารณา"], formatThaiDateTime_(payload.reviewedAt || new Date()))
+    field_(["ผลพิจารณา", "DECISION", "REVIEW_RESULT", "ผลการพิจารณา"], decisionLabel_(payload.decision)),
+    field_(["วันที่พิจารณา", "REVIEWED_DATE", "APPROVED_DATE"], formatThaiLongDate_(payload.reviewedAt || new Date()))
   ]);
 
   document.saveAndClose();
@@ -255,7 +253,7 @@ function field_(aliases, value) {
   return {
     key: String(aliases[0]),
     aliases: placeholderVariants_(aliases),
-    value: value === undefined || value === null ? "" : String(value)
+    value: formatThaiText_(value === undefined || value === null ? "" : String(value))
   };
 }
 
@@ -263,55 +261,98 @@ function placeholderVariants_(aliases) {
   const result = [];
 
   aliases.forEach(function(alias) {
-    const text = String(alias || "").trim();
+    const text = String(alias).trim();
     if (!text) return;
 
-    result.push(text);
-    result.push("{{" + text + "}}");
-    result.push("<<" + text + ">>");
-    result.push("[" + text + "]");
+    [
+      "{{" + text + "}}",
+      "[[" + text + "]]",
+      "<<" + text + ">>",
+      "«" + text + "»",
+      "${" + text + "}",
+      "%%" + text + "%%"
+    ].forEach(function(value) {
+      if (result.indexOf(value) === -1) result.push(value);
+    });
   });
 
-  return Array.from(new Set(result));
+  return result;
+}
+
+function documentContainers_(document) {
+  const containers = [document.getBody()];
+  const header = document.getHeader();
+  const footer = document.getFooter();
+
+  if (header) containers.push(header);
+  if (footer) containers.push(footer);
+
+  return containers;
 }
 
 function replaceFieldsInDocument_(document, fields) {
-  const body = document.getBody();
   const report = {};
+  const containers = documentContainers_(document);
 
   fields.forEach(function(field) {
-    let replaced = false;
+    let count = 0;
 
-    field.aliases.forEach(function(alias) {
-      const pattern = escapeRegExp_(alias);
-      const found = body.findText(pattern);
-      if (found) replaced = true;
-      body.replaceText(pattern, field.value);
+    containers.forEach(function(container) {
+      field.aliases.forEach(function(alias) {
+        count += replaceAllText_(container, alias, field.value);
+      });
     });
 
-    report[field.key] = replaced;
+    report[field.key] = count;
   });
 
   return report;
 }
 
+function replaceAllText_(container, placeholder, value) {
+  let count = 0;
+  const pattern = escapeRegExp_(placeholder);
+  let found = container.findText(pattern);
+
+  while (found) {
+    count += 1;
+    found = container.findText(pattern, found);
+  }
+
+  if (count > 0) {
+    container.replaceText(pattern, String(value));
+  }
+
+  return count;
+}
+
 function insertImageInDocument_(document, aliases, dataUrl, maxWidth) {
+  const containers = documentContainers_(document);
+
+  for (let i = 0; i < containers.length; i += 1) {
+    if (insertDataImageAtPlaceholder_(containers[i], aliases, dataUrl, maxWidth)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function insertDataImageAtPlaceholder_(body, aliases, dataUrl, maxWidth) {
   if (!dataUrl) return false;
 
   const blob = dataUrlToBlob_(dataUrl, "signature.png");
-  const body = document.getBody();
 
   for (let i = 0; i < aliases.length; i += 1) {
     const found = body.findText(escapeRegExp_(aliases[i]));
     if (!found) continue;
 
-    const element = found.getElement();
-    const text = element.asText();
+    const text = found.getElement().asText();
+    const paragraph = text.getParent().asParagraph();
     text.deleteText(found.getStartOffset(), found.getEndOffsetInclusive());
 
-    const parent = element.getParent();
-    const image = parent.asParagraph().appendInlineImage(blob);
-    resizeImage_(image, maxWidth);
+    const image = paragraph.appendInlineImage(blob);
+    resizeImage_(image, maxWidth || 150);
     return true;
   }
 
@@ -371,9 +412,35 @@ function formatBuddhistYear_(value) {
   return String(Number(Utilities.formatDate(date, MEMO_TIMEZONE, "yyyy")) + 543);
 }
 
-function formatThaiDateTime_(value) {
+function formatThaiLongDate_(value) {
   const date = value instanceof Date ? value : new Date(value);
-  return Utilities.formatDate(date, MEMO_TIMEZONE, "dd/MM/yyyy HH:mm");
+  const day = Number(Utilities.formatDate(date, MEMO_TIMEZONE, "d"));
+  const month = Number(Utilities.formatDate(date, MEMO_TIMEZONE, "M"));
+  const year = Number(Utilities.formatDate(date, MEMO_TIMEZONE, "yyyy")) + 543;
+  const monthNames = [
+    "",
+    "มกราคม",
+    "กุมภาพันธ์",
+    "มีนาคม",
+    "เมษายน",
+    "พฤษภาคม",
+    "มิถุนายน",
+    "กรกฎาคม",
+    "สิงหาคม",
+    "กันยายน",
+    "ตุลาคม",
+    "พฤศจิกายน",
+    "ธันวาคม"
+  ];
+
+  return formatThaiText_(day + " " + monthNames[month] + " " + year);
+}
+
+function formatThaiText_(value) {
+  return String(value === undefined || value === null ? "" : value)
+    .replace(/[0-9]/g, function(digit) {
+      return "๐๑๒๓๔๕๖๗๘๙".charAt(Number(digit));
+    });
 }
 
 function escapeRegExp_(value) {

@@ -156,26 +156,38 @@
 }
 
 .menuTitle {
-  margin: 10px 10px 6px;
+  margin: 8px 10px 5px;
   color: #c084fc;
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.5px;
 }
 
 .menuList {
   display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.accountMenuList {
+  display: grid;
   gap: 4px;
+  margin-top: auto;
+}
+
+.menuGroup {
+  display: grid;
+  gap: 3px;
 }
 
 .menuItem {
   display: flex;
   width: 100%;
-  min-height: 46px;
+  min-height: 40px;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: 1px solid transparent;
-  border-radius: 15px;
+  border-radius: 12px;
   color: #d7c8e8;
   background: transparent;
   font: inherit;
@@ -202,20 +214,20 @@
 
 .menuIcon {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   flex: 0 0 auto;
   border-radius: 10px;
   color: #e9d5ff;
   background: rgba(168, 85, 247, 0.12);
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .menuItem b {
   min-width: 0;
   flex: 1;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .sidebarCollapsed .menuItem {
@@ -226,13 +238,13 @@
 .logoutButton {
   display: flex;
   width: 100%;
-  min-height: 50px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
   gap: 9px;
-  margin-top: auto;
+  margin-top: 10px;
   border: 1px solid rgba(248, 113, 113, 0.22);
-  border-radius: 15px;
+  border-radius: 12px;
   color: #fecaca;
   background: rgba(127, 29, 29, 0.16);
   font: inherit;

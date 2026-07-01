@@ -33,6 +33,9 @@ export default function AppSidebar({
 }: AppSidebarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const showProfileImage = profileImageUrl && !imageFailed;
+  const mainItems = items.filter((item) => item.section === "main");
+  const reviewItems = items.filter((item) => item.section === "review");
+  const accountItems = items.filter((item) => item.section === "account");
 
   useEffect(() => {
     setImageFailed(false);
@@ -77,27 +80,33 @@ export default function AppSidebar({
         )}
       </div>
 
-      {!collapsed && <h2 className={styles.menuTitle}>เมนูของฉัน</h2>}
+      <nav className={styles.menuList} aria-label="เมนูหลัก">
+        <MenuGroup
+          collapsed={collapsed}
+          title="ส่วนกรอกข้อมูล"
+          items={mainItems}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
+        {reviewItems.length > 0 && (
+          <MenuGroup
+            collapsed={collapsed}
+            title="ส่วนพิจารณา"
+            items={reviewItems}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        )}
+      </nav>
 
-      <nav className={styles.menuList} aria-label="เมนูของฉัน">
-        {items.map((item) => {
-          const active = item.match(pathname);
-
-          return (
-            <button
-              type="button"
-              key={item.label}
-              className={`${styles.menuItem} ${
-                active ? styles.menuItemActive : ""
-              }`}
-              onClick={() => onNavigate(item.href)}
-              title={collapsed ? item.label : undefined}
-            >
-              <span className={styles.menuIcon}>{item.icon}</span>
-              {!collapsed && <b>{item.label}</b>}
-            </button>
-          );
-        })}
+      <nav className={styles.accountMenuList} aria-label="บัญชีและระบบ">
+        <MenuGroup
+          collapsed={collapsed}
+          title="บัญชีและระบบ"
+          items={accountItems}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
       </nav>
 
       <button
@@ -109,5 +118,45 @@ export default function AppSidebar({
         {!collapsed && <b>ออกจากระบบ</b>}
       </button>
     </aside>
+  );
+}
+
+function MenuGroup({
+  collapsed,
+  title,
+  items,
+  pathname,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  title: string;
+  items: AppNavigationItem[];
+  pathname: string;
+  onNavigate: (href: string) => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className={styles.menuGroup}>
+      {!collapsed && <h2 className={styles.menuTitle}>{title}</h2>}
+      {items.map((item) => {
+        const active = item.match(pathname);
+
+        return (
+          <button
+            type="button"
+            key={item.label}
+            className={`${styles.menuItem} ${
+              active ? styles.menuItemActive : ""
+            }`}
+            onClick={() => onNavigate(item.href)}
+            title={collapsed ? item.label : undefined}
+          >
+            <span className={styles.menuIcon}>{item.icon}</span>
+            {!collapsed && <b>{item.label}</b>}
+          </button>
+        );
+      })}
+    </div>
   );
 }

@@ -47,11 +47,27 @@ type MemoLog = {
   created_at: string;
 };
 
+type DocumentRegistryItem = {
+  id: string;
+  referenceId: string;
+  documentType: string;
+  typeLabel: string;
+  formattedNumber: string;
+  runningNumber: number;
+  buddhistYear: number;
+  issuedAt: string | null;
+  completedAt: string | null;
+  status: string;
+  applicantName: string;
+  subject: string;
+};
+
 type ApiResponse = {
   ok: boolean;
   message?: string;
   requests?: MemoRequest[];
   request?: MemoRequest;
+  documents?: DocumentRegistryItem[];
 };
 
 type MemoFormProps = {
@@ -68,7 +84,6 @@ type MemoFormProps = {
   onMemoTextChange: (value: string) => void;
   onAttachmentDescriptionChange: (value: string) => void;
   onAttachmentChange: (file: File | null) => void;
-  onSaveDraft: () => void;
   onCancelEdit: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
@@ -83,14 +98,11 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "ยกเลิก",
 };
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "ทั้งหมด" },
-  { value: "pending", label: "รอ ผอ. พิจารณา" },
-  { value: "approved", label: "อนุมัติแล้ว" },
-  { value: "acknowledged", label: "รับทราบแล้ว" },
-  { value: "revision", label: "ส่งกลับแก้ไข" },
-  { value: "rejected", label: "ไม่อนุมัติ" },
-  { value: "draft", label: "ฉบับร่าง" },
+const DOCUMENT_TYPE_OPTIONS = [
+  { value: "all", label: "ทุกประเภท" },
+  { value: "leave", label: "ใบลา" },
+  { value: "official_duty", label: "ไปราชการ" },
+  { value: "memo", label: "บันทึกข้อความ" },
 ];
 
 const TIMELINE_LABELS: Record<string, string> = {
@@ -149,7 +161,6 @@ function MemoForm({
   onMemoTextChange,
   onAttachmentDescriptionChange,
   onAttachmentChange,
-  onSaveDraft,
   onCancelEdit,
   onSubmit,
 }: MemoFormProps) {
@@ -169,7 +180,7 @@ function MemoForm({
         <input
           value={subject}
           onChange={(event) => onSubjectChange(event.target.value)}
-          placeholder="เช่น ชี้แจงการไม่มาปฏิบัติงาน"
+          placeholder="ขอชี้แจงในการไม่มาปฏิบัติงาน"
         />
       </label>
 
@@ -178,7 +189,7 @@ function MemoForm({
         <textarea
           value={reason}
           onChange={(event) => onReasonChange(event.target.value)}
-          placeholder="เช่น เนื่องจากมีอาการป่วย มีไข้ และแพทย์ให้พักรักษาตัว"
+          placeholder="เนื่องจากมีอาการเวียนหัวกระทันหัน ต้องไปพบแพทย์ด่วน"
         />
       </label>
 
@@ -189,10 +200,9 @@ function MemoForm({
           <textarea
             value={memoText}
             onChange={(event) => onMemoTextChange(event.target.value)}
-            placeholder="จึงไม่สามารถมาปฏิบัติงานในวันที่ 1 มิถุนายน 2568 ได้"
+            placeholder="จึงไม่สามารถมาปฏิบัติงานได้"
           />
         </div>
-        <small>ตัวอย่าง: จึงไม่สามารถมาปฏิบัติงานในวันที่ 1 ก.ค. 2569 ได้</small>
       </label>
 
       <label className={styles.field}>
@@ -202,7 +212,7 @@ function MemoForm({
           onChange={(event) =>
             onAttachmentDescriptionChange(event.target.value)
           }
-          placeholder="เช่น ใบรับรองแพทย์ จำนวน 1 ฉบับ"
+          placeholder="ใบรับรองแพทย์ หรือ รูปถ่าย"
         />
       </label>
 
@@ -227,14 +237,6 @@ function MemoForm({
       </div>
 
       <div className={styles.formActions}>
-        <button
-          type="button"
-          className={styles.secondaryButton}
-          disabled={saving}
-          onClick={onSaveDraft}
-        >
-          บันทึกฉบับร่าง
-        </button>
         <button
           type="submit"
           className={styles.primaryButton}
@@ -262,6 +264,7 @@ export default function MemoPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const [requests, setRequests] = useState<MemoRequest[]>([]);
+  const [documents, setDocuments] = useState<DocumentRegistryItem[]>([]);
   const [editingId, setEditingId] = useState("");
   const [subject, setSubject] = useState("");
   const [reason, setReason] = useState("");
@@ -270,7 +273,7 @@ export default function MemoPage() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [documentTypeFilter, setDocumentTypeFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState("");
@@ -321,6 +324,34 @@ export default function MemoPage() {
     }
   }, [getAccessToken]);
 
+  const loadDocumentRegistry = useCallback(async () => {
+    try {
+      const token = await getAccessToken();
+      const params = new URLSearchParams({
+        type: documentTypeFilter,
+        limit: "300",
+      });
+      const response = await fetch(`/api/document-registry?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const result = (await response.json()) as ApiResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "โหลดทะเบียนเลขเอกสารไม่สำเร็จ");
+      }
+
+      setDocuments(result.documents ?? []);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "โหลดทะเบียนเลขเอกสารไม่สำเร็จ"
+      );
+      setMessageType("error");
+    }
+  }, [documentTypeFilter, getAccessToken]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadRequests();
@@ -329,51 +360,56 @@ export default function MemoPage() {
     return () => window.clearTimeout(timer);
   }, [loadRequests]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadDocumentRegistry();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadDocumentRegistry]);
+
   const yearOptions = useMemo(() => {
     const years = new Set(
-      requests
-        .map((item) => getThaiYear(item.submitted_at ?? item.created_at))
+      documents
+        .map((item) => getThaiYear(item.issuedAt ?? item.completedAt))
         .filter(Boolean)
     );
 
     return ["all", ...Array.from(years).sort((a, b) => Number(b) - Number(a))];
-  }, [requests]);
+  }, [documents]);
 
-  const filteredRequests = useMemo(() => {
+  const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return requests.filter((item) => {
-      const dateValue = item.submitted_at ?? item.created_at;
+    return documents.filter((item) => {
+      const dateValue = item.issuedAt ?? item.completedAt;
       const yearMatched =
         yearFilter === "all" || getThaiYear(dateValue) === yearFilter;
-      const statusMatched =
-        statusFilter === "all" || item.status === statusFilter;
       const textMatched =
         !normalizedSearch ||
         [
-          item.memo_number,
+          item.formattedNumber,
+          item.typeLabel,
           item.subject,
-          item.reason,
-          item.full_name,
-          item.position,
+          item.applicantName,
         ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
           .includes(normalizedSearch);
 
-      return yearMatched && statusMatched && textMatched;
+      return yearMatched && textMatched;
     });
-  }, [requests, search, statusFilter, yearFilter]);
+  }, [documents, search, yearFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pagedRequests = filteredRequests.slice(
+  const pagedDocuments = filteredDocuments.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
   const selectedRequest =
-    requests.find((item) => item.id === selectedId) ?? filteredRequests[0];
+    requests.find((item) => item.id === selectedId) ?? requests[0];
   const myRequests = requests.slice(0, 5);
 
   function resetForm() {
@@ -537,7 +573,6 @@ export default function MemoPage() {
             onMemoTextChange={setMemoText}
             onAttachmentDescriptionChange={setAttachmentDescription}
             onAttachmentChange={setAttachment}
-            onSaveDraft={() => void saveMemo("draft")}
             onCancelEdit={resetForm}
             onSubmit={handleSubmit}
           />
@@ -563,7 +598,7 @@ export default function MemoPage() {
                       <th>เรื่อง</th>
                       <th>วันที่ยื่น</th>
                       <th>สถานะ</th>
-                      <th>จัดการ</th>
+                      <th>ดู</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -591,10 +626,17 @@ export default function MemoPage() {
                             <button
                               type="button"
                               className={styles.iconButton}
-                              onClick={() => setSelectedId(item.id)}
-                              aria-label="ดูรายละเอียด"
+                              onClick={() => {
+                                if (item.pdf_file_url) {
+                                  window.open(item.pdf_file_url, "_blank", "noopener,noreferrer");
+                                  return;
+                                }
+
+                                setSelectedId(item.id);
+                              }}
+                              aria-label={item.pdf_file_url ? "เปิดไฟล์ PDF" : "ดูรายละเอียด"}
                             >
-                              ดู
+                              {item.pdf_file_url ? "PDF" : "ดู"}
                             </button>
                           )}
                         </td>
@@ -612,7 +654,7 @@ export default function MemoPage() {
             <div className={styles.panelHeader}>
               <div>
                 <h2>ทะเบียนเลขเอกสารทั้งหมด</h2>
-                <p>แสดงเลขที่เอกสารต่อเนื่องของบันทึกข้อความ</p>
+                <p>รวมใบลา ไปราชการ และบันทึกข้อความจากเลขกลาง</p>
               </div>
             </div>
 
@@ -626,13 +668,13 @@ export default function MemoPage() {
                 placeholder="ค้นหาเลขที่หรือเรื่อง..."
               />
               <select
-                value={statusFilter}
+                value={documentTypeFilter}
                 onChange={(event) => {
-                  setStatusFilter(event.target.value);
+                  setDocumentTypeFilter(event.target.value);
                   setPage(1);
                 }}
               >
-                {STATUS_OPTIONS.map((item) => (
+                {DOCUMENT_TYPE_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
                     {item.label}
                   </option>
@@ -670,27 +712,35 @@ export default function MemoPage() {
                     <tr>
                       <td colSpan={6}>กำลังโหลดข้อมูล...</td>
                     </tr>
-                  ) : pagedRequests.length === 0 ? (
+                  ) : pagedDocuments.length === 0 ? (
                     <tr>
                       <td colSpan={6}>ไม่พบรายการตามเงื่อนไข</td>
                     </tr>
                   ) : (
-                    pagedRequests.map((item) => (
+                    pagedDocuments.map((item) => (
                       <tr
                         key={item.id}
                         className={
-                          selectedRequest?.id === item.id ? styles.selectedRow : ""
+                          selectedRequest?.id === item.referenceId
+                            ? styles.selectedRow
+                            : ""
                         }
-                        onClick={() => setSelectedId(item.id)}
+                        onClick={() => {
+                          if (item.documentType === "MEMO") {
+                            setSelectedId(item.referenceId);
+                          }
+                        }}
                       >
-                        <td>{item.memo_number || "-"}</td>
-                        <td>บันทึกข้อความ</td>
-                        <td>{formatThaiDate(item.submitted_at ?? item.created_at)}</td>
-                        <td>{item.full_name || "ฉัน"}</td>
+                        <td>{item.formattedNumber || "-"}</td>
+                        <td>{item.typeLabel}</td>
+                        <td>{formatThaiDate(item.issuedAt ?? item.completedAt)}</td>
+                        <td>{item.applicantName || "-"}</td>
                         <td>{compactText(item.subject, 34)}</td>
                         <td>
-                          <span className={`${styles.status} ${styles[item.status]}`}>
-                            {STATUS_LABELS[item.status] ?? item.status}
+                          <span className={styles.status}>
+                            {item.status === "COMPLETED"
+                              ? "ออกเลขแล้ว"
+                              : item.status}
                           </span>
                         </td>
                       </tr>
@@ -703,13 +753,13 @@ export default function MemoPage() {
             <div className={styles.pagination}>
               <span>
                 แสดงรายการ{" "}
-                {filteredRequests.length === 0
+                {filteredDocuments.length === 0
                   ? "0"
                   : `${(currentPage - 1) * PAGE_SIZE + 1} - ${Math.min(
                       currentPage * PAGE_SIZE,
-                      filteredRequests.length
+                      filteredDocuments.length
                     )}`}{" "}
-                จากทั้งหมด {filteredRequests.length} รายการ
+                จากทั้งหมด {filteredDocuments.length} รายการ
               </span>
               <div>
                 <button
@@ -749,19 +799,6 @@ export default function MemoPage() {
           </section>
 
           <section className={styles.detailPanel}>
-            <div className={styles.pdfPreview}>
-              <h3>ตัวอย่างบันทึกข้อความ</h3>
-              <div className={styles.documentMock}>
-                <span>ตราครุฑ</span>
-                <strong>บันทึกข้อความ</strong>
-                <p>{selectedRequest?.subject || "เลือกบันทึกข้อความเพื่อดูตัวอย่าง"}</p>
-                <small>
-                  เลขที่ {selectedRequest?.memo_number || "-"} ·{" "}
-                  {formatThaiDate(selectedRequest?.submitted_at ?? null)}
-                </small>
-              </div>
-            </div>
-
             <div className={styles.detailInfo}>
               <h3>รายละเอียด</h3>
               <dl>
