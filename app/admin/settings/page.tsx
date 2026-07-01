@@ -33,12 +33,30 @@ type ApiResponse = {
   settings?: AttendanceSettings;
 };
 
-type ResetMode = "attendance_only" | "full_day";
+type ResetMode =
+  | "attendance_only"
+  | "leave_only"
+  | "official_duty_only"
+  | "memo_only"
+  | "full_day";
+
+type ResetItem = {
+  id: string;
+  label: string;
+  detail: string;
+};
 
 type ResetSummary = {
   attendanceCount: number;
   leaveCount: number;
   officialDutyCount: number;
+  memoCount: number;
+  items?: {
+    attendance: ResetItem[];
+    leave: ResetItem[];
+    officialDuty: ResetItem[];
+    memo: ResetItem[];
+  };
 };
 
 const ROLE_ROWS: Array<{
@@ -86,8 +104,77 @@ const DEFAULT_SETTINGS: AttendanceSettings = {
   fiscal_year_end_date: null,
 };
 
+const RESET_MODE_OPTIONS: Array<{
+  value: ResetMode;
+  title: string;
+  description: string;
+}> = [
+  {
+    value: "attendance_only",
+    title: "รีเซ็ตเฉพาะการลงเวลา",
+    description: "ลบเฉพาะรายการเช็คอิน/เช็คเอาท์ของวันที่เลือก",
+  },
+  {
+    value: "leave_only",
+    title: "รีเซ็ตการลา",
+    description: "ลบใบลาที่ครอบคลุมวันที่เลือก พร้อมเคลียร์เลขเอกสาร",
+  },
+  {
+    value: "official_duty_only",
+    title: "รีเซ็ตการไปราชการ",
+    description: "ลบใบไปราชการที่ครอบคลุมวันที่เลือกและรายการลงเวลาไปราชการ",
+  },
+  {
+    value: "memo_only",
+    title: "รีเซ็ตบันทึกข้อความ",
+    description: "ลบบันทึกข้อความที่ยื่นในวันที่เลือก พร้อมไฟล์แนบในระบบ",
+  },
+  {
+    value: "full_day",
+    title: "รีเซ็ตทั้งวัน",
+    description: "ลบการลงเวลา ใบลา ไปราชการ บันทึกข้อความ และข้อมูลที่เกี่ยวข้อง",
+  },
+];
+
 function normalizeTime(value: string) {
   return value.slice(0, 5);
+}
+
+function getResetTotal(summary: ResetSummary | null, mode: ResetMode) {
+  if (!summary) return 0;
+  if (mode === "attendance_only") return summary.attendanceCount;
+  if (mode === "leave_only") return summary.leaveCount;
+  if (mode === "official_duty_only") return summary.officialDutyCount;
+  if (mode === "memo_only") return summary.memoCount;
+
+  return (
+    summary.attendanceCount +
+    summary.leaveCount +
+    summary.officialDutyCount +
+    summary.memoCount
+  );
+}
+
+function getResetModeTitle(mode: ResetMode) {
+  return (
+    RESET_MODE_OPTIONS.find((option) => option.value === mode)?.title ||
+    "รีเซ็ตข้อมูล"
+  );
+}
+
+function getPreviewItems(summary: ResetSummary | null, mode: ResetMode) {
+  if (!summary?.items) return [];
+  if (mode === "attendance_only") return summary.items.attendance;
+  if (mode === "leave_only") return summary.items.leave;
+  if (mode === "official_duty_only") return summary.items.officialDuty;
+  if (mode === "memo_only") return summary.items.memo;
+
+  return [
+    ...summary.items.attendance,
+    ...summary.items.leave,
+    ...summary.items.officialDuty,
+    ...summary.items.memo,
+  ];
 }
 
 export default function DirectorSettingsPage() {
@@ -111,6 +198,16 @@ export default function DirectorSettingsPage() {
   const [resetting, setResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetConfirmation, setResetConfirmation] = useState("");
+
+  useEffect(() => {
+    if (!message) return;
+
+    const timer = window.setTimeout(() => {
+      setMessage("");
+    }, 3500);
+
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   useEffect(() => {
     async function loadSettings() {
@@ -275,6 +372,8 @@ export default function DirectorSettingsPage() {
       const response = await fetch(
         `/api/admin/attendance-reset?date=${encodeURIComponent(
           resetDate
+        )}&mode=${encodeURIComponent(
+          resetMode
         )}`,
         {
           headers: {
@@ -290,6 +389,8 @@ export default function DirectorSettingsPage() {
         attendanceCount?: number;
         leaveCount?: number;
         officialDutyCount?: number;
+        memoCount?: number;
+        items?: ResetSummary["items"];
         message?: string;
       };
 
@@ -303,13 +404,10 @@ export default function DirectorSettingsPage() {
         attendanceCount: result.attendanceCount ?? result.count ?? 0,
         leaveCount: result.leaveCount ?? 0,
         officialDutyCount: result.officialDutyCount ?? 0,
+        memoCount: result.memoCount ?? 0,
+        items: result.items,
       };
-      const total =
-        resetMode === "full_day"
-          ? summary.attendanceCount +
-            summary.leaveCount +
-            summary.officialDutyCount
-          : summary.attendanceCount;
+      const total = getResetTotal(summary, resetMode);
 
       setResetSummary(summary);
 
@@ -475,14 +573,8 @@ export default function DirectorSettingsPage() {
     settings.fiscal_year_start_date && settings.fiscal_year_end_date
       ? `${settings.fiscal_year_start_date} - ${settings.fiscal_year_end_date}`
       : "ยังไม่ได้กำหนดช่วงวันที่";
-  const resetTotal =
-    resetSummary === null
-      ? 0
-      : resetMode === "full_day"
-      ? resetSummary.attendanceCount +
-        resetSummary.leaveCount +
-        resetSummary.officialDutyCount
-      : resetSummary.attendanceCount;
+  const resetTotal = getResetTotal(resetSummary, resetMode);
+  const resetPreviewItems = getPreviewItems(resetSummary, resetMode);
 
   return (
     <main className={styles.page}>
@@ -506,12 +598,16 @@ export default function DirectorSettingsPage() {
 
       {message && (
         <div
+          role="status"
           className={
             messageType === "success"
-              ? styles.successMessage
-              : styles.errorMessage
+              ? `${styles.centerNotice} ${styles.centerNoticeSuccess}`
+              : `${styles.centerNotice} ${styles.centerNoticeError}`
           }
         >
+          <strong>
+            {messageType === "success" ? "ดำเนินการสำเร็จ" : "ไม่สำเร็จ"}
+          </strong>
           {message}
         </div>
       )}
@@ -743,53 +839,32 @@ export default function DirectorSettingsPage() {
           </div>
 
           <div className={styles.resetModeGroup}>
-            <label
-              className={
-                resetMode === "attendance_only"
-                  ? styles.resetModeActive
-                  : ""
-              }
-            >
-              <input
-                type="radio"
-                name="resetMode"
-                value="attendance_only"
-                checked={resetMode === "attendance_only"}
-                onChange={() => {
-                  setResetMode("attendance_only");
-                  setResetSummary(null);
-                  setShowResetConfirm(false);
-                }}
-              />
-              <span>
-                <strong>รีเซ็ตเฉพาะการลงเวลา</strong>
-                <small>ลบเฉพาะรายการเช็คอิน/เช็คเอาท์ของวันที่เลือก</small>
-              </span>
-            </label>
-
-            <label
-              className={
-                resetMode === "full_day"
-                  ? styles.resetModeActive
-                  : ""
-              }
-            >
-              <input
-                type="radio"
-                name="resetMode"
-                value="full_day"
-                checked={resetMode === "full_day"}
-                onChange={() => {
-                  setResetMode("full_day");
-                  setResetSummary(null);
-                  setShowResetConfirm(false);
-                }}
-              />
-              <span>
-                <strong>รีเซ็ตทั้งวัน</strong>
-                <small>ลบใบไปราชการ ใบลา และประวัติลงเวลาที่เกี่ยวข้องกับวันนั้น</small>
-              </span>
-            </label>
+            {RESET_MODE_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className={
+                  resetMode === option.value
+                    ? styles.resetModeActive
+                    : ""
+                }
+              >
+                <input
+                  type="radio"
+                  name="resetMode"
+                  value={option.value}
+                  checked={resetMode === option.value}
+                  onChange={() => {
+                    setResetMode(option.value);
+                    setResetSummary(null);
+                    setShowResetConfirm(false);
+                  }}
+                />
+                <span>
+                  <strong>{option.title}</strong>
+                  <small>{option.description}</small>
+                </span>
+              </label>
+            ))}
           </div>
 
           <div className={styles.resetRow}>
@@ -824,6 +899,19 @@ export default function DirectorSettingsPage() {
               <span>ลงเวลา {resetSummary.attendanceCount} รายการ</span>
               <span>ใบลา {resetSummary.leaveCount} รายการ</span>
               <span>ไปราชการ {resetSummary.officialDutyCount} รายการ</span>
+              <span>บันทึกข้อความ {resetSummary.memoCount} รายการ</span>
+              {resetPreviewItems.length > 0 && (
+                <div className={styles.resetPreviewList}>
+                  {resetPreviewItems.slice(0, 8).map((item) => (
+                    <span key={item.id}>
+                      {item.label}: {item.detail}
+                    </span>
+                  ))}
+                  {resetPreviewItems.length > 8 && (
+                    <span>และอีก {resetPreviewItems.length - 8} รายการ</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -843,9 +931,7 @@ export default function DirectorSettingsPage() {
                 ระบบจะรีเซ็ตข้อมูลวันที่ <strong>{resetDate}</strong>{" "}
                 แบบ{" "}
                 <strong>
-                  {resetMode === "full_day"
-                    ? "รีเซ็ตทั้งวัน"
-                    : "รีเซ็ตเฉพาะการลงเวลา"}
+                  {getResetModeTitle(resetMode)}
                 </strong>{" "}
                 จำนวน <strong>{resetTotal}</strong> รายการ
               </p>
@@ -855,6 +941,15 @@ export default function DirectorSettingsPage() {
                   <span>ลงเวลา {resetSummary.attendanceCount} รายการ</span>
                   <span>ใบลา {resetSummary.leaveCount} รายการ</span>
                   <span>ไปราชการ {resetSummary.officialDutyCount} รายการ</span>
+                  <span>บันทึกข้อความ {resetSummary.memoCount} รายการ</span>
+                  {resetPreviewItems.slice(0, 8).map((item) => (
+                    <span key={item.id}>
+                      {item.label}: {item.detail}
+                    </span>
+                  ))}
+                  {resetPreviewItems.length > 8 && (
+                    <span>และอีก {resetPreviewItems.length - 8} รายการ</span>
+                  )}
                 </div>
               )}
 

@@ -56,6 +56,8 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "ไม่อนุมัติ",
 };
 
+const ITEMS_PER_PAGE = 10;
+
 function formatThaiDate(value: string) {
   return new Intl.DateTimeFormat("th-TH", {
     timeZone: "Asia/Bangkok",
@@ -76,7 +78,7 @@ export default function OfficialDutyAdminPage() {
 
   const [requests, setRequests] = useState<OfficialDutyRequest[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
-  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [currentPage, setCurrentPage] = useState(1);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState("");
@@ -121,6 +123,7 @@ export default function OfficialDutyAdminPage() {
 
       setRequests(result.requests ?? []);
       setPendingCount(result.pendingCount ?? 0);
+      setCurrentPage(1);
     } catch (error) {
       setMessageType("error");
       setMessage(
@@ -190,10 +193,12 @@ export default function OfficialDutyAdminPage() {
     }
   }
 
-  const visibleRequests =
-    filter === "all"
-      ? requests
-      : requests.filter((request) => request.status === filter);
+  const pageCount = Math.max(1, Math.ceil(requests.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, pageCount);
+  const visibleRequests = requests.slice(
+    (safeCurrentPage - 1) * ITEMS_PER_PAGE,
+    safeCurrentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <main className={styles.page}>
@@ -234,25 +239,17 @@ export default function OfficialDutyAdminPage() {
       )}
 
       <section className={styles.toolbar}>
-        {(["pending", "all", "approved", "rejected"] as const).map(
-          (item) => (
-            <button
-              type="button"
-              key={item}
-              className={filter === item ? styles.filterActive : ""}
-              onClick={() => setFilter(item)}
-            >
-              {item === "all" ? "ทั้งหมด" : STATUS_LABELS[item]}
-            </button>
-          )
-        )}
+        <span className={styles.singleTab}>ทั้งหมด</span>
+        <span className={styles.listCount}>
+          แสดง {visibleRequests.length} จาก {requests.length} รายการ
+        </span>
       </section>
 
       <section className={styles.list}>
         {loading ? (
           <div className={styles.empty}>กำลังโหลดข้อมูล...</div>
-        ) : visibleRequests.length === 0 ? (
-          <div className={styles.empty}>ไม่พบรายการในสถานะนี้</div>
+        ) : requests.length === 0 ? (
+          <div className={styles.empty}>ไม่พบรายการไปราชการ</div>
         ) : (
           visibleRequests.map((request) => (
             <article className={styles.card} key={request.id}>
@@ -266,113 +263,87 @@ export default function OfficialDutyAdminPage() {
 
                   <div>
                     <h2>{request.full_name}</h2>
-                    <p>{request.position || "ไม่ระบุตำแหน่ง"}</p>
+                    <p>
+                      {request.position || "ไม่ระบุตำแหน่ง"} ·{" "}
+                      {request.official_duty_number || "ยังไม่มีเลขที่"}
+                    </p>
                   </div>
                 </div>
 
-                <span
-                  className={`${styles.status} ${
-                    styles[`status_${request.status}`] ?? ""
-                  }`}
-                >
-                  {STATUS_LABELS[request.status] ?? request.status}
-                </span>
-              </div>
-
-              <dl className={styles.details}>
-                <div>
-                  <dt>เลขที่เอกสาร</dt>
-                  <dd>{request.official_duty_number || "-"}</dd>
-                </div>
-                <div>
-                  <dt>วันที่ไป-กลับ</dt>
-                  <dd>
+                <div className={styles.cardMeta}>
+                  <span>
                     {formatThaiDateRange(
                       request.duty_date,
                       request.duty_end_date
                     )}
-                  </dd>
+                  </span>
+                  <span
+                    className={`${styles.status} ${
+                      styles[`status_${request.status}`] ?? ""
+                    }`}
+                  >
+                    {STATUS_LABELS[request.status] ?? request.status}
+                  </span>
                 </div>
-                <div>
-                  <dt>จำนวนวัน</dt>
-                  <dd>{request.total_days || 1} วัน</dd>
-                </div>
-                <div>
-                  <dt>เรื่องไปราชการ</dt>
-                  <dd>{request.subject || request.reason}</dd>
-                </div>
-                <div>
-                  <dt>สถานที่</dt>
-                  <dd>{request.location || "-"}</dd>
-                </div>
-                <div>
-                  <dt>หลักฐาน</dt>
-                  <dd>{request.evidence_description || "-"}</dd>
-                </div>
+              </div>
+
+              <div className={styles.compactInfo}>
+                <span>
+                  <strong>เรื่อง</strong>{" "}
+                  {request.subject || request.reason}
+                </span>
+                <span>
+                  <strong>สถานที่</strong> {request.location || "-"}
+                </span>
+                <span>
+                  <strong>จำนวน</strong> {request.total_days || 1} วัน
+                </span>
+                <span>
+                  <strong>หลักฐาน</strong>{" "}
+                  {request.evidence_description || "-"}
+                </span>
                 {request.note && (
-                  <div>
-                    <dt>หมายเหตุ</dt>
-                    <dd>{request.note}</dd>
-                  </div>
-                )}
-              </dl>
-
-              <div className={styles.documentLinks}>
-                {request.working_document_url && (
-                  <a
-                    className={styles.attachment}
-                    href={request.working_document_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    เปิดเอกสารรอพิจารณา
-                  </a>
-                )}
-
-                {request.pdf_file_url && (
-                  <a
-                    className={styles.attachment}
-                    href={request.pdf_file_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {request.pdf_file_name || "เปิด PDF"}
-                  </a>
-                )}
-
-                {request.attachment_file_url && (
-                  <a
-                    className={styles.attachment}
-                    href={request.attachment_file_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    เปิดไฟล์แนบ
-                    {request.attachment_file_name
-                      ? ` (${request.attachment_file_name})`
-                      : ""}
-                  </a>
+                  <span>
+                    <strong>หมายเหตุ</strong> {request.note}
+                  </span>
                 )}
               </div>
 
               {request.status === "pending" ? (
-                <div className={styles.reviewPanel}>
-                  <label>
-                    ความเห็นของผู้พิจารณา
-                    <textarea
-                      rows={3}
-                      value={reviewNotes[request.id] ?? ""}
-                      onChange={(event) =>
-                        setReviewNotes((current) => ({
-                          ...current,
-                          [request.id]: event.target.value,
-                        }))
-                      }
-                      placeholder="ระบุความเห็นเพิ่มเติม (ถ้ามี)"
-                    />
-                  </label>
+                <div className={styles.reviewPanelCompact}>
+                  <textarea
+                    rows={2}
+                    value={reviewNotes[request.id] ?? ""}
+                    onChange={(event) =>
+                      setReviewNotes((current) => ({
+                        ...current,
+                        [request.id]: event.target.value,
+                      }))
+                    }
+                    placeholder="ความเห็นเพิ่มเติม (ถ้ามี)"
+                  />
 
                   <div className={styles.actions}>
+                    {request.working_document_url && (
+                      <a
+                        className={styles.attachment}
+                        href={request.working_document_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        เอกสาร
+                      </a>
+                    )}
+                    {request.attachment_file_url && (
+                      <a
+                        className={styles.attachment}
+                        href={request.attachment_file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        แนบ
+                      </a>
+                    )}
                     <button
                       type="button"
                       className={styles.rejectButton}
@@ -399,11 +370,29 @@ export default function OfficialDutyAdminPage() {
                 </div>
               ) : (
                 <div className={styles.reviewResult}>
-                  <strong>
-                    ผู้พิจารณา: {request.reviewer_name || "-"}
-                  </strong>
+                  <span>ผู้พิจารณา: {request.reviewer_name || "-"}</span>
                   {request.review_note && (
-                    <p>ความเห็น: {request.review_note}</p>
+                    <span>ความเห็น: {request.review_note}</span>
+                  )}
+                  {request.pdf_file_url && (
+                    <a
+                      className={styles.attachment}
+                      href={request.pdf_file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      PDF
+                    </a>
+                  )}
+                  {request.attachment_file_url && (
+                    <a
+                      className={styles.attachment}
+                      href={request.attachment_file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      ไฟล์แนบ
+                    </a>
                   )}
                 </div>
               )}
@@ -411,6 +400,45 @@ export default function OfficialDutyAdminPage() {
           ))
         )}
       </section>
+
+      {!loading && requests.length > ITEMS_PER_PAGE && (
+        <nav className={styles.pagination} aria-label="เปลี่ยนหน้ารายการ">
+          <button
+            type="button"
+            disabled={safeCurrentPage === 1}
+            onClick={() =>
+              setCurrentPage((page) => Math.max(1, page - 1))
+            }
+          >
+            ก่อนหน้า
+          </button>
+
+          {Array.from({ length: pageCount }, (_, index) => index + 1).map(
+            (page) => (
+              <button
+                type="button"
+                key={page}
+                className={
+                  page === safeCurrentPage ? styles.pageActive : ""
+                }
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </button>
+            )
+          )}
+
+          <button
+            type="button"
+            disabled={safeCurrentPage === pageCount}
+            onClick={() =>
+              setCurrentPage((page) => Math.min(pageCount, page + 1))
+            }
+          >
+            ถัดไป
+          </button>
+        </nav>
+      )}
     </main>
   );
 }

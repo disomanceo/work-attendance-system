@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import RequestProfileAvatar from "@/components/profile/RequestProfileAvatar";
 import FeedbackToast from "@/components/ui/FeedbackToast";
 import styles from "./official-duty.module.css";
 
@@ -58,9 +57,6 @@ type ApiResponse = {
   pendingCount?: number;
 };
 
-type ViewMode = "request" | "review";
-type ReviewFilter = "pending" | "all" | "approved" | "rejected";
-
 const STATUS_LABELS: Record<string, string> = {
   pending: "รอพิจารณา",
   approved: "อนุมัติแล้ว",
@@ -98,9 +94,6 @@ export default function OfficialDutyPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("request");
-  const [reviewFilter, setReviewFilter] =
-    useState<ReviewFilter>("pending");
 
   const [dutyStartDate, setDutyStartDate] = useState("");
   const [dutyEndDate, setDutyEndDate] = useState("");
@@ -111,23 +104,12 @@ export default function OfficialDutyPage() {
   const [attachment, setAttachment] = useState<File | null>(null);
 
   const [myRequests, setMyRequests] = useState<OfficialDutyRequest[]>([]);
-  const [reviewRequests, setReviewRequests] =
-    useState<OfficialDutyRequest[]>([]);
-  const [reviewNotes, setReviewNotes] =
-    useState<Record<string, string>>({});
-  const [pendingCount, setPendingCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
-  const [reviewLoading, setReviewLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [processingId, setProcessingId] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
     useState<"success" | "error">("success");
-
-  const canReview = Boolean(
-    profile && ["director", "admin"].includes(profile.role)
-  );
 
   const getAccessToken = useCallback(async () => {
     const {
@@ -184,30 +166,6 @@ export default function OfficialDutyPage() {
     setMyRequests(result.requests ?? []);
   }, [getAccessToken]);
 
-  const loadReviewRequests = useCallback(async () => {
-    setReviewLoading(true);
-
-    try {
-      const token = await getAccessToken();
-      const response = await fetch("/api/admin/official-duty", {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      const result = (await response.json()) as ApiResponse;
-
-      if (!response.ok || !result.ok) {
-        throw new Error(
-          result.message || "โหลดคำขอไปราชการไม่สำเร็จ"
-        );
-      }
-
-      setReviewRequests(result.requests ?? []);
-      setPendingCount(result.pendingCount ?? 0);
-    } finally {
-      setReviewLoading(false);
-    }
-  }, [getAccessToken]);
-
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -218,9 +176,6 @@ export default function OfficialDutyPage() {
           const currentProfile = await loadProfile();
           await loadMyRequests();
 
-          if (["director", "admin"].includes(currentProfile.role)) {
-            await loadReviewRequests();
-          }
         } catch (error) {
           setMessageType("error");
           setMessage(
@@ -233,7 +188,7 @@ export default function OfficialDutyPage() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [loadMyRequests, loadProfile, loadReviewRequests, router]);
+  }, [loadMyRequests, loadProfile, router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -320,7 +275,6 @@ export default function OfficialDutyPage() {
       );
 
       await loadMyRequests();
-      if (canReview) await loadReviewRequests();
     } catch (error) {
       setMessageType("error");
       setMessage(
@@ -330,66 +284,6 @@ export default function OfficialDutyPage() {
       setSaving(false);
     }
   }
-
-  async function reviewRequest(
-    requestId: string,
-    action: "approve" | "reject"
-  ) {
-    const confirmed = window.confirm(
-      action === "approve"
-        ? "ยืนยันอนุญาตให้ไปราชการ รายการนี้จะถูกบันทึกในระบบลงเวลา"
-        : "ยืนยันไม่อนุญาตคำขอไปราชการรายการนี้"
-    );
-
-    if (!confirmed) return;
-
-    setProcessingId(requestId);
-    setMessage("");
-
-    try {
-      const token = await getAccessToken();
-      const response = await fetch(
-        `/api/admin/official-duty/${requestId}/review`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action,
-            reviewNote: reviewNotes[requestId]?.trim() || "",
-          }),
-        }
-      );
-      const result = (await response.json()) as ApiResponse;
-
-      if (!response.ok || !result.ok) {
-        throw new Error(
-          result.message || "บันทึกผลการพิจารณาไม่สำเร็จ"
-        );
-      }
-
-      setMessageType("success");
-      setMessage(result.message || "บันทึกผลการพิจารณาแล้ว");
-
-      await Promise.all([loadMyRequests(), loadReviewRequests()]);
-    } catch (error) {
-      setMessageType("error");
-      setMessage(
-        error instanceof Error ? error.message : "เกิดข้อผิดพลาด"
-      );
-    } finally {
-      setProcessingId("");
-    }
-  }
-
-  const visibleReviewRequests =
-    reviewFilter === "all"
-      ? reviewRequests
-      : reviewRequests.filter(
-          (request) => request.status === reviewFilter
-        );
 
   return (
     <main className={styles.page}>
@@ -405,10 +299,7 @@ export default function OfficialDutyPage() {
         <div className={styles.headerTitle}>
           <span>OFFICIAL DUTY</span>
           <h1>ขออนุญาตไปราชการ</h1>
-          <p>
-            ส่งคำขอ ตรวจสอบประวัติ
-            {canReview ? " และพิจารณาคำขอภายในหน้าเดียว" : ""}
-          </p>
+          <p>ส่งคำขอและตรวจสอบประวัติการไปราชการของตนเอง</p>
         </div>
 
         {profile && (
@@ -418,33 +309,6 @@ export default function OfficialDutyPage() {
           </div>
         )}
       </header>
-
-      {canReview && (
-        <nav className={styles.pageTabs}>
-          <button
-            type="button"
-            className={
-              viewMode === "request" ? styles.pageTabActive : ""
-            }
-            onClick={() => setViewMode("request")}
-          >
-            แบบคำขอและประวัติ
-          </button>
-
-          <button
-            type="button"
-            className={
-              viewMode === "review" ? styles.pageTabActive : ""
-            }
-            onClick={() => setViewMode("review")}
-          >
-            พิจารณาคำขอ
-            {pendingCount > 0 && (
-              <span className={styles.badge}>{pendingCount}</span>
-            )}
-          </button>
-        </nav>
-      )}
 
       <FeedbackToast message={message} type={messageType} />
 
@@ -463,7 +327,7 @@ export default function OfficialDutyPage() {
 
       {loading ? (
         <section className={styles.loadingCard}>กำลังโหลดข้อมูล...</section>
-      ) : viewMode === "request" ? (
+      ) : (
         <section className={styles.requestGrid}>
           <form className={styles.card} onSubmit={handleSubmit}>
             <div className={styles.cardHeading}>
@@ -666,195 +530,6 @@ export default function OfficialDutyPage() {
               </div>
             )}
           </section>
-        </section>
-      ) : (
-        <section className={styles.reviewSection}>
-          <div className={styles.reviewHeader}>
-            <div>
-              <h2>พิจารณาคำขอไปราชการ</h2>
-              <p>ตรวจสอบเอกสารและบันทึกผลการพิจารณา</p>
-            </div>
-
-            <div className={styles.reviewFilters}>
-              {(
-                ["pending", "all", "approved", "rejected"] as const
-              ).map((item) => (
-                <button
-                  type="button"
-                  key={item}
-                  className={
-                    reviewFilter === item
-                      ? styles.reviewFilterActive
-                      : ""
-                  }
-                  onClick={() => setReviewFilter(item)}
-                >
-                  {item === "all" ? "ทั้งหมด" : STATUS_LABELS[item]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {reviewLoading ? (
-            <div className={styles.empty}>กำลังโหลดรายการ...</div>
-          ) : visibleReviewRequests.length === 0 ? (
-            <div className={styles.empty}>ไม่พบรายการในสถานะนี้</div>
-          ) : (
-            <div className={styles.reviewList}>
-              {visibleReviewRequests.map((request) => (
-                <article className={styles.reviewCard} key={request.id}>
-                  <div className={styles.reviewCardTop}>
-                    <div className={styles.requester}>
-                      <RequestProfileAvatar
-                        className={styles.requesterAvatar}
-                        fileId={request.profiles?.profile_image_file_id}
-                        name={request.full_name}
-                      />
-
-                      <div>
-                        <h3>{request.full_name || "ไม่ระบุชื่อ"}</h3>
-                        <p>{request.position || "ไม่ระบุตำแหน่ง"}</p>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`${styles.status} ${
-                        styles[`status_${request.status}`] ?? ""
-                      }`}
-                    >
-                      {STATUS_LABELS[request.status] ?? request.status}
-                    </span>
-                  </div>
-
-                  <dl className={styles.details}>
-                    <div>
-                      <dt>เลขที่เอกสาร</dt>
-                      <dd>{request.official_duty_number || "-"}</dd>
-                    </div>
-                    <div>
-                      <dt>วันที่ไป-กลับ</dt>
-                      <dd>
-                        {formatThaiDateRange(
-                          request.duty_date,
-                          request.duty_end_date
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>จำนวนวัน</dt>
-                      <dd>{request.total_days || 1} วัน</dd>
-                    </div>
-                    <div>
-                      <dt>เรื่องไปราชการ</dt>
-                      <dd>{request.subject || request.reason}</dd>
-                    </div>
-                    <div>
-                      <dt>สถานที่</dt>
-                      <dd>{request.location || "-"}</dd>
-                    </div>
-                    <div>
-                      <dt>หลักฐาน</dt>
-                      <dd>{request.evidence_description || "-"}</dd>
-                    </div>
-                    {request.note && (
-                      <div>
-                        <dt>หมายเหตุ</dt>
-                        <dd>{request.note}</dd>
-                      </div>
-                    )}
-                  </dl>
-
-                  <div className={styles.documentLinks}>
-                    {request.working_document_url && (
-                      <a
-                        className={styles.attachment}
-                        href={request.working_document_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        เปิดเอกสารรอพิจารณา
-                      </a>
-                    )}
-
-                    {request.pdf_file_url && (
-                      <a
-                        className={styles.attachment}
-                        href={request.pdf_file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {request.pdf_file_name || "เปิด PDF"}
-                      </a>
-                    )}
-
-                    {request.attachment_file_url && (
-                      <a
-                        className={styles.attachment}
-                        href={request.attachment_file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        เปิดไฟล์แนบ
-                      </a>
-                    )}
-                  </div>
-
-                  {request.status === "pending" ? (
-                    <div className={styles.reviewPanel}>
-                      <label>
-                        ความเห็นของผู้พิจารณา
-                        <textarea
-                          rows={3}
-                          value={reviewNotes[request.id] ?? ""}
-                          onChange={(event) =>
-                            setReviewNotes((current) => ({
-                              ...current,
-                              [request.id]: event.target.value,
-                            }))
-                          }
-                          placeholder="ระบุความเห็นเพิ่มเติม (ถ้ามี)"
-                        />
-                      </label>
-
-                      <div className={styles.actions}>
-                        <button
-                          type="button"
-                          className={styles.rejectButton}
-                          disabled={processingId === request.id}
-                          onClick={() =>
-                            void reviewRequest(request.id, "reject")
-                          }
-                        >
-                          ไม่อนุญาต
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.approveButton}
-                          disabled={processingId === request.id}
-                          onClick={() =>
-                            void reviewRequest(request.id, "approve")
-                          }
-                        >
-                          {processingId === request.id
-                            ? "กำลังบันทึก..."
-                            : "อนุญาต"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={styles.reviewResult}>
-                      <strong>
-                        ผู้พิจารณา: {request.reviewer_name || "-"}
-                      </strong>
-                      {request.review_note && (
-                        <p>ความเห็น: {request.review_note}</p>
-                      )}
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
         </section>
       )}
     </main>

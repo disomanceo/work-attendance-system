@@ -1,10 +1,23 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type DocumentTypeFilter = "all" | "leave" | "official_duty" | "memo";
+
+type DocumentIssueRow = {
+  id: unknown;
+  document_type: unknown;
+  reference_id: unknown;
+  formatted_number: unknown;
+  running_number: unknown;
+  buddhist_year: unknown;
+  issue_status: unknown;
+  issued_at: string | null;
+  completed_at: string | null;
+  metadata: unknown;
+};
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   LEAVE: "ใบลา",
@@ -99,6 +112,70 @@ function readMetadataText(
   return "";
 }
 
+async function loadExistingReferenceIds(
+  admin: SupabaseClient,
+  table: "leave_requests" | "official_duty_requests" | "memo_requests",
+  ids: string[]
+) {
+  if (ids.length === 0) return new Set<string>();
+
+  const { data, error } = await admin
+    .from(table)
+    .select("id")
+    .in("id", Array.from(new Set(ids)));
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return new Set((data ?? []).map((item) => String(item.id)));
+}
+
+async function filterExistingDocuments(
+  admin: SupabaseClient,
+  rows: DocumentIssueRow[]
+) {
+  const leaveIds: string[] = [];
+  const officialDutyIds: string[] = [];
+  const memoIds: string[] = [];
+
+  for (const row of rows) {
+    const referenceId = String(row.reference_id ?? "");
+    const documentType = String(row.document_type ?? "");
+
+    if (!referenceId) continue;
+    if (documentType === "LEAVE") leaveIds.push(referenceId);
+    if (["OFFICIAL_DUTY", "OFFICIAL"].includes(documentType)) {
+      officialDutyIds.push(referenceId);
+    }
+    if (documentType === "MEMO") memoIds.push(referenceId);
+  }
+
+  const [leaveExisting, officialDutyExisting, memoExisting] =
+    await Promise.all([
+      loadExistingReferenceIds(admin, "leave_requests", leaveIds),
+      loadExistingReferenceIds(
+        admin,
+        "official_duty_requests",
+        officialDutyIds
+      ),
+      loadExistingReferenceIds(admin, "memo_requests", memoIds),
+    ]);
+
+  return rows.filter((row) => {
+    const referenceId = String(row.reference_id ?? "");
+    const documentType = String(row.document_type ?? "");
+
+    if (documentType === "LEAVE") return leaveExisting.has(referenceId);
+    if (["OFFICIAL_DUTY", "OFFICIAL"].includes(documentType)) {
+      return officialDutyExisting.has(referenceId);
+    }
+    if (documentType === "MEMO") return memoExisting.has(referenceId);
+
+    return true;
+  });
+}
+
 export async function GET(request: Request) {
   try {
     const auth = await authorize(request);
@@ -123,7 +200,7 @@ export async function GET(request: Request) {
       .select(
         "id, document_type, reference_id, formatted_number, running_number, buddhist_year, issue_status, issued_at, completed_at, metadata"
       )
-      .neq("issue_status", "TEST_ARCHIVED")
+      .in("issue_status", ["ISSUED", "COMPLETED"])
       .order("buddhist_year", { ascending: false })
       .order("running_number", { ascending: false })
       .limit(limit);
@@ -138,7 +215,12 @@ export async function GET(request: Request) {
       throw new Error(error.message);
     }
 
-    const documents = (data ?? []).map((item) => {
+    const existingRows = await filterExistingDocuments(
+      auth.admin,
+      (data ?? []) as DocumentIssueRow[]
+    );
+
+    const documents = existingRows.map((item) => {
       const metadata =
         item.metadata && typeof item.metadata === "object"
           ? (item.metadata as Record<string, unknown>)

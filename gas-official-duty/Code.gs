@@ -21,7 +21,7 @@ function doGet() {
   return json_({
     ok: true,
     service: "Work Attendance Official Duty Document Service",
-    version: "2.1.0",
+    version: "2.1.1",
     timestamp: new Date().toISOString()
   });
 }
@@ -108,11 +108,11 @@ function officialDutyCreatePending_(payload) {
         "ลายเซ็นผู้ขอ"
       ]),
       payload.applicantSignatureBase64,
-      150
+      128
     );
 
     const attachmentDescription = payload.attachmentBase64
-      ? (payload.evidenceDescription || payload.attachmentName || "หลักฐานประกอบการไปราชการ")
+      ? (payload.evidenceDescription || "-")
       : "-";
 
     replaceFieldsInDocument_(document, [
@@ -137,7 +137,6 @@ function officialDutyCreatePending_(payload) {
         payload.attachmentName || "หลักฐานไปราชการ"
       );
       attachmentFile = requestFolder.createFile(attachmentBlob);
-      appendAttachmentToDocument_(document.getBody(), attachmentBlob, attachmentFile.getName());
     }
 
     document.saveAndClose();
@@ -183,7 +182,7 @@ function officialDutyFinalize_(payload) {
       "ลายเซ็นผู้พิจารณา"
     ]),
     payload.directorSignatureBase64,
-    150
+    128
   );
 
   replaceFieldsInDocument_(document, [
@@ -384,18 +383,6 @@ function insertImageInDocument_(document, aliases, dataUrl, width) {
   return false;
 }
 
-function appendAttachmentToDocument_(body, blob, fileName) {
-  body.appendParagraph("");
-  body.appendParagraph("เอกสารแนบ: " + fileName).setBold(true);
-
-  if (String(blob.getContentType()).indexOf("image/") === 0) {
-    const image = body.appendImage(blob);
-    image.setWidth(420);
-  } else {
-    body.appendParagraph("แนบไฟล์ PDF ไว้ในโฟลเดอร์คำขอแล้ว");
-  }
-}
-
 function dataUrlToBlob_(dataUrl, fallbackName) {
   const value = String(dataUrl || "");
   const match = value.match(/^data:([^;]+);base64,(.+)$/);
@@ -418,11 +405,26 @@ function formatThaiLongDate_(value) {
   const date = value instanceof Date ? value : new Date(value);
   if (isNaN(date.getTime())) return "";
 
-  return formatThaiText_(Utilities.formatDate(
-    date,
-    OFFICIAL_DUTY_TIMEZONE,
-    "d MMMM yyyy"
-  ).replace(String(date.getFullYear()), String(date.getFullYear() + 543)));
+  const day = Number(Utilities.formatDate(date, OFFICIAL_DUTY_TIMEZONE, "d"));
+  const month = Number(Utilities.formatDate(date, OFFICIAL_DUTY_TIMEZONE, "M"));
+  const year = Number(Utilities.formatDate(date, OFFICIAL_DUTY_TIMEZONE, "yyyy")) + 543;
+  const months = [
+    "",
+    "มกราคม",
+    "กุมภาพันธ์",
+    "มีนาคม",
+    "เมษายน",
+    "พฤษภาคม",
+    "มิถุนายน",
+    "กรกฎาคม",
+    "สิงหาคม",
+    "กันยายน",
+    "ตุลาคม",
+    "พฤศจิกายน",
+    "ธันวาคม"
+  ];
+
+  return day + " " + months[month] + " " + year;
 }
 
 function formatBuddhistYear_(value) {

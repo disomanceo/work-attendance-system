@@ -277,6 +277,7 @@ export default function MemoPage() {
   const [yearFilter, setYearFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -408,9 +409,13 @@ export default function MemoPage() {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
-  const selectedRequest =
-    requests.find((item) => item.id === selectedId) ?? requests[0];
+  const selectedRequest = requests.find((item) => item.id === selectedId);
   const myRequests = requests.slice(0, 5);
+
+  function openMemoDetail(requestId: string) {
+    setSelectedId(requestId);
+    setDetailOpen(true);
+  }
 
   function resetForm() {
     setEditingId("");
@@ -632,7 +637,7 @@ export default function MemoPage() {
                                   return;
                                 }
 
-                                setSelectedId(item.id);
+                                openMemoDetail(item.id);
                               }}
                               aria-label={item.pdf_file_url ? "เปิดไฟล์ PDF" : "ดูรายละเอียด"}
                             >
@@ -727,7 +732,7 @@ export default function MemoPage() {
                         }
                         onClick={() => {
                           if (item.documentType === "MEMO") {
-                            setSelectedId(item.referenceId);
+                            openMemoDetail(item.referenceId);
                           }
                         }}
                       >
@@ -897,6 +902,125 @@ export default function MemoPage() {
           </section>
         </section>
       </div>
+
+      {detailOpen && selectedRequest && (
+        <div
+          className={styles.detailOverlay}
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDetailOpen(false)}
+        >
+          <section
+            className={styles.detailModal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className={styles.detailModalHeader}>
+              <div>
+                <span>{selectedRequest.memo_number || "-"}</span>
+                <h2>{selectedRequest.subject}</h2>
+              </div>
+              <button type="button" onClick={() => setDetailOpen(false)}>
+                ปิด
+              </button>
+            </header>
+
+            <div className={styles.detailInfo}>
+              <h3>รายละเอียด</h3>
+              <dl>
+                <div>
+                  <dt>เลขที่เอกสาร</dt>
+                  <dd>{selectedRequest.memo_number || "-"}</dd>
+                </div>
+                <div>
+                  <dt>ประเภทเอกสาร</dt>
+                  <dd>บันทึกข้อความ</dd>
+                </div>
+                <div>
+                  <dt>ผู้ยื่น</dt>
+                  <dd>{selectedRequest.full_name || "ฉัน"}</dd>
+                </div>
+                <div>
+                  <dt>วันที่ยื่น</dt>
+                  <dd>{formatThaiDateTime(selectedRequest.submitted_at)}</dd>
+                </div>
+                <div>
+                  <dt>สถานะ</dt>
+                  <dd>
+                    <span
+                      className={`${styles.status} ${
+                        styles[selectedRequest.status]
+                      }`}
+                    >
+                      {STATUS_LABELS[selectedRequest.status] ??
+                        selectedRequest.status}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>ไฟล์แนบ</dt>
+                  <dd>
+                    {selectedRequest.attachment_path ? (
+                      <button
+                        type="button"
+                        className={styles.linkButton}
+                        onClick={() => void openAttachment(selectedRequest.id)}
+                      >
+                        {selectedRequest.attachment_file_name || "เปิดไฟล์แนบ"}
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </dd>
+                </div>
+                {selectedRequest.pdf_file_url && (
+                  <div>
+                    <dt>PDF</dt>
+                    <dd>
+                      <button
+                        type="button"
+                        className={styles.linkButton}
+                        onClick={() =>
+                          window.open(
+                            selectedRequest.pdf_file_url || "",
+                            "_blank"
+                          )
+                        }
+                      >
+                        {selectedRequest.pdf_file_name || "เปิด PDF"}
+                      </button>
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            <div className={styles.timeline}>
+              <h3>ประวัติการพิจารณา</h3>
+              {selectedRequest.logs?.length ? (
+                <ol>
+                  {selectedRequest.logs.map((log) => (
+                    <li key={log.id}>
+                      <span />
+                      <p>
+                        <strong>
+                          {formatThaiDateTime(log.created_at)}{" "}
+                          {TIMELINE_LABELS[log.to_status] ?? log.to_status}
+                        </strong>
+                        <small>
+                          {log.actor_name ? `โดย ${log.actor_name}` : ""}
+                          {log.note ? ` · ${log.note}` : ""}
+                        </small>
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className={styles.empty}>ยังไม่มีประวัติการดำเนินการ</p>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

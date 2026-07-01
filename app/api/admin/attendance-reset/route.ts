@@ -1,13 +1,80 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-type ResetMode = "attendance_only" | "full_day";
+type ResetMode =
+  | "attendance_only"
+  | "leave_only"
+  | "official_duty_only"
+  | "memo_only"
+  | "full_day";
+
+type ResetItem = {
+  id: string;
+  label: string;
+  detail: string;
+};
 
 type ResetSummary = {
   attendanceCount: number;
   leaveCount: number;
   officialDutyCount: number;
+  memoCount: number;
+  items: {
+    attendance: ResetItem[];
+    leave: ResetItem[];
+    officialDuty: ResetItem[];
+    memo: ResetItem[];
+  };
 };
+
+type LeaveResetRow = {
+  id: string;
+  user_id: string;
+  full_name?: string | null;
+  leave_type: string | null;
+  leave_number: string | null;
+  start_date: string;
+  end_date: string;
+  document_number_issue_id: string | null;
+};
+
+type OfficialDutyResetRow = {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  official_duty_number: string | null;
+  subject: string | null;
+  reason: string | null;
+  duty_date: string;
+  duty_end_date: string | null;
+  document_number_issue_id: string | null;
+};
+
+type MemoResetRow = {
+  id: string;
+  full_name: string | null;
+  memo_number: string | null;
+  subject: string | null;
+  submitted_at: string | null;
+  attachment_bucket: string | null;
+  attachment_path: string | null;
+  document_number_issue_id: string | null;
+};
+
+type DeletedCounts = {
+  attendance: number;
+  leave: number;
+  officialDuty: number;
+  memo: number;
+};
+
+const RESET_MODES: ResetMode[] = [
+  "attendance_only",
+  "leave_only",
+  "official_duty_only",
+  "memo_only",
+  "full_day",
+];
 
 function getConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -36,7 +103,80 @@ function isValidDate(value: string) {
 }
 
 function parseResetMode(value: unknown): ResetMode {
-  return value === "full_day" ? "full_day" : "attendance_only";
+  return RESET_MODES.includes(value as ResetMode)
+    ? (value as ResetMode)
+    : "attendance_only";
+}
+
+function addOneDay(value: string) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function getMemoDayRange(workDate: string) {
+  return {
+    start: `${workDate}T00:00:00+07:00`,
+    end: `${addOneDay(workDate)}T00:00:00+07:00`,
+  };
+}
+
+function countForMode(summary: ResetSummary, mode: ResetMode) {
+  if (mode === "attendance_only") return summary.attendanceCount;
+  if (mode === "leave_only") return summary.leaveCount;
+  if (mode === "official_duty_only") return summary.officialDutyCount;
+  if (mode === "memo_only") return summary.memoCount;
+
+  return (
+    summary.attendanceCount +
+    summary.leaveCount +
+    summary.officialDutyCount +
+    summary.memoCount
+  );
+}
+
+function shouldLoadMode(currentMode: ResetMode, targetMode: ResetMode) {
+  return currentMode === "full_day" || currentMode === targetMode;
+}
+
+function idsFrom<T extends { id: string }>(rows: T[]) {
+  return rows.map((row) => row.id);
+}
+
+function documentIssueIdsFrom(
+  rows: Array<{ document_number_issue_id: string | null }>
+) {
+  return rows
+    .map((row) => row.document_number_issue_id)
+    .filter((id): id is string => Boolean(id));
+}
+
+async function loadProfileNames(
+  adminClient: SupabaseClient,
+  userIds: string[],
+  errorPrefix: string
+) {
+  const uniqueUserIds = Array.from(new Set(userIds));
+  const profileNames = new Map<string, string>();
+
+  if (uniqueUserIds.length === 0) {
+    return profileNames;
+  }
+
+  const { data, error } = await adminClient
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", uniqueUserIds);
+
+  if (error) {
+    throw new Error(`${errorPrefix}: ${error.message}`);
+  }
+
+  for (const profile of data ?? []) {
+    profileNames.set(String(profile.id), String(profile.full_name || ""));
+  }
+
+  return profileNames;
 }
 
 async function requireDirector(request: Request) {
@@ -83,10 +223,7 @@ async function requireDirector(request: Request) {
     return {
       ok: false as const,
       response: NextResponse.json(
-        {
-          ok: false,
-          message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
-        },
+        { ok: false, message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่" },
         { status: 401 }
       ),
     };
@@ -130,48 +267,307 @@ async function requireDirector(request: Request) {
   };
 }
 
-async function countByDate(
+async function loadAttendanceRows(
   adminClient: SupabaseClient,
   workDate: string
-): Promise<ResetSummary> {
-  const [attendanceResult, leaveResult, officialDutyResult] =
+) {
+  const { data, error } = await adminClient
+    .from("attendance_records")
+    .select("id, user_id, note")
+    .eq("work_date", workDate)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`ตรวจสอบประวัติลงเวลาไม่สำเร็จ: ${error.message}`);
+  }
+
+  const userIds = Array.from(
+    new Set((data ?? []).map((record) => String(record.user_id)))
+  );
+  const profileNames = new Map<string, string>();
+
+  if (userIds.length > 0) {
+    const { data: profiles, error: profileError } = await adminClient
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+
+    if (profileError) {
+      throw new Error(`โหลดชื่อผู้ลงเวลาไม่สำเร็จ: ${profileError.message}`);
+    }
+
+    for (const profile of profiles ?? []) {
+      profileNames.set(String(profile.id), String(profile.full_name || ""));
+    }
+  }
+
+  return (data ?? []).map((record) => {
+    const fullName =
+      profileNames.get(String(record.user_id)) || "ไม่ระบุชื่อ";
+
+    return {
+      id: String(record.id),
+      label: fullName,
+      detail: record.note ? String(record.note) : "รายการลงเวลา",
+    };
+  });
+}
+
+async function loadLeaveRows(
+  adminClient: SupabaseClient,
+  workDate: string
+): Promise<LeaveResetRow[]> {
+  const { data, error } = await adminClient
+    .from("leave_requests")
+    .select(
+      "id, user_id, leave_type, leave_number, start_date, end_date, document_number_issue_id"
+    )
+    .lte("start_date", workDate)
+    .gte("end_date", workDate)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`ตรวจสอบใบลาไม่สำเร็จ: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as LeaveResetRow[];
+  const profileNames = await loadProfileNames(
+    adminClient,
+    rows.map((row) => row.user_id),
+    "โหลดชื่อผู้ลาไม่สำเร็จ"
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    full_name: profileNames.get(row.user_id) || null,
+  }));
+}
+
+async function loadOfficialDutyRows(
+  adminClient: SupabaseClient,
+  workDate: string
+): Promise<OfficialDutyResetRow[]> {
+  const { data, error } = await adminClient
+    .from("official_duty_requests")
+    .select(
+      "id, user_id, full_name, official_duty_number, subject, reason, duty_date, duty_end_date, document_number_issue_id"
+    )
+    .lte("duty_date", workDate)
+    .gte("duty_end_date", workDate)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`ตรวจสอบใบไปราชการไม่สำเร็จ: ${error.message}`);
+  }
+
+  return (data ?? []) as OfficialDutyResetRow[];
+}
+
+async function loadMemoRows(
+  adminClient: SupabaseClient,
+  workDate: string
+): Promise<MemoResetRow[]> {
+  const range = getMemoDayRange(workDate);
+  const { data, error } = await adminClient
+    .from("memo_requests")
+    .select(
+      "id, full_name, memo_number, subject, submitted_at, attachment_bucket, attachment_path, document_number_issue_id"
+    )
+    .gte("submitted_at", range.start)
+    .lt("submitted_at", range.end)
+    .order("submitted_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`ตรวจสอบบันทึกข้อความไม่สำเร็จ: ${error.message}`);
+  }
+
+  return (data ?? []) as MemoResetRow[];
+}
+
+function mapLeaveItems(rows: LeaveResetRow[]): ResetItem[] {
+  return rows.map((row) => ({
+    id: row.id,
+    label: row.leave_number || row.full_name || "ใบลา",
+    detail: `${row.full_name || "ไม่ระบุชื่อ"} (${row.leave_type || "ลา"})`,
+  }));
+}
+
+function mapOfficialDutyItems(rows: OfficialDutyResetRow[]): ResetItem[] {
+  return rows.map((row) => ({
+    id: row.id,
+    label: row.official_duty_number || row.full_name || "ไปราชการ",
+    detail: `${row.full_name || "ไม่ระบุชื่อ"} (${
+      row.subject || row.reason || "ไปราชการ"
+    })`,
+  }));
+}
+
+function mapMemoItems(rows: MemoResetRow[]): ResetItem[] {
+  return rows.map((row) => ({
+    id: row.id,
+    label: row.memo_number || row.full_name || "บันทึกข้อความ",
+    detail: `${row.full_name || "ไม่ระบุชื่อ"} (${row.subject || "บันทึกข้อความ"})`,
+  }));
+}
+
+async function getResetContext(
+  adminClient: SupabaseClient,
+  workDate: string,
+  mode: ResetMode
+) {
+  const [attendanceItems, leaveRows, officialDutyRows, memoRows] =
     await Promise.all([
-      adminClient
-        .from("attendance_records")
-        .select("id", { count: "exact", head: true })
-        .eq("work_date", workDate),
-      adminClient
-        .from("leave_requests")
-        .select("id", { count: "exact", head: true })
-        .lte("start_date", workDate)
-        .gte("end_date", workDate),
-      adminClient
-        .from("official_duty_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("duty_date", workDate),
+      shouldLoadMode(mode, "attendance_only")
+        ? loadAttendanceRows(adminClient, workDate)
+        : Promise.resolve([]),
+      shouldLoadMode(mode, "leave_only")
+        ? loadLeaveRows(adminClient, workDate)
+        : Promise.resolve([]),
+      shouldLoadMode(mode, "official_duty_only")
+        ? loadOfficialDutyRows(adminClient, workDate)
+        : Promise.resolve([]),
+      shouldLoadMode(mode, "memo_only")
+        ? loadMemoRows(adminClient, workDate)
+        : Promise.resolve([]),
     ]);
 
-  if (attendanceResult.error) {
-    throw new Error(
-      `ตรวจสอบประวัติลงเวลาไม่สำเร็จ: ${attendanceResult.error.message}`
-    );
-  }
-
-  if (leaveResult.error) {
-    throw new Error(`ตรวจสอบใบลาไม่สำเร็จ: ${leaveResult.error.message}`);
-  }
-
-  if (officialDutyResult.error) {
-    throw new Error(
-      `ตรวจสอบใบไปราชการไม่สำเร็จ: ${officialDutyResult.error.message}`
-    );
-  }
-
   return {
-    attendanceCount: attendanceResult.count ?? 0,
-    leaveCount: leaveResult.count ?? 0,
-    officialDutyCount: officialDutyResult.count ?? 0,
+    attendanceItems,
+    leaveRows,
+    officialDutyRows,
+    memoRows,
+    summary: {
+      attendanceCount: attendanceItems.length,
+      leaveCount: leaveRows.length,
+      officialDutyCount: officialDutyRows.length,
+      memoCount: memoRows.length,
+      items: {
+        attendance: attendanceItems,
+        leave: mapLeaveItems(leaveRows),
+        officialDuty: mapOfficialDutyItems(officialDutyRows),
+        memo: mapMemoItems(memoRows),
+      },
+    } satisfies ResetSummary,
   };
+}
+
+async function cancelDocumentIssues(
+  adminClient: SupabaseClient,
+  documentIssueIds: string[],
+  reason: string
+) {
+  if (documentIssueIds.length === 0) return;
+
+  const { error } = await adminClient
+    .from("document_number_issues")
+    .update({
+      issue_status: "CANCELLED",
+      failure_reason: reason,
+    })
+    .in("id", Array.from(new Set(documentIssueIds)));
+
+  if (error) {
+    console.error("Update reset document number issues error:", error);
+  }
+}
+
+async function removeMemoAttachments(
+  adminClient: SupabaseClient,
+  memoRows: MemoResetRow[]
+) {
+  const pathsByBucket = memoRows.reduce<Record<string, string[]>>((acc, row) => {
+    if (!row.attachment_bucket || !row.attachment_path) return acc;
+    acc[row.attachment_bucket] = acc[row.attachment_bucket] || [];
+    acc[row.attachment_bucket].push(row.attachment_path);
+    return acc;
+  }, {});
+
+  await Promise.all(
+    Object.entries(pathsByBucket).map(async ([bucket, paths]) => {
+      const { error } = await adminClient.storage.from(bucket).remove(paths);
+      if (error) {
+        console.error("Remove reset memo attachments error:", error);
+      }
+    })
+  );
+}
+
+async function deleteAttendanceByDate(
+  adminClient: SupabaseClient,
+  workDate: string
+) {
+  const { error, count } = await adminClient
+    .from("attendance_records")
+    .delete({ count: "exact" })
+    .eq("work_date", workDate);
+
+  if (error) {
+    throw new Error(`รีเซ็ตประวัติลงเวลาไม่สำเร็จ: ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
+async function deleteOfficialDutyAttendanceByDate(
+  adminClient: SupabaseClient,
+  workDate: string,
+  officialDutyRows: OfficialDutyResetRow[]
+) {
+  const userIds = Array.from(new Set(officialDutyRows.map((row) => row.user_id)));
+  if (userIds.length === 0) return 0;
+
+  const { error, count } = await adminClient
+    .from("attendance_records")
+    .delete({ count: "exact" })
+    .eq("work_date", workDate)
+    .in("user_id", userIds)
+    .eq("note", "ไปราชการ");
+
+  if (error) {
+    throw new Error(`ลบประวัติลงเวลาไปราชการไม่สำเร็จ: ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
+async function deleteRowsByIds(
+  adminClient: SupabaseClient,
+  table: "leave_requests" | "official_duty_requests" | "memo_requests",
+  ids: string[],
+  errorPrefix: string
+) {
+  if (ids.length === 0) return 0;
+
+  const { error, count } = await adminClient
+    .from(table)
+    .delete({ count: "exact" })
+    .in("id", ids);
+
+  if (error) {
+    throw new Error(`${errorPrefix}: ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
+function buildResetMessage(mode: ResetMode, deleted: DeletedCounts) {
+  if (mode === "attendance_only") {
+    return `รีเซ็ตเฉพาะการลงเวลา ${deleted.attendance} รายการเรียบร้อยแล้ว`;
+  }
+
+  if (mode === "leave_only") {
+    return `รีเซ็ตการลา ${deleted.leave} รายการเรียบร้อยแล้ว`;
+  }
+
+  if (mode === "official_duty_only") {
+    return `รีเซ็ตการไปราชการ ${deleted.officialDuty} รายการ และประวัติลงเวลาไปราชการ ${deleted.attendance} รายการเรียบร้อยแล้ว`;
+  }
+
+  if (mode === "memo_only") {
+    return `รีเซ็ตบันทึกข้อความ ${deleted.memo} รายการเรียบร้อยแล้ว`;
+  }
+
+  return `รีเซ็ตทั้งวันแล้ว: ลงเวลา ${deleted.attendance} รายการ, ใบลา ${deleted.leave} รายการ, ไปราชการ ${deleted.officialDuty} รายการ, บันทึกข้อความ ${deleted.memo} รายการ`;
 }
 
 export async function GET(request: Request) {
@@ -183,6 +579,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const workDate = url.searchParams.get("date")?.trim() ?? "";
+  const mode = parseResetMode(url.searchParams.get("mode"));
 
   if (!isValidDate(workDate)) {
     return NextResponse.json(
@@ -192,7 +589,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const summary = await countByDate(auth.adminClient, workDate);
+    const { summary } = await getResetContext(auth.adminClient, workDate, mode);
 
     return NextResponse.json({
       ok: true,
@@ -255,22 +652,15 @@ export async function DELETE(request: Request) {
 
   if (confirmation !== "ยืนยัน") {
     return NextResponse.json(
-      {
-        ok: false,
-        message: 'กรุณาพิมพ์คำว่า "ยืนยัน" ให้ตรง',
-      },
+      { ok: false, message: 'กรุณาพิมพ์คำว่า "ยืนยัน" ให้ตรง' },
       { status: 400 }
     );
   }
 
   try {
-    const summary = await countByDate(auth.adminClient, workDate);
-    const total =
-      mode === "full_day"
-        ? summary.attendanceCount +
-          summary.leaveCount +
-          summary.officialDutyCount
-        : summary.attendanceCount;
+    const { summary, leaveRows, officialDutyRows, memoRows } =
+      await getResetContext(auth.adminClient, workDate, mode);
+    const total = countForMode(summary, mode);
 
     if (total === 0) {
       return NextResponse.json({
@@ -280,95 +670,85 @@ export async function DELETE(request: Request) {
           attendance: 0,
           leave: 0,
           officialDuty: 0,
+          memo: 0,
         },
         message: "ไม่พบข้อมูลในวันที่เลือก",
       });
     }
 
-    let deletedLeave = 0;
-    let deletedOfficialDuty = 0;
+    const deleted: DeletedCounts = {
+      attendance: 0,
+      leave: 0,
+      officialDuty: 0,
+      memo: 0,
+    };
 
-    if (mode === "full_day") {
-      const { data: leaves, error: leaveListError } = await auth.adminClient
-        .from("leave_requests")
-        .select("id, document_number_issue_id")
-        .lte("start_date", workDate)
-        .gte("end_date", workDate);
+    if (mode === "leave_only" || mode === "full_day") {
+      deleted.leave = await deleteRowsByIds(
+        auth.adminClient,
+        "leave_requests",
+        idsFrom(leaveRows),
+        "ลบใบลาไม่สำเร็จ"
+      );
+      await cancelDocumentIssues(
+        auth.adminClient,
+        documentIssueIdsFrom(leaveRows),
+        `รีเซ็ตการลา วันที่ ${workDate}`
+      );
+    }
 
-      if (leaveListError) {
-        throw new Error(`โหลดใบลาที่ต้องลบไม่สำเร็จ: ${leaveListError.message}`);
-      }
-
-      const documentIssueIds = (leaves ?? [])
-        .map((leave) => leave.document_number_issue_id)
-        .filter((id): id is string => Boolean(id));
-
-      const { error: officialDutyDeleteError, count: officialDutyDeleted } =
-        await auth.adminClient
-          .from("official_duty_requests")
-          .delete({ count: "exact" })
-          .eq("duty_date", workDate);
-
-      if (officialDutyDeleteError) {
-        throw new Error(
-          `ลบใบไปราชการไม่สำเร็จ: ${officialDutyDeleteError.message}`
+    if (mode === "official_duty_only" || mode === "full_day") {
+      deleted.officialDuty = await deleteRowsByIds(
+        auth.adminClient,
+        "official_duty_requests",
+        idsFrom(officialDutyRows),
+        "ลบใบไปราชการไม่สำเร็จ"
+      );
+      await cancelDocumentIssues(
+        auth.adminClient,
+        documentIssueIdsFrom(officialDutyRows),
+        `รีเซ็ตการไปราชการ วันที่ ${workDate}`
+      );
+      if (mode === "official_duty_only") {
+        deleted.attendance += await deleteOfficialDutyAttendanceByDate(
+          auth.adminClient,
+          workDate,
+          officialDutyRows
         );
       }
-
-      deletedOfficialDuty = officialDutyDeleted ?? 0;
-
-      const { error: leaveDeleteError, count: leaveDeleted } =
-        await auth.adminClient
-          .from("leave_requests")
-          .delete({ count: "exact" })
-          .lte("start_date", workDate)
-          .gte("end_date", workDate);
-
-      if (leaveDeleteError) {
-        throw new Error(`ลบใบลาไม่สำเร็จ: ${leaveDeleteError.message}`);
-      }
-
-      deletedLeave = leaveDeleted ?? 0;
-
-      if (documentIssueIds.length > 0) {
-        const { error: issueError } = await auth.adminClient
-          .from("document_number_issues")
-          .update({
-            issue_status: "CANCELLED",
-            failure_reason: `รีเซ็ตข้อมูลทั้งวัน ${workDate}`,
-          })
-          .in("id", documentIssueIds);
-
-        if (issueError) {
-          console.error("Update reset document number issues error:", issueError);
-        }
-      }
     }
 
-    const { error: deleteError, count: attendanceDeleted } =
-      await auth.adminClient
-        .from("attendance_records")
-        .delete({ count: "exact" })
-        .eq("work_date", workDate);
-
-    if (deleteError) {
-      throw new Error(`รีเซ็ตประวัติลงเวลาไม่สำเร็จ: ${deleteError.message}`);
+    if (mode === "memo_only" || mode === "full_day") {
+      deleted.memo = await deleteRowsByIds(
+        auth.adminClient,
+        "memo_requests",
+        idsFrom(memoRows),
+        "ลบบันทึกข้อความไม่สำเร็จ"
+      );
+      await removeMemoAttachments(auth.adminClient, memoRows);
+      await cancelDocumentIssues(
+        auth.adminClient,
+        documentIssueIdsFrom(memoRows),
+        `รีเซ็ตบันทึกข้อความ วันที่ ${workDate}`
+      );
     }
 
-    const deletedAttendance = attendanceDeleted ?? 0;
+    if (mode === "attendance_only" || mode === "full_day") {
+      deleted.attendance += await deleteAttendanceByDate(
+        auth.adminClient,
+        workDate
+      );
+    }
 
     return NextResponse.json({
       ok: true,
-      deletedCount: deletedAttendance + deletedLeave + deletedOfficialDuty,
-      deleted: {
-        attendance: deletedAttendance,
-        leave: deletedLeave,
-        officialDuty: deletedOfficialDuty,
-      },
-      message:
-        mode === "full_day"
-          ? `รีเซ็ตข้อมูลทั้งวันแล้ว: ลงเวลา ${deletedAttendance} รายการ, ใบลา ${deletedLeave} รายการ, ไปราชการ ${deletedOfficialDuty} รายการ`
-          : `รีเซ็ตประวัติการลงเวลา ${deletedAttendance} รายการเรียบร้อยแล้ว`,
+      deletedCount:
+        deleted.attendance +
+        deleted.leave +
+        deleted.officialDuty +
+        deleted.memo,
+      deleted,
+      message: buildResetMessage(mode, deleted),
     });
   } catch (error) {
     console.error("Reset attendance history error:", error);
