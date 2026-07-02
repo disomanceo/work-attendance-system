@@ -4,7 +4,6 @@ type UnknownRecord = Record<string, unknown>;
 
 type TelegramAttendancePerson = {
   fullName: string;
-  position: string;
   checkInTime: string;
   status: string;
 };
@@ -64,10 +63,6 @@ function findPeople(value: unknown): TelegramAttendancePerson[] {
       fullName:
         typeof person.fullName === "string"
           ? person.fullName.trim()
-          : "",
-      position:
-        typeof person.position === "string"
-          ? person.position.trim()
           : "",
       checkInTime:
         typeof person.checkInTime === "string"
@@ -169,10 +164,10 @@ export function normalizeTelegramCommand(text: string) {
 
 export function buildHelpMessage() {
   return [
-    "🤖 <b>คำสั่ง Telegram Bot</b>",
+    "คำสั่ง Telegram Bot",
     "",
-    "<b>สรุป</b> — รายงานการลงเวลาวันนี้",
-    "<b>ช่วยเหลือ</b> — แสดงรายการคำสั่ง",
+    "สรุป — รายงานการลงเวลาวันนี้",
+    "ช่วยเหลือ — แสดงรายการคำสั่ง",
     "",
     "คำที่รองรับ:",
     "สรุปวันนี้, รายงาน, รายงานวันนี้, ลงเวลาวันนี้",
@@ -305,10 +300,6 @@ export async function buildSummaryMessage(
   const personLines =
     people.length > 0
       ? people.map((person, index) => {
-          const position = person.position
-            ? ` — ${escapeHtml(person.position)}`
-            : "";
-
           const status =
             person.status === "มาสาย"
               ? " (มาสาย)"
@@ -318,37 +309,26 @@ export async function buildSummaryMessage(
             person.checkInTime
           )} น. ${escapeHtml(
             person.fullName
-          )}${position}${status}`;
+          )}${status}`;
         })
       : ["ยังไม่มีผู้ลงเวลา"];
 
   return [
-    "📋 <b>รายงานการลงเวลาปฏิบัติงาน</b>",
-    `<b>วันที่:</b> ${escapeHtml(
-      formatThaiDate(date)
-    )}`,
-    `<b>อัปเดตเวลา:</b> ${escapeHtml(
+    "รายงานการลงเวลาปฏิบัติงาน",
+    `${escapeHtml(formatThaiDate(date))} เวลา ${escapeHtml(
       formatThaiTime()
     )} น.`,
     "",
     ...personLines,
     "",
-    "📊 <b>สรุป</b>",
-    `รวม ${total.toLocaleString(
-      "th-TH"
-    )} คน | ลงเวลา ${present.toLocaleString(
-      "th-TH"
-    )} | ปกติ ${normal.toLocaleString(
-      "th-TH"
-    )} | มาสาย ${late.toLocaleString("th-TH")}`,
-    `ลาป่วย ${sick.toLocaleString(
-      "th-TH"
-    )} | ลากิจ ${personal.toLocaleString(
-      "th-TH"
-    )} | ไปราชการ ${officialDuty.toLocaleString(
-      "th-TH"
-    )} | ยังไม่ลงเวลา ${absent.toLocaleString(
-      "th-TH"
-    )}`,
+    "สรุป",
+    `บุคลากรทั้งหมด ${total.toLocaleString("th-TH")} คน`,
+    `ลงเวลาแล้ว ${present.toLocaleString("th-TH")} คน`,
+    `มาปกติ ${normal.toLocaleString("th-TH")} คน`,
+    `มาสาย ${late.toLocaleString("th-TH")} คน`,
+    `ลาป่วย ${sick.toLocaleString("th-TH")} คน`,
+    `ลากิจ ${personal.toLocaleString("th-TH")} คน`,
+    `ไปราชการ ${officialDuty.toLocaleString("th-TH")} คน`,
+    `ยังไม่ลงเวลา ${absent.toLocaleString("th-TH")} คน`,
   ].join("\n");
 }
