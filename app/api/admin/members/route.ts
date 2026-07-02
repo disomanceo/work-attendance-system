@@ -15,6 +15,8 @@ type UpdateMemberBody = {
   role?: unknown;
   accountStatus?: unknown;
   position?: unknown;
+  alternateWorkplace?: unknown;
+  countAsPresentWhenNoCheckin?: unknown;
 };
 
 type DeleteMemberBody = {
@@ -206,6 +208,8 @@ export async function GET(request: Request) {
           position,
           role,
           account_status,
+          alternate_workplace,
+          count_as_present_when_no_checkin,
           created_at,
           updated_at
         `
@@ -269,6 +273,14 @@ export async function PATCH(request: Request) {
         ? body.position.trim()
         : "";
 
+    const alternateWorkplace =
+      typeof body.alternateWorkplace === "string"
+        ? body.alternateWorkplace.trim()
+        : "";
+
+    const countAsPresentWhenNoCheckin =
+      body.countAsPresentWhenNoCheckin === true;
+
     if (!id) {
       return NextResponse.json(
         {
@@ -294,6 +306,26 @@ export async function PATCH(request: Request) {
         {
           ok: false,
           message: "สถานะสมาชิกไม่ถูกต้อง",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (alternateWorkplace.length > 200) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "ชื่อสถานที่ปฏิบัติงานยาวเกินไป",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (countAsPresentWhenNoCheckin && !alternateWorkplace) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "กรุณาระบุสถานที่ปฏิบัติงานเพิ่มเติม",
         },
         { status: 400 }
       );
@@ -328,6 +360,10 @@ export async function PATCH(request: Request) {
         role,
         account_status: accountStatus,
         position: position || null,
+        alternate_workplace: countAsPresentWhenNoCheckin
+          ? alternateWorkplace
+          : null,
+        count_as_present_when_no_checkin: countAsPresentWhenNoCheckin,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -339,6 +375,8 @@ export async function PATCH(request: Request) {
           position,
           role,
           account_status,
+          alternate_workplace,
+          count_as_present_when_no_checkin,
           created_at,
           updated_at
         `

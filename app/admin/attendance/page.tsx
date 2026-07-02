@@ -173,6 +173,9 @@ function getAttendanceStatus(record: AttendanceReportRecord) {
   if (record.check_in_status === "official_duty_morning") {
     return { label: "ไปราชการช่วงเช้า", tone: "duty" as const };
   }
+  if (record.check_in_status === "alternate_workplace") {
+    return { label: "มาปฏิบัติราชการ", tone: "success" as const };
+  }
   if (record.daily_status === "absent" || record.check_in_status === "absent") {
     return { label: "ไม่มาปฏิบัติราชการ", tone: "danger" as const };
   }
@@ -635,6 +638,13 @@ export default function AdminAttendancePage() {
 
     return filteredStatusRecords
       .map((record) => {
+        if (
+          record.check_in_status === "alternate_workplace" &&
+          record.note?.trim()
+        ) {
+          return `${record.full_name} (${record.note.trim()})`;
+        }
+
         const status = getAttendanceStatus(record);
         return `${record.full_name} (${status.label})`;
       })

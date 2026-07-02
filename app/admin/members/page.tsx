@@ -17,6 +17,8 @@ type Member = {
   account_status: AccountStatus;
   created_at: string;
   updated_at: string;
+  alternate_workplace: string | null;
+  count_as_present_when_no_checkin: boolean;
 };
 
 type MembersResponse = {
@@ -146,7 +148,16 @@ export default function AdminMembersPage() {
 
   async function saveMember(
     member: Member,
-    overrides?: Partial<Pick<Member, "role" | "account_status" | "position">>,
+    overrides?: Partial<
+      Pick<
+        Member,
+        | "role"
+        | "account_status"
+        | "position"
+        | "alternate_workplace"
+        | "count_as_present_when_no_checkin"
+      >
+    >,
     successMessage?: string,
   ) {
     const nextMember = { ...member, ...overrides };
@@ -171,6 +182,9 @@ export default function AdminMembersPage() {
           role: nextMember.role,
           accountStatus: nextMember.account_status,
           position: nextMember.position ?? "",
+          alternateWorkplace: nextMember.alternate_workplace ?? "",
+          countAsPresentWhenNoCheckin:
+            nextMember.count_as_present_when_no_checkin,
         }),
       });
       const result = (await response.json()) as MembersResponse;
@@ -372,6 +386,80 @@ export default function AdminMembersPage() {
                         </select>
                       </label>
                     )}
+
+                    <label>
+                      <span
+                        style={{
+                          display: "flex",
+                          minHeight: 18,
+                          marginBottom: 7,
+                          alignItems: "center",
+                          gap: 8,
+                          color: "#344054",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={member.count_as_present_when_no_checkin}
+                          onChange={(event) =>
+                            updateLocalMember(
+                              member.id,
+                              "count_as_present_when_no_checkin",
+                              event.target.checked
+                            )
+                          }
+                          style={{
+                            width: 16,
+                            height: 16,
+                            margin: 0,
+                            accentColor: "#6d28d9",
+                            cursor: "pointer",
+                          }}
+                        />
+                        ปฏิบัติงานหลายสถานที่
+                      </span>
+
+                      <input
+                        type="text"
+                        value={member.alternate_workplace ?? ""}
+                        disabled={!member.count_as_present_when_no_checkin}
+                        maxLength={200}
+                        placeholder={
+                          member.count_as_present_when_no_checkin
+                            ? "เช่น โรงเรียนวัดดอนไข่เต่า"
+                            : "ไม่ได้เปิดใช้งาน"
+                        }
+                        onChange={(event) =>
+                          updateLocalMember(
+                            member.id,
+                            "alternate_workplace",
+                            event.target.value
+                          )
+                        }
+                        style={{
+                          width: "100%",
+                          height: 44,
+                          padding: "0 12px",
+                          border: member.count_as_present_when_no_checkin
+                            ? "1px solid #c4b5fd"
+                            : "1px solid #d8e2ed",
+                          borderRadius: 12,
+                          outline: "none",
+                          color: member.count_as_present_when_no_checkin
+                            ? "#344054"
+                            : "#98a2b3",
+                          background: member.count_as_present_when_no_checkin
+                            ? "#ffffff"
+                            : "#f2f4f7",
+                          boxShadow: member.count_as_present_when_no_checkin
+                            ? "0 0 0 3px rgba(109, 40, 217, 0.06)"
+                            : "none",
+                        }}
+                      />
+                    </label>
 
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {isPending ? (

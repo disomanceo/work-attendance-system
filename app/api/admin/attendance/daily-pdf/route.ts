@@ -22,6 +22,8 @@ type Profile = {
   role: string;
   account_status: string;
   signature_file_id: string | null;
+  alternate_workplace: string | null;
+  count_as_present_when_no_checkin: boolean;
 };
 
 type AttendanceSettings = {
@@ -472,7 +474,7 @@ async function buildDailyPdf(
     await adminClient
       .from("profiles")
       .select(
-        "id, full_name, position, role, account_status, signature_file_id"
+        "id, full_name, position, role, account_status, signature_file_id, alternate_workplace, count_as_present_when_no_checkin"
       )
       .eq("account_status", "active")
       .order("full_name", { ascending: true });
@@ -571,26 +573,38 @@ async function buildDailyPdf(
     .filter((profile) => !attendanceMap.get(profile.id)?.check_in_at)
     .map((profile) => {
       const record = attendanceMap.get(profile.id);
-      const note =
-        record?.note?.trim() ||
-        getAbsenceReason(profile.id, leaveByUser, officialDutyByUser);
+      const leave = leaveByUser.get(profile.id);
+      const hasOfficialDuty = officialDutyByUser.has(profile.id);
+      const isAlternateWorkplace =
+        !leave &&
+        !hasOfficialDuty &&
+        profile.count_as_present_when_no_checkin &&
+        Boolean(profile.alternate_workplace?.trim());
+
+      const note = isAlternateWorkplace
+        ? `ปฏิบัติหน้าที่${profile.alternate_workplace?.trim()}`
+        : record?.note?.trim() ||
+          getAbsenceReason(profile.id, leaveByUser, officialDutyByUser);
 
       return {
         fullName: profile.full_name,
         status:
-          leaveByUser.get(profile.id)?.leave_type ??
-          (officialDutyByUser.has(profile.id)
+          leave?.leave_type ??
+          (hasOfficialDuty
             ? "official_duty"
-            : "absent"),
+            : isAlternateWorkplace
+              ? "alternate_workplace"
+              : "absent"),
         reason: note,
       };
     });
 
   const noteItems = absentPeople
     .filter((person) => person.status !== "absent")
-    .map(
-      (person) =>
-        `${person.fullName} (${getAbsenceLabel(person.status)})`
+    .map((person) =>
+      person.status === "alternate_workplace"
+        ? `${person.fullName} (${person.reason})`
+        : `${person.fullName} (${getAbsenceLabel(person.status)})`
     );
 
   const normalizeReason = (value: string) =>
@@ -606,6 +620,10 @@ async function buildDailyPdf(
 
   const officialDuty = absentPeople.filter((person) =>
     normalizeReason(person.reason).includes("ไปราชการ")
+  ).length;
+
+  const alternateWorkplaceCount = absentPeople.filter(
+    (person) => person.status === "alternate_workplace"
   ).length;
 
   const late = presentRecords.filter(
@@ -629,7 +647,7 @@ async function buildDailyPdf(
     directorSignature,
     summary: {
       total: profiles.length,
-      present: presentRecords.length,
+      present: presentRecords.length + alternateWorkplaceCount,
       sickLeave,
       personalLeave,
       officialDuty,

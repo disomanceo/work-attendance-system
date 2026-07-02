@@ -41,6 +41,8 @@ type Profile = {
   position: string | null;
   role: string;
   account_status: string;
+  alternate_workplace: string | null;
+  count_as_present_when_no_checkin: boolean;
 };
 
 function getServerConfig() {
@@ -328,7 +330,9 @@ export async function GET(request: Request) {
             phone,
             position,
             role,
-            account_status
+            account_status,
+            alternate_workplace,
+            count_as_present_when_no_checkin
           `
         )
         .eq("account_status", "active")
@@ -467,6 +471,30 @@ export async function GET(request: Request) {
             daily_status: status as DailyStatus,
           };
         }
+        if (
+          profile.count_as_present_when_no_checkin &&
+          profile.alternate_workplace?.trim()
+        ) {
+          return {
+            id: `alternate-workplace-${profile.id}-${date}`,
+            user_id: profile.id,
+            work_date: date,
+            check_in_at: null,
+            check_out_at: null,
+            check_in_distance_meters: null,
+            check_out_distance_meters: null,
+            check_in_status: "alternate_workplace",
+            check_out_status: null,
+            note: `ปฏิบัติหน้าที่${profile.alternate_workplace.trim()}`,
+            full_name: profile.full_name,
+            phone: profile.phone,
+            position: profile.position,
+            role: profile.role,
+            account_status: profile.account_status,
+            daily_status: "present" as DailyStatus,
+          };
+        }
+
         return {
           id: `absent-${profile.id}-${date}`,
           user_id: profile.id,
@@ -506,8 +534,11 @@ export async function GET(request: Request) {
     const summary = {
       total: report.length,
       totalPersonnel: profiles.length,
-      present: report.filter((record) => Boolean(record.check_in_at))
-        .length,
+      present: report.filter(
+        (record) =>
+          Boolean(record.check_in_at) ||
+          record.check_in_status === "alternate_workplace"
+      ).length,
       sickLeave: report.filter((record) => record.daily_status === "sick")
         .length,
       personalLeave: report.filter(
