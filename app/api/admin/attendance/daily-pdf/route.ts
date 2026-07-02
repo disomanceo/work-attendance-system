@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -172,6 +172,9 @@ function getRoleEndTime(role: string, settings: AttendanceSettings | null) {
 
 function attendanceStatus(record: AttendanceRecord) {
   if (!record.check_in_at) return "";
+  if (record.check_in_status === "official_duty_morning") {
+    return "ไปราชการช่วงเช้า";
+  }
   if (record.check_in_status === "late") return "มาสาย";
   if (record.check_out_status === "early") return "ออกก่อนเวลา";
   return "ปกติ";
@@ -179,6 +182,9 @@ function attendanceStatus(record: AttendanceRecord) {
 
 function reportAttendanceStatus(record: AttendanceRecord) {
   if (!record.check_in_at) return "";
+  if (record.check_in_status === "official_duty_morning") {
+    return "ไปราชการช่วงเช้า";
+  }
   if (record.check_in_status === "late") return "มาสาย";
   if (record.check_out_status === "early") return "ออกก่อนเวลา";
   return "ปกติ";
@@ -553,7 +559,9 @@ async function buildDailyPdf(
       checkOut: formatThaiTime(record.check_out_at) || scheduledEndTime,
       signature: "",
       note:
-        record.check_in_status === "late"
+        ["late", "official_duty_morning"].includes(
+          record.check_in_status ?? ""
+        )
           ? formatLateReason(record.note)
           : "",
     };

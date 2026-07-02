@@ -397,6 +397,28 @@ export async function GET(request: Request) {
         const leave = leaveByKey.get(key);
         const record = attendanceByKey.get(key);
 
+        if (record?.check_in_at) {
+          const isDirectorMorningDuty =
+            profile.role === "director" &&
+            record.check_in_status === "late";
+
+          return {
+            ...record,
+            check_in_status: isDirectorMorningDuty
+              ? "official_duty_morning"
+              : record.check_in_status,
+            note: isDirectorMorningDuty
+              ? record.note?.trim() || "ไปราชการช่วงเช้า"
+              : record.note,
+            full_name: profile.full_name,
+            phone: profile.phone,
+            position: profile.position,
+            role: profile.role,
+            account_status: profile.account_status,
+            daily_status: "present" as DailyStatus,
+          };
+        }
+
         if (officialDuty) {
           return {
             id: `official-duty-${officialDuty.id}`,
@@ -408,7 +430,10 @@ export async function GET(request: Request) {
             check_out_distance_meters: null,
             check_in_status: "official_duty",
             check_out_status: null,
-            note: "ไปราชการ",
+            note:
+              officialDuty.reason?.trim() ||
+              officialDuty.subject?.trim() ||
+              "ไปราชการ",
             full_name: profile.full_name,
             phone: profile.phone,
             position: profile.position,
@@ -433,7 +458,7 @@ export async function GET(request: Request) {
             check_out_distance_meters: null,
             check_in_status: status,
             check_out_status: null,
-            note: label,
+            note: leave.reason?.trim() || label,
             full_name: profile.full_name,
             phone: profile.phone,
             position: profile.position,
@@ -442,19 +467,6 @@ export async function GET(request: Request) {
             daily_status: status as DailyStatus,
           };
         }
-
-        if (record?.check_in_at) {
-          return {
-            ...record,
-            full_name: profile.full_name,
-            phone: profile.phone,
-            position: profile.position,
-            role: profile.role,
-            account_status: profile.account_status,
-            daily_status: "present" as DailyStatus,
-          };
-        }
-
         return {
           id: `absent-${profile.id}-${date}`,
           user_id: profile.id,

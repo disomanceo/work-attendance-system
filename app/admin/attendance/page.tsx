@@ -170,6 +170,9 @@ function getAttendanceStatus(record: AttendanceReportRecord) {
   ) {
     return { label: "ไปราชการ", tone: "duty" as const };
   }
+  if (record.check_in_status === "official_duty_morning") {
+    return { label: "ไปราชการช่วงเช้า", tone: "duty" as const };
+  }
   if (record.daily_status === "absent" || record.check_in_status === "absent") {
     return { label: "ไม่มาปฏิบัติราชการ", tone: "danger" as const };
   }
