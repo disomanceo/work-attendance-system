@@ -603,6 +603,40 @@ export default function AttendancePage() {
           ? "บันทึกเวลามาสายพร้อมเหตุผลเรียบร้อยแล้ว"
           : "บันทึกเวลาปฏิบัติงานเรียบร้อยแล้ว"
     );
+
+    try {
+      const telegramResponse = await fetch(
+        "/api/telegram/checkin",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            attendanceRecordId: data.id,
+userId: pending.userId,
+schoolName: settings?.school_name ?? null,
+          }),
+        }
+      );
+
+      const telegramResult = (await telegramResponse.json()) as {
+        ok?: boolean;
+        message?: string;
+      };
+
+      if (!telegramResult.ok) {
+        console.warn(
+          "Telegram check-in notification was not sent:",
+          telegramResult.message
+        );
+      }
+    } catch (telegramError) {
+      console.warn(
+        "Telegram check-in notification request failed:",
+        telegramError
+      );
+    }
   }
 
   async function handleCheckIn() {
@@ -1243,6 +1277,7 @@ export default function AttendancePage() {
     </main>
   );
 }
+
 
 
 

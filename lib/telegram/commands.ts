@@ -6,19 +6,18 @@ function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function findNumber(
-  value: unknown,
-  keys: string[]
-): number | null {
+function findNumber(value: unknown, keys: string[]): number | null {
   if (isRecord(value)) {
     for (const key of keys) {
       const candidate = value[key];
+
       if (typeof candidate === "number" && Number.isFinite(candidate)) {
         return candidate;
       }
 
       if (typeof candidate === "string") {
         const parsed = Number(candidate);
+
         if (Number.isFinite(parsed)) {
           return parsed;
         }
@@ -27,14 +26,20 @@ function findNumber(
 
     for (const nestedValue of Object.values(value)) {
       const found = findNumber(nestedValue, keys);
-      if (found !== null) return found;
+
+      if (found !== null) {
+        return found;
+      }
     }
   }
 
   if (Array.isArray(value)) {
     for (const item of value) {
       const found = findNumber(item, keys);
-      if (found !== null) return found;
+
+      if (found !== null) {
+        return found;
+      }
     }
   }
 
@@ -98,7 +103,13 @@ export function normalizeTelegramCommand(text: string) {
   }
 
   if (
-    ["ช่วยเหลือ", "คำสั่ง", "เมนู", "help", "start"].includes(command)
+    [
+      "ช่วยเหลือ",
+      "คำสั่ง",
+      "เมนู",
+      "help",
+      "start",
+    ].includes(command)
   ) {
     return "help";
   }
@@ -122,26 +133,27 @@ async function fetchDailyAttendance(
   requestOrigin: string,
   date: string
 ): Promise<unknown> {
-  const secret =
-    process.env.CRON_SECRET?.trim() ||
-    process.env.INTERNAL_API_SECRET?.trim();
+  const secret = process.env.DAILY_REPORT_SECRET?.trim();
 
-  const url = new URL("/api/internal/daily-attendance", requestOrigin);
-  url.searchParams.set("date", date);
-
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-  };
-
-  if (secret) {
-    headers.Authorization = `Bearer ${secret}`;
-    headers["x-cron-secret"] = secret;
-    headers["x-internal-secret"] = secret;
+  if (!secret) {
+    throw new Error(
+      "DAILY_REPORT_SECRET is not configured"
+    );
   }
+
+  const url = new URL(
+    "/api/internal/daily-attendance",
+    requestOrigin
+  );
+
+  url.searchParams.set("date", date);
 
   const response = await fetch(url, {
     method: "GET",
-    headers,
+    headers: {
+      Accept: "application/json",
+      "x-report-secret": secret,
+    },
     cache: "no-store",
   });
 
@@ -160,7 +172,10 @@ export async function buildSummaryMessage(
   requestOrigin: string
 ) {
   const date = getBangkokDate();
-  const payload = await fetchDailyAttendance(requestOrigin, date);
+  const payload = await fetchDailyAttendance(
+    requestOrigin,
+    date
+  );
 
   const total =
     findNumber(payload, [
@@ -191,18 +206,18 @@ export async function buildSummaryMessage(
 
   const sick =
     findNumber(payload, [
-      "sick",
       "sickLeave",
       "sick_leave",
+      "sick",
       "sickCount",
       "sick_count",
     ]) ?? 0;
 
   const personal =
     findNumber(payload, [
-      "personal",
       "personalLeave",
       "personal_leave",
+      "personal",
       "personalCount",
       "personal_count",
     ]) ?? 0;
@@ -224,19 +239,45 @@ export async function buildSummaryMessage(
       "missing",
       "notPresent",
       "not_present",
-    ]) ?? Math.max(total - present - sick - personal - officialDuty, 0);
+    ]) ??
+    Math.max(
+      total -
+        present -
+        sick -
+        personal -
+        officialDuty,
+      0
+    );
 
   return [
     "📋 <b>สรุปการลงเวลาปฏิบัติงาน</b>",
-    `<b>วันที่:</b> ${escapeHtml(formatThaiDate(date))}`,
-    `<b>เวลาอัปเดต:</b> ${escapeHtml(formatThaiTime())} น.`,
+    `<b>วันที่:</b> ${escapeHtml(
+      formatThaiDate(date)
+    )}`,
+    `<b>เวลาอัปเดต:</b> ${escapeHtml(
+      formatThaiTime()
+    )} น.`,
     "",
-    `👥 บุคลากรทั้งหมด ${total.toLocaleString("th-TH")} คน`,
-    `✅ มาปฏิบัติราชการ ${present.toLocaleString("th-TH")} คน`,
-    `⏰ มาสาย ${late.toLocaleString("th-TH")} คน`,
-    `🤒 ลาป่วย ${sick.toLocaleString("th-TH")} คน`,
-    `📝 ลากิจ ${personal.toLocaleString("th-TH")} คน`,
-    `🚗 ไปราชการ ${officialDuty.toLocaleString("th-TH")} คน`,
-    `❌ ไม่มาปฏิบัติราชการ ${absent.toLocaleString("th-TH")} คน`,
+    `👥 บุคลากรทั้งหมด ${total.toLocaleString(
+      "th-TH"
+    )} คน`,
+    `✅ มาปฏิบัติราชการ ${present.toLocaleString(
+      "th-TH"
+    )} คน`,
+    `⏰ มาสาย ${late.toLocaleString(
+      "th-TH"
+    )} คน`,
+    `🤒 ลาป่วย ${sick.toLocaleString(
+      "th-TH"
+    )} คน`,
+    `📝 ลากิจ ${personal.toLocaleString(
+      "th-TH"
+    )} คน`,
+    `🚗 ไปราชการ ${officialDuty.toLocaleString(
+      "th-TH"
+    )} คน`,
+    `❌ ไม่มาปฏิบัติราชการ ${absent.toLocaleString(
+      "th-TH"
+    )} คน`,
   ].join("\n");
 }
