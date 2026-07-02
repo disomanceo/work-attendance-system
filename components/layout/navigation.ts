@@ -55,6 +55,13 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/memo"),
     },
     {
+      label: "คำสั่ง",
+      icon: "▧",
+      href: "/orders",
+      section: "main",
+      match: (value) => value.startsWith("/orders"),
+    },
+    {
       label: "ข้อมูลส่วนตัว",
       icon: "♙",
       href: "/account/profile",
