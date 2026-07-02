@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import {
   authorizeOfficialDuty,
   callOfficialDutyGas,
@@ -267,6 +267,8 @@ export async function POST(request: Request) {
       }
     }
 
+    const submittedAt = new Date().toISOString();
+
     if (documentConfig) {
       if (!auth.profile.signature_file_id) {
         return NextResponse.json(
@@ -336,7 +338,7 @@ export async function POST(request: Request) {
           evidenceDescription:
             evidenceDescription || attachmentName || "-",
           note,
-          submittedAt: new Date().toISOString(),
+          submittedAt,
           applicantSignatureBase64:
             `data:${applicantSignature.mimeType};base64,${applicantSignature.base64}`,
           attachmentName,
@@ -418,6 +420,7 @@ export async function POST(request: Request) {
       dutyDate: data.duty_date,
       reason: data.reason,
       hasAttachment: Boolean(data.attachment_file_id),
+      submittedAt,
     }).catch(console.error);
 
     return NextResponse.json({

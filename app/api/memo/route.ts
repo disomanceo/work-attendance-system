@@ -165,7 +165,20 @@ function parseSubmittedDate(value: string | undefined) {
     throw new Error("กรุณาระบุวันที่ยื่นให้ถูกต้อง");
   }
 
-  return `${date}T00:00:00.000+07:00`;
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (type: string) =>
+    parts.find((item) => item.type === type)?.value ?? "00";
+  const milliseconds = String(now.getMilliseconds()).padStart(3, "0");
+
+  return `${date}T${part("hour")}:${part("minute")}:${part("second")}.${milliseconds}+07:00`;
 }
 
 async function logMemoStatus(
@@ -315,8 +328,10 @@ export async function POST(request: Request) {
     const subject = String(body.subject ?? "").trim();
     const reason = String(body.reason ?? "").trim();
     const memoText = String(body.memoText ?? "").trim();
-    const submittedAt =
+    const documentSubmittedAt =
       parseSubmittedDate(body.submittedDate) ?? new Date().toISOString();
+    const submittedAt =
+      action === "submit" ? new Date().toISOString() : documentSubmittedAt;
     const attachmentDescription = String(
       body.attachmentDescription ?? ""
     ).trim();
@@ -490,7 +505,7 @@ export async function POST(request: Request) {
         reason,
         memoText,
         attachmentDescription: attachmentDescription || "-",
-        submittedAt,
+        submittedAt: documentSubmittedAt,
         applicantSignatureBase64:
           `data:${applicantSignature.mimeType};base64,${applicantSignature.base64}`,
       })) as MemoPendingResponse;

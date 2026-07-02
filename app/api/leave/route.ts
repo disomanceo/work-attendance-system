@@ -680,6 +680,8 @@ try {
       },
     });
 
+    const submittedAt = new Date().toISOString();
+
     const gasResult = (await callGas(cfg.leaveGasUrl, {
       action: "leaveCreatePending",
       secret: cfg.leaveGasSecret,
@@ -697,7 +699,7 @@ try {
       endDate: endDateValue,
       totalDays: totalWorkDays,
       reason,
-      submittedAt: new Date().toISOString(),
+      submittedAt,
       applicantSignatureBase64:
         `data:${applicantSignature.mimeType};base64,${applicantSignature.base64}`,
       evidenceName: evidence?.name || "",
@@ -780,6 +782,7 @@ try {
       totalDays: totalWorkDays,
       reason,
       leaveNumber: issuedNumber.formattedNumber,
+      submittedAt,
     }).catch((lineError) => {
       console.error("LINE leave submitted notification error:", lineError);
     });
