@@ -19,6 +19,10 @@ function doPost(e) {
       return json_(replaceOrderFile_(body));
     }
 
+    if (body.action === "deleteOrderFiles") {
+      return json_(deleteOrderFiles_(body));
+    }
+
     return json_({ ok: false, message: "Unknown action" });
   } catch (error) {
     return json_({
@@ -75,6 +79,30 @@ function replaceOrderFile_(body) {
 
   const file = DriveApp.getFileById(body.fileId);
   return fileResponse_(file);
+}
+
+function deleteOrderFiles_(body) {
+  const fileIds = Array.isArray(body.fileIds) ? body.fileIds : [];
+  const deleted = [];
+  const missing = [];
+
+  fileIds.forEach(function(fileId) {
+    const id = String(fileId || "").trim();
+    if (!id) return;
+
+    try {
+      DriveApp.getFileById(id).setTrashed(true);
+      deleted.push(id);
+    } catch (error) {
+      missing.push(id);
+    }
+  });
+
+  return {
+    ok: true,
+    deletedCount: deleted.length,
+    missingCount: missing.length,
+  };
 }
 
 function getKindFolder_(year, kind) {

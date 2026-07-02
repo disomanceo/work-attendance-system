@@ -109,10 +109,12 @@ export default function OrdersPage() {
   const [canManageAll, setCanManageAll] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
-  const [year, setYear] = useState("2569");
+  const [year, setYear] = useState("");
+  const [configuredYear, setConfiguredYear] = useState("");
   const [responsibleId, setResponsibleId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [docx, setDocx] = useState<File | null>(null);
@@ -174,6 +176,9 @@ export default function OrdersPage() {
       }
 
       setOrders(result.orders ?? []);
+      const nextConfiguredYear = String(result.configuredYear ?? "");
+      setConfiguredYear(nextConfiguredYear);
+      if (!year && nextConfiguredYear) setYear(nextConfiguredYear);
       setCanManageAll(Boolean(result.canManageAll));
       setCurrentProfile(result.currentProfile ?? null);
     } catch (error) {
@@ -221,6 +226,17 @@ export default function OrdersPage() {
   }
 
   function canEdit(order: OrderItem) {
+    if (canManageAll) {
+      return ["PENDING", "REVISION"].includes(order.status);
+    }
+
+    return (
+      order.responsible_user_id === currentProfile?.id &&
+      order.status === "REVISION"
+    );
+  }
+
+  function canDelete(order: OrderItem) {
     if (canManageAll) return true;
 
     return (
@@ -229,7 +245,7 @@ export default function OrdersPage() {
     );
   }
 
-  async function saveOrder(event: FormEvent, action: "draft" | "submit" | "update") {
+  async function saveOrder(event: FormEvent, action: "submit" | "update") {
     event.preventDefault();
     setSaving(true);
 
@@ -309,6 +325,43 @@ export default function OrdersPage() {
     }
   }
 
+  async function deleteOrder(order: OrderItem) {
+    const confirmed = window.confirm(
+      `ยืนยันลบคำสั่ง ${order.order_number || "รายการนี้"} ใช่หรือไม่?\n\nระบบจะลบทะเบียน ประวัติ และไฟล์ DOCX/PDF ของรายการนี้ แต่เลขคำสั่งที่ออกแล้วจะไม่ถูกนำกลับมาใช้ซ้ำ`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(order.id);
+
+    try {
+      const token = await getToken();
+      const response = await fetch("/api/orders", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "ลบคำสั่งไม่สำเร็จ");
+      }
+
+      showMessage(result.message || "ลบคำสั่งเรียบร้อยแล้ว");
+      await loadOrders();
+    } catch (error) {
+      showMessage(
+        error instanceof Error ? error.message : "ลบคำสั่งไม่สำเร็จ",
+        true
+      );
+    } finally {
+      setDeletingId("");
+    }
+  }
+
   function renderFiles(order: OrderItem) {
     return (
       <div className={styles.files}>
@@ -340,34 +393,45 @@ export default function OrdersPage() {
   function renderActions(order: OrderItem) {
     return (
       <div className={styles.actions}>
+        {canManageAll && order.status === "PENDING" && (
+          <button
+            type="button"
+            className={styles.reviewButton}
+            onClick={() => {
+              setReviewOrder(order);
+              setReviewNote("");
+            }}
+          >
+            อนุมัติ
+          </button>
+        )}
+
         {canEdit(order) && (
           <button
             type="button"
-            className={`${styles.secondary} ${
-              order.status === "REVISION" ? styles.updateButton : ""
+            className={`${styles.updateButton} ${
+              order.status === "REVISION" ? styles.hasBadge : ""
             }`}
             onClick={() => openEdit(order)}
           >
-            {order.status === "REVISION" ? "อัปเดต" : "แก้ไข"}
+            อัปเดต
             {order.status === "REVISION" && (
               <span className={styles.badge}>{order.revision_count}</span>
             )}
           </button>
         )}
 
-        {canManageAll && order.status === "PENDING" && (
-          <>
-            <button
-              type="button"
-              className={styles.reviewButton}
-              onClick={() => {
-                setReviewOrder(order);
-                setReviewNote("");
-              }}
-            >
-              พิจารณา
-            </button>
-          </>
+        {canDelete(order) && (
+          <button
+            type="button"
+            className={styles.deleteButton}
+            title="ลบคำสั่ง"
+            aria-label="ลบคำสั่ง"
+            disabled={deletingId === order.id}
+            onClick={() => void deleteOrder(order)}
+          >
+            {deletingId === order.id ? "…" : "×"}
+          </button>
         )}
       </div>
     );
@@ -405,11 +469,9 @@ export default function OrdersPage() {
           />
           <select value={year} onChange={(event) => setYear(event.target.value)}>
             <option value="">ทุกปี</option>
-            {[2569, 2570, 2571, 2572].map((item) => (
-              <option key={item} value={item}>
-                พ.ศ. {item}
-              </option>
-            ))}
+            {configuredYear && (
+              <option value={configuredYear}>พ.ศ. {configuredYear}</option>
+            )}
           </select>
           <select
             value={responsibleId}
@@ -427,7 +489,6 @@ export default function OrdersPage() {
             onChange={(event) => setStatus(event.target.value)}
           >
             <option value="all">ทุกสถานะ</option>
-            <option value="DRAFT">ฉบับร่าง</option>
             <option value="PENDING">รออนุมัติ</option>
             <option value="REVISION">ให้แก้ไข</option>
             <option value="APPROVED">อนุมัติแล้ว</option>
@@ -527,7 +588,7 @@ export default function OrdersPage() {
               {form.id
                 ? form.status === "REVISION"
                   ? `อัปเดตคำสั่ง ครั้งที่ ${form.revisionCount}`
-                  : "แก้ไขคำสั่ง"
+                  : "อัปเดตคำสั่ง"
                 : "เพิ่มคำสั่ง"}
             </h2>
 
@@ -632,19 +693,6 @@ export default function OrdersPage() {
                   onClick={() => setFormOpen(false)}
                 >
                   ยกเลิก
-                </button>
-                <button
-                  type="button"
-                  className={styles.secondary}
-                  disabled={saving}
-                  onClick={(event) =>
-                    void saveOrder(
-                      event as unknown as FormEvent,
-                      "draft"
-                    )
-                  }
-                >
-                  บันทึกร่าง
                 </button>
                 <button
                   type="submit"

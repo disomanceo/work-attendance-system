@@ -18,7 +18,7 @@ const DOCX_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const PDF_TYPE = "application/pdf";
 
-type OrderAction = "draft" | "submit" | "update";
+type OrderAction = "submit" | "update";
 
 function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -29,9 +29,7 @@ function validDate(value: string) {
 }
 
 function normalizeAction(value: FormDataEntryValue | null): OrderAction {
-  if (value === "submit") return "submit";
-  if (value === "update") return "update";
-  return "draft";
+  return value === "update" ? "update" : "submit";
 }
 
 function validateFile(file: File | null, kind: "docx" | "pdf") {
@@ -133,13 +131,26 @@ export async function GET(request: Request) {
       query = query.eq("responsible_user_id", responsibleId);
     }
 
-    const { data, error } = await query;
+    const [{ data, error }, { data: orderSeries, error: seriesError }] =
+      await Promise.all([
+        query,
+        auth.admin
+          .from("document_number_series")
+          .select("buddhist_year")
+          .eq("code", "ORDER")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
     if (error) throw new Error(error.message);
+    if (seriesError) throw new Error(seriesError.message);
 
     return NextResponse.json({
       ok: true,
       orders: data ?? [],
+      configuredYear: orderSeries?.buddhist_year ?? null,
       currentProfile: auth.profile,
       canManageAll: isOrderManager(auth.profile.role),
     });
@@ -288,7 +299,7 @@ export async function POST(request: Request) {
       existing?.document_number_issue_id ?? ""
     ) || null;
 
-    if (!orderNumber && action !== "draft") {
+    if (!orderNumber) {
       const issued = await issueDocumentNumber(auth.admin, {
         seriesCode: "ORDER",
         documentType: "ORDER",
@@ -330,7 +341,7 @@ export async function POST(request: Request) {
         kind: "docx",
         orderId,
         buddhistYear,
-        orderNumber: orderNumber || `DRAFT-${orderId.slice(0, 8)}`,
+        orderNumber,
         subject,
         existingFileId: docxMeta.fileId || null,
       });
@@ -342,13 +353,13 @@ export async function POST(request: Request) {
         kind: "pdf",
         orderId,
         buddhistYear,
-        orderNumber: orderNumber || `DRAFT-${orderId.slice(0, 8)}`,
+        orderNumber,
         subject,
         existingFileId: pdfMeta.fileId || null,
       });
     }
 
-    if (action !== "draft" && !docxMeta.fileId && !pdfMeta.fileId) {
+    if (!docxMeta.fileId && !pdfMeta.fileId) {
       return NextResponse.json(
         {
           ok: false,
@@ -361,8 +372,7 @@ export async function POST(request: Request) {
     const oldStatus = String(existing?.status ?? "");
     const isRevisionSubmit =
       action === "update" || oldStatus === "REVISION";
-    const nextStatus =
-      action === "draft" ? "DRAFT" : "PENDING";
+    const nextStatus = "PENDING";
     const revisionCount = Number(existing?.revision_count ?? 0);
 
     const payload = {
@@ -385,14 +395,8 @@ export async function POST(request: Request) {
       pdf_file_name: pdfMeta.fileName || null,
       pdf_mime_type: pdfMeta.mimeType || null,
       created_by: existing?.created_by ?? auth.profile.id,
-      submitted_by:
-        action === "draft"
-          ? existing?.submitted_by ?? null
-          : auth.profile.id,
-      submitted_at:
-        action === "draft"
-          ? existing?.submitted_at ?? null
-          : now,
+      submitted_by: auth.profile.id,
+      submitted_at: now,
       last_file_uploaded_by:
         docx || pdf
           ? auth.profile.id
@@ -417,9 +421,7 @@ export async function POST(request: Request) {
     }
 
     const logAction = !existing
-      ? action === "draft"
-        ? "CREATE_DRAFT"
-        : "SUBMIT"
+      ? "SUBMIT"
       : isRevisionSubmit
       ? "UPDATE_AND_RESUBMIT"
       : "EDIT";
@@ -432,7 +434,7 @@ export async function POST(request: Request) {
       to_status: nextStatus,
       revision_number: revisionCount,
       note:
-        isRevisionSubmit && action !== "draft"
+        isRevisionSubmit
           ? `อัปเดตและส่งใหม่ ครั้งที่ ${revisionCount}`
           : null,
       file_name:
@@ -444,12 +446,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       order: saved,
-      message:
-        action === "draft"
-          ? "บันทึกร่างเรียบร้อยแล้ว"
-          : isRevisionSubmit
-          ? `อัปเดตและส่งใหม่ ครั้งที่ ${revisionCount} เรียบร้อยแล้ว`
-          : "ส่งคำสั่งให้ผู้บริหารพิจารณาเรียบร้อยแล้ว",
+      message: isRevisionSubmit
+        ? `อัปเดตและส่งใหม่ ครั้งที่ ${revisionCount} เรียบร้อยแล้ว`
+        : "ส่งคำสั่งให้ผู้บริหารพิจารณาเรียบร้อยแล้ว",
     });
   } catch (error) {
     return NextResponse.json(
@@ -459,6 +458,133 @@ export async function POST(request: Request) {
           error instanceof Error
             ? error.message
             : "บันทึกรายการคำสั่งไม่สำเร็จ",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+export async function DELETE(request: Request) {
+  try {
+    const auth = await authorizeOrderRequest(request);
+
+    if (!auth.ok) {
+      return NextResponse.json(
+        { ok: false, message: auth.message },
+        { status: auth.status }
+      );
+    }
+
+    let orderId = "";
+
+    try {
+      const body = (await request.json()) as { orderId?: unknown };
+      orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
+    } catch {
+      orderId = "";
+    }
+
+    if (!orderId) {
+      return NextResponse.json(
+        { ok: false, message: "ไม่พบรหัสคำสั่งที่ต้องการลบ" },
+        { status: 400 }
+      );
+    }
+
+    const { data: order, error: loadError } = await auth.admin
+      .from("order_documents")
+      .select(
+        "id, order_number, responsible_user_id, status, docx_file_id, pdf_file_id"
+      )
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (loadError || !order) {
+      return NextResponse.json(
+        { ok: false, message: "ไม่พบรายการคำสั่ง" },
+        { status: 404 }
+      );
+    }
+
+    const manager = isOrderManager(auth.profile.role);
+    const ownerCanDelete =
+      order.responsible_user_id === auth.profile.id &&
+      String(order.status) === "REVISION";
+
+    if (!manager && !ownerCanDelete) {
+      return NextResponse.json(
+        { ok: false, message: "ไม่มีสิทธิ์ลบรายการคำสั่งนี้" },
+        { status: 403 }
+      );
+    }
+
+    const fileIds = [order.docx_file_id, order.pdf_file_id]
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean);
+
+    // Reset the order, its logs, the issued TEST number, and the series counter
+    // in one database transaction. The RPC rejects LIVE series automatically.
+    const { data: resetResult, error: resetError } = await auth.admin.rpc(
+      "reset_test_order",
+      { p_order_id: orderId }
+    );
+
+    if (resetError) {
+      const message = String(resetError.message ?? "");
+      const status = message.includes("LIVE") ? 409 : 500;
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            message || "รีเซ็ตรายการคำสั่งและเลขเอกสารไม่สำเร็จ",
+        },
+        { status }
+      );
+    }
+
+    let fileWarning = "";
+
+    if (fileIds.length > 0) {
+      const cfg = getOrderDriveConfig();
+
+      if (!cfg) {
+        fileWarning = " แต่ยังไม่ได้ตั้งค่า GAS สำหรับลบไฟล์คำสั่ง";
+      } else {
+        try {
+          await callOrderDriveGas(cfg.url, {
+            action: "deleteOrderFiles",
+            secret: cfg.secret,
+            fileIds,
+          });
+        } catch (error) {
+          console.error("deleteOrderFiles error:", error);
+          fileWarning = " แต่ย้ายไฟล์ลงถังขยะไม่สำเร็จ กรุณาตรวจ Google Drive";
+        }
+      }
+    }
+
+    const reset =
+      resetResult && typeof resetResult === "object"
+        ? (resetResult as Record<string, unknown>)
+        : {};
+    const deletedNumber = String(
+      reset.deleted_number ?? order.order_number ?? "รายการนี้"
+    );
+
+    return NextResponse.json({
+      ok: true,
+      orderId,
+      reset,
+      message: `ลบคำสั่ง ${deletedNumber} และคืนเลขทดสอบเรียบร้อยแล้ว${fileWarning}`,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message:
+          error instanceof Error ? error.message : "ลบคำสั่งไม่สำเร็จ",
       },
       { status: 500 }
     );
