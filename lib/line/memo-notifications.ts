@@ -5,22 +5,37 @@ import {
   type LineMessage,
 } from "./client";
 
-function appUrl() {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (explicit) return explicit;
+const PURPLE = "#7C3AED";
+const GREEN = "#16A34A";
+const RED = "#DC2626";
+const ORANGE = "#D97706";
+const TEXT = "#0F172A";
+const MUTED = "#64748B";
 
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return production ? `https://${production}` : "http://localhost:3000";
-}
-
-function thaiDateTime(value: string | null) {
+function thaiDate(value: string | null) {
   if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
 
   return new Intl.DateTimeFormat("th-TH", {
     timeZone: "Asia/Bangkok",
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function thaiTime(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
 }
 
 async function wasSent(key: string) {
@@ -60,60 +75,111 @@ async function logMemoLineResult(
   );
 }
 
+function text(
+  value: string,
+  extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    type: "text",
+    text: value || "-",
+    size: "sm",
+    color: TEXT,
+    wrap: true,
+    ...extra,
+  };
+}
+
+function row(label: string, value: string) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    margin: "sm",
+    alignItems: "flex-start",
+    contents: [
+      text(label, {
+        size: "xs",
+        color: MUTED,
+        weight: "bold",
+        flex: 0,
+      }),
+      text(value, {
+        flex: 1,
+        margin: "md",
+      }),
+    ],
+  };
+}
+
+function statusBox(
+  label: string,
+  color: string,
+  backgroundColor: string
+) {
+  return {
+    type: "box",
+    layout: "vertical",
+    margin: "md",
+    paddingAll: "8px",
+    cornerRadius: "8px",
+    backgroundColor,
+    contents: [
+      text(label, {
+        size: "xs",
+        color,
+        weight: "bold",
+        align: "center",
+      }),
+    ],
+  };
+}
+
 function memoFlex(input: {
   title: string;
-  lines: string[];
-  buttonLabel: string;
-  buttonPath: string;
-  color?: string;
+  subtitle: string;
+  rows: Array<{ label: string; value: string }>;
+  status: string;
+  color: string;
+  statusColor: string;
+  statusBackground: string;
 }) {
-  const color = input.color ?? "#1769E0";
-
   return {
     type: "flex",
     altText: input.title,
     contents: {
       type: "bubble",
+      size: "kilo",
       header: {
         type: "box",
         layout: "vertical",
-        backgroundColor: color,
+        paddingAll: "12px",
+        backgroundColor: input.color,
         contents: [
-          {
-            type: "text",
-            text: input.title,
+          text(input.title, {
             color: "#FFFFFF",
             weight: "bold",
-            size: "lg",
-          },
+            size: "md",
+          }),
+          text(input.subtitle, {
+            color: "#F5F3FF",
+            size: "xxs",
+            margin: "xs",
+          }),
         ],
       },
       body: {
         type: "box",
         layout: "vertical",
-        spacing: "sm",
-        contents: input.lines.map((text) => ({
-          type: "text",
-          text,
-          wrap: true,
-          size: "sm",
-          color: "#334155",
-        })),
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
+        paddingAll: "12px",
+        spacing: "none",
         contents: [
-          {
-            type: "button",
-            style: "primary",
-            color,
-            action: {
-              type: "uri",
-              label: input.buttonLabel,
-              uri: `${appUrl()}${input.buttonPath}`,
-            },
-          },
+          ...input.rows.map((item) =>
+            row(item.label, item.value)
+          ),
+          statusBox(
+            input.status,
+            input.statusColor,
+            input.statusBackground
+          ),
         ],
       },
     },
@@ -136,18 +202,26 @@ export async function notifyMemoSubmitted(input: {
   if (await wasSent(key)) return { ok: true as const, skipped: true };
 
   const message = memoFlex({
-    title: "บันทึกข้อความใหม่",
-    buttonLabel: "เปิดพิจารณา",
-    buttonPath: "/admin/memo",
-    lines: [
-      `เลขที่: ${input.memoNumber || "-"}`,
-      `ผู้ยื่น: ${input.fullName}`,
-      `ตำแหน่ง: ${input.position || "-"}`,
-      `เรื่อง: ${input.subject}`,
-      `เหตุผล: ${input.reason}`,
-      `ส่งเมื่อ: ${thaiDateTime(input.submittedAt)}`,
-      "สถานะ: รอ ผอ. พิจารณา",
+    title: "🟣 บันทึกข้อความใหม่",
+    subtitle: "รอการพิจารณาจากผู้บริหาร",
+    color: PURPLE,
+    rows: [
+      { label: "เลขที่", value: input.memoNumber || "-" },
+      { label: "ผู้ยื่น", value: input.fullName },
+      { label: "ตำแหน่ง", value: input.position || "-" },
+      { label: "เรื่อง", value: input.subject || "-" },
+      { label: "เหตุผล", value: input.reason || "-" },
+      { label: "วันที่ยื่น", value: thaiDate(input.submittedAt) },
+      {
+        label: "เวลา",
+        value: thaiTime(input.submittedAt) === "-"
+          ? "-"
+          : `${thaiTime(input.submittedAt)} น.`,
+      },
     ],
+    status: "สถานะ: รอ ผอ. พิจารณา",
+    statusColor: "#6D28D9",
+    statusBackground: "#F5F3FF",
   });
 
   const result = await pushLineMessages(target.groupId, [message]);
@@ -177,27 +251,59 @@ export async function notifyMemoReviewed(input: {
   if (await wasSent(key)) return { ok: true as const, skipped: true };
 
   const statusLabel: Record<string, string> = {
-    approved: "อนุมัติ",
-    acknowledged: "รับทราบ",
+    approved: "อนุมัติแล้ว",
+    acknowledged: "รับทราบแล้ว",
     rejected: "ไม่อนุมัติ",
     revision: "ส่งกลับแก้ไข",
   };
 
+  const label = statusLabel[input.status] ?? input.status;
+  const approved =
+    input.status === "approved" ||
+    input.status === "acknowledged";
+  const rejected = input.status === "rejected";
+
+  const color = approved
+    ? GREEN
+    : rejected
+      ? RED
+      : ORANGE;
+
+  const statusColor = approved
+    ? "#15803D"
+    : rejected
+      ? "#B91C1C"
+      : "#B45309";
+
+  const statusBackground = approved
+    ? "#F0FDF4"
+    : rejected
+      ? "#FEF2F2"
+      : "#FFFBEB";
+
   const message = memoFlex({
-    title: `ผลพิจารณาบันทึกข้อความ: ${
-      statusLabel[input.status] ?? input.status
-    }`,
-    buttonLabel: "เปิดดูรายการ",
-    buttonPath: "/memo",
-    color: input.status === "rejected" ? "#DC2626" : "#1769E0",
-    lines: [
-      `เลขที่: ${input.memoNumber || "-"}`,
-      `ผู้ยื่น: ${input.fullName}`,
-      `เรื่อง: ${input.subject}`,
-      `ผลพิจารณา: ${statusLabel[input.status] ?? input.status}`,
-      `ผู้พิจารณา: ${input.reviewerName}`,
-      ...(input.reviewNote ? [`หมายเหตุ: ${input.reviewNote}`] : []),
+    title: approved
+      ? `✅ บันทึกข้อความ: ${label}`
+      : rejected
+        ? `❌ บันทึกข้อความ: ${label}`
+        : `↩️ บันทึกข้อความ: ${label}`,
+    subtitle: "ผลการพิจารณาบันทึกข้อความ",
+    color,
+    rows: [
+      { label: "เลขที่", value: input.memoNumber || "-" },
+      { label: "ผู้ยื่น", value: input.fullName },
+      { label: "เรื่อง", value: input.subject || "-" },
+      {
+        label: "ผู้พิจารณา",
+        value: input.reviewerName || "-",
+      },
+      ...(input.reviewNote
+        ? [{ label: "หมายเหตุ", value: input.reviewNote }]
+        : []),
     ],
+    status: `ผลการพิจารณา: ${label}`,
+    statusColor,
+    statusBackground,
   });
 
   const result = await pushLineMessages(target.groupId, [message]);

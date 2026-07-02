@@ -104,6 +104,7 @@ export async function notifyLeaveSubmitted(i: {
   totalDays: number;
   reason: string;
   leaveNumber: string;
+  submittedAt: string;
 }) {
   const target = await getLineTarget();
   if (!target.ok || !target.settings.notify_leave_submitted) return target;
@@ -120,6 +121,8 @@ export async function notifyLeaveSubmitted(i: {
     totalDays: i.totalDays,
     reason: i.reason,
     leaveNumber: i.leaveNumber,
+    submittedDate: thaiDate(i.submittedAt.slice(0, 10), true),
+    submittedTime: thaiTime(i.submittedAt),
     appUrl: appUrl(),
   });
 

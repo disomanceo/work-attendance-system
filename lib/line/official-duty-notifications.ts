@@ -4,12 +4,11 @@ import {
   type LineMessage,
 } from "./client";
 
-function appUrl() {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (explicit) return explicit;
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return production ? `https://${production}` : "http://localhost:3000";
-}
+const BLUE = "#2563EB";
+const GREEN = "#16A34A";
+const RED = "#DC2626";
+const TEXT = "#0F172A";
+const MUTED = "#64748B";
 
 function thaiDate(value: string) {
   return new Intl.DateTimeFormat("th-TH", {
@@ -20,52 +19,133 @@ function thaiDate(value: string) {
   }).format(new Date(`${value}T00:00:00+07:00`));
 }
 
-function flex(title: string, lines: string[], buttonLabel: string): LineMessage {
+function thaiDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return { date: "-", time: "-" };
+  }
+
+  return {
+    date: new Intl.DateTimeFormat("th-TH", {
+      timeZone: "Asia/Bangkok",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("th-TH", {
+      timeZone: "Asia/Bangkok",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date),
+  };
+}
+
+function text(
+  value: string,
+  extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    type: "text",
+    text: value || "-",
+    size: "sm",
+    color: TEXT,
+    wrap: true,
+    ...extra,
+  };
+}
+
+function row(label: string, value: string) {
+  return {
+    type: "box",
+    layout: "horizontal",
+    margin: "sm",
+    alignItems: "flex-start",
+    contents: [
+      text(label, {
+        size: "xs",
+        color: MUTED,
+        weight: "bold",
+        flex: 0,
+      }),
+      text(value, {
+        flex: 1,
+        margin: "md",
+      }),
+    ],
+  };
+}
+
+function statusBox(
+  label: string,
+  color: string,
+  backgroundColor: string
+) {
+  return {
+    type: "box",
+    layout: "vertical",
+    margin: "md",
+    paddingAll: "8px",
+    cornerRadius: "8px",
+    backgroundColor,
+    contents: [
+      text(label, {
+        size: "xs",
+        color,
+        weight: "bold",
+        align: "center",
+      }),
+    ],
+  };
+}
+
+function flex(input: {
+  title: string;
+  subtitle: string;
+  color: string;
+  rows: Array<{ label: string; value: string }>;
+  status: string;
+  statusColor: string;
+  statusBackground: string;
+}): LineMessage {
   return {
     type: "flex",
-    altText: title,
+    altText: input.title,
     contents: {
       type: "bubble",
+      size: "kilo",
       header: {
         type: "box",
         layout: "vertical",
-        backgroundColor: "#2563EB",
+        paddingAll: "12px",
+        backgroundColor: input.color,
         contents: [
-          {
-            type: "text",
-            text: title,
+          text(input.title, {
             color: "#FFFFFF",
             weight: "bold",
-            size: "lg",
-          },
+            size: "md",
+          }),
+          text(input.subtitle, {
+            color: "#EFF6FF",
+            size: "xxs",
+            margin: "xs",
+          }),
         ],
       },
       body: {
         type: "box",
         layout: "vertical",
-        spacing: "sm",
-        contents: lines.map((text) => ({
-          type: "text",
-          text,
-          wrap: true,
-          size: "sm",
-          color: "#334155",
-        })),
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
+        paddingAll: "12px",
+        spacing: "none",
         contents: [
-          {
-            type: "button",
-            style: "primary",
-            color: "#2563EB",
-            action: {
-              type: "uri",
-              label: buttonLabel,
-              uri: `${appUrl()}/admin/official-duty`,
-            },
-          },
+          ...input.rows.map((item) =>
+            row(item.label, item.value)
+          ),
+          statusBox(
+            input.status,
+            input.statusColor,
+            input.statusBackground
+          ),
         ],
       },
     },
@@ -79,22 +159,33 @@ export async function notifyOfficialDutySubmitted(i: {
   dutyDate: string;
   reason: string;
   hasAttachment: boolean;
+  submittedAt: string;
 }) {
   const target = await getLineTarget();
   if (!target.ok) return target;
 
-  const message = flex(
-    "คำขอไปราชการใหม่",
-    [
-      `ผู้ขอ: ${i.fullName}`,
-      `ตำแหน่ง: ${i.position || "-"}`,
-      `วันที่: ${thaiDate(i.dutyDate)}`,
-      `เหตุผล: ${i.reason}`,
-      `เอกสารแนบ: ${i.hasAttachment ? "มี" : "ไม่มี"}`,
-      "สถานะ: รอ ผอ. พิจารณา",
+  const submitted = thaiDateTime(i.submittedAt);
+
+  const message = flex({
+    title: "🔵 คำขอไปราชการใหม่",
+    subtitle: "รอการพิจารณาจากผู้บริหาร",
+    color: BLUE,
+    rows: [
+      { label: "ผู้ขอ", value: i.fullName },
+      { label: "ตำแหน่ง", value: i.position || "-" },
+      { label: "วันที่", value: thaiDate(i.dutyDate) },
+      { label: "เหตุผล", value: i.reason || "-" },
+      { label: "วันที่ยื่น", value: submitted.date },
+      { label: "เวลา", value: submitted.time === "-" ? "-" : `${submitted.time} น.` },
+      {
+        label: "เอกสารแนบ",
+        value: i.hasAttachment ? "มี" : "ไม่มี",
+      },
     ],
-    "เปิดพิจารณา"
-  );
+    status: "สถานะ: รอ ผอ. พิจารณา",
+    statusColor: "#1D4ED8",
+    statusBackground: "#EFF6FF",
+  });
 
   return pushLineMessages(target.groupId, [message]);
 }
@@ -111,20 +202,42 @@ export async function notifyOfficialDutyReviewed(i: {
   const target = await getLineTarget();
   if (!target.ok) return target;
 
-  const message = flex(
-    i.approved ? "อนุญาตให้ไปราชการแล้ว" : "ไม่อนุญาตให้ไปราชการ",
-    [
-      `ผู้ขอ: ${i.fullName}`,
-      `วันที่: ${thaiDate(i.dutyDate)}`,
-      `เหตุผล: ${i.reason}`,
-      `ผู้พิจารณา: ${i.reviewerName}`,
-      ...(i.reviewNote ? [`หมายเหตุ: ${i.reviewNote}`] : []),
+  const color = i.approved ? GREEN : RED;
+  const status = i.approved
+    ? "ผลการพิจารณา: อนุมัติแล้ว"
+    : "ผลการพิจารณา: ไม่อนุมัติ";
+
+  const message = flex({
+    title: i.approved
+      ? "✅ อนุมัติให้ไปราชการแล้ว"
+      : "❌ ไม่อนุมัติให้ไปราชการ",
+    subtitle: "ผลการพิจารณาคำขอไปราชการ",
+    color,
+    rows: [
+      { label: "ผู้ขอ", value: i.fullName },
+      { label: "วันที่", value: thaiDate(i.dutyDate) },
+      { label: "เหตุผล", value: i.reason || "-" },
+      {
+        label: "ผู้พิจารณา",
+        value: i.reviewerName || "-",
+      },
+      ...(i.reviewNote
+        ? [{ label: "หมายเหตุ", value: i.reviewNote }]
+        : []),
       ...(i.approved
-        ? ['ระบบบันทึกสถานะ "ไปราชการ" แล้ว ไม่ต้องเช็กอิน']
+        ? [
+            {
+              label: "การลงเวลา",
+              value:
+                'ระบบบันทึกสถานะ "ไปราชการ" แล้ว ไม่ต้องเช็กอิน',
+            },
+          ]
         : []),
     ],
-    "เปิดดูรายการ"
-  );
+    status,
+    statusColor: i.approved ? "#15803D" : "#B91C1C",
+    statusBackground: i.approved ? "#F0FDF4" : "#FEF2F2",
+  });
 
   return pushLineMessages(target.groupId, [message]);
 }

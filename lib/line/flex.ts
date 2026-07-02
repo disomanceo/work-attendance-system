@@ -83,6 +83,94 @@ function bubble(
   };
 }
 
+
+function compactRow(label: string, value: string): C {
+  return {
+    type: "box",
+    layout: "horizontal",
+    margin: "sm",
+    alignItems: "flex-start",
+    contents: [
+      t(label, {
+        size: "xs",
+        color: MUTED,
+        flex: 0,
+        weight: "bold",
+      }),
+      t(value || "-", {
+        size: "sm",
+        color: TEXT,
+        flex: 1,
+        margin: "md",
+        wrap: true,
+      }),
+    ],
+  };
+}
+
+function compactStatus(text: string, color: string, backgroundColor: string): C {
+  return {
+    type: "box",
+    layout: "vertical",
+    margin: "md",
+    paddingAll: "8px",
+    cornerRadius: "8px",
+    backgroundColor,
+    contents: [
+      t(text, {
+        size: "xs",
+        color,
+        weight: "bold",
+        align: "center",
+        wrap: true,
+      }),
+    ],
+  };
+}
+
+function compactBubble(
+  title: string,
+  subtitle: string,
+  color: string,
+  body: C[]
+): C {
+  return {
+    type: "bubble",
+    size: "kilo",
+    header: {
+      type: "box",
+      layout: "vertical",
+      paddingAll: "12px",
+      backgroundColor: color,
+      contents: [
+        t(title, {
+          color: "#FFFFFF",
+          size: "md",
+          weight: "bold",
+          wrap: true,
+        }),
+        ...(subtitle
+          ? [
+              t(subtitle, {
+                color: "#F8FAFC",
+                size: "xxs",
+                margin: "xs",
+                wrap: true,
+              }),
+            ]
+          : []),
+      ],
+    },
+    body: {
+      type: "box",
+      layout: "vertical",
+      paddingAll: "12px",
+      spacing: "none",
+      contents: body,
+    },
+  };
+}
+
 export function helpFlex() {
   return {
     type: "flex",
@@ -145,53 +233,32 @@ export function leaveSubmittedFlex(i: {
   totalDays: number;
   reason: string;
   leaveNumber: string;
+  submittedDate: string;
+  submittedTime: string;
   appUrl: string;
 }) {
   return {
     type: "flex",
     altText: `มีใบลาใหม่จาก ${i.fullName}`,
-    contents: bubble(
-      "📝 มีใบลาใหม่",
+    contents: compactBubble(
+      `🟠 คำขอ${i.leaveTypeLabel}`,
       "รอการพิจารณาจากผู้บริหาร",
-      AMBER,
+      "#F97316",
       [
-        t(i.fullName, { size: "xl", weight: "bold" }),
-        t(i.position || "-", {
-          size: "xs",
-          color: MUTED,
-          margin: "xs",
-        }),
-        { type: "separator", margin: "lg", color: BORDER },
-        row("ประเภท", i.leaveTypeLabel),
-        row("วันที่ลา", `${i.startDate} – ${i.endDate}`),
-        row("จำนวน", `${i.totalDays} วัน`),
-        row("เลขที่ใบลา", i.leaveNumber),
-        {
-          type: "box",
-          layout: "vertical",
-          margin: "lg",
-          paddingAll: "12px",
-          cornerRadius: "12px",
-          backgroundColor: "#FFF7E8",
-          contents: [
-            t("เหตุผล", {
-              size: "xs",
-              color: AMBER,
-              weight: "bold",
-            }),
-            t(i.reason, { margin: "sm" }),
-          ],
-        },
-        t("สถานะ: รอพิจารณา", {
-          margin: "lg",
-          weight: "bold",
-          color: AMBER,
-        }),
-      ],
-      {
-        label: "เปิดพิจารณาใบลา",
-        url: `${i.appUrl}/leave`,
-      }
+        compactRow("ผู้ขอ", i.fullName),
+        compactRow("ตำแหน่ง", i.position || "-"),
+        compactRow("วันที่ลา", `${i.startDate} – ${i.endDate}`),
+        compactRow("จำนวน", `${i.totalDays} วัน`),
+        compactRow("เลขที่", i.leaveNumber || "-"),
+        compactRow("เหตุผล", i.reason || "-"),
+        compactRow("วันที่ยื่น", i.submittedDate || "-"),
+        compactRow("เวลา", i.submittedTime ? `${i.submittedTime} น.` : "-"),
+        compactStatus(
+          "สถานะ: รอพิจารณา",
+          "#C2410C",
+          "#FFF7ED"
+        ),
+      ]
     ),
   };
 }
@@ -208,43 +275,36 @@ export function leaveReviewedFlex(i: {
   leaveNumber: string;
   appUrl: string;
 }) {
-  const color = i.approved ? GREEN : RED;
-  const status = i.approved ? "อนุมัติ" : "ไม่อนุมัติ";
+  const color = i.approved ? "#16A34A" : "#DC2626";
+  const status = i.approved ? "อนุมัติแล้ว" : "ไม่อนุมัติ";
+  const statusBackground = i.approved ? "#F0FDF4" : "#FEF2F2";
+  const statusText = i.approved ? "#15803D" : "#B91C1C";
 
   return {
     type: "flex",
-    altText: `${status}ใบลาของ ${i.fullName}`,
-    contents: bubble(
-      i.approved ? "✅ อนุมัติใบลาแล้ว" : "❌ ไม่อนุมัติใบลา",
-      "ผลการพิจารณาใบลา",
+    altText: `${status} ${i.leaveTypeLabel} ของ ${i.fullName}`,
+    contents: compactBubble(
+      i.approved
+        ? `✅ อนุมัติ${i.leaveTypeLabel}แล้ว`
+        : `❌ ไม่อนุมัติ${i.leaveTypeLabel}`,
+      "ผลการพิจารณาคำขอลา",
       color,
       [
-        t(i.fullName, { size: "xl", weight: "bold" }),
-        { type: "separator", margin: "lg", color: BORDER },
-        row("ประเภท", i.leaveTypeLabel),
-        row("วันที่ลา", `${i.startDate} – ${i.endDate}`),
-        row("จำนวน", `${i.totalDays} วัน`),
-        row("เลขที่ใบลา", i.leaveNumber),
-        row("ผู้พิจารณา", i.reviewerName),
-        t(`ผลการพิจารณา: ${status}`, {
-          margin: "lg",
-          weight: "bold",
-          color,
-        }),
+        compactRow("ผู้ขอ", i.fullName),
+        compactRow("ประเภท", i.leaveTypeLabel),
+        compactRow("วันที่ลา", `${i.startDate} – ${i.endDate}`),
+        compactRow("จำนวน", `${i.totalDays} วัน`),
+        compactRow("เลขที่", i.leaveNumber || "-"),
+        compactRow("ผู้พิจารณา", i.reviewerName || "-"),
         ...(i.reviewNote
-          ? [
-              t(`หมายเหตุ: ${i.reviewNote}`, {
-                size: "xs",
-                color: MUTED,
-                margin: "sm",
-              }),
-            ]
+          ? [compactRow("หมายเหตุ", i.reviewNote)]
           : []),
-      ],
-      {
-        label: "เปิดระบบการลา",
-        url: `${i.appUrl}/leave`,
-      }
+        compactStatus(
+          `ผลการพิจารณา: ${status}`,
+          statusText,
+          statusBackground
+        ),
+      ]
     ),
   };
 }
