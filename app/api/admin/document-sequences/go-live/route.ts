@@ -70,6 +70,9 @@ export async function POST(request: Request) {
     const prefix = String(body.prefix ?? "").trim();
     const buddhistYear = Number(body.buddhistYear);
     const startNumber = Number(body.startNumber ?? 1);
+    const requestedYearBasis = String(body.yearBasis ?? "")
+      .trim()
+      .toUpperCase();
     const reason = String(body.reason ?? "").trim();
     const confirmation = String(body.confirmation ?? "").trim();
 
@@ -120,6 +123,20 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { ok: false, message: "ไม่พบชุดเลขทดสอบที่เปิดใช้งาน" },
         { status: 404 }
+      );
+    }
+
+    const yearBasis =
+      requestedYearBasis ||
+      String(oldSeries.year_basis ?? "ACADEMIC").trim().toUpperCase();
+
+    if (!["ACADEMIC", "FISCAL"].includes(yearBasis)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "รูปแบบปีต้องเป็นปีการศึกษาหรือปีงบประมาณ",
+        },
+        { status: 400 }
       );
     }
 
@@ -178,6 +195,7 @@ export async function POST(request: Request) {
         start_number: startNumber,
         current_number: startNumber - 1,
         padding: oldSeries.padding,
+        year_basis: yearBasis,
         mode: "LIVE",
         is_active: true,
         created_by: auth.profile.id,

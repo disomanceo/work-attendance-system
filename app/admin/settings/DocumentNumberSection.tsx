@@ -4,6 +4,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./document-number.module.css";
 
+type YearBasis = "ACADEMIC" | "FISCAL";
+
 type Series = {
   id: string;
   code: string;
@@ -13,6 +15,7 @@ type Series = {
   start_number: number;
   current_number: number;
   padding: number;
+  year_basis: YearBasis | null;
   mode: "TEST" | "LIVE" | "ARCHIVED";
   is_active: boolean;
   next_formatted_number: string;
@@ -26,6 +29,7 @@ type SeriesForm = {
   buddhistYear: number;
   startNumber: number;
   padding: number;
+  yearBasis: YearBasis;
 };
 
 const DEFAULT_FORM: SeriesForm = {
@@ -35,9 +39,14 @@ const DEFAULT_FORM: SeriesForm = {
   buddhistYear: 2569,
   startNumber: 1,
   padding: 3,
+  yearBasis: "ACADEMIC",
 };
 
 const GO_LIVE_CONFIRMATION = "เริ่มใช้งานจริง";
+
+function getYearBasisLabel(value: YearBasis | null | undefined) {
+  return value === "FISCAL" ? "ปีงบประมาณ" : "ปีการศึกษา";
+}
 
 export default function DocumentNumberSection() {
   const supabase = useMemo(() => createClient(), []);
@@ -53,6 +62,7 @@ export default function DocumentNumberSection() {
     prefix: "ผม.",
     buddhistYear: 2569,
     startNumber: 1,
+    yearBasis: "ACADEMIC" as YearBasis,
     reason: "เริ่มใช้งานระบบจริง",
     confirmation: "",
   });
@@ -123,6 +133,7 @@ export default function DocumentNumberSection() {
       buddhistYear: item.buddhist_year,
       startNumber: item.start_number,
       padding: item.padding,
+      yearBasis: item.year_basis === "FISCAL" ? "FISCAL" : "ACADEMIC",
     });
     setFormMode("edit");
   }
@@ -172,6 +183,7 @@ export default function DocumentNumberSection() {
       prefix: item.prefix,
       buddhistYear: item.buddhist_year,
       startNumber: 1,
+      yearBasis: item.year_basis === "FISCAL" ? "FISCAL" : "ACADEMIC",
       reason: "เริ่มใช้งานระบบจริง",
       confirmation: "",
     });
@@ -224,7 +236,7 @@ export default function DocumentNumberSection() {
           <span>DOCUMENT NUMBER</span>
           <h2>เลขเอกสาร</h2>
           <p>
-            กำหนดชุดเลขเอกสาร คำนำหน้า ปี พ.ศ.
+            กำหนดชุดเลขเอกสาร คำนำหน้า ปี พ.ศ. รูปแบบปี
             และเลขเริ่มต้นสำหรับเอกสารแต่ละประเภท
           </p>
         </div>
@@ -276,6 +288,10 @@ export default function DocumentNumberSection() {
                 <div>
                   <span>ปี พ.ศ.</span>
                   <strong>{item.buddhist_year}</strong>
+                </div>
+                <div>
+                  <span>รูปแบบปี</span>
+                  <strong>{getYearBasisLabel(item.year_basis)}</strong>
                 </div>
                 <div>
                   <span>เลขล่าสุด</span>
@@ -376,6 +392,22 @@ export default function DocumentNumberSection() {
               </label>
 
               <label>
+                <span>รูปแบบปี</span>
+                <select
+                  value={form.yearBasis}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      yearBasis: event.target.value as YearBasis,
+                    }))
+                  }
+                >
+                  <option value="ACADEMIC">ปีการศึกษา</option>
+                  <option value="FISCAL">ปีงบประมาณ</option>
+                </select>
+              </label>
+
+              <label>
                 <span>เลขเริ่มต้น</span>
                 <input
                   type="number"
@@ -410,7 +442,7 @@ export default function DocumentNumberSection() {
             <div className={styles.numberPreview}>
               ตัวอย่าง: {form.prefix ? `${form.prefix} ` : ""}
               {String(form.startNumber).padStart(form.padding, "0")}/
-              {form.buddhistYear}
+              {form.buddhistYear} · {getYearBasisLabel(form.yearBasis)}
             </div>
 
             <div className={styles.modalActions}>
@@ -456,6 +488,8 @@ export default function DocumentNumberSection() {
                 <span>ปี พ.ศ.</span>
                 <input
                   type="number"
+                  min="2500"
+                  max="2700"
                   value={liveForm.buddhistYear}
                   onChange={(event) =>
                     setLiveForm((current) => ({
@@ -465,6 +499,23 @@ export default function DocumentNumberSection() {
                   }
                 />
               </label>
+
+              <label>
+                <span>รูปแบบปี</span>
+                <select
+                  value={liveForm.yearBasis}
+                  onChange={(event) =>
+                    setLiveForm((current) => ({
+                      ...current,
+                      yearBasis: event.target.value as YearBasis,
+                    }))
+                  }
+                >
+                  <option value="ACADEMIC">ปีการศึกษา</option>
+                  <option value="FISCAL">ปีงบประมาณ</option>
+                </select>
+              </label>
+
               <label>
                 <span>เริ่มจากเลข</span>
                 <input

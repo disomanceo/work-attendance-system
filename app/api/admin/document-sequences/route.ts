@@ -236,6 +236,19 @@ export async function POST(request: Request) {
     const buddhistYear = Number(body.buddhistYear);
     const startNumber = Number(body.startNumber ?? 1);
     const padding = Number(body.padding ?? 3);
+    const yearBasis = String(body.yearBasis ?? "ACADEMIC")
+      .trim()
+      .toUpperCase();
+
+    if (!["ACADEMIC", "FISCAL"].includes(yearBasis)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "รูปแบบปีต้องเป็นปีการศึกษาหรือปีงบประมาณ",
+        },
+        { status: 400 }
+      );
+    }
 
     if (!/^[A-Z0-9_]{2,40}$/.test(code)) {
       return NextResponse.json(
@@ -273,6 +286,7 @@ export async function POST(request: Request) {
         start_number: startNumber,
         current_number: startNumber - 1,
         padding,
+        year_basis: yearBasis,
         mode: "TEST",
         is_active: true,
         created_by: auth.profile.id,
@@ -326,6 +340,9 @@ export async function PATCH(request: Request) {
     const buddhistYear = Number(body.buddhistYear);
     const startNumber = Number(body.startNumber ?? 1);
     const padding = Number(body.padding ?? 3);
+    const requestedYearBasis = String(body.yearBasis ?? "")
+      .trim()
+      .toUpperCase();
 
     if (!id) {
       return NextResponse.json(
@@ -366,6 +383,20 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const yearBasis =
+      requestedYearBasis ||
+      String(current.year_basis ?? "ACADEMIC").trim().toUpperCase();
+
+    if (!["ACADEMIC", "FISCAL"].includes(yearBasis)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "รูปแบบปีต้องเป็นปีการศึกษาหรือปีงบประมาณ",
+        },
+        { status: 400 }
+      );
+    }
+
     const currentNumber = Number(current.current_number ?? 0);
     const hasIssuedNumbers =
       currentNumber >= Number(current.start_number ?? 1);
@@ -392,6 +423,7 @@ export async function PATCH(request: Request) {
         buddhist_year: buddhistYear,
         start_number: startNumber,
         padding,
+        year_basis: yearBasis,
         updated_by: auth.profile.id,
         updated_at: new Date().toISOString(),
       })
