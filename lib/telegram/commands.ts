@@ -2,6 +2,13 @@ import "server-only";
 
 type UnknownRecord = Record<string, unknown>;
 
+type TelegramAttendancePerson = {
+  fullName: string;
+  position: string;
+  checkInTime: string;
+  status: string;
+};
+
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -44,6 +51,49 @@ function findNumber(value: unknown, keys: string[]): number | null {
   }
 
   return null;
+}
+
+function findPeople(value: unknown): TelegramAttendancePerson[] {
+  if (!isRecord(value) || !Array.isArray(value.people)) {
+    return [];
+  }
+
+  return value.people
+    .filter(isRecord)
+    .map((person) => ({
+      fullName:
+        typeof person.fullName === "string"
+          ? person.fullName.trim()
+          : "",
+      position:
+        typeof person.position === "string"
+          ? person.position.trim()
+          : "",
+      checkInTime:
+        typeof person.checkInTime === "string"
+          ? person.checkInTime.trim()
+          : "",
+      status:
+        typeof person.status === "string"
+          ? person.status.trim()
+          : "",
+    }))
+    .filter(
+      (person) =>
+        Boolean(person.fullName) &&
+        Boolean(person.checkInTime)
+    )
+    .sort((a, b) => {
+      const timeCompare = a.checkInTime.localeCompare(
+        b.checkInTime
+      );
+
+      if (timeCompare !== 0) {
+        return timeCompare;
+      }
+
+      return a.fullName.localeCompare(b.fullName, "th");
+    });
 }
 
 function escapeHtml(value: string) {
@@ -121,7 +171,7 @@ export function buildHelpMessage() {
   return [
     "🤖 <b>คำสั่ง Telegram Bot</b>",
     "",
-    "<b>สรุป</b> — สรุปการลงเวลาวันนี้",
+    "<b>สรุป</b> — รายงานการลงเวลาวันนี้",
     "<b>ช่วยเหลือ</b> — แสดงรายการคำสั่ง",
     "",
     "คำที่รองรับ:",
@@ -176,6 +226,7 @@ export async function buildSummaryMessage(
     requestOrigin,
     date
   );
+  const people = findPeople(payload);
 
   const total =
     findNumber(payload, [
@@ -249,35 +300,55 @@ export async function buildSummaryMessage(
       0
     );
 
+  const normal = Math.max(present - late, 0);
+
+  const personLines =
+    people.length > 0
+      ? people.map((person, index) => {
+          const position = person.position
+            ? ` — ${escapeHtml(person.position)}`
+            : "";
+
+          const status =
+            person.status === "มาสาย"
+              ? " (มาสาย)"
+              : "";
+
+          return `${index + 1}. ${escapeHtml(
+            person.checkInTime
+          )} น. ${escapeHtml(
+            person.fullName
+          )}${position}${status}`;
+        })
+      : ["ยังไม่มีผู้ลงเวลา"];
+
   return [
-    "📋 <b>สรุปการลงเวลาปฏิบัติงาน</b>",
+    "📋 <b>รายงานการลงเวลาปฏิบัติงาน</b>",
     `<b>วันที่:</b> ${escapeHtml(
       formatThaiDate(date)
     )}`,
-    `<b>เวลาอัปเดต:</b> ${escapeHtml(
+    `<b>อัปเดตเวลา:</b> ${escapeHtml(
       formatThaiTime()
     )} น.`,
     "",
-    `👥 บุคลากรทั้งหมด ${total.toLocaleString(
+    ...personLines,
+    "",
+    "📊 <b>สรุป</b>",
+    `รวม ${total.toLocaleString(
       "th-TH"
-    )} คน`,
-    `✅ มาปฏิบัติราชการ ${present.toLocaleString(
+    )} คน | ลงเวลา ${present.toLocaleString(
       "th-TH"
-    )} คน`,
-    `⏰ มาสาย ${late.toLocaleString(
+    )} | ปกติ ${normal.toLocaleString(
       "th-TH"
-    )} คน`,
-    `🤒 ลาป่วย ${sick.toLocaleString(
+    )} | มาสาย ${late.toLocaleString("th-TH")}`,
+    `ลาป่วย ${sick.toLocaleString(
       "th-TH"
-    )} คน`,
-    `📝 ลากิจ ${personal.toLocaleString(
+    )} | ลากิจ ${personal.toLocaleString(
       "th-TH"
-    )} คน`,
-    `🚗 ไปราชการ ${officialDuty.toLocaleString(
+    )} | ไปราชการ ${officialDuty.toLocaleString(
       "th-TH"
-    )} คน`,
-    `❌ ไม่มาปฏิบัติราชการ ${absent.toLocaleString(
+    )} | ยังไม่ลงเวลา ${absent.toLocaleString(
       "th-TH"
-    )} คน`,
+    )}`,
   ].join("\n");
 }
