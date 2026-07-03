@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type MemberRole =
@@ -97,7 +97,7 @@ async function requireAdmin(request: Request) {
       response: NextResponse.json(
         {
           ok: false,
-          message: "ระบบยังไม่ได้ตั้งค่า Supabase ฝั่ง Server",
+          message: "เธฃเธฐเธเธเธขเธฑเธเนเธกเนเนเธ”เนเธ•เธฑเนเธเธเนเธฒ Supabase เธเธฑเนเธ Server",
         },
         { status: 500 }
       ),
@@ -112,7 +112,7 @@ async function requireAdmin(request: Request) {
       response: NextResponse.json(
         {
           ok: false,
-          message: "กรุณาเข้าสู่ระบบใหม่",
+          message: "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
         },
         { status: 401 }
       ),
@@ -141,7 +141,7 @@ async function requireAdmin(request: Request) {
       response: NextResponse.json(
         {
           ok: false,
-          message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+          message: "Session เธซเธกเธ”เธญเธฒเธขเธธ เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
         },
         { status: 401 }
       ),
@@ -176,7 +176,7 @@ async function requireAdmin(request: Request) {
       response: NextResponse.json(
         {
           ok: false,
-          message: "คุณไม่มีสิทธิ์จัดการสมาชิก",
+          message: "เธเธธเธ“เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธเธฑเธ”เธเธฒเธฃเธชเธกเธฒเธเธดเธ",
         },
         { status: 403 }
       ),
@@ -211,6 +211,7 @@ export async function GET(request: Request) {
           alternate_workplace,
           count_as_present_when_no_checkin,
           profile_image_file_id,
+          signature_file_id,
           created_at,
           updated_at
         `
@@ -224,7 +225,7 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ไม่สามารถโหลดรายชื่อสมาชิกได้",
+          message: "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เนเธซเธฅเธ”เธฃเธฒเธขเธเธทเนเธญเธชเธกเธฒเธเธดเธเนเธ”เน",
         },
         { status: 500 }
       );
@@ -240,7 +241,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message: "เกิดข้อผิดพลาดระหว่างโหลดข้อมูลสมาชิก",
+        message: "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เธฃเธฐเธซเธงเนเธฒเธเนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธ",
       },
       { status: 500 }
     );
@@ -286,7 +287,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ไม่พบรหัสสมาชิก",
+          message: "เนเธกเนเธเธเธฃเธซเธฑเธชเธชเธกเธฒเธเธดเธ",
         },
         { status: 400 }
       );
@@ -296,7 +297,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "บทบาทสมาชิกไม่ถูกต้อง",
+          message: "เธเธ—เธเธฒเธ—เธชเธกเธฒเธเธดเธเนเธกเนเธ–เธนเธเธ•เนเธญเธ",
         },
         { status: 400 }
       );
@@ -306,7 +307,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "สถานะสมาชิกไม่ถูกต้อง",
+          message: "เธชเธ–เธฒเธเธฐเธชเธกเธฒเธเธดเธเนเธกเนเธ–เธนเธเธ•เนเธญเธ",
         },
         { status: 400 }
       );
@@ -316,7 +317,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ชื่อสถานที่ปฏิบัติงานยาวเกินไป",
+          message: "เธเธทเนเธญเธชเธ–เธฒเธเธ—เธตเนเธเธเธดเธเธฑเธ•เธดเธเธฒเธเธขเธฒเธงเน€เธเธดเธเนเธ",
         },
         { status: 400 }
       );
@@ -326,7 +327,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "กรุณาระบุสถานที่ปฏิบัติงานเพิ่มเติม",
+          message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธชเธ–เธฒเธเธ—เธตเนเธเธเธดเธเธฑเธ•เธดเธเธฒเธเน€เธเธดเนเธกเน€เธ•เธดเธก",
         },
         { status: 400 }
       );
@@ -336,7 +337,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ชื่อตำแหน่งยาวเกินไป",
+          message: "เธเธทเนเธญเธ•เธณเนเธซเธเนเธเธขเธฒเธงเน€เธเธดเธเนเธ",
         },
         { status: 400 }
       );
@@ -348,7 +349,7 @@ export async function PATCH(request: Request) {
           {
             ok: false,
             message:
-              "ไม่สามารถลดสิทธิ์หรือระงับบัญชีผู้ดูแลที่กำลังใช้งานอยู่",
+              "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธฅเธ”เธชเธดเธ—เธเธดเนเธซเธฃเธทเธญเธฃเธฐเธเธฑเธเธเธฑเธเธเธตเธเธนเนเธ”เธนเนเธฅเธ—เธตเนเธเธณเธฅเธฑเธเนเธเนเธเธฒเธเธญเธขเธนเน",
           },
           { status: 400 }
         );
@@ -379,6 +380,7 @@ export async function PATCH(request: Request) {
           alternate_workplace,
           count_as_present_when_no_checkin,
           profile_image_file_id,
+          signature_file_id,
           created_at,
           updated_at
         `
@@ -391,7 +393,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ไม่สามารถบันทึกข้อมูลสมาชิกได้",
+          message: "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธเนเธ”เน",
         },
         { status: 500 }
       );
@@ -400,7 +402,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       ok: true,
       member: data,
-      message: "บันทึกข้อมูลสมาชิกเรียบร้อยแล้ว",
+      message: "เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง",
     });
   } catch (error) {
     console.error("Members PATCH API error:", error);
@@ -408,7 +410,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message: "เกิดข้อผิดพลาดระหว่างบันทึกข้อมูลสมาชิก",
+        message: "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เธฃเธฐเธซเธงเนเธฒเธเธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธ",
       },
       { status: 500 }
     );
@@ -430,7 +432,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ไม่พบรหัสสมาชิกที่ต้องการลบ",
+          message: "เนเธกเนเธเธเธฃเธซเธฑเธชเธชเธกเธฒเธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฅเธ",
         },
         { status: 400 }
       );
@@ -440,7 +442,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่",
+          message: "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธฅเธเธเธฑเธเธเธตเธ—เธตเนเธเธณเธฅเธฑเธเนเธเนเธเธฒเธเธญเธขเธนเน",
         },
         { status: 400 }
       );
@@ -458,7 +460,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ตรวจสอบสมาชิกก่อนลบไม่สำเร็จ",
+          message: "เธ•เธฃเธงเธเธชเธญเธเธชเธกเธฒเธเธดเธเธเนเธญเธเธฅเธเนเธกเนเธชเธณเน€เธฃเนเธ",
         },
         { status: 500 }
       );
@@ -468,7 +470,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ไม่พบสมาชิกที่ต้องการลบ",
+          message: "เนเธกเนเธเธเธชเธกเธฒเธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฅเธ",
         },
         { status: 404 }
       );
@@ -479,7 +481,7 @@ export async function DELETE(request: Request) {
     const authDeleteWarning = deleteAuthError
       ? getErrorMessage(
           deleteAuthError,
-          "Supabase Auth ไม่ตอบรายละเอียดกลับมา"
+          "Supabase Auth เนเธกเนเธ•เธญเธเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธเธฅเธฑเธเธกเธฒ"
         )
       : "";
 
@@ -504,9 +506,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: `ปิดบัญชีเข้าสู่ระบบแล้ว แต่ซ่อนสมาชิกไม่สำเร็จ: ${getErrorMessage(
+          message: `เธเธดเธ”เธเธฑเธเธเธตเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธฅเนเธง เนเธ•เนเธเนเธญเธเธชเธกเธฒเธเธดเธเนเธกเนเธชเธณเน€เธฃเนเธ: ${getErrorMessage(
             archiveProfileError,
-            "กรุณาตรวจสอบข้อมูลสมาชิกอีกครั้ง"
+            "เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธเธญเธตเธเธเธฃเธฑเนเธ"
           )}`,
         },
         { status: 500 }
@@ -517,8 +519,8 @@ export async function DELETE(request: Request) {
       ok: true,
       deletedId: id,
       message: authDeleteWarning
-        ? `ซ่อนสมาชิก ${member.full_name || ""} แล้ว แต่ Supabase Auth แจ้งเตือน: ${authDeleteWarning}`
-        : `ลบสมาชิก ${member.full_name || ""} เรียบร้อยแล้ว`,
+        ? `เธเนเธญเธเธชเธกเธฒเธเธดเธ ${member.full_name || ""} เนเธฅเนเธง เนเธ•เน Supabase Auth เนเธเนเธเน€เธ•เธทเธญเธ: ${authDeleteWarning}`
+        : `เธฅเธเธชเธกเธฒเธเธดเธ ${member.full_name || ""} เน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง`,
     });
   } catch (error) {
     console.error("Members DELETE API error:", error);
@@ -526,9 +528,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message: "เกิดข้อผิดพลาดระหว่างลบสมาชิก",
+        message: "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เธฃเธฐเธซเธงเนเธฒเธเธฅเธเธชเธกเธฒเธเธดเธ",
       },
       { status: 500 }
     );
   }
 }
+

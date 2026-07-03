@@ -9,6 +9,46 @@ type MemberRole = "admin" | "director" | "teacher" | "staff" | "janitor";
 type AccountStatus = "pending" | "active" | "suspended";
 type MemberFilter = "pending" | "active" | "suspended" | "all";
 
+const memberSignatureUrlCache = new Map<string, string>();
+const pendingMemberSignatureRequests = new Map<string, Promise<string>>();
+
+async function getCachedMemberSignatureUrl(
+  fileId: string | null | undefined,
+  accessToken: string | null | undefined
+) {
+  if (!fileId || !accessToken) return "";
+
+  const cachedUrl = memberSignatureUrlCache.get(fileId);
+  if (cachedUrl) return cachedUrl;
+
+  const pendingRequest = pendingMemberSignatureRequests.get(fileId);
+  if (pendingRequest) return pendingRequest;
+
+  const request = fetch(
+    `/api/admin/member-signature?fileId=${encodeURIComponent(fileId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    }
+  )
+    .then(async (response) => {
+      if (!response.ok) return "";
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      memberSignatureUrlCache.set(fileId, objectUrl);
+      return objectUrl;
+    })
+    .finally(() => {
+      pendingMemberSignatureRequests.delete(fileId);
+    });
+
+  pendingMemberSignatureRequests.set(fileId, request);
+  return request;
+}
+
 type Member = {
   id: string;
   full_name: string;
@@ -21,6 +61,7 @@ type Member = {
   alternate_workplace: string | null;
   count_as_present_when_no_checkin: boolean;
   profile_image_file_id: string | null;
+  signature_file_id: string | null;
 };
 
 type MembersResponse = {
@@ -77,6 +118,8 @@ export default function AdminMembersPage() {
   const supabase = useMemo(() => createClient(), []);
   const [members, setMembers] = useState<Member[]>([]);
   const [memberImageUrls, setMemberImageUrls] = useState<Record<string, string>>({});
+  const [memberSignatureUrls, setMemberSignatureUrls] = useState<Record<string, string>>({});
+  const [signaturePreviewMember, setSignaturePreviewMember] = useState<Member | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
   const [activeFilter, setActiveFilter] = useState<MemberFilter>("pending");
   const [loading, setLoading] = useState(true);
@@ -137,6 +180,27 @@ export default function AdminMembersPage() {
       setMemberImageUrls(
         Object.fromEntries(
           imageEntries.filter((entry) => Boolean(entry[1]))
+        )
+      );
+
+      const membersWithSignatures = nextMembers.filter(
+        (member) => Boolean(member.signature_file_id)
+      );
+
+      const signatureEntries = await Promise.all(
+        membersWithSignatures.map(async (member) => {
+          const signatureUrl = await getCachedMemberSignatureUrl(
+            member.signature_file_id,
+            session.access_token
+          );
+
+          return [member.id, signatureUrl] as const;
+        })
+      );
+
+      setMemberSignatureUrls(
+        Object.fromEntries(
+          signatureEntries.filter((entry) => Boolean(entry[1]))
         )
       );
     } catch (error) {
@@ -350,6 +414,7 @@ export default function AdminMembersPage() {
               const isPending = member.account_status === "pending";
               const isSaving = savingId === member.id;
               const memberImageUrl = memberImageUrls[member.id] ?? "";
+              const memberSignatureUrl = memberSignatureUrls[member.id] ?? "";
               const memberInitials =
                 member.full_name
                   .trim()
@@ -383,7 +448,7 @@ export default function AdminMembersPage() {
                           {memberImageUrl ? (
                             <img
                               src={memberImageUrl}
-                              alt={`????????????? ${member.full_name}`}
+                              alt={`รูปโปรไฟล์ ${member.full_name}`}
                               loading="lazy"
                               decoding="async"
                               style={{
@@ -528,6 +593,28 @@ export default function AdminMembersPage() {
                     </label>
 
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {member.signature_file_id && (
+                        <button
+                          type="button"
+                          disabled={!memberSignatureUrl}
+                          onClick={() => setSignaturePreviewMember(member)}
+                          style={{
+                            minWidth: 112,
+                            height: 44,
+                            padding: "0 16px",
+                            border: "1px solid #c4b5fd",
+                            borderRadius: 12,
+                            color: memberSignatureUrl ? "#5b21b6" : "#98a2b3",
+                            background: memberSignatureUrl ? "#f5f3ff" : "#f2f4f7",
+                            fontWeight: 800,
+                            cursor: memberSignatureUrl ? "pointer" : "wait",
+                            opacity: memberSignatureUrl ? 1 : 0.75,
+                          }}
+                        >
+                          {memberSignatureUrl ? "ดูลายเซ็น" : "กำลังโหลด..."}
+                        </button>
+                      )}
+
                       {isPending ? (
                         <>
                           <button type="button" disabled={isSaving} onClick={() => void saveMember(member, { account_status: "active" }, `อนุมัติ ${member.full_name} เรียบร้อยแล้ว`)} style={{ minWidth: 100, height: 44, padding: "0 16px", border: 0, borderRadius: 12, color: "#ffffff", background: "linear-gradient(135deg, #15803d, #22c55e)", fontWeight: 800, cursor: isSaving ? "wait" : "pointer", opacity: isSaving ? 0.7 : 1 }}>{isSaving ? "กำลังบันทึก..." : "อนุมัติ"}</button>
@@ -544,6 +631,126 @@ export default function AdminMembersPage() {
           </div>
         )}
       </section>
+
+      {signaturePreviewMember && (
+        <div
+          role="presentation"
+          onClick={() => setSignaturePreviewMember(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "grid",
+            placeItems: "center",
+            padding: 20,
+            background: "rgba(15, 23, 42, 0.62)",
+            backdropFilter: "blur(3px)",
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="signature-preview-title"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(560px, 100%)",
+              maxHeight: "calc(100vh - 40px)",
+              overflow: "auto",
+              borderRadius: 22,
+              border: "1px solid #ddd6fe",
+              background: "#ffffff",
+              boxShadow: "0 30px 80px rgba(15, 23, 42, 0.28)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                padding: "18px 20px",
+                borderBottom: "1px solid #eaecf0",
+              }}
+            >
+              <div>
+                <p style={{ margin: 0, color: "#7c3aed", fontSize: 12, fontWeight: 900, letterSpacing: "0.08em" }}>
+                  SIGNATURE
+                </p>
+                <h2 id="signature-preview-title" style={{ margin: "4px 0 0", color: "#101828", fontSize: 20 }}>
+                  ลายเซ็นของ {signaturePreviewMember.full_name}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                aria-label="ปิดหน้าดูลายเซ็น"
+                onClick={() => setSignaturePreviewMember(null)}
+                style={{
+                  width: 38,
+                  height: 38,
+                  display: "grid",
+                  placeItems: "center",
+                  border: "1px solid #d0d5dd",
+                  borderRadius: 999,
+                  color: "#475467",
+                  background: "#ffffff",
+                  fontSize: 22,
+                  lineHeight: 1,
+                  cursor: "pointer",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ padding: 20 }}>
+              <div
+                style={{
+                  minHeight: 220,
+                  display: "grid",
+                  placeItems: "center",
+                  padding: 20,
+                  overflow: "hidden",
+                  border: "1px solid #e4e7ec",
+                  borderRadius: 16,
+                  background: "#ffffff",
+                }}
+              >
+                <img
+                  src={memberSignatureUrls[signaturePreviewMember.id]}
+                  alt={`ลายเซ็นของ ${signaturePreviewMember.full_name}`}
+                  decoding="async"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    maxWidth: 460,
+                    maxHeight: 300,
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSignaturePreviewMember(null)}
+                style={{
+                  width: "100%",
+                  height: 46,
+                  marginTop: 16,
+                  border: 0,
+                  borderRadius: 13,
+                  color: "#ffffff",
+                  background: "linear-gradient(135deg, #6d28d9, #8b5cf6)",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                ปิด
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
