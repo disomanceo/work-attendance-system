@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -739,28 +739,40 @@ schoolName: settings?.school_name ?? null,
         throw new Error(`ยังไม่ถึงเวลาเลิกงาน ${roleEndTime.slice(0, 5)} น.`);
       }
 
-      const checkOutAt = new Date().toISOString();
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      const { data, error } = await supabase
-        .from("attendance_records")
-        .update({
-          check_out_at: checkOutAt,
-          check_out_status: "manual",
-          updated_at: checkOutAt,
-        })
-        .eq("id", record.id)
-        .is("check_out_at", null)
-        .select(
-          "id, check_in_at, check_out_at, check_in_status, check_out_status"
-        )
-        .single();
+      if (sessionError || !session?.access_token) {
+        throw new Error("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่");
+      }
 
-      if (error) throw error;
+      const response = await fetch("/api/attendance/check-out", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
 
-      setRecord(data);
+      const result = (await response.json()) as {
+        ok: boolean;
+        record?: AttendanceRecord;
+        message?: string;
+      };
+
+      if (!response.ok || !result.ok || !result.record) {
+        throw new Error(result.message || "ลงเวลาเลิกงานไม่สำเร็จ");
+      }
+
+      setRecord(result.record);
       setMessageType("success");
       setMessage(
-        `บันทึกเวลาเลิกงานจริง ${formatThaiTime(checkOutAt)} น. เรียบร้อยแล้ว`
+        result.message ||
+          `บันทึกเวลาเลิกงานจริง ${formatThaiTime(
+            result.record.check_out_at
+          )} น. เรียบร้อยแล้ว`
       );
     } catch (error) {
       console.error("Check-out error:", error);
