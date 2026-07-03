@@ -326,6 +326,36 @@ function calculateAttendanceSummary_(
     : [];
   const source = providedSummary || {};
 
+  // Prefer the summary calculated by Next.js.
+  // It already includes staff working at an alternate workplace.
+  const hasProvidedSummary =
+    Number.isFinite(Number(source.total)) &&
+    Number.isFinite(Number(source.present)) &&
+    Number.isFinite(Number(source.sickLeave)) &&
+    Number.isFinite(Number(source.personalLeave)) &&
+    Number.isFinite(Number(source.officialDuty)) &&
+    Number.isFinite(Number(source.late)) &&
+    Number.isFinite(Number(source.absent));
+
+  if (hasProvidedSummary) {
+    return {
+      total: Math.max(Math.trunc(Number(source.total)), 0),
+      present: Math.max(Math.trunc(Number(source.present)), 0),
+      sickLeave: Math.max(Math.trunc(Number(source.sickLeave)), 0),
+      personalLeave: Math.max(
+        Math.trunc(Number(source.personalLeave)),
+        0
+      ),
+      officialDuty: Math.max(
+        Math.trunc(Number(source.officialDuty)),
+        0
+      ),
+      late: Math.max(Math.trunc(Number(source.late)), 0),
+      absent: Math.max(Math.trunc(Number(source.absent)), 0),
+    };
+  }
+
+
   let present = 0;
   let sickLeave = 0;
   let personalLeave = 0;
