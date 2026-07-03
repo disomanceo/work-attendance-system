@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -361,7 +361,11 @@ export default function MemoPage() {
         throw new Error(result.message || "โหลดทะเบียนเลขเอกสารไม่สำเร็จ");
       }
 
-      setDocuments(result.documents ?? []);
+      setDocuments(
+        (result.documents ?? []).filter(
+          (item) => String(item.documentType).toUpperCase() !== "ORDER"
+        )
+      );
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -402,6 +406,10 @@ export default function MemoPage() {
     const normalizedSearch = search.trim().toLowerCase();
 
     return documents.filter((item) => {
+      if (String(item.documentType).toUpperCase() === "ORDER") {
+        return false;
+      }
+
       const dateValue = item.issuedAt ?? item.completedAt;
       const yearMatched =
         yearFilter === "all" || getThaiYear(dateValue) === yearFilter;
@@ -684,7 +692,7 @@ export default function MemoPage() {
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
               <div>
-                <h2>ทะเบียนเลขเอกสารทั้งหมด</h2>
+                <h2>ทะเบียนเอกสารที่เกี่ยวข้อง</h2>
                 <p>รวมใบลา ไปราชการ และบันทึกข้อความจากเลขกลาง</p>
               </div>
             </div>

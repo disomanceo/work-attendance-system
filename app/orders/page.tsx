@@ -29,8 +29,10 @@ type OrderItem = {
   status: "DRAFT" | "PENDING" | "REVISION" | "APPROVED" | "CANCELLED";
   revision_count: number;
   latest_revision_note: string | null;
+  docx_file_id: string | null;
   docx_file_url: string | null;
   docx_file_name: string | null;
+  pdf_file_id: string | null;
   pdf_file_url: string | null;
   pdf_file_name: string | null;
   submitted_at: string | null;
@@ -98,6 +100,30 @@ function statusClass(status: OrderItem["status"]) {
   if (status === "REVISION") return styles.statusRevision;
   if (status === "APPROVED") return styles.statusApproved;
   return styles.statusDraft;
+}
+
+function extractGoogleDriveFileId(url: string | null) {
+  if (!url) return "";
+
+  const pathMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (pathMatch?.[1]) return pathMatch[1];
+
+  try {
+    return new URL(url).searchParams.get("id") ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function getWordDownloadUrl(order: OrderItem) {
+  const fileId =
+    order.docx_file_id || extractGoogleDriveFileId(order.docx_file_url);
+
+  if (!fileId) return order.docx_file_url ?? "#";
+
+  return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(
+    fileId
+  )}&confirm=t`;
 }
 
 export default function OrdersPage() {
@@ -311,10 +337,28 @@ export default function OrdersPage() {
         throw new Error(result.message || "พิจารณารายการไม่สำเร็จ");
       }
 
+      const savedOrder = result.order as OrderItem;
+
+      setOrders((current) =>
+        current.flatMap((item) => {
+          if (item.id !== savedOrder.id) return [item];
+
+          const updatedItem: OrderItem = {
+            ...item,
+            ...savedOrder,
+          };
+
+          if (status !== "all" && updatedItem.status !== status) {
+            return [];
+          }
+
+          return [updatedItem];
+        })
+      );
+
       showMessage(result.message || "บันทึกผลเรียบร้อยแล้ว");
       setReviewOrder(null);
       setReviewNote("");
-      await loadOrders();
     } catch (error) {
       showMessage(
         error instanceof Error ? error.message : "พิจารณารายการไม่สำเร็จ",
@@ -368,11 +412,11 @@ export default function OrdersPage() {
         {order.docx_file_url && (
           <a
             className={`${styles.fileButton} ${styles.wordFileButton}`}
-            href={order.docx_file_url}
-            target="_blank"
+            href={getWordDownloadUrl(order)}
+            download={order.docx_file_name || undefined}
             rel="noreferrer"
-            title="เปิดไฟล์ Word"
-            aria-label="เปิดไฟล์ Word"
+            title="ดาวน์โหลดไฟล์ Word"
+            aria-label="ดาวน์โหลดไฟล์ Word"
           >
             <svg
               aria-hidden="true"
@@ -775,7 +819,7 @@ export default function OrdersPage() {
             <div className={styles.modalActions}>
               <button
                 type="button"
-                className={styles.secondary}
+                className={`${styles.secondary} ${styles.reviewModalButton}`}
                 disabled={saving}
                 onClick={() => setReviewOrder(null)}
               >
@@ -783,7 +827,7 @@ export default function OrdersPage() {
               </button>
               <button
                 type="button"
-                className={styles.returnButton}
+                className={`${styles.returnButton} ${styles.reviewModalButton}`}
                 disabled={saving}
                 onClick={() => void review("return")}
               >
@@ -791,11 +835,11 @@ export default function OrdersPage() {
               </button>
               <button
                 type="button"
-                className={styles.reviewButton}
+                className={`${styles.reviewButton} ${styles.reviewModalButton}`}
                 disabled={saving}
                 onClick={() => void review("approve")}
               >
-                พิจารณา
+                {saving ? "กำลังบันทึก..." : "อนุมัติ"}
               </button>
             </div>
           </section>

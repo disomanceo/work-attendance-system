@@ -578,3 +578,25 @@
     font-weight: 400;
   }
 }
+/* Equal review modal buttons */
+.reviewModalButton {
+  width: 112px;
+  min-width: 112px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .modalActions .reviewModalButton {
+    width: 100%;
+    min-width: 0;
+  }
+}
