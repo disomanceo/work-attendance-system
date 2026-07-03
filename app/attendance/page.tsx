@@ -43,6 +43,7 @@ type AttendanceRecord = {
   check_out_at: string | null;
   check_in_status: string | null;
   check_out_status: string | null;
+  check_in_distance_meters: number | null;
 };
 
 type PositionData = {
@@ -439,7 +440,7 @@ export default function AttendancePage() {
       const { data: attendanceData, error: attendanceError } = await supabase
         .from("attendance_records")
         .select(
-          "id, check_in_at, check_out_at, check_in_status, check_out_status"
+          "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters"
         )
         .eq("user_id", user.id)
         .eq("work_date", getBangkokDate())
@@ -584,7 +585,7 @@ export default function AttendancePage() {
         updated_at: new Date().toISOString(),
       })
       .select(
-        "id, check_in_at, check_out_at, check_in_status, check_out_status"
+        "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters"
       )
       .single();
 
@@ -1102,9 +1103,17 @@ schoolName: settings?.school_name ?? null,
               <div>
                 <small>ระยะ GPS</small>
                 <strong>
-                  {distanceMeters === null
-                    ? "--"
-                    : `${distanceMeters.toLocaleString("th-TH")} เมตร`}
+                  {record?.check_in_at
+                    ? record.check_in_distance_meters === null
+                      ? "--"
+                      : `${Math.round(
+                          record.check_in_distance_meters
+                        ).toLocaleString("th-TH")} เมตร`
+                    : distanceMeters === null
+                      ? "--"
+                      : `${Math.round(distanceMeters).toLocaleString(
+                          "th-TH"
+                        )} เมตร`}
                 </strong>
               </div>
             </div>
