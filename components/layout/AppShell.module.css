@@ -40,8 +40,11 @@
   z-index: 100;
   display: flex;
   width: var(--app-sidebar-width);
+  height: 100dvh;
+  min-height: 100svh;
   flex-direction: column;
-  padding: 6px 14px 14px;
+  overflow: hidden;
+  padding: 6px 14px max(14px, env(safe-area-inset-bottom));
   border-right: 1px solid rgba(216, 180, 254, 0.18);
   color: #f8f5ff;
   background:
@@ -65,6 +68,7 @@
   position: relative;
   z-index: 4;
   height: 0;
+  flex: 0 0 auto;
 }
 
 .collapseButton {
@@ -94,6 +98,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 0 0 auto;
   padding: 12px 48px 12px 12px;
   border: 1px solid rgba(216, 180, 254, 0.16);
   border-radius: 18px;
@@ -155,6 +160,30 @@
   font-size: 11px;
 }
 
+.sidebarScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(192, 132, 252, 0.45) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sidebarScrollArea::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebarScrollArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebarScrollArea::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(192, 132, 252, 0.4);
+}
+
 .menuTitle {
   margin: 8px 10px 5px;
   color: #c084fc;
@@ -171,7 +200,8 @@
 .accountMenuList {
   display: grid;
   gap: 4px;
-  margin-top: auto;
+  margin-top: 8px;
+  padding-bottom: 4px;
 }
 
 .menuGroup {
@@ -242,7 +272,9 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
+  flex: 0 0 auto;
   margin-top: 10px;
+  margin-bottom: max(2px, env(safe-area-inset-bottom));
   border: 1px solid rgba(248, 113, 113, 0.22);
   border-radius: 12px;
   color: #fecaca;
@@ -271,6 +303,7 @@
   .sidebar,
   .sidebarCollapsed {
     width: min(292px, 86vw);
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
     transform: translateX(-105%);
   }
 
@@ -280,6 +313,15 @@
 
   .collapseButton {
     display: none;
+  }
+
+  .sidebarScrollArea {
+    padding-right: 2px;
+  }
+
+  .logoutButton {
+    margin-top: 8px;
+    margin-bottom: 0;
   }
 
   .overlay {

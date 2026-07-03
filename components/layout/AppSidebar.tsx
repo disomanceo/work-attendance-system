@@ -80,34 +80,37 @@ export default function AppSidebar({
         )}
       </div>
 
-      <nav className={styles.menuList} aria-label="เมนูหลัก">
-        <MenuGroup
-          collapsed={collapsed}
-          title="ส่วนกรอกข้อมูล"
-          items={mainItems}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
-        {reviewItems.length > 0 && (
+      <div className={styles.sidebarScrollArea}>
+        <nav className={styles.menuList} aria-label="เมนูหลัก">
           <MenuGroup
             collapsed={collapsed}
-            title="ส่วนพิจารณา"
-            items={reviewItems}
+            title="ส่วนกรอกข้อมูล"
+            items={mainItems}
             pathname={pathname}
             onNavigate={onNavigate}
           />
-        )}
-      </nav>
 
-      <nav className={styles.accountMenuList} aria-label="บัญชีและระบบ">
-        <MenuGroup
-          collapsed={collapsed}
-          title="บัญชีและระบบ"
-          items={accountItems}
-          pathname={pathname}
-          onNavigate={onNavigate}
-        />
-      </nav>
+          {reviewItems.length > 0 && (
+            <MenuGroup
+              collapsed={collapsed}
+              title="ส่วนพิจารณา"
+              items={reviewItems}
+              pathname={pathname}
+              onNavigate={onNavigate}
+            />
+          )}
+        </nav>
+
+        <nav className={styles.accountMenuList} aria-label="บัญชีและระบบ">
+          <MenuGroup
+            collapsed={collapsed}
+            title="บัญชีและระบบ"
+            items={accountItems}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
+        </nav>
+      </div>
 
       <button
         type="button"
@@ -139,6 +142,7 @@ function MenuGroup({
   return (
     <div className={styles.menuGroup}>
       {!collapsed && <h2 className={styles.menuTitle}>{title}</h2>}
+
       {items.map((item) => {
         const active = item.match(pathname);
 
