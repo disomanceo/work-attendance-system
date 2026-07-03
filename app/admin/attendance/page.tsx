@@ -1191,10 +1191,7 @@ export default function AdminAttendancePage() {
             <h1>การลงเวลาปฏิบัติงาน</h1>
             <p className={styles.subtitle}>ตรวจสอบสถานะการมาปฏิบัติราชการของบุคลากรโรงเรียนวัดไผ่มุ้ง</p>
           </div>
-          <button type="button" className={styles.backButton} onClick={() => router.push("/attendance")}>
-            กลับหน้าหลัก
-          </button>
-        </header>
+</header>
 
         <section className={styles.filterPanel}>
           <div className={styles.datePickerWrap} ref={calendarRef}>
@@ -1359,35 +1356,7 @@ export default function AdminAttendancePage() {
                       ? "PDF รวมเดือนพร้อม"
                       : "สร้าง PDF รวมเดือน"}
               </button>
-
-              <button
-                type="button"
-                className={styles.closeMonthButton}
-                onClick={closeMonthAndDeleteDailyFiles}
-                disabled={
-                  closingMonth ||
-                  buildingMonthly ||
-                  !monthFileStatus.monthlyPdfFound ||
-                  !monthFileStatus.canCloseMonth ||
-                  monthFileStatus.monthClosed
-                }
-                title={
-                  monthFileStatus.monthClosed
-                    ? "เดือนนี้ปิดแล้ว"
-                    : !monthFileStatus.monthlyPdfFound
-                      ? "ต้องสร้าง PDF รวมเดือนก่อน"
-                      : !monthFileStatus.canCloseMonth
-                        ? "ปิดเดือนได้เมื่อสิ้นเดือนแล้ว"
-                        : "เก็บ PDF รวมเดือนเพียงไฟล์เดียว"
-                }
-              >
-                {closingMonth
-                  ? "กำลังปิดเดือน..."
-                  : monthFileStatus.monthClosed
-                    ? "ปิดเดือนแล้ว 🔒"
-                    : "ปิดเดือนและลบรายวัน"}
-              </button>
-            </div>
+</div>
           </div>
 
           <div className={styles.monthDayStrip}>

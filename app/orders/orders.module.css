@@ -600,3 +600,76 @@
     min-width: 0;
   }
 }
+/* Orders pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e4d9f0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #756684;
+  font-size: 12px;
+}
+
+.pagination > div {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.pagination button {
+  min-width: 34px;
+  height: 32px;
+  padding: 0 9px;
+  border: 1px solid #ded4e9;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #604b73;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pagination button:hover:not(:disabled) {
+  border-color: #9f82bb;
+  background: #f7f2fb;
+}
+
+.pagination button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.pagination .activePage {
+  border-color: #6f42a8;
+  background: #6f42a8;
+  color: #ffffff;
+}
+
+.pageNumberWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pageNumberWrap i {
+  color: #9b8ca8;
+  font-style: normal;
+}
+
+@media (max-width: 640px) {
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination > div {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}

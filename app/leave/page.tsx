@@ -702,12 +702,7 @@ export default function LeavePage() {
           </div>
         
           <div className={styles.headerActions}>
-            <a href="/attendance" className={styles.dashboardButton}>
-              <span aria-hidden="true">⌂</span>
-              กลับหน้าหลัก
-            </a>
-
-            {summary && leaveSettings && (
+{summary && leaveSettings && (
               <div className={styles.leaveStatsStack}>
                 <section
                   className={`${styles.leaveStatsCard} ${

@@ -5077,3 +5077,130 @@
 .headerActions .leaveStatsBreakdown strong {
   color: #ffffff !important;
 }
+
+/* Distinct leave summary colors */
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.leaveStatsStack {
+  display: grid;
+  gap: 9px;
+  min-width: 300px;
+}
+
+.leaveStatsCard {
+  display: grid;
+  gap: 4px;
+  padding: 13px 15px;
+  border: 1px solid #b9ddc9;
+  border-left: 5px solid #2f8d69;
+  border-radius: 15px;
+  background: #ffffff;
+  color: #173f31;
+  box-shadow: 0 10px 24px rgba(24, 69, 54, .10);
+}
+
+.leaveStatsCard > strong {
+  color: #176044;
+  font-size: 14px;
+}
+
+.leaveStatsCard > span {
+  color: #1f5f49;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.leaveStatsCard > span b {
+  margin: 0 7px;
+  color: #8a9d95;
+}
+
+.leaveStatsCard > small {
+  color: #64786f;
+}
+
+.leaveStatsExceeded {
+  border-color: #efb5a5;
+  border-left-color: #e5653c;
+  background: #fff8f5;
+}
+
+.leaveStatsBreakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.leaveStatsBreakdown article {
+  display: grid;
+  gap: 3px;
+  padding: 11px 13px;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(46, 65, 89, .08);
+}
+
+.leaveStatsBreakdown article small,
+.leaveStatsBreakdown article strong {
+  color: inherit;
+}
+
+.leaveStatsBreakdown article[data-type="sick"] {
+  border: 1px solid #f2bc84;
+  border-left: 5px solid #ed7b18;
+  background: #fff7ed;
+  color: #a84c09;
+}
+
+.leaveStatsBreakdown article[data-type="personal"] {
+  border: 1px solid #9dc8f7;
+  border-left: 5px solid #287ac7;
+  background: #eff7ff;
+  color: #185b9c;
+}
+
+.typeGrid button:first-child {
+  border-color: #9dc8f7;
+  background: #eff7ff;
+  color: #185b9c;
+}
+
+.typeGrid button:first-child small {
+  color: #5683ae;
+}
+
+.typeGrid button:nth-child(2) {
+  border-color: #f2bc84;
+  background: #fff7ed;
+  color: #a84c09;
+}
+
+.typeGrid button:nth-child(2) small {
+  color: #b8773f;
+}
+
+.typeGrid button:first-child.activeType {
+  border-color: #287ac7;
+  background: linear-gradient(135deg, #dceeff, #f7fbff);
+  color: #164f87;
+  box-shadow: 0 0 0 4px rgba(40, 122, 199, .11);
+}
+
+.typeGrid button:nth-child(2).activeType {
+  border-color: #ed7b18;
+  background: linear-gradient(135deg, #ffead7, #fffaf5);
+  color: #934407;
+  box-shadow: 0 0 0 4px rgba(237, 123, 24, .11);
+}
+
+@media (max-width: 800px) {
+  .headerActions,
+  .leaveStatsStack {
+    width: 100%;
+    min-width: 0;
+  }
+}

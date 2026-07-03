@@ -593,3 +593,12 @@
   margin-top: 0 !important;
   padding: 10px 12px !important;
 }
+
+/* Simplified official duty header */
+.header {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.headerTitle {
+  width: 100%;
+}

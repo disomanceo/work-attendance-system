@@ -1629,3 +1629,37 @@
   background: rgba(255, 255, 255, 0.14) !important;
   color: #ffffff !important;
 }
+
+/* Balanced attendance actions */
+.pageHeader {
+  justify-content: flex-start;
+}
+
+.monthReportHeader {
+  align-items: flex-start;
+}
+
+.monthActionButtons {
+  margin-left: auto;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.weekReportButtons {
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .monthReportHeader {
+    align-items: stretch;
+  }
+
+  .monthActionButtons {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .weekReportButtons {
+    justify-content: flex-start;
+  }
+}

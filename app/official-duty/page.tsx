@@ -288,13 +288,6 @@ export default function OfficialDutyPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <button
-          type="button"
-          className={styles.backButton}
-          onClick={() => router.push("/attendance")}
-        >
-          ← กลับหน้าหลัก
-        </button>
 
         <div className={styles.headerTitle}>
           <span>OFFICIAL DUTY</span>
@@ -302,12 +295,7 @@ export default function OfficialDutyPage() {
           <p>ส่งคำขอและตรวจสอบประวัติการไปราชการของตนเอง</p>
         </div>
 
-        {profile && (
-          <div className={styles.profileBox}>
-            <strong>{profile.full_name}</strong>
-            <small>{profile.position || profile.role}</small>
-          </div>
-        )}
+
       </header>
 
       <FeedbackToast message={message} type={messageType} />

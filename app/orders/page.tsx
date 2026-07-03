@@ -61,6 +61,8 @@ const EMPTY_FORM: FormState = {
   revisionCount: 0,
 };
 
+const ORDERS_PER_PAGE = 20;
+
 function formatThaiDate(value: string) {
   return new Intl.DateTimeFormat("th-TH", {
     timeZone: "Asia/Bangkok",
@@ -138,7 +140,9 @@ export default function OrdersPage() {
   const [year, setYear] = useState("");
   const [configuredYear, setConfiguredYear] = useState("");
   const [responsibleId, setResponsibleId] = useState("");
-    const [sort, setSort] = useState("number_desc");const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState("number_desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -406,6 +410,25 @@ export default function OrdersPage() {
     }
   }
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(orders.length / ORDERS_PER_PAGE)
+  );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pagedOrders = orders.slice(
+    (safeCurrentPage - 1) * ORDERS_PER_PAGE,
+    safeCurrentPage * ORDERS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, status, year, responsibleId, sort]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
   function renderFiles(order: OrderItem) {
     return (
       <div className={styles.files}>
@@ -592,7 +615,7 @@ export default function OrdersPage() {
             </thead>
             <tbody>
               {!loading &&
-                orders.map((order) => (
+                pagedOrders.map((order) => (
                   <tr key={order.id}>
                     <td>{order.order_number || "ร่าง"}</td>
                     <td>
@@ -631,7 +654,7 @@ export default function OrdersPage() {
         </section>
 
         <section className={styles.mobileCards}>
-          {orders.map((order) => (
+          {pagedOrders.map((order) => (
             <article className={styles.mobileCard} key={order.id}>
               <div className={styles.mobileTop}>
                 <strong>{order.order_number || "ฉบับร่าง"}</strong>
@@ -661,6 +684,68 @@ export default function OrdersPage() {
             </article>
           ))}
         </section>
+
+        {orders.length > ORDERS_PER_PAGE && (
+          <nav className={styles.pagination} aria-label="หน้ารายการคำสั่ง">
+            <span>
+              แสดง{" "}
+              {(safeCurrentPage - 1) * ORDERS_PER_PAGE + 1}-
+              {Math.min(safeCurrentPage * ORDERS_PER_PAGE, orders.length)}{" "}
+              จาก {orders.length} รายการ
+            </span>
+
+            <div>
+              <button
+                type="button"
+                disabled={safeCurrentPage === 1}
+                onClick={() =>
+                  setCurrentPage((page) => Math.max(1, page - 1))
+                }
+              >
+                ก่อนหน้า
+              </button>
+
+              {Array.from({ length: totalPages }, (_, index) => index + 1)
+                .filter(
+                  (page) =>
+                    page === 1 ||
+                    page === totalPages ||
+                    Math.abs(page - safeCurrentPage) <= 1
+                )
+                .map((page, index, visiblePages) => (
+                  <span className={styles.pageNumberWrap} key={page}>
+                    {index > 0 &&
+                      page - visiblePages[index - 1] > 1 && (
+                        <i>…</i>
+                      )}
+                    <button
+                      type="button"
+                      className={
+                        page === safeCurrentPage
+                          ? styles.activePage
+                          : undefined
+                      }
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  </span>
+                ))}
+
+              <button
+                type="button"
+                disabled={safeCurrentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((page) =>
+                    Math.min(totalPages, page + 1)
+                  )
+                }
+              >
+                ถัดไป
+              </button>
+            </div>
+          </nav>
+        )}
       </div>
 
       {formOpen && (
