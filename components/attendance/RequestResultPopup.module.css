@@ -1,0 +1,252 @@
+﻿.floatingButton {
+  position: fixed;
+  right: 18px;
+  bottom: 138px;
+  z-index: 79;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.24);
+  cursor: pointer;
+}
+
+.floatingApproved {
+  background: linear-gradient(135deg, #15803d, #22c55e);
+}
+
+.floatingRejected {
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+}
+
+.floatingButton span {
+  font-size: 18px;
+}
+
+.floatingButton strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.floatingButton b {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 121;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.modal {
+  width: min(520px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  color: #ffffff;
+}
+
+.headerApproved {
+  background: linear-gradient(135deg, #15803d, #22c55e);
+}
+
+.headerRejected {
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+}
+
+.header small {
+  opacity: 0.86;
+}
+
+.header h2 {
+  margin: 5px 0 0;
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+.header h2 span {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.closeButton {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 23px;
+  cursor: pointer;
+}
+
+.card {
+  margin: 18px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.statusRow strong {
+  color: #334155;
+  font-size: 15px;
+}
+
+.statusRow span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.statusApproved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusRejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.card h3 {
+  margin: 14px 0;
+  color: #1e293b;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.card dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.card dl div {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+}
+
+.card dt {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.card dd {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.navigation,
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 0 18px 12px;
+}
+
+.actions {
+  padding-bottom: 18px;
+}
+
+.navigation button,
+.actions button {
+  min-height: 42px;
+  padding: 9px 14px;
+  border-radius: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: #334155;
+  color: #ffffff;
+}
+
+.secondary {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.loading,
+.errorMessage {
+  margin: 18px;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.loading {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.errorMessage {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .floatingButton {
+    right: 12px;
+    bottom: 128px;
+  }
+
+  .floatingButton strong {
+    display: none;
+  }
+
+  .modal {
+    border-radius: 18px;
+  }
+
+  .navigation,
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
