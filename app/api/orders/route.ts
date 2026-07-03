@@ -272,13 +272,13 @@ export async function POST(request: Request) {
 
       if (
         !isOrderManager(auth.profile.role) &&
-        !["DRAFT", "REVISION"].includes(String(data.status))
+        !["PENDING", "REVISION"].includes(String(data.status))
       ) {
         return NextResponse.json(
           {
             ok: false,
             message:
-              "รายการนี้กำลังรออนุมัติหรืออนุมัติแล้ว จึงแก้ไขไม่ได้",
+              "รายการนี้อนุมัติแล้วหรือไม่ได้อยู่ในสถานะที่แก้ไขได้",
           },
           { status: 409 }
         );
@@ -359,15 +359,6 @@ export async function POST(request: Request) {
       });
     }
 
-    if (!docxMeta.fileId && !pdfMeta.fileId) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: "กรุณาแนบไฟล์ DOCX หรือ PDF อย่างน้อย 1 ไฟล์",
-        },
-        { status: 400 }
-      );
-    }
 
     const oldStatus = String(existing?.status ?? "");
     const isRevisionSubmit =
@@ -443,11 +434,15 @@ export async function POST(request: Request) {
           .join(", ") || null,
     });
 
+    const hasOrderFile = Boolean(docxMeta.fileId || pdfMeta.fileId);
+
     return NextResponse.json({
       ok: true,
       order: saved,
       message: isRevisionSubmit
         ? `อัปเดตและส่งใหม่ ครั้งที่ ${revisionCount} เรียบร้อยแล้ว`
+        : !existing && !hasOrderFile
+        ? `จองเลขคำสั่ง ${orderNumber} เรียบร้อยแล้ว สามารถแนบไฟล์ภายหลังได้`
         : "ส่งคำสั่งให้ผู้บริหารพิจารณาเรียบร้อยแล้ว",
     });
   } catch (error) {

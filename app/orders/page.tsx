@@ -232,7 +232,7 @@ export default function OrdersPage() {
 
     return (
       order.responsible_user_id === currentProfile?.id &&
-      order.status === "REVISION"
+      ["PENDING", "REVISION"].includes(order.status)
     );
   }
 
@@ -385,7 +385,7 @@ export default function OrdersPage() {
             PDF
           </a>
         )}
-        {!order.docx_file_url && !order.pdf_file_url && <span>-</span>}
+        {!order.docx_file_url && !order.pdf_file_url && <span>รอแนบไฟล์</span>}
       </div>
     );
   }
@@ -657,7 +657,7 @@ export default function OrdersPage() {
 
               <div className={styles.formGrid}>
                 <label>
-                  <span>ไฟล์ DOCX</span>
+                  <span>ไฟล์ DOCX (ไม่บังคับ)</span>
                   <input
                     type="file"
                     accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -668,7 +668,7 @@ export default function OrdersPage() {
                 </label>
 
                 <label>
-                  <span>ไฟล์ PDF</span>
+                  <span>ไฟล์ PDF (ไม่บังคับ)</span>
                   <input
                     type="file"
                     accept=".pdf,application/pdf"
@@ -679,11 +679,11 @@ export default function OrdersPage() {
                 </label>
               </div>
 
-              {form.id && (
-                <small>
-                  เมื่อเลือกไฟล์ใหม่ ระบบจะแทนที่ไฟล์เดิมและบันทึกเวลาอัปเดต
-                </small>
-              )}
+              <small>
+                สามารถจองเลขคำสั่งไว้ก่อนโดยไม่แนบไฟล์ และกลับมาอัปเดตไฟล์ภายหลังได้
+                {form.id &&
+                  " เมื่อเลือกไฟล์ใหม่ ระบบจะแทนที่ไฟล์เดิมและบันทึกเวลาอัปเดต"}
+              </small>
 
               <div className={styles.modalActions}>
                 <button
@@ -701,9 +701,11 @@ export default function OrdersPage() {
                 >
                   {saving
                     ? "กำลังบันทึก..."
-                    : form.status === "REVISION"
+                    : form.id
                     ? "อัปเดต"
-                    : "ส่ง"}
+                    : docx || pdf
+                    ? "ส่ง"
+                    : "จองเลขคำสั่ง"}
                   {form.status === "REVISION" && (
                     <span className={styles.badge}>
                       {form.revisionCount}
