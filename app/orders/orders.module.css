@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   min-height: 100vh;
   background: #f7f4fc;
   color: #3f2b56;
@@ -391,4 +391,190 @@
   .header .primary { width: 100%; }
   .toolbar { grid-template-columns: 1fr; }
   .toolbar input:first-child { grid-column: auto; }
+}
+
+/* Compact orders table patch */
+.toolbar {
+  grid-template-columns:
+    minmax(220px, 320px)
+    minmax(120px, 150px)
+    minmax(160px, 200px)
+    minmax(120px, 150px)
+    minmax(180px, 220px);
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+}
+
+.toolbar input,
+.toolbar select {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+.table {
+  font-family:
+    "Noto Sans Thai",
+    "Leelawadee UI",
+    Tahoma,
+    Arial,
+    sans-serif;
+  font-size: 13px;
+}
+
+.table th {
+  padding: 10px 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.table td {
+  padding: 9px;
+  vertical-align: middle;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+.numberColumn {
+  width: 100px;
+}
+
+.dateColumn {
+  width: 118px;
+}
+
+.ownerColumn {
+  width: 160px;
+}
+
+.fileColumn {
+  width: 120px;
+}
+
+.statusColumn {
+  width: 110px;
+}
+
+.actionColumn {
+  width: 180px;
+}
+
+.subject {
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.meta {
+  margin-top: 3px;
+  color: #8a94a3;
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.files {
+  gap: 5px;
+  align-items: center;
+}
+
+.fileButton {
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 30px;
+  padding: 5px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.fileButton svg {
+  flex: 0 0 auto;
+}
+
+.wordFileButton {
+  background: #e8f1ff;
+  color: #185abd;
+}
+
+.pdfFileButton {
+  background: #fff0f0;
+  color: #c62828;
+}
+
+.noFile {
+  color: #8a94a3;
+  font-size: 11px;
+}
+
+.status {
+  padding: 4px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.actions {
+  gap: 5px;
+}
+
+.reviewButton,
+.updateButton,
+.deleteButton {
+  height: 30px;
+  min-height: 30px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.reviewButton,
+.updateButton {
+  padding: 0 9px;
+}
+
+.deleteButton {
+  width: 30px;
+  min-width: 30px;
+  font-size: 17px;
+}
+
+.revisionNote {
+  margin-top: 5px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@media (max-width: 1180px) and (min-width: 901px) {
+  .toolbar {
+    grid-template-columns:
+      minmax(200px, 1fr)
+      minmax(115px, 135px)
+      minmax(145px, 175px)
+      minmax(115px, 135px)
+      minmax(160px, 190px);
+  }
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .toolbar input:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .mobileSubject {
+    font-family:
+      "Noto Sans Thai",
+      "Leelawadee UI",
+      Tahoma,
+      Arial,
+      sans-serif;
+    font-weight: 400;
+  }
 }

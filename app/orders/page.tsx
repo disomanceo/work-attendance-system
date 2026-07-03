@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   FormEvent,
@@ -367,25 +367,55 @@ export default function OrdersPage() {
       <div className={styles.files}>
         {order.docx_file_url && (
           <a
-            className={styles.fileButton}
+            className={`${styles.fileButton} ${styles.wordFileButton}`}
             href={order.docx_file_url}
             target="_blank"
             rel="noreferrer"
+            title="เปิดไฟล์ Word"
+            aria-label="เปิดไฟล์ Word"
           >
-            DOCX
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+            >
+              <path
+                fill="currentColor"
+                d="M4 3h10l6 6v12H4V3Zm9 1.8V10h5.2L13 4.8ZM7 13l1.2 5h1.7l1-3.3L12 18h1.7l1.3-5h-1.6l-.7 3.2-1-3.2h-1.5l-1 3.2-.7-3.2H7Z"
+              />
+            </svg>
+            <span>Word</span>
           </a>
         )}
+
         {order.pdf_file_url && (
           <a
-            className={styles.fileButton}
+            className={`${styles.fileButton} ${styles.pdfFileButton}`}
             href={order.pdf_file_url}
             target="_blank"
             rel="noreferrer"
+            title="เปิดไฟล์ PDF"
+            aria-label="เปิดไฟล์ PDF"
           >
-            PDF
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+            >
+              <path
+                fill="currentColor"
+                d="M4 3h10l6 6v12H4V3Zm9 1.8V10h5.2L13 4.8ZM7 13v5h1.5v-1.5h.8c1.5 0 2.5-.7 2.5-1.8 0-1.2-.9-1.7-2.5-1.7H7Zm1.5 1.2h.7c.7 0 1 .2 1 .6 0 .4-.3.6-1 .6h-.7v-1.2Zm4.1-1.2v5h2.1c1.8 0 2.9-.9 2.9-2.5S16.5 13 14.7 13h-2.1Zm1.5 1.2h.5c.9 0 1.4.4 1.4 1.3 0 .9-.5 1.3-1.4 1.3h-.5v-2.6Z"
+              />
+            </svg>
+            <span>PDF</span>
           </a>
         )}
-        {!order.docx_file_url && !order.pdf_file_url && <span>รอแนบไฟล์</span>}
+
+        {!order.docx_file_url && !order.pdf_file_url && (
+          <span className={styles.noFile}>รอแนบไฟล์</span>
+        )}
       </div>
     );
   }
@@ -402,7 +432,7 @@ export default function OrdersPage() {
               setReviewNote("");
             }}
           >
-            อนุมัติ
+            พิจารณา
           </button>
         )}
 
@@ -665,10 +695,10 @@ export default function OrdersPage() {
 
               <div className={styles.formGrid}>
                 <label>
-                  <span>ไฟล์ DOCX (ไม่บังคับ)</span>
+                  <span>ไฟล์ Word (ไม่บังคับ)</span>
                   <input
                     type="file"
-                    accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    accept=".doc,.docx,.docm,.dot,.dotx,.dotm,.rtf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-word.document.macroEnabled.12,application/vnd.ms-word.template.macroEnabled.12,application/rtf,text/rtf"
                     onChange={(event) =>
                       setDocx(event.target.files?.[0] ?? null)
                     }
@@ -765,7 +795,7 @@ export default function OrdersPage() {
                 disabled={saving}
                 onClick={() => void review("approve")}
               >
-                อนุมัติ
+                พิจารณา
               </button>
             </div>
           </section>

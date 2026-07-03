@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { issueDocumentNumber } from "@/lib/document-numbers";
 import {
   authorizeOrderRequest,
@@ -14,9 +14,27 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const DOCX_TYPE =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const PDF_TYPE = "application/pdf";
+
+const WORD_EXTENSIONS = new Set([
+  "doc",
+  "docx",
+  "docm",
+  "dot",
+  "dotx",
+  "dotm",
+  "rtf",
+]);
+
+const WORD_MIME_TYPES = new Set([
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-word.document.macroEnabled.12",
+  "application/vnd.ms-word.template.macroEnabled.12",
+  "application/rtf",
+  "text/rtf",
+  "application/octet-stream",
+]);
 
 type OrderAction = "submit" | "update";
 
@@ -39,13 +57,28 @@ function validateFile(file: File | null, kind: "docx" | "pdf") {
     throw new Error("ไฟล์แต่ละไฟล์ต้องไม่เกิน 20 MB");
   }
 
-  const allowed = kind === "docx" ? DOCX_TYPE : PDF_TYPE;
+  const extension = file.name
+    .split(".")
+    .pop()
+    ?.trim()
+    .toLowerCase() ?? "";
 
-  if (file.type !== allowed) {
+  if (kind === "pdf") {
+    if (extension !== "pdf" || file.type !== PDF_TYPE) {
+      throw new Error("ไฟล์ PDF ไม่ถูกต้อง");
+    }
+
+    return;
+  }
+
+  const validExtension = WORD_EXTENSIONS.has(extension);
+  const validMimeType =
+    !file.type ||
+    WORD_MIME_TYPES.has(file.type);
+
+  if (!validExtension || !validMimeType) {
     throw new Error(
-      kind === "docx"
-        ? "ไฟล์ DOCX ไม่ถูกต้อง"
-        : "ไฟล์ PDF ไม่ถูกต้อง"
+      "รองรับไฟล์ Word: DOC, DOCX, DOCM, DOT, DOTX, DOTM และ RTF"
     );
   }
 }
