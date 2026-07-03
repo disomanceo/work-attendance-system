@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 type MemberRole =
@@ -210,6 +210,7 @@ export async function GET(request: Request) {
           account_status,
           alternate_workplace,
           count_as_present_when_no_checkin,
+          profile_image_file_id,
           created_at,
           updated_at
         `
@@ -377,6 +378,7 @@ export async function PATCH(request: Request) {
           account_status,
           alternate_workplace,
           count_as_present_when_no_checkin,
+          profile_image_file_id,
           created_at,
           updated_at
         `

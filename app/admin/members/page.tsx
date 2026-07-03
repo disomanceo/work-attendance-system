@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getCachedProfileImageUrl } from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
 
 type MemberRole = "admin" | "director" | "teacher" | "staff" | "janitor";
@@ -19,6 +20,7 @@ type Member = {
   updated_at: string;
   alternate_workplace: string | null;
   count_as_present_when_no_checkin: boolean;
+  profile_image_file_id: string | null;
 };
 
 type MembersResponse = {
@@ -74,6 +76,7 @@ export default function AdminMembersPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [members, setMembers] = useState<Member[]>([]);
+  const [memberImageUrls, setMemberImageUrls] = useState<Record<string, string>>({});
   const [currentUserId, setCurrentUserId] = useState("");
   const [activeFilter, setActiveFilter] = useState<MemberFilter>("pending");
   const [loading, setLoading] = useState(true);
@@ -113,8 +116,29 @@ export default function AdminMembersPage() {
         }
         throw new Error(result.message || "ไม่สามารถโหลดข้อมูลสมาชิกได้");
       }
+      const nextMembers = result.members ?? [];
+      setMembers(nextMembers);
 
-      setMembers(result.members ?? []);
+      const membersWithImages = nextMembers.filter(
+        (member) => Boolean(member.profile_image_file_id)
+      );
+
+      const imageEntries = await Promise.all(
+        membersWithImages.map(async (member) => {
+          const imageUrl = await getCachedProfileImageUrl(
+            member.profile_image_file_id,
+            session.access_token
+          );
+
+          return [member.id, imageUrl] as const;
+        })
+      );
+
+      setMemberImageUrls(
+        Object.fromEntries(
+          imageEntries.filter((entry) => Boolean(entry[1]))
+        )
+      );
     } catch (error) {
       console.error("Load members page error:", error);
       setMessageType("error");
@@ -325,12 +349,54 @@ export default function AdminMembersPage() {
               const isCurrentUser = member.id === currentUserId;
               const isPending = member.account_status === "pending";
               const isSaving = savingId === member.id;
+              const memberImageUrl = memberImageUrls[member.id] ?? "";
+              const memberInitials =
+                member.full_name
+                  .trim()
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part.charAt(0))
+                  .join("")
+                  .toUpperCase() || "?";
 
               return (
                 <article key={member.id} style={{ padding: 20, border: isPending ? "1px solid #e9c46a" : "1px solid #d8e2ed", borderRadius: 20, background: isPending ? "#fffdf7" : "#fbfdff" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, alignItems: "end" }}>
                     <div style={{ minWidth: 220 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <div
+                          style={{
+                            width: 46,
+                            height: 46,
+                            flex: "0 0 46px",
+                            overflow: "hidden",
+                            display: "grid",
+                            placeItems: "center",
+                            border: "1px solid #d8e2ed",
+                            borderRadius: "50%",
+                            color: "#5b21b6",
+                            background: "#f1eaff",
+                            fontSize: 14,
+                            fontWeight: 900,
+                          }}
+                        >
+                          {memberImageUrl ? (
+                            <img
+                              src={memberImageUrl}
+                              alt={`????????????? ${member.full_name}`}
+                              loading="lazy"
+                              decoding="async"
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                display: "block",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            <span>{memberInitials}</span>
+                          )}
+                        </div>
                         <h3 style={{ margin: 0, color: "#071d32", fontSize: 18 }}>{member.full_name}</h3>
                         {isCurrentUser && <span style={{ padding: "4px 8px", borderRadius: 999, color: "#0b5ed7", background: "#e8f3ff", fontSize: 12, fontWeight: 800 }}>บัญชีของคุณ</span>}
                         {isPending && <span style={{ padding: "4px 8px", borderRadius: 999, color: "#9a6700", background: "#fff0c2", fontSize: 12, fontWeight: 800 }}>สมาชิกใหม่</span>}

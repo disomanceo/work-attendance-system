@@ -332,7 +332,7 @@ export async function GET(request: Request) {
       const { data: memberProfile } = await authResult.adminClient
         .from("profiles")
         .select("id")
-        .eq("account_status", "active")
+        .not("phone", "like", "deleted:%")
         .eq("profile_image_file_id", fileId)
         .limit(1)
         .maybeSingle();
