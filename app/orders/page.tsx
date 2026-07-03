@@ -112,7 +112,7 @@ export default function OrdersPage() {
   const [year, setYear] = useState("");
   const [configuredYear, setConfiguredYear] = useState("");
   const [responsibleId, setResponsibleId] = useState("");
-  const [loading, setLoading] = useState(true);
+    const [sort, setSort] = useState("number_desc");const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -165,7 +165,7 @@ export default function OrdersPage() {
       if (year) params.set("year", year);
       if (responsibleId) params.set("responsibleId", responsibleId);
 
-      const response = await fetch(`/api/orders?${params.toString()}`, {
+            params.set("sort", sort);const response = await fetch(`/api/orders?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
@@ -189,7 +189,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [getToken, responsibleId, search, status, year]);
+  }, [getToken, responsibleId, search, sort, status, year]);
 
   useEffect(() => {
     void Promise.all([loadProfiles(), loadOrders()]);
@@ -492,6 +492,14 @@ export default function OrdersPage() {
             <option value="PENDING">รออนุมัติ</option>
             <option value="REVISION">ให้แก้ไข</option>
             <option value="APPROVED">อนุมัติแล้ว</option>
+          </select>
+          <select value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="number_desc">เลขที่ล่าสุด → เก่าสุด</option>
+            <option value="number_asc">เลขที่เก่าสุด → ล่าสุด</option>
+            <option value="date_desc">วันที่ล่าสุด → เก่าสุด</option>
+            <option value="date_asc">วันที่เก่าสุด → ล่าสุด</option>
+            <option value="updated_desc">อัปเดตล่าสุด</option>
+            <option value="subject_asc">ชื่อเรื่อง ก → ฮ</option>
           </select>
         </section>
 

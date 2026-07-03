@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import styles from "./attendance.module.css";
 import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
 import OfficialDutyReviewPopup from "@/components/attendance/OfficialDutyReviewPopup";
+import OrderReviewPopup from "@/components/attendance/OrderReviewPopup";
 
 type Profile = {
   full_name: string;
@@ -1274,6 +1275,7 @@ schoolName: settings?.school_name ?? null,
 
       <LeaveReviewPopup role={profile.role} />
       <OfficialDutyReviewPopup role={profile.role} />
+      <OrderReviewPopup role={profile.role} />
     </main>
   );
 }

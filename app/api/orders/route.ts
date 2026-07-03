@@ -113,11 +113,41 @@ export async function GET(request: Request) {
     const responsibleId =
       url.searchParams.get("responsibleId")?.trim() ?? "";
 
-    let query = auth.admin
+        const sort = url.searchParams.get("sort")?.trim() ?? "number_desc";let query = auth.admin
       .from("order_documents")
-      .select("*")
-      .order("order_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .select("*");
+
+    switch (sort) {
+      case "number_asc":
+        query = query
+          .order("running_number", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: true });
+        break;
+      case "date_desc":
+        query = query
+          .order("order_date", { ascending: false })
+          .order("running_number", { ascending: false, nullsFirst: false });
+        break;
+      case "date_asc":
+        query = query
+          .order("order_date", { ascending: true })
+          .order("running_number", { ascending: true, nullsFirst: false });
+        break;
+      case "updated_desc":
+        query = query.order("updated_at", { ascending: false });
+        break;
+      case "subject_asc":
+        query = query
+          .order("subject", { ascending: true })
+          .order("running_number", { ascending: false, nullsFirst: false });
+        break;
+      case "number_desc":
+      default:
+        query = query
+          .order("running_number", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false });
+        break;
+    }
 
     if (search) {
       query = query.or(

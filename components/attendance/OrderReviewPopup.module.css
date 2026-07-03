@@ -1,0 +1,226 @@
+.floatingButton {
+  position: fixed;
+  right: 18px;
+  bottom: 84px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 1px solid rgba(124, 58, 237, 0.24);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 14px 32px rgba(91, 33, 182, 0.3);
+  cursor: pointer;
+}
+
+.floatingButton span {
+  font-size: 18px;
+}
+
+.floatingButton strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.floatingButton b {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff;
+  color: #6d28d9;
+  font-size: 12px;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(30, 16, 54, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.modal {
+  width: min(520px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 28px 70px rgba(46, 16, 101, 0.28);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  color: #fff;
+}
+
+.header small {
+  opacity: 0.82;
+}
+
+.header h2 {
+  margin: 5px 0 0;
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+.header h2 span {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.17);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.closeButton {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 23px;
+  cursor: pointer;
+}
+
+.card {
+  margin: 18px;
+  padding: 18px;
+  border: 1px solid #ede9fe;
+  border-radius: 16px;
+  background: #faf8ff;
+}
+
+.numberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.numberRow strong {
+  color: #5b21b6;
+  font-size: 19px;
+}
+
+.numberRow span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.card h3 {
+  margin: 14px 0;
+  color: #28144d;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.card dl {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+}
+
+.card dl div {
+  display: grid;
+  grid-template-columns: 105px 1fr;
+  gap: 10px;
+}
+
+.card dt {
+  color: #74668c;
+  font-size: 13px;
+}
+
+.card dd {
+  margin: 0;
+  color: #382654;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 0 18px 18px;
+}
+
+.actions button {
+  min-height: 42px;
+  padding: 9px 14px;
+  border-radius: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: #6d28d9;
+  color: #fff;
+}
+
+.secondary {
+  border: 1px solid #ddd6fe;
+  background: #fff;
+  color: #5b21b6;
+}
+
+.loading,
+.errorMessage {
+  margin: 18px;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.loading {
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.errorMessage {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .floatingButton {
+    right: 12px;
+    bottom: 76px;
+  }
+
+  .floatingButton strong {
+    display: none;
+  }
+
+  .modal {
+    border-radius: 18px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .primary {
+    grid-column: 1 / -1;
+  }
+}
