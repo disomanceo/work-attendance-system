@@ -1,4 +1,4 @@
-.floatingButton {
+﻿.floatingButton {
   position: fixed;
   right: 18px;
   bottom: 84px;
@@ -8,12 +8,23 @@
   gap: 8px;
   min-height: 46px;
   padding: 9px 12px;
-  border: 1px solid rgba(124, 58, 237, 0.24);
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
-  color: #fff;
-  box-shadow: 0 14px 32px rgba(91, 33, 182, 0.3);
+  color: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.24);
   cursor: pointer;
+}
+
+.floatingPending {
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+}
+
+.floatingRevision {
+  background: linear-gradient(135deg, #c2410c, #f97316);
+}
+
+.floatingApproved {
+  background: linear-gradient(135deg, #15803d, #22c55e);
 }
 
 .floatingButton span {
@@ -31,8 +42,8 @@
   height: 24px;
   place-items: center;
   border-radius: 999px;
-  background: #fff;
-  color: #6d28d9;
+  background: #ffffff;
+  color: #334155;
   font-size: 12px;
 }
 
@@ -43,17 +54,17 @@
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(30, 16, 54, 0.58);
+  background: rgba(15, 23, 42, 0.58);
   backdrop-filter: blur(5px);
 }
 
 .modal {
   width: min(520px, 100%);
   overflow: hidden;
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 22px;
-  background: #fff;
-  box-shadow: 0 28px 70px rgba(46, 16, 101, 0.28);
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
 }
 
 .header {
@@ -62,12 +73,23 @@
   justify-content: space-between;
   gap: 16px;
   padding: 20px 22px 16px;
+  color: #ffffff;
+}
+
+.headerPending {
   background: linear-gradient(135deg, #5b21b6, #7c3aed);
-  color: #fff;
+}
+
+.headerRevision {
+  background: linear-gradient(135deg, #c2410c, #f97316);
+}
+
+.headerApproved {
+  background: linear-gradient(135deg, #15803d, #22c55e);
 }
 
 .header small {
-  opacity: 0.82;
+  opacity: 0.86;
 }
 
 .header h2 {
@@ -81,7 +103,7 @@
   margin-left: 8px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.17);
+  background: rgba(255, 255, 255, 0.18);
   font-size: 12px;
   font-weight: 700;
 }
@@ -92,7 +114,7 @@
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+  color: #ffffff;
   font-size: 23px;
   cursor: pointer;
 }
@@ -100,9 +122,9 @@
 .card {
   margin: 18px;
   padding: 18px;
-  border: 1px solid #ede9fe;
+  border: 1px solid #e2e8f0;
   border-radius: 16px;
-  background: #faf8ff;
+  background: #f8fafc;
 }
 
 .numberRow {
@@ -113,22 +135,35 @@
 }
 
 .numberRow strong {
-  color: #5b21b6;
+  color: #334155;
   font-size: 19px;
 }
 
 .numberRow span {
   padding: 5px 9px;
   border-radius: 999px;
-  background: #fef3c7;
-  color: #92400e;
   font-size: 12px;
   font-weight: 800;
 }
 
+.statusPending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.statusRevision {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.statusApproved {
+  background: #dcfce7;
+  color: #166534;
+}
+
 .card h3 {
   margin: 14px 0;
-  color: #28144d;
+  color: #1e293b;
   font-size: 17px;
   line-height: 1.5;
 }
@@ -146,15 +181,16 @@
 }
 
 .card dt {
-  color: #74668c;
+  color: #64748b;
   font-size: 13px;
 }
 
 .card dd {
   margin: 0;
-  color: #382654;
+  color: #334155;
   font-size: 13px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -174,14 +210,14 @@
 
 .primary {
   border: 0;
-  background: #6d28d9;
-  color: #fff;
+  background: #334155;
+  color: #ffffff;
 }
 
 .secondary {
-  border: 1px solid #ddd6fe;
-  background: #fff;
-  color: #5b21b6;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
 }
 
 .loading,
@@ -192,8 +228,8 @@
 }
 
 .loading {
-  background: #f5f3ff;
-  color: #5b21b6;
+  background: #f1f5f9;
+  color: #334155;
 }
 
 .errorMessage {
@@ -213,6 +249,10 @@
 
   .modal {
     border-radius: 18px;
+  }
+
+  .card dl div {
+    grid-template-columns: 95px 1fr;
   }
 
   .actions {
