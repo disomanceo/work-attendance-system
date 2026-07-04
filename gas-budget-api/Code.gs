@@ -2,7 +2,7 @@
   try {
     verifyBudgetSecret_(e && e.parameter ? e.parameter.secret : "");
 
-    const projects = getBudgetProjects_();
+    const projects = getLegacyBudgetProjects_();
 
     return jsonOutput_({
       ok: true,
@@ -36,8 +36,7 @@ function doPost(e) {
       throw new Error("ไม่พบ payload ของโครงการ");
     }
 
-    ensureBudgetSheets_();
-    const savedProject = saveBudgetProject_(sourceProject, payload);
+    const savedProject = saveLegacyBudgetProject_(sourceProject, payload);
 
     return jsonOutput_({
       ok: true,
@@ -606,3 +605,6 @@ function testBudgetAttachmentFolder() {
     folderUrl: folder.getUrl(),
   };
 }
+
+
+
