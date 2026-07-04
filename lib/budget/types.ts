@@ -20,6 +20,8 @@ export type BudgetProjectActivity = {
 
 export type BudgetProjectListItem = {
   id: string;
+  legacyId: string;
+  code: string;
   name: string;
   owner: string;
   lead: string;

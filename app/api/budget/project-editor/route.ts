@@ -325,7 +325,6 @@ export async function POST(request: Request) {
       owner_name_snapshot: ownerName || null,
       status: text(payload.project.status || project.status) || "ยังไม่เริ่ม",
       approved_budget: numberValue(payload.project.budgetAmount),
-      legacy_actual_amount: numberValue(payload.project.actualAmount),
       start_date: dateValue(payload.project.startDate),
       end_date: dateValue(payload.project.endDate),
       funding_sources: Array.isArray(payload.project.fundingSources)
@@ -396,7 +395,6 @@ export async function POST(request: Request) {
         status: text(activity.status) || "ยังไม่เริ่ม",
         funding_source: text(activity.fundingSource) || null,
         approved_budget: numberValue(activity.budgetAmount),
-        legacy_actual_amount: numberValue(activity.actualAmount),
         start_date: dateValue(activity.startDate),
         end_date: dateValue(activity.endDate),
         sort_order: index,

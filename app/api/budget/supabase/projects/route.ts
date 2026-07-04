@@ -63,11 +63,6 @@ export async function GET(request: Request) {
         end_date,
         sort_order
       ),
-      budget_payment_records (
-        activity_id,
-        amount,
-        status
-      ),
       budget_project_attachments (
         id,
         drive_file_id,
@@ -89,21 +84,6 @@ export async function GET(request: Request) {
   }
 
   const projects = (data ?? []).map((row: any) => {
-    const activePayments = (row.budget_payment_records ?? []).filter(
-      (payment: any) => payment.status === "active"
-    );
-
-    const actualPaid = activePayments.reduce(
-      (sum: number, payment: any) =>
-        sum + Number(payment.amount || 0),
-      0
-    );
-    const calculatedStatus =
-      Number(row.approved_budget || 0) > 0 &&
-      actualPaid >= Number(row.approved_budget || 0)
-        ? "เสร็จสิ้น"
-        : row.status;
-
     const projectAttachments = (row.budget_project_attachments ?? [])
       .filter((file: any) => file.is_active && !file.activity_id)
       .map((file: AttachmentRow) => ({
@@ -118,31 +98,20 @@ export async function GET(request: Request) {
 
     const activities = (row.budget_activities ?? [])
       .sort((a: any, b: any) => Number(a.sort_order) - Number(b.sort_order))
-      .map((activity: ActivityRow) => {
-        const activityPaid = activePayments
-          .filter((payment: any) => payment.activity_id === activity.id)
-          .reduce(
-            (sum: number, payment: any) =>
-              sum + Number(payment.amount || 0),
-            0
-          );
-
-        return {
-          ID: activity.legacy_activity_id || activity.id,
-          ProjectID: row.legacy_project_id || row.id,
-          ActivityName: activity.name,
-          OwnerName: activity.owner_name_snapshot || "",
-          Status: activity.status,
-          BudgetSource: activity.funding_source || "",
-          ApprovedBudget: Number(activity.approved_budget || 0),
-          SpentBudget: activityPaid,
-          StartDate: activity.start_date || "",
-          EndDate: activity.end_date || "",
-        };
-      });
+      .map((activity: ActivityRow) => ({
+        ID: activity.legacy_activity_id || activity.id,
+        ProjectID: row.legacy_project_id || row.id,
+        ActivityName: activity.name,
+        OwnerName: activity.owner_name_snapshot || "",
+        Status: activity.status,
+        BudgetSource: activity.funding_source || "",
+        ApprovedBudget: Number(activity.approved_budget || 0),
+        SpentBudget: Number(activity.legacy_actual_amount || 0),
+        StartDate: activity.start_date || "",
+        EndDate: activity.end_date || "",
+      }));
 
     return {
-      SupabaseID: row.id,
       ID: row.legacy_project_id || row.id,
       ProjectCode: row.project_code || "",
       FiscalYear: row.fiscal_year ? String(row.fiscal_year) : "",
@@ -150,25 +119,15 @@ export async function GET(request: Request) {
       PlanName: row.plan_name || "",
       Department: row.department || row.plan_name || "",
       OwnerName: row.owner_name_snapshot || "",
-      Status: calculatedStatus,
+      Status: row.status,
       ApprovedBudget: Number(row.approved_budget || 0),
-      SpentBudget: actualPaid,
+      SpentBudget: Number(row.legacy_actual_amount || 0),
       StartDate: row.start_date || "",
       EndDate: row.end_date || "",
       UseActivities: activities.length > 0,
       ActivitiesList: activities,
       AttachmentsJSON: projectAttachments,
     };
-  });
-
-  projects.sort((a: any, b: any) => {
-    const aCode = String(a.ProjectCode || a.ID || "");
-    const bCode = String(b.ProjectCode || b.ID || "");
-
-    return aCode.localeCompare(bCode, "th", {
-      numeric: true,
-      sensitivity: "base",
-    });
   });
 
   return NextResponse.json({

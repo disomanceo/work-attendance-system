@@ -66,7 +66,7 @@ function parseAttachments(value: unknown): BudgetProjectAttachment[] {
 
 function mapActivity(row: Row): BudgetProjectActivity {
   return {
-    id: text(row.ID),
+    id: text(row.SupabaseID ?? row.ID),
     projectId: text(row.ProjectID),
     name: text(row.ActivityName, "ยังไม่ระบุชื่อกิจกรรม"),
     lead: text(row.OwnerName, "-"),
@@ -91,26 +91,18 @@ export function mapBudgetProject(value: unknown): BudgetProjectListItem {
       )
     : [];
 
-  const useActivities =
-    row.UseActivities === true ||
-    row.UseActivities === "TRUE" ||
-    activities.length > 0;
-
-  const activitySpent = activities.reduce(
-    (sum, item) => sum + item.spent,
-    0
-  );
-
   return {
-    id: text(row.ID),
+    id: text(row.SupabaseID ?? row.ID),
+    legacyId: text(row.ID),
+    code: text(row.ProjectCode ?? row.ID),
     name: text(row.ProjectName, "ยังไม่ระบุชื่อโครงการ"),
     owner: text(row.Department, "-"),
     lead: text(row.OwnerName, "-"),
     status: normalizeStatus(row.Status),
     budget: numberValue(row.ApprovedBudget),
-    spent: useActivities
-      ? activitySpent
-      : numberValue(row.SpentBudget),
+    // Project spending always comes from active payment records returned
+    // by the shared projects API. Do not replace it with an activity sum.
+    spent: numberValue(row.SpentBudget),
     due: text(row.EndDate, "-"),
     activities,
     attachments: parseAttachments(

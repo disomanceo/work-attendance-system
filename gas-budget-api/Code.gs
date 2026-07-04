@@ -43,6 +43,30 @@ function doPost(e) {
       });
     }
 
+    if (body.action === "uploadBudgetPaymentAttachments") {
+      const projectId = normalizeText_(body.projectId);
+      const paymentId = normalizeText_(body.paymentId);
+      const attachments = Array.isArray(body.attachments)
+        ? body.attachments
+        : [];
+
+      if (!projectId || !paymentId) {
+        throw new Error("ไม่พบ project id หรือ payment id สำหรับอัปโหลดหลักฐาน");
+      }
+
+      const uploadedFiles = uploadBudgetPaymentAttachments_(
+        projectId,
+        paymentId,
+        attachments
+      );
+
+      return jsonOutput_({
+        ok: true,
+        files: uploadedFiles,
+        message: "อัปโหลดหลักฐานการเบิกจ่ายสำเร็จ",
+      });
+    }
+
     if (body.action === "trashBudgetFiles") {
       const fileIds = Array.isArray(body.fileIds) ? body.fileIds : [];
       const trashedFileIds = trashBudgetFiles_(fileIds);
@@ -348,6 +372,43 @@ function uploadBudgetProjectAttachments_(projectId, attachments) {
     };
   });
 }
+
+function uploadBudgetPaymentAttachments_(
+  projectId,
+  paymentId,
+  attachments
+) {
+  if (!attachments.length) return [];
+
+  const rootFolder = getBudgetAttachmentFolder_();
+  const paymentsFolder = getOrCreateChildFolder_(rootFolder, "payments");
+  const projectFolder = getOrCreateChildFolder_(paymentsFolder, projectId);
+  const paymentFolder = getOrCreateChildFolder_(projectFolder, paymentId);
+
+  return attachments.map(function (attachment) {
+    const name = normalizeText_(attachment.name) || "payment-evidence";
+    const mimeType =
+      normalizeText_(attachment.mimeType) || "application/octet-stream";
+    const base64 = normalizeText_(attachment.base64);
+
+    if (!base64) {
+      throw new Error("ไฟล์ " + name + " ไม่มีข้อมูล");
+    }
+
+    const bytes = Utilities.base64Decode(base64);
+    const blob = Utilities.newBlob(bytes, mimeType, name);
+    const file = paymentFolder.createFile(blob);
+
+    return {
+      fileId: file.getId(),
+      fileName: file.getName(),
+      fileUrl: file.getUrl(),
+      mimeType: file.getMimeType(),
+      fileSize: file.getSize(),
+    };
+  });
+}
+
 
 function trashBudgetFiles_(fileIds) {
   const trashed = [];

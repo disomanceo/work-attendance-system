@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
@@ -425,6 +425,8 @@ function editableProjectToListItem(
 ): BudgetProjectListItem {
   return {
     id: project.id,
+    legacyId: project.id,
+    code: project.id,
     name: project.name,
     owner: project.owner,
     lead: project.lead,
@@ -473,9 +475,66 @@ function createNewProjectDraft(): EditableProject {
   };
 }
 
+
+const BUDGET_PROJECTS_CACHE_KEY = "budget-projects-api-cache-v3";
+const BUDGET_PROJECTS_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+
+type BudgetProjectsCache = {
+  savedAt: number;
+  projects: unknown[];
+};
+
+function readBudgetProjectsCache(): BudgetProjectsCache | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(BUDGET_PROJECTS_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as {
+      savedAt?: number;
+      value?: unknown[];
+    };
+
+    if (
+      typeof parsed.savedAt !== "number" ||
+      !Array.isArray(parsed.value) ||
+      Date.now() - parsed.savedAt > BUDGET_PROJECTS_CACHE_MAX_AGE_MS
+    ) {
+      window.sessionStorage.removeItem(BUDGET_PROJECTS_CACHE_KEY);
+      return null;
+    }
+
+    return {
+      savedAt: parsed.savedAt,
+      projects: parsed.value,
+    };
+  } catch {
+    window.sessionStorage.removeItem(BUDGET_PROJECTS_CACHE_KEY);
+    return null;
+  }
+}
+
+function writeBudgetProjectsCache(projects: unknown[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.sessionStorage.setItem(
+      BUDGET_PROJECTS_CACHE_KEY,
+      JSON.stringify({
+        savedAt: Date.now(),
+        value: projects,
+      })
+    );
+  } catch {
+    // Ignore storage quota/private mode failures.
+  }
+}
+
 export default function BudgetProjectsReadOnlyClient() {
   const [projects, setProjects] = useState<BudgetProjectListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
   const [configured, setConfigured] = useState(true);
   const [query, setQuery] = useState("");
@@ -554,19 +613,27 @@ export default function BudgetProjectsReadOnlyClient() {
     }
   }
 
-  async function loadProjects() {
-    setLoading(true);
-    setMessage("");
+  async function loadProjects(options?: { background?: boolean }) {
+    const background = options?.background === true;
+
+    if (background) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+      setMessage("");
+    }
 
     try {
-            const supabase = createSupabaseClient();
+      const supabase = createSupabaseClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        setProjects([]);
-        setMessage("กรุณาเข้าสู่ระบบใหม่");
+        if (!background) {
+          setProjects([]);
+          setMessage("กรุณาเข้าสู่ระบบใหม่");
+        }
         return;
       }
 
@@ -581,41 +648,68 @@ export default function BudgetProjectsReadOnlyClient() {
       setConfigured(result.configured !== false);
 
       if (!response.ok || !result.ok || !Array.isArray(result.projects)) {
-        setProjects([]);
-        setMessage(result.message || "ไม่สามารถโหลดข้อมูลโครงการได้");
+        if (!background) {
+          setProjects([]);
+          setMessage(result.message || "ไม่สามารถโหลดข้อมูลโครงการได้");
+        }
         return;
       }
 
-      const mappedProjects = result.projects.map(mapBudgetProject);
+      const mappedProjects = result.projects
+        .map(mapBudgetProject)
+        .sort((a, b) =>
+          a.code.localeCompare(b.code, "th", {
+            numeric: true,
+            sensitivity: "base",
+          })
+        );
+      writeBudgetProjectsCache(result.projects);
 
       const editorState = await loadBudgetProjectEditorState();
       setEditorDataSource(editorState.source);
-      setLastLoadedAt(editorState.loadedAt);
+      setLastLoadedAt(new Date().toISOString());
       setProjectOverrides(editorState.overrides);
-      setProjects(
-        applyBudgetProjectOverrides(mappedProjects, editorState.overrides),
-      );
+      setProjects(mappedProjects);
     } catch (error) {
-      setProjects([]);
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "ไม่สามารถโหลดข้อมูลโครงการได้",
-      );
+      if (!background) {
+        setProjects([]);
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "ไม่สามารถโหลดข้อมูลโครงการได้",
+        );
+      }
     } finally {
-      setLoading(false);
+      if (background) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    const timerId = window.setTimeout(() => {
-      void loadProjects();
-      void loadMemberOptions();
-    }, 0);
+    const cached = readBudgetProjectsCache();
 
-    return () => {
-      window.clearTimeout(timerId);
-    };
+    if (cached) {
+      setProjects(
+        cached.projects
+          .map(mapBudgetProject)
+          .sort((a, b) =>
+            a.code.localeCompare(b.code, "th", {
+              numeric: true,
+              sensitivity: "base",
+            })
+          )
+      );
+      setLastLoadedAt(new Date(cached.savedAt).toISOString());
+      setLoading(false);
+      void loadProjects({ background: true });
+    } else {
+      void loadProjects();
+    }
+
+    void loadMemberOptions();
   }, []);
 
   const departments = useMemo(
@@ -645,13 +739,15 @@ export default function BudgetProjectsReadOnlyClient() {
   const filteredProjects = useMemo(() => {
     const keyword = query.trim().toLowerCase();
 
-    return projects.filter((project) => {
-      const matchesKeyword =
-        !keyword ||
-        project.name.toLowerCase().includes(keyword) ||
-        project.owner.toLowerCase().includes(keyword) ||
-        project.lead.toLowerCase().includes(keyword) ||
-        project.id.toLowerCase().includes(keyword);
+    return projects
+      .filter((project) => {
+        const matchesKeyword =
+          !keyword ||
+          project.name.toLowerCase().includes(keyword) ||
+          project.owner.toLowerCase().includes(keyword) ||
+          project.lead.toLowerCase().includes(keyword) ||
+          project.code.toLowerCase().includes(keyword) ||
+          project.legacyId.toLowerCase().includes(keyword);
 
       const matchesDepartment =
         department === "all" || project.owner === department;
@@ -659,8 +755,14 @@ export default function BudgetProjectsReadOnlyClient() {
       const matchesStatus =
         status === "all" || projectWorkflowStatus(project) === status;
 
-      return matchesKeyword && matchesDepartment && matchesStatus;
-    });
+        return matchesKeyword && matchesDepartment && matchesStatus;
+      })
+      .sort((a, b) =>
+        a.code.localeCompare(b.code, "th", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
   }, [projects, query, department, status]);
 
   const totals = useMemo(
@@ -1091,18 +1193,8 @@ export default function BudgetProjectsReadOnlyClient() {
         </div>
         <div className="pageTopActions">
           <div className="sourceStatusGroup">
-            <div
-              className={
-                editorDataSource === "gas"
-                  ? "dataSourceBadge gasSource"
-                  : "dataSourceBadge localSource"
-              }
-            >
-              {editorDataSource === "gas"
-                ? "ข้อมูลแก้ไข: Google Sheets"
-                : "ข้อมูลแก้ไข: เครื่องนี้"}
-            </div>
             <small className="lastLoadedAt">
+              {refreshing ? "กำลังอัปเดตเบื้องหลัง · " : ""}
               อัปเดตล่าสุด {formatLoadedTime(lastLoadedAt)}
             </small>
           </div>
@@ -1178,7 +1270,7 @@ export default function BudgetProjectsReadOnlyClient() {
         <button
           type="button"
           className="refreshButton"
-          onClick={() => void loadProjects()}
+          onClick={() => void loadProjects({ background: true })}
           aria-label="รีเฟรชข้อมูล"
         >
           ↻
@@ -1236,6 +1328,7 @@ export default function BudgetProjectsReadOnlyClient() {
                     </span>
                     <span className="projectText">
                       <b>{project.name}</b>
+                      <small></small>
                     </span>
                   </button>
 
@@ -1759,40 +1852,12 @@ export default function BudgetProjectsReadOnlyClient() {
                   </label>
                 </div>
 
+                <div className="paymentSourceNotice">
+                  ยอดใช้จริงคำนวณอัตโนมัติจากหน้า “การเบิกจ่าย”
+                  และไม่สามารถกรอกจากหน้าโครงการได้
+                </div>
+
                 <div className="editorGrid twoColumns">
-                  <label>
-                    <span>ใช้จริง</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={
-                        editor.useActivities
-                          ? editorActivitySpent === 0
-                            ? ""
-                            : editorActivitySpent
-                          : editor.spent === 0
-                            ? ""
-                            : editor.spent
-                      }
-                      placeholder={
-                        editor.useActivities
-                          ? "คำนวณจากกิจกรรม"
-                          : "กรอกจำนวนเงิน"
-                      }
-                      readOnly={editor.useActivities}
-                      onChange={(e) =>
-                        updateEditor(
-                          "spent",
-                          e.target.value === "" ? 0 : Number(e.target.value),
-                        )
-                      }
-                    />
-                    {editor.useActivities && (
-                      <small className="fieldHint">
-                        คำนวณอัตโนมัติจากยอดใช้จริงของกิจกรรมย่อย
-                      </small>
-                    )}
-                  </label>
                   <label>
                     <span>วันที่เริ่ม</span>
                     <input
@@ -2178,37 +2243,11 @@ export default function BudgetProjectsReadOnlyClient() {
                           </label>
                         </div>
 
+                        <div className="activityPaymentSourceNotice">
+                          ยอดใช้จริงของกิจกรรมคำนวณจากรายการเบิกจ่ายที่เลือกกิจกรรมนี้
+                        </div>
+
                         <div className="editorGrid threeColumns">
-                          <label>
-                            <span>ใช้จริง</span>
-                            <input
-                              type="number"
-                              min="0"
-                              inputMode="decimal"
-                              value={activity.spent === 0 ? "" : activity.spent}
-                              placeholder="กรอกจำนวนเงิน"
-                              onChange={(e) =>
-                                updateActivity(
-                                  index,
-                                  "spent",
-                                  e.target.value === ""
-                                    ? 0
-                                    : Number(e.target.value),
-                                )
-                              }
-                            />
-                            {Number(activity.spent) >
-                              Number(activity.budget) && (
-                              <small className="budgetWarningText">
-                                ใช้เกินงบ{" "}
-                                {money(
-                                  Number(activity.spent) -
-                                    Number(activity.budget),
-                                )}{" "}
-                                บาท
-                              </small>
-                            )}
-                          </label>
                           <label>
                             <span>วันที่เริ่ม</span>
                             <input
@@ -3090,6 +3129,24 @@ export default function BudgetProjectsReadOnlyClient() {
           font-weight: 800;
         }
 
+
+        .paymentSourceNotice,
+        .activityPaymentSourceNotice {
+          margin: 2px 0 14px;
+          padding: 10px 12px;
+          border: 1px solid #ddd6fe;
+          border-radius: 10px;
+          background: #f5f3ff;
+          color: #5b21b6;
+          font-size: 0.86rem;
+          line-height: 1.5;
+        }
+
+        .activityPaymentSourceNotice {
+          margin-top: 8px;
+          margin-bottom: 10px;
+        }
+
         .editorGrid { display: grid; gap: 12px; }
         .twoColumns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .threeColumns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -3780,3 +3837,6 @@ export default function BudgetProjectsReadOnlyClient() {
     </div>
   );
 }
+
+
+

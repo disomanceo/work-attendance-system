@@ -79,15 +79,15 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/budget/projects"),
     },
     {
-      label: "การเบิกจ่าย · กำลังปรับปรุง",
+      label: "การเบิกจ่าย",
       icon: "▧",
-      href: "/budget/disbursements",
+      href: "/budget/payments",
       section: "budget",
-      disabled: true,
+      
       match: (value) => value.startsWith("/budget/disbursements"),
     },
     {
-      label: "รายงาน · กำลังปรับปรุง",
+      label: "รายงาน · ",
       icon: "▨",
       href: "/budget/reports",
       section: "budget",
@@ -95,7 +95,7 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/budget/reports"),
     },
     {
-      label: "รายการหนังสือราชการ · กำลังปรับปรุง",
+      label: "รายการหนังสือราชการ · ",
       icon: "▤",
       href: "/documents",
       section: "documents",
