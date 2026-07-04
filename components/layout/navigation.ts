@@ -1,8 +1,16 @@
+export type AppNavigationSection =
+  | "home"
+  | "personnel"
+  | "budget"
+  | "documents"
+  | "review"
+  | "account";
+
 export type AppNavigationItem = {
   label: string;
   icon: string;
   href: string;
-  section: "main" | "review" | "account";
+  section: AppNavigationSection;
   match: (pathname: string) => boolean;
 };
 
@@ -21,14 +29,14 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       label: "หน้าหลัก",
       icon: "◷",
       href: "/attendance",
-      section: "main",
+      section: "home",
       match: (value) => value === "/attendance",
     },
     {
       label: "การลงเวลาปฏิบัติงาน",
       icon: "▣",
       href: reportHref,
-      section: "main",
+      section: "personnel",
       match: (value) =>
         value.startsWith("/admin/attendance") ||
         value.startsWith("/attendance/history"),
@@ -37,28 +45,63 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       label: "ขออนุญาตลาป่วย-ลากิจ",
       icon: "▤",
       href: "/leave",
-      section: "main",
+      section: "personnel",
       match: (value) => value.startsWith("/leave"),
     },
     {
       label: "ขออนุญาตไปราชการ",
       icon: "✈",
       href: "/official-duty",
-      section: "main",
+      section: "personnel",
       match: (value) => value.startsWith("/official-duty"),
+    },
+    {
+      label: "ภาพรวมงบประมาณ",
+      icon: "▨",
+      href: "/budget",
+      section: "budget",
+      match: (value) => value === "/budget",
+    },
+    {
+      label: "แผนงบประมาณ",
+      icon: "▤",
+      href: "/budget/plans",
+      section: "budget",
+      match: (value) => value.startsWith("/budget/plans"),
+    },
+    {
+      label: "โครงการ / กิจกรรม",
+      icon: "▦",
+      href: "/budget/projects",
+      section: "budget",
+      match: (value) => value.startsWith("/budget/projects"),
+    },
+    {
+      label: "การเบิกจ่าย",
+      icon: "▥",
+      href: "/budget/disbursements",
+      section: "budget",
+      match: (value) => value.startsWith("/budget/disbursements"),
+    },
+    {
+      label: "รายงานงบประมาณ",
+      icon: "▧",
+      href: "/budget/reports",
+      section: "budget",
+      match: (value) => value.startsWith("/budget/reports"),
     },
     {
       label: "บันทึกข้อความ",
       icon: "▦",
       href: "/memo",
-      section: "main",
+      section: "documents",
       match: (value) => value.startsWith("/memo"),
     },
     {
       label: "คำสั่ง",
       icon: "▧",
       href: "/orders",
-      section: "main",
+      section: "documents",
       match: (value) => value.startsWith("/orders"),
     },
     {
