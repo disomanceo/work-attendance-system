@@ -1,24 +1,23 @@
-import BudgetModuleShell from "@/components/budget/BudgetModuleShell";
+import BudgetProjectsReadOnlyClient from "@/components/budget/projects/BudgetProjectsReadOnlyClient";
 
-export default function Page() {
+export default function BudgetProjectsPage() {
   return (
-    <BudgetModuleShell
-      eyebrow="งานงบประมาณ"
-      title="โครงการ / กิจกรรม"
-      description="จัดการโครงการ กิจกรรม ผู้รับผิดชอบ ระยะเวลา และวงเงิน"
+    <main
+      style={{
+        minHeight: "100%",
+        padding: "20px",
+        background: "#f8fafc",
+      }}
     >
-      <section
+      <div
         style={{
-          padding: "28px",
-          borderRadius: "18px",
-          border: "1px dashed #c4b5fd",
-          background: "#ffffff",
-          color: "#6b7280",
-          textAlign: "center",
+          width: "100%",
+          maxWidth: "1500px",
+          margin: "0 auto",
         }}
       >
-        หน้านี้พร้อมสำหรับพัฒนาต่อ โดยยังไม่มีการอ่านหรือเขียนข้อมูลจริง
-      </section>
-    </BudgetModuleShell>
+        <BudgetProjectsReadOnlyClient />
+      </div>
+    </main>
   );
 }

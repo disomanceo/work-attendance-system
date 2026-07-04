@@ -8,11 +8,7 @@ type BudgetModuleShellProps = {
 };
 
 const links = [
-  { href: "/budget", label: "ภาพรวม" },
-  { href: "/budget/plans", label: "แผนงบประมาณ" },
   { href: "/budget/projects", label: "โครงการ / กิจกรรม" },
-  { href: "/budget/disbursements", label: "การเบิกจ่าย" },
-  { href: "/budget/reports", label: "รายงาน" },
 ];
 
 export default function BudgetModuleShell({

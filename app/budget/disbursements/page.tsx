@@ -9,15 +9,25 @@ export default function Page() {
     >
       <section
         style={{
-          padding: "28px",
-          borderRadius: "18px",
+          padding: "36px 24px",
           border: "1px dashed #c4b5fd",
+          borderRadius: "18px",
           background: "#ffffff",
-          color: "#6b7280",
           textAlign: "center",
         }}
       >
-        หน้านี้พร้อมสำหรับพัฒนาต่อ โดยยังไม่มีการอ่านหรือเขียนข้อมูลจริง
+        <strong
+          style={{
+            display: "block",
+            color: "#6d28d9",
+            fontSize: "22px",
+          }}
+        >
+          กำลังปรับปรุง
+        </strong>
+        <p style={{ margin: "10px 0 0", color: "#6b7280" }}>
+          ส่วนนี้ยังอยู่ระหว่างการออกแบบและเชื่อมต่อข้อมูล
+        </p>
       </section>
     </BudgetModuleShell>
   );

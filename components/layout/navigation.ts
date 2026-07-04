@@ -11,6 +11,7 @@ export type AppNavigationItem = {
   icon: string;
   href: string;
   section: AppNavigationSection;
+  disabled?: boolean;
   match: (pathname: string) => boolean;
 };
 
@@ -24,17 +25,18 @@ export function getReportHref(role: string) {
 
 export function getAppNavigationItems(role: string): AppNavigationItem[] {
   const reportHref = getReportHref(role);
+
   const items: AppNavigationItem[] = [
     {
       label: "หน้าหลัก",
-      icon: "◷",
+      icon: "⌂",
       href: "/attendance",
       section: "home",
       match: (value) => value === "/attendance",
     },
     {
       label: "การลงเวลาปฏิบัติงาน",
-      icon: "▣",
+      icon: "◷",
       href: reportHref,
       section: "personnel",
       match: (value) =>
@@ -43,7 +45,7 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
     },
     {
       label: "ขออนุญาตลาป่วย-ลากิจ",
-      icon: "▤",
+      icon: "▣",
       href: "/leave",
       section: "personnel",
       match: (value) => value.startsWith("/leave"),
@@ -56,18 +58,18 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/official-duty"),
     },
     {
-      label: "ภาพรวมงบประมาณ",
-      icon: "▨",
-      href: "/budget",
-      section: "budget",
-      match: (value) => value === "/budget",
+      label: "บันทึกข้อความ",
+      icon: "▤",
+      href: "/memo",
+      section: "personnel",
+      match: (value) => value.startsWith("/memo"),
     },
     {
-      label: "แผนงบประมาณ",
-      icon: "▤",
-      href: "/budget/plans",
-      section: "budget",
-      match: (value) => value.startsWith("/budget/plans"),
+      label: "คำสั่ง",
+      icon: "▥",
+      href: "/orders",
+      section: "personnel",
+      match: (value) => value.startsWith("/orders"),
     },
     {
       label: "โครงการ / กิจกรรม",
@@ -77,32 +79,28 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/budget/projects"),
     },
     {
-      label: "การเบิกจ่าย",
-      icon: "▥",
+      label: "การเบิกจ่าย · กำลังปรับปรุง",
+      icon: "▧",
       href: "/budget/disbursements",
       section: "budget",
+      disabled: true,
       match: (value) => value.startsWith("/budget/disbursements"),
     },
     {
-      label: "รายงานงบประมาณ",
-      icon: "▧",
+      label: "รายงาน · กำลังปรับปรุง",
+      icon: "▨",
       href: "/budget/reports",
       section: "budget",
+      disabled: true,
       match: (value) => value.startsWith("/budget/reports"),
     },
     {
-      label: "บันทึกข้อความ",
-      icon: "▦",
-      href: "/memo",
+      label: "รายการหนังสือราชการ · กำลังปรับปรุง",
+      icon: "▤",
+      href: "/documents",
       section: "documents",
-      match: (value) => value.startsWith("/memo"),
-    },
-    {
-      label: "คำสั่ง",
-      icon: "▧",
-      href: "/orders",
-      section: "documents",
-      match: (value) => value.startsWith("/orders"),
+      disabled: true,
+      match: (value) => value.startsWith("/documents"),
     },
     {
       label: "ข้อมูลส่วนตัว",
@@ -117,21 +115,21 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
     items.push(
       {
         label: "พิจารณาใบลา",
-        icon: "▤",
+        icon: "▣",
         href: "/admin/leave",
         section: "review",
         match: (value) => value.startsWith("/admin/leave"),
       },
       {
         label: "พิจารณาไปราชการ",
-        icon: "▥",
+        icon: "▧",
         href: "/admin/official-duty",
         section: "review",
         match: (value) => value.startsWith("/admin/official-duty"),
       },
       {
         label: "พิจารณาบันทึกข้อความ",
-        icon: "▦",
+        icon: "▤",
         href: "/admin/memo",
         section: "review",
         match: (value) => value.startsWith("/admin/memo"),
@@ -149,7 +147,7 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
         href: "/admin/settings",
         section: "account",
         match: (value) => value.startsWith("/admin/settings"),
-      }
+      },
     );
   }
 

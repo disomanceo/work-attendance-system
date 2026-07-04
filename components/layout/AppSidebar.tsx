@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type {
-  AppNavigationItem,
-  AppNavigationSection,
-} from "./navigation";
+import type { AppNavigationItem } from "./navigation";
 import styles from "./AppShell.module.css";
 
 type AppSidebarProps = {
@@ -44,7 +41,7 @@ const MODULES: Array<{
   {
     key: "documents",
     label: "งานหนังสือราชการ",
-    icon: "▦",
+    icon: "▤",
     toneClass: styles.moduleDocuments,
   },
 ];
@@ -77,7 +74,7 @@ export default function AppSidebar({
   }, [items, pathname]);
 
   const [expandedModule, setExpandedModule] = useState<ModuleKey | null>(
-    activeModule
+    activeModule,
   );
 
   const showProfileImage = profileImageUrl && !imageFailed;
@@ -86,13 +83,25 @@ export default function AppSidebar({
   const accountItems = items.filter((item) => item.section === "account");
 
   useEffect(() => {
-    setImageFailed(false);
+    const timerId = window.setTimeout(() => {
+      setImageFailed(false);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [profileImageUrl]);
 
   useEffect(() => {
-    if (activeModule) {
+    if (!activeModule) return;
+
+    const timerId = window.setTimeout(() => {
       setExpandedModule(activeModule);
-    }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
   }, [activeModule]);
 
   function toggleModule(key: ModuleKey) {
@@ -112,7 +121,7 @@ export default function AppSidebar({
           onClick={onToggleCollapsed}
           aria-label={collapsed ? "ขยายเมนู" : "ย่อเมนู"}
         >
-          {collapsed ? "»" : "«"}
+          {collapsed ? "›" : "‹"}
         </button>
       </div>
 
@@ -150,7 +159,7 @@ export default function AppSidebar({
           <div className={styles.moduleList}>
             {MODULES.map((module) => {
               const moduleItems = items.filter(
-                (item) => item.section === module.key
+                (item) => item.section === module.key,
               );
               const expanded = expandedModule === module.key;
               const active = activeModule === module.key;
@@ -255,7 +264,7 @@ function ModuleGroup({
               }`}
               aria-hidden="true"
             >
-              ›
+              ▾
             </span>
           </>
         )}
@@ -331,10 +340,30 @@ function MenuItems({
             className={`${styles.menuItem} ${
               nested ? styles.menuItemNested : ""
             } ${active ? styles.menuItemActive : ""}`}
-            onClick={() => onNavigate(item.href)}
+            onClick={() => {
+              if (!item.disabled) onNavigate(item.href);
+            }}
             title={collapsed ? item.label : undefined}
+            disabled={item.disabled}
+            aria-disabled={item.disabled || undefined}
+            style={
+              item.disabled
+                ? {
+                    color: "#9ca3af",
+                    background: "transparent",
+                    opacity: 0.72,
+                    cursor: "not-allowed",
+                    boxShadow: "none",
+                  }
+                : undefined
+            }
           >
-            <span className={styles.menuIcon}>{item.icon}</span>
+            <span
+              className={styles.menuIcon}
+              style={item.disabled ? { opacity: 0.7 } : undefined}
+            >
+              {item.icon}
+            </span>
             {!collapsed && <b>{item.label}</b>}
           </button>
         );
