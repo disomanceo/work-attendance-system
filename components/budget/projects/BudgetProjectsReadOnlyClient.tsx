@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
@@ -341,13 +341,7 @@ function projectWorkflowStatus(project: BudgetProjectListItem) {
     return "ยังไม่เริ่ม";
   }
 
-  if (["เสร็จสิ้น", "เสร็จแล้ว", "done"].includes(rawStatus)) return "เสร็จสิ้น";
-
-  if (["ดำเนินการ", "กำลังดำเนินการ", "active", "approved", "เบิกจ่าย", "กำลังเบิกจ่าย"].includes(rawStatus) || effectiveProjectSpent(project) > 0) {
-    return "กำลังดำเนินการ";
-  }
-
-  return "ยังไม่เริ่ม";
+  return workflowStatusValue(project.status);
 }
 
 function projectBudgetStatus(project: BudgetProjectListItem) {
@@ -942,7 +936,7 @@ export default function BudgetProjectsReadOnlyClient() {
       ...editor,
       id: normalizedProjectId,
       name: editor.name.trim(),
-      status: automaticEditorProjectStatus(editor),
+      status: editor.useActivities ? automaticEditorProjectStatus(editor) : workflowStatusValue(editor.status),
       budget: Number(editor.budget) || 0,
       spent: editor.useActivities
         ? editorActivitySpent
