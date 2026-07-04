@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
@@ -496,9 +496,7 @@ export default function BudgetProjectsReadOnlyClient() {
     Record<string, EditableProject>
   >({});
   const [savingEditor, setSavingEditor] = useState(false);
-  const [editorDataSource, setEditorDataSource] = useState<
-    "gas" | "localStorage"
-  >("localStorage");
+  const [editorDataSource, setEditorDataSource] = useState<"supabase" | "gas" | "localStorage">("localStorage");
   const [lastLoadedAt, setLastLoadedAt] = useState("");
   const [memberOptions, setMemberOptions] = useState<MemberOption[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
@@ -561,7 +559,21 @@ export default function BudgetProjectsReadOnlyClient() {
     setMessage("");
 
     try {
+            const supabase = createSupabaseClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setProjects([]);
+        setMessage("กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+
       const response = await fetch("/api/budget/projects", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         cache: "no-store",
       });
       const result = (await response.json()) as ApiResult;
@@ -1004,10 +1016,10 @@ export default function BudgetProjectsReadOnlyClient() {
       setExpandedProjectId(confirmedProject.id);
 
       const saveLocation =
-        result.source === "gas" ? "Google Sheets" : "เครื่องนี้";
+        result.source === "supabase" ? "Supabase" : editorDataSource === "supabase" ? "Supabase" : editorDataSource === "gas" ? "Google Sheets" : "เครื่องนี้";
 
       const fileSummary =
-        result.source === "gas"
+        result.source === "supabase"
           ? [
               result.uploadedAttachmentCount > 0
                 ? `เพิ่มไฟล์ ${result.uploadedAttachmentCount} ไฟล์`
@@ -1023,7 +1035,7 @@ export default function BudgetProjectsReadOnlyClient() {
             : "";
 
       const verificationText =
-        result.source === "gas"
+        result.source === "supabase"
           ? result.verified
             ? " และตรวจสอบการโหลดกลับแล้ว"
             : ` แต่ยังตรวจสอบการโหลดกลับไม่ได้: ${result.verificationMessage}`
@@ -1035,8 +1047,8 @@ export default function BudgetProjectsReadOnlyClient() {
         }`,
       );
 
-      if (result.source === "gas" && result.verified) {
-        setEditorDataSource("gas");
+      if (result.source === "supabase" && result.verified) {
+        setEditorDataSource("supabase");
         setLastLoadedAt(new Date().toISOString());
       }
 
@@ -1091,7 +1103,7 @@ export default function BudgetProjectsReadOnlyClient() {
                 : "ข้อมูลแก้ไข: เครื่องนี้"}
             </div>
             <small className="lastLoadedAt">
-              โหลดล่าสุด {formatLoadedTime(lastLoadedAt)}
+              อัปเดตล่าสุด {formatLoadedTime(lastLoadedAt)}
             </small>
           </div>
 

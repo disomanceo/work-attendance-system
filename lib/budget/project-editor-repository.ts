@@ -1,4 +1,5 @@
-﻿import {
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import {
   clearBudgetProjectOverrides,
   countBudgetProjectOverrides,
   readBudgetProjectOverrides,
@@ -7,7 +8,7 @@
   type EditableProject,
 } from "@/lib/budget/project-editor-storage";
 
-export type BudgetProjectEditorSource = "gas" | "localStorage";
+export type BudgetProjectEditorSource = "supabase" | "gas" | "localStorage";
 
 export type BudgetProjectEditorState = {
   source: BudgetProjectEditorSource;
@@ -67,8 +68,11 @@ export type BudgetProjectSaveResult = {
 type ApiResponse = {
   ok?: boolean;
   configured?: boolean;
-  projects?: EditableProject[];
+  source?: BudgetProjectEditorSource;
+  verified?: boolean;
   project?: EditableProject;
+  uploadedAttachmentCount?: number;
+  removedAttachmentCount?: number;
   message?: string;
 };
 
@@ -78,7 +82,7 @@ type EditorApiResult = {
 };
 
 async function fileToUploadableAttachment(
-  file: File
+  file: File,
 ): Promise<UploadableBudgetAttachment> {
   const maxSize = 10 * 1024 * 1024;
 
@@ -109,7 +113,7 @@ async function fileToUploadableAttachment(
 export async function createBudgetProjectSavePayload(
   project: EditableProject,
   newFiles: File[] = [],
-  removedAttachmentIds: string[] = []
+  removedAttachmentIds: string[] = [],
 ): Promise<BudgetProjectSavePayload> {
   return {
     project: {
@@ -131,7 +135,7 @@ export async function createBudgetProjectSavePayload(
     },
     removedAttachmentIds: [...removedAttachmentIds],
     newAttachments: await Promise.all(
-      newFiles.map(fileToUploadableAttachment)
+      newFiles.map(fileToUploadableAttachment),
     ),
     activities: project.activities.map((activity) => ({
       id: activity.id,
@@ -148,29 +152,34 @@ export async function createBudgetProjectSavePayload(
   };
 }
 
-function toOverrides(projects: EditableProject[] | undefined): BudgetProjectOverrides {
-  if (!Array.isArray(projects)) return {};
-
-  return projects.reduce<BudgetProjectOverrides>((result, project) => {
-    if (project?.id) result[project.id] = project;
-    return result;
-  }, {});
-}
-
 async function requestEditorApi(
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<EditorApiResult> {
   try {
+    const supabase = createSupabaseClient();
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.access_token) {
+      return {
+        response: null,
+        errorMessage: "ไม่พบ Session กรุณาเข้าสู่ระบบใหม่",
+      };
+    }
+
     const response = await fetch("/api/budget/project-editor", {
       cache: "no-store",
       ...init,
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
         ...(init?.headers || {}),
       },
     });
 
-    const result = (await response.json()) as ApiResponse;
+    const result = (await response.json().catch(() => ({}))) as ApiResponse;
 
     if (!response.ok || result.ok === false) {
       return {
@@ -197,23 +206,8 @@ async function requestEditorApi(
 }
 
 export async function loadBudgetProjectEditorState(): Promise<BudgetProjectEditorState> {
-  const apiResult = await requestEditorApi();
-  const result = apiResult.response;
-
-  if (result?.ok && result.configured && Array.isArray(result.projects)) {
-    const gasOverrides = toOverrides(result.projects);
-    return {
-      source: "gas",
-      overrides: {
-        ...gasOverrides,
-        ...readBudgetProjectOverrides(),
-      },
-      loadedAt: new Date().toISOString(),
-    };
-  }
-
   return {
-    source: "localStorage",
+    source: "supabase",
     overrides: readBudgetProjectOverrides(),
     loadedAt: new Date().toISOString(),
   };
@@ -222,12 +216,12 @@ export async function loadBudgetProjectEditorState(): Promise<BudgetProjectEdito
 export async function saveBudgetProjectEditor(
   project: EditableProject,
   newFiles: File[] = [],
-  removedAttachmentIds: string[] = []
+  removedAttachmentIds: string[] = [],
 ): Promise<BudgetProjectSaveResult> {
   const payload = await createBudgetProjectSavePayload(
     project,
     newFiles,
-    removedAttachmentIds
+    removedAttachmentIds,
   );
   const localOverrides = saveBudgetProjectOverride(project);
   const apiResult = await requestEditorApi({
@@ -236,43 +230,24 @@ export async function saveBudgetProjectEditor(
   });
   const result = apiResult.response;
 
-  if (result?.ok && result.configured) {
-    const verifyApiResult = await requestEditorApi();
-    const verifyResponse = verifyApiResult.response;
-    const savedProject = Array.isArray(verifyResponse?.projects)
-      ? verifyResponse.projects.find((item) => item?.id === project.id)
-      : undefined;
-
-    const expectedAttachmentCount =
-      Math.max(
-        0,
-        (project.attachments?.length || 0) - removedAttachmentIds.length
-      ) + newFiles.length;
-
-    const verified =
-      Boolean(savedProject) &&
-      savedProject?.name === project.name &&
-      Number(savedProject?.budget) === Number(project.budget) &&
-      Number(savedProject?.spent) === Number(project.spent) &&
-      savedProject?.startDate === project.startDate &&
-      savedProject?.endDate === project.endDate &&
-      (savedProject?.attachments?.length || 0) === expectedAttachmentCount;
-
-    const confirmedProject = result.project || savedProject || project;
-    const confirmedOverrides = saveBudgetProjectOverride(confirmedProject);
+  if (result?.ok && result.configured && result.source === "supabase") {
+    clearBudgetProjectOverrides();
 
     return {
-      source: "gas",
-      overrides: confirmedOverrides,
+      source: "supabase",
+      overrides: {
+        [project.id]: result.project || project,
+      },
       payload,
-      verified,
-      verificationMessage: verified
-        ? "ตรวจสอบวันที่และไฟล์แนบที่โหลดกลับจาก Google Sheets แล้ว"
-        : verifyApiResult.errorMessage ||
-          `GAS บันทึกสำเร็จ แต่ข้อมูลที่โหลดกลับยังไม่ตรง: คาดไฟล์ ${expectedAttachmentCount} ไฟล์`,
-      savedProject: confirmedProject,
-      uploadedAttachmentCount: newFiles.length,
-      removedAttachmentCount: removedAttachmentIds.length,
+      verified: result.verified !== false,
+      verificationMessage:
+        result.message || "บันทึกและตรวจสอบข้อมูลใน Supabase แล้ว",
+      savedProject: result.project || project,
+      uploadedAttachmentCount:
+        Number(result.uploadedAttachmentCount) || payload.newAttachments.length,
+      removedAttachmentCount:
+        Number(result.removedAttachmentCount) ||
+        payload.removedAttachmentIds.length,
     };
   }
 
@@ -284,13 +259,12 @@ export async function saveBudgetProjectEditor(
     verificationMessage:
       apiResult.errorMessage ||
       result?.message ||
-      "บันทึกไว้ในเครื่อง เนื่องจากยังเชื่อม Google Sheets ไม่สำเร็จ",
+      "บันทึกไว้ในเครื่อง เนื่องจากยังเชื่อม Supabase ไม่สำเร็จ",
     savedProject: project,
     uploadedAttachmentCount: 0,
     removedAttachmentCount: 0,
   };
 }
-
 
 export type BudgetProjectMigrationFailure = {
   projectId: string;
@@ -337,7 +311,6 @@ export async function migrateLocalBudgetProjectsToGas(): Promise<BudgetProjectMi
 
   return result;
 }
-
 
 export function getLocalBudgetProjectCount(): number {
   return countBudgetProjectOverrides();

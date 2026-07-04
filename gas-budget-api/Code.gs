@@ -21,6 +21,39 @@ function doPost(e) {
     const body = parseJsonBody_(e);
     verifyBudgetSecret_(body.secret);
 
+    if (body.action === "uploadBudgetProjectAttachments") {
+      const projectId = normalizeText_(body.projectId);
+      const attachments = Array.isArray(body.attachments)
+        ? body.attachments
+        : [];
+
+      if (!projectId) {
+        throw new Error("ไม่พบ project id สำหรับอัปโหลดไฟล์");
+      }
+
+      const uploadedFiles = uploadBudgetProjectAttachments_(
+        projectId,
+        attachments
+      );
+
+      return jsonOutput_({
+        ok: true,
+        files: uploadedFiles,
+        message: "อัปโหลดไฟล์แนบโครงการสำเร็จ",
+      });
+    }
+
+    if (body.action === "trashBudgetFiles") {
+      const fileIds = Array.isArray(body.fileIds) ? body.fileIds : [];
+      const trashedFileIds = trashBudgetFiles_(fileIds);
+
+      return jsonOutput_({
+        ok: true,
+        trashedFileIds: trashedFileIds,
+        message: "ย้ายไฟล์ไปถังขยะแล้ว",
+      });
+    }
+
     if (body.action !== "saveBudgetProject") {
       throw new Error("ไม่รองรับ action นี้");
     }
@@ -283,6 +316,55 @@ function updateBudgetAttachments_(
   });
 
   return keptAttachments.concat(uploaded);
+}
+
+
+function uploadBudgetProjectAttachments_(projectId, attachments) {
+  if (!attachments.length) return [];
+
+  const folder = getBudgetAttachmentFolder_();
+  const projectFolder = getOrCreateChildFolder_(folder, projectId);
+
+  return attachments.map(function (attachment) {
+    const name = normalizeText_(attachment.name) || "budget-attachment";
+    const mimeType =
+      normalizeText_(attachment.mimeType) || "application/octet-stream";
+    const base64 = normalizeText_(attachment.base64);
+
+    if (!base64) {
+      throw new Error("ไฟล์ " + name + " ไม่มีข้อมูล");
+    }
+
+    const bytes = Utilities.base64Decode(base64);
+    const blob = Utilities.newBlob(bytes, mimeType, name);
+    const file = projectFolder.createFile(blob);
+
+    return {
+      fileId: file.getId(),
+      fileName: file.getName(),
+      fileUrl: file.getUrl(),
+      mimeType: file.getMimeType(),
+      fileSize: file.getSize(),
+    };
+  });
+}
+
+function trashBudgetFiles_(fileIds) {
+  const trashed = [];
+
+  fileIds.forEach(function (value) {
+    const fileId = normalizeText_(value);
+    if (!fileId) return;
+
+    try {
+      DriveApp.getFileById(fileId).setTrashed(true);
+      trashed.push(fileId);
+    } catch (error) {
+      // Cleanup is best effort. The caller can inspect returned IDs.
+    }
+  });
+
+  return trashed;
 }
 
 function getBudgetAttachmentFolder_() {
