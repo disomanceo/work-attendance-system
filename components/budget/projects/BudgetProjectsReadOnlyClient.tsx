@@ -45,12 +45,20 @@ const PROJECT_GROUP_OPTIONS = [
   { code: "P2", label: "บริหารงบประมาณ" },
   { code: "P3", label: "บริหารงานบุคคล" },
   { code: "P4", label: "บริหารทั่วไป" },
+  { code: "F15", label: "เรียนฟรี 15 ปี" },
 ] as const;
 
 const PROJECT_SEQUENCE_OPTIONS = Array.from(
   { length: 50 },
   (_, index) => String(index + 1).padStart(2, "0"),
 );
+
+const PLAN_OPTIONS = [
+  "บริหารวิชาการ",
+  "บริหารงบประมาณ",
+  "บริหารงานบุคคล",
+  "บริหารทั่วไป",
+] as const;
 
 function composeProjectCode(
   groupCode: string,
@@ -62,7 +70,7 @@ function composeProjectCode(
 }
 
 function sequenceFromProjectCode(code: string) {
-  const match = code.trim().match(/^P[1-4]-(\d{2})-(\d{4})$/);
+  const match = code.trim().match(/^(?:P[1-4]|F15)-(\d{2})-(\d{4})$/);
   return match?.[1] ?? "";
 }
 
@@ -487,6 +495,9 @@ function editableProjectToListItem(
 ): BudgetProjectListItem {
   return {
     id: project.id,
+    recordType: project.code.startsWith("F15-")
+      ? "free_education"
+      : "project",
     legacyId: project.id,
     code: project.code || project.id,
     name: project.name,
@@ -595,6 +606,8 @@ function writeBudgetProjectsCache(projects: unknown[]) {
 
 export default function BudgetProjectsReadOnlyClient() {
   const [projects, setProjects] = useState<BudgetProjectListItem[]>([]);
+  const [activeRecordType, setActiveRecordType] =
+    useState<"project" | "free_education">("project");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState("");
@@ -961,6 +974,7 @@ export default function BudgetProjectsReadOnlyClient() {
     const keyword = query.trim().toLowerCase();
 
     const filtered = projects.filter((project) => {
+      if (project.recordType !== activeRecordType) return false;
       const matchesKeyword =
         !keyword ||
         project.name.toLowerCase().includes(keyword) ||
@@ -979,7 +993,7 @@ export default function BudgetProjectsReadOnlyClient() {
     });
 
     return sortBudgetProjects(filtered);
-  }, [projects, query, department, status]);
+  }, [projects, query, department, status, activeRecordType]);
 
   const totals = useMemo(
     () =>
@@ -1015,9 +1029,20 @@ export default function BudgetProjectsReadOnlyClient() {
       return;
     }
 
+    const codePrefix =
+      activeRecordType === "free_education" ? "F15" : "P1";
+    const sequence = firstAvailableSequence(
+      codePrefix,
+      options.academicYear,
+      options.usedCodes,
+    );
+    if (!sequence) {
+      setEditorMessage("ไม่มีลำดับว่างสำหรับปีการศึกษานี้");
+      return;
+    }
     const generatedCode = composeProjectCode(
-      "P1",
-      options.sequence,
+      codePrefix,
+      sequence,
       options.academicYear,
     );
     const draft = {
@@ -1026,6 +1051,8 @@ export default function BudgetProjectsReadOnlyClient() {
       fiscalYear: options.academicYear,
     };
 
+    setProjectGroupCode(codePrefix);
+    setProjectSequence(sequence);
     setCreatingProject(true);
     setEditingProjectId(draft.id);
     setEditor(draft);
@@ -1039,7 +1066,7 @@ export default function BudgetProjectsReadOnlyClient() {
     const savedProject = projectOverrides[project.id];
     const existingCode = savedProject?.code || project.code || "";
     const codeMatch = existingCode.match(
-      /^(P[1-4])-(\d{2})-(\d{4})$/,
+      /^((?:P[1-4]|F15))-(\d{2})-(\d{4})$/,
     );
 
     let nextCode = existingCode;
@@ -1364,7 +1391,7 @@ export default function BudgetProjectsReadOnlyClient() {
       return;
     }
 
-    if (!/^P[1-4]-\d{2}-\d{4}$/.test(normalizedProjectCode)) {
+    if (!/^(?:P[1-4]|F15)-\d{2}-\d{4}$/.test(normalizedProjectCode)) {
       setEditorMessage("รูปแบบรหัสโครงการไม่ถูกต้อง");
       return;
     }
@@ -1556,17 +1583,48 @@ export default function BudgetProjectsReadOnlyClient() {
   );
 
   return (
-    <div className="projectsRoot">
+    <div
+      className={
+        activeRecordType === "free_education"
+          ? "projectsRoot freeEducationTheme"
+          : "projectsRoot"
+      }
+    >
       {actionMessage && (
         <div className="actionSuccess" role="status">
           {actionMessage}
         </div>
       )}
 
+      <section className="budgetTypeTabs" aria-label="ประเภทงานงบประมาณ">
+        <button
+          type="button"
+          className={activeRecordType === "project" ? "active" : ""}
+          onClick={() => setActiveRecordType("project")}
+        >
+          โครงการ / กิจกรรม
+        </button>
+        <button
+          type="button"
+          className={activeRecordType === "free_education" ? "active" : ""}
+          onClick={() => setActiveRecordType("free_education")}
+        >
+          เรียนฟรี 15 ปี
+        </button>
+      </section>
+
       <section className="pageTop">
         <div>
-          <h2>รายการโครงการ</h2>
-          <p>ค้นหา กรอง และตรวจสอบงบประมาณของโครงการจากข้อมูลปัจจุบัน</p>
+          <h2>
+            {activeRecordType === "free_education"
+              ? "รายการเรียนฟรี 15 ปี"
+              : "รายการโครงการ"}
+          </h2>
+          <p>
+            {activeRecordType === "free_education"
+              ? "ค้นหา กรอง และตรวจสอบเงินสนับสนุนเรียนฟรี 15 ปี"
+              : "ค้นหา กรอง และตรวจสอบงบประมาณของโครงการจากข้อมูลปัจจุบัน"}
+          </p>
         </div>
         <div className="pageTopActions">
           <div className="sourceStatusGroup">
@@ -2200,7 +2258,7 @@ export default function BudgetProjectsReadOnlyClient() {
                     </label>
                   </div>
                 ) : editor.code &&
-                  /^P[1-4]-\d{2}-\d{4}$/.test(editor.code) ? (
+                  /^(?:P[1-4]|F15)-\d{2}-\d{4}$/.test(editor.code) ? (
                   <div className="editorGrid twoColumns">
                     <label>
                       <span>รหัสโครงการ</span>
@@ -2286,10 +2344,23 @@ export default function BudgetProjectsReadOnlyClient() {
                 <div className="editorGrid twoColumns">
                   <label>
                     <span>แผนงาน</span>
-                    <input
+                    <select
                       value={editor.owner}
                       onChange={(e) => updateEditor("owner", e.target.value)}
-                    />
+                    >
+                      <option value="">เลือกแผนงาน</option>
+                      {editor.owner &&
+                        !PLAN_OPTIONS.includes(
+                          editor.owner as (typeof PLAN_OPTIONS)[number],
+                        ) && (
+                          <option value={editor.owner}>{editor.owner}</option>
+                        )}
+                      {PLAN_OPTIONS.map((plan) => (
+                        <option key={plan} value={plan}>
+                          {plan}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label>
                     <span>ผู้รับผิดชอบ</span>
@@ -4734,7 +4805,196 @@ export default function BudgetProjectsReadOnlyClient() {
           }
         }
 
-      `}</style>
+      
+/* BUDGET_TYPE_TABS_STEP8_FIXED_START */
+.budgetTypeTabs {
+  display: flex;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 16px;
+  padding: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  border-radius: 14px;
+  background: rgba(236, 253, 245, 0.9);
+}
+.budgetTypeTabs button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: #065f53;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.budgetTypeTabs button.active {
+  color: #fff;
+  background: linear-gradient(135deg, #047857, #10b981);
+  box-shadow: 0 7px 16px rgba(4, 120, 87, 0.2);
+}
+@media (max-width: 640px) {
+  .budgetTypeTabs { width: 100%; }
+  .budgetTypeTabs button { flex: 1; padding-inline: 8px; }
+}
+/* BUDGET_TYPE_TABS_STEP8_FIXED_END */
+
+/* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_START */
+.freeEducationTheme {
+  --f15-green-950: #052e2b;
+  --f15-green-900: #064e3b;
+  --f15-green-800: #065f46;
+  --f15-green-700: #047857;
+  --f15-green-600: #059669;
+  --f15-green-100: #d1fae5;
+  --f15-green-50: #ecfdf5;
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.13), transparent 30%),
+    linear-gradient(180deg, #f4fbf7 0%, #e8f7ef 100%);
+}
+
+.freeEducationTheme .pageTop,
+.freeEducationTheme .pageHeader {
+  border-color: rgba(6, 78, 59, 0.28);
+  background:
+    linear-gradient(135deg, rgba(5, 46, 43, 0.98), rgba(6, 95, 70, 0.94));
+  box-shadow: 0 16px 34px rgba(5, 46, 43, 0.18);
+}
+
+.freeEducationTheme .pageTop h2,
+.freeEducationTheme .pageTop p,
+.freeEducationTheme .pageHeader h1,
+.freeEducationTheme .pageHeader p,
+.freeEducationTheme .pageHeader small {
+  color: #ffffff;
+}
+
+.freeEducationTheme .lastLoadedAt {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.freeEducationTheme .createProjectButton,
+.freeEducationTheme .reloadButton,
+.freeEducationTheme .refreshButton,
+.freeEducationTheme .payButton,
+.freeEducationTheme .editProjectButton,
+.freeEducationTheme .saveButton {
+  border-color: #064e3b;
+  color: #ffffff;
+  background: linear-gradient(135deg, #064e3b, #047857);
+  box-shadow: 0 8px 18px rgba(6, 78, 59, 0.23);
+}
+
+.freeEducationTheme .createProjectButton:hover,
+.freeEducationTheme .reloadButton:hover,
+.freeEducationTheme .refreshButton:hover,
+.freeEducationTheme .payButton:hover,
+.freeEducationTheme .editProjectButton:hover,
+.freeEducationTheme .saveButton:hover {
+  background: linear-gradient(135deg, #052e2b, #065f46);
+}
+
+.freeEducationTheme .summaryGrid article {
+  border-color: rgba(6, 78, 59, 0.22);
+  background: linear-gradient(160deg, #ffffff, #ecfdf5);
+  box-shadow: 0 10px 24px rgba(6, 78, 59, 0.09);
+}
+
+.freeEducationTheme .summaryGrid article span,
+.freeEducationTheme .summaryGrid article small {
+  color: #065f46;
+}
+
+.freeEducationTheme .summaryGrid article strong {
+  color: #052e2b;
+}
+
+.freeEducationTheme .filterCard,
+.freeEducationTheme .dataCard,
+.freeEducationTheme .projectCard,
+.freeEducationTheme .paymentCard,
+.freeEducationTheme .projectEditor,
+.freeEducationTheme .paymentModal,
+.freeEducationTheme .modalCard {
+  border-color: rgba(6, 78, 59, 0.2);
+  box-shadow: 0 12px 28px rgba(6, 78, 59, 0.1);
+}
+
+.freeEducationTheme .columnHeader {
+  color: #ffffff;
+  background: linear-gradient(135deg, #064e3b, #065f46);
+}
+
+.freeEducationTheme .projectCard.expandedCard,
+.freeEducationTheme .projectCard:hover,
+.freeEducationTheme .paymentCard:hover {
+  border-color: #059669;
+  box-shadow: 0 14px 30px rgba(6, 78, 59, 0.16);
+}
+
+.freeEducationTheme .projectMain b,
+.freeEducationTheme .projectText b,
+.freeEducationTheme .ownerCell b,
+.freeEducationTheme .leadCell b,
+.freeEducationTheme .amountCell b,
+.freeEducationTheme .activityTitle b {
+  color: #052e2b;
+}
+
+.freeEducationTheme .activityPanelTitle,
+.freeEducationTheme .projectDetailNotice,
+.freeEducationTheme .paymentSourceNotice {
+  border-color: rgba(6, 78, 59, 0.2);
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.freeEducationTheme .editorHeader {
+  background: linear-gradient(135deg, #052e2b, #065f46);
+}
+
+.freeEducationTheme .editorHeader h2,
+.freeEducationTheme .editorHeader p,
+.freeEducationTheme .editorClose {
+  color: #ffffff;
+}
+
+.freeEducationTheme input:focus,
+.freeEducationTheme select:focus,
+.freeEducationTheme textarea:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.14);
+}
+
+.freeEducationTheme .budgetTypeTabs {
+  border-color: rgba(6, 78, 59, 0.34);
+  background: #d1fae5;
+}
+
+.freeEducationTheme .budgetTypeTabs button {
+  color: #064e3b;
+}
+
+.freeEducationTheme .budgetTypeTabs button.active {
+  background: linear-gradient(135deg, #052e2b, #047857);
+  box-shadow: 0 8px 18px rgba(5, 46, 43, 0.26);
+}
+
+.freeEducationTheme .statusBadge.active,
+.freeEducationTheme .statusBadge.payment,
+.freeEducationTheme .budgetActive,
+.freeEducationTheme .budgetComplete {
+  color: #ffffff;
+  background: #047857;
+}
+
+.freeEducationTheme .progressFill,
+.freeEducationTheme .activityProgressFill,
+.freeEducationTheme .timelineConnectorFlow {
+  background: linear-gradient(90deg, #065f46, #10b981);
+}
+/* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
+`}</style>
     </div>
   );
 }

@@ -63,6 +63,7 @@ export async function GET(request: Request) {
       id,
       legacy_project_id,
       project_code,
+      record_type,
       fiscal_year,
       name,
       plan_name,
@@ -167,6 +168,8 @@ export async function GET(request: Request) {
       SupabaseID: row.id,
       ID: row.legacy_project_id || row.id,
       ProjectCode: row.project_code || "",
+      RecordType:
+        row.record_type === "free_education" ? "free_education" : "project",
       FiscalYear: row.fiscal_year ? String(row.fiscal_year) : "",
       ProjectName: row.name,
       PlanName: row.plan_name || "",

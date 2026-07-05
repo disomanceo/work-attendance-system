@@ -1,3 +1,5 @@
+export type BudgetRecordType = "project" | "free_education";
+
 export type BudgetProjectAttachment = {
   id: string;
   name: string;
@@ -20,6 +22,7 @@ export type BudgetProjectActivity = {
 
 export type BudgetProjectListItem = {
   id: string;
+  recordType: BudgetRecordType;
   legacyId: string;
   code: string;
   name: string;

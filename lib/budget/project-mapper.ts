@@ -93,6 +93,10 @@ export function mapBudgetProject(value: unknown): BudgetProjectListItem {
 
   return {
     id: text(row.SupabaseID ?? row.ID),
+    recordType:
+      text(row.RecordType, "project") === "free_education"
+        ? "free_education"
+        : "project",
     legacyId: text(row.ID),
     code: text(row.ProjectCode ?? row.ID),
     name: text(row.ProjectName, "ยังไม่ระบุชื่อโครงการ"),

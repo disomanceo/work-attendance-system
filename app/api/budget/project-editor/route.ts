@@ -65,6 +65,8 @@ type SavePayload = {
   payload?: {
     project?: {
       id?: string;
+      projectCode?: string;
+      recordType?: "project" | "free_education";
       fiscalYear?: string;
       name?: string;
       planName?: string;
@@ -274,6 +276,10 @@ export async function POST(request: Request) {
     }
 
     const projectId = text(payload.project.id || project.id);
+    const visibleProjectCode = text(payload.project.projectCode || project.id);
+    const recordType = visibleProjectCode.toUpperCase().startsWith("F15-")
+      ? "free_education"
+      : "project";
     const projectName = text(payload.project.name || project.name);
 
     if (!projectId || !projectName) {
@@ -316,7 +322,8 @@ export async function POST(request: Request) {
     const projectRow = {
       legacy_project_id:
         existingProject?.legacy_project_id || projectId,
-      project_code: projectId,
+      project_code: visibleProjectCode,
+      record_type: recordType,
       fiscal_year: fiscalYearValue(payload.project.fiscalYear),
       name: projectName,
       plan_name: text(payload.project.planName || project.owner) || null,
