@@ -17,6 +17,7 @@ export type EditableActivity = {
 
 export type EditableProject = {
   id: string;
+  code: string;
   fiscalYear: string;
   name: string;
   owner: string;
@@ -105,6 +106,7 @@ export function applyBudgetProjectOverrides(
 
     return {
       ...project,
+      code: override.code || project.code,
       name: override.name,
       owner: override.owner,
       lead: override.lead,

@@ -132,10 +132,19 @@ async function loadPaymentAttachments(admin: any, paymentIds: string[]) {
   return map;
 }
 
-function mapPayment(row: any, projectName: string, creatorName: string, cancellerName: string, file: any) {
+function mapPayment(
+  row: any,
+  projectName: string,
+  activityName: string,
+  creatorName: string,
+  cancellerName: string,
+  file: any
+) {
   return {
     id: row.id,
     project_id: row.project_id,
+    activity_id: row.activity_id || null,
+    activity_name: activityName || null,
     details: row.description,
     payment_period: row.installment_label,
     amount: Number(row.amount || 0),
@@ -189,7 +198,7 @@ async function loadRequesterOptions(admin: any) {
     .filter((profile: any) => profile.id && profile.fullName);
 }
 
-async function syncProjectCompletion(
+async function syncProjectPaymentStatus(
   admin: any,
   projectId: string,
   actorId: string
@@ -198,12 +207,12 @@ async function syncProjectCompletion(
     await Promise.all([
       admin
         .from("budget_projects")
-        .select("id,approved_budget,status")
+        .select("id,status")
         .eq("id", projectId)
         .maybeSingle(),
       admin
         .from("budget_payment_records")
-        .select("amount")
+        .select("id")
         .eq("project_id", projectId)
         .eq("status", "active"),
     ]);
@@ -212,23 +221,28 @@ async function syncProjectCompletion(
   if (paymentError) throw paymentError;
   if (!project) return;
 
-  const approvedBudget = Number(project.approved_budget || 0);
-  const paidTotal = (rows ?? []).reduce(
-    (sum: number, row: any) => sum + Number(row.amount || 0),
-    0
-  );
+  const currentStatus = text(project.status);
+  const hasActivePayments = (rows ?? []).length > 0;
 
-  if (approvedBudget > 0 && paidTotal >= approvedBudget && project.status !== "เสร็จสิ้น") {
-    const { error } = await admin
-      .from("budget_projects")
-      .update({
-        status: "เสร็จสิ้น",
-        updated_by: actorId,
-      })
-      .eq("id", projectId);
+  if (currentStatus === "เสร็จสิ้น") return;
 
-    if (error) throw error;
-  }
+  const nextStatus = hasActivePayments
+    ? "เบิกจ่าย"
+    : currentStatus === "เบิกจ่าย" || currentStatus === "กำลังเบิกจ่าย"
+      ? "กำลังดำเนินการ"
+      : currentStatus;
+
+  if (nextStatus === currentStatus) return;
+
+  const { error } = await admin
+    .from("budget_projects")
+    .update({
+      status: nextStatus,
+      updated_by: actorId,
+    })
+    .eq("id", projectId);
+
+  if (error) throw error;
 }
 
 export async function GET(request: Request) {
@@ -259,9 +273,14 @@ export async function GET(request: Request) {
       ),
     ];
 
-    const [{ data: projects }, { data: profiles }, attachments] = await Promise.all([
+    const activityIds = [...new Set((rows ?? []).map((row: any) => row.activity_id).filter(Boolean))];
+
+    const [{ data: projects }, { data: activities }, { data: profiles }, attachments] = await Promise.all([
       projectIds.length
         ? auth.admin.from("budget_projects").select("id,name").in("id", projectIds)
+        : Promise.resolve({ data: [] }),
+      activityIds.length
+        ? auth.admin.from("budget_activities").select("id,name").in("id", activityIds)
         : Promise.resolve({ data: [] }),
       profileIds.length
         ? auth.admin.from("profiles").select("id,full_name").in("id", profileIds)
@@ -273,6 +292,7 @@ export async function GET(request: Request) {
     ]);
 
     const projectNames = new Map((projects ?? []).map((item: any) => [item.id, item.name]));
+    const activityNames = new Map((activities ?? []).map((item: any) => [item.id, item.name]));
     const profileNames = new Map((profiles ?? []).map((item: any) => [item.id, item.full_name]));
 
     const requesterOptions = await loadRequesterOptions(auth.admin);
@@ -284,6 +304,7 @@ export async function GET(request: Request) {
         mapPayment(
           row,
           projectNames.get(row.project_id) || "-",
+          activityNames.get(row.activity_id) || "",
           profileNames.get(row.created_by) || "",
           profileNames.get(row.cancelled_by) || "",
           attachments.get(row.id)
@@ -328,6 +349,7 @@ export async function POST(request: Request) {
 
     const form = await request.formData();
     const projectId = text(form.get("projectId"));
+    const activityId = text(form.get("activityId"));
     const details = text(form.get("details"));
     const paymentPeriod = text(form.get("paymentPeriod"));
     const amount = Number(form.get("amount"));
@@ -382,7 +404,7 @@ export async function POST(request: Request) {
 
     const { data: project, error: projectError } = await auth.admin
       .from("budget_projects")
-      .select("id,name")
+      .select("id,name,budget_activities(id,name)")
       .eq("id", projectId)
       .maybeSingle();
 
@@ -390,6 +412,35 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { ok: false, message: "ไม่พบโครงการใน Supabase" },
         { status: 404 }
+      );
+    }
+
+    const projectActivities = Array.isArray(project.budget_activities)
+      ? project.budget_activities
+      : [];
+
+    if (projectActivities.length > 0) {
+      if (!UUID_PATTERN.test(activityId)) {
+        return NextResponse.json(
+          { ok: false, message: "กรุณาเลือกกิจกรรมของโครงการ" },
+          { status: 400 }
+        );
+      }
+
+      const activityExists = projectActivities.some(
+        (activity: any) => activity.id === activityId
+      );
+
+      if (!activityExists) {
+        return NextResponse.json(
+          { ok: false, message: "กิจกรรมที่เลือกไม่อยู่ในโครงการนี้" },
+          { status: 400 }
+        );
+      }
+    } else if (activityId) {
+      return NextResponse.json(
+        { ok: false, message: "โครงการนี้ไม่มีกิจกรรมย่อย" },
+        { status: 400 }
       );
     }
 
@@ -423,7 +474,7 @@ export async function POST(request: Request) {
       .from("budget_payment_records")
       .insert({
         project_id: project.id,
-        activity_id: null,
+        activity_id: projectActivities.length > 0 ? activityId : null,
         installment_label: paymentPeriod || null,
         description: details,
         amount,
@@ -486,13 +537,7 @@ export async function POST(request: Request) {
       attachment = savedAttachment;
     }
 
-    await syncProjectCompletion(
-      auth.admin,
-      payment.project_id,
-      auth.profile.id
-    );
-
-    await syncProjectCompletion(
+    await syncProjectPaymentStatus(
       auth.admin,
       payment.project_id,
       auth.profile.id
@@ -503,6 +548,7 @@ export async function POST(request: Request) {
       payment: mapPayment(
         payment,
         project.name,
+        projectActivities.find((activity: any) => activity.id === payment.activity_id)?.name || "",
         auth.profile.full_name,
         "",
         attachment
@@ -635,11 +681,18 @@ export async function PATCH(request: Request) {
       loadPaymentAttachments(auth.admin, [payment.id]),
     ]);
 
+    await syncProjectPaymentStatus(
+      auth.admin,
+      payment.project_id,
+      auth.profile.id
+    );
+
     return NextResponse.json({
       ok: true,
       payment: mapPayment(
         payment,
         project?.name || "-",
+        "",
         "",
         auth.profile.full_name,
         attachments.get(payment.id)

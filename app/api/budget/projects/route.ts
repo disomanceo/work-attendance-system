@@ -1,6 +1,29 @@
 import { NextResponse } from "next/server";
 import { requireBudgetUser } from "@/lib/budget/supabase-server";
 
+function text(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+async function canStartBudgetProjects(auth: Awaited<ReturnType<typeof requireBudgetUser>>) {
+  if (!auth.ok) return false;
+
+  const role = text(auth.profile.role).toLowerCase();
+  if (role === "admin" || role === "director") return true;
+
+  const { data } = await auth.admin
+    .from("profiles")
+    .select("work_permissions")
+    .eq("id", auth.profile.id)
+    .maybeSingle();
+
+  const permissions = Array.isArray(data?.work_permissions)
+    ? data.work_permissions.map((item: unknown) => text(item))
+    : [];
+
+  return permissions.includes("budget.procurement");
+}
+
 export const dynamic = "force-dynamic";
 
 type AttachmentRow = {
@@ -88,6 +111,8 @@ export async function GET(request: Request) {
     );
   }
 
+  const canStartProjects = await canStartBudgetProjects(auth);
+
   const projects = (data ?? []).map((row: any) => {
     const activePayments = (row.budget_payment_records ?? []).filter(
       (payment: any) => payment.status === "active"
@@ -98,11 +123,7 @@ export async function GET(request: Request) {
         sum + Number(payment.amount || 0),
       0
     );
-    const calculatedStatus =
-      Number(row.approved_budget || 0) > 0 &&
-      actualPaid >= Number(row.approved_budget || 0)
-        ? "เสร็จสิ้น"
-        : row.status;
+    const calculatedStatus = row.status;
 
     const projectAttachments = (row.budget_project_attachments ?? [])
       .filter((file: any) => file.is_active && !file.activity_id)
@@ -128,6 +149,7 @@ export async function GET(request: Request) {
           );
 
         return {
+          SupabaseID: activity.id,
           ID: activity.legacy_activity_id || activity.id,
           ProjectID: row.legacy_project_id || row.id,
           ActivityName: activity.name,
@@ -175,6 +197,100 @@ export async function GET(request: Request) {
     ok: true,
     configured: true,
     source: "supabase",
+    canStartProjects,
     projects,
+  });
+}
+
+export async function POST(request: Request) {
+  const auth = await requireBudgetUser(request);
+
+  if (!auth.ok) {
+    return NextResponse.json(
+      { ok: false, message: auth.message },
+      { status: auth.status },
+    );
+  }
+
+  const allowed = await canStartBudgetProjects(auth);
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, message: "ไม่มีสิทธิ์เริ่มดำเนินการโครงการ" },
+      { status: 403 },
+    );
+  }
+
+  const body = (await request.json().catch(() => null)) as
+    | { action?: unknown; projectId?: unknown }
+    | null;
+
+  const action = text(body?.action);
+  const projectId = text(body?.projectId);
+
+  if (action !== "start" || !projectId) {
+    return NextResponse.json(
+      { ok: false, message: "ข้อมูลคำสั่งไม่ถูกต้อง" },
+      { status: 400 },
+    );
+  }
+
+  const { data: project, error: projectError } = await auth.admin
+    .from("budget_projects")
+    .select("id,status")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (projectError) {
+    console.error("Load project before start error:", projectError);
+    return NextResponse.json(
+      { ok: false, message: "ไม่สามารถตรวจสอบโครงการได้" },
+      { status: 500 },
+    );
+  }
+
+  if (!project) {
+    return NextResponse.json(
+      { ok: false, message: "ไม่พบโครงการ" },
+      { status: 404 },
+    );
+  }
+
+  const currentStatus = text(project.status).toLowerCase();
+  const startableStatuses = [
+    "",
+    "ยังไม่เริ่ม",
+    "draft",
+    "pending",
+    "not_started",
+  ];
+
+  if (!startableStatuses.includes(currentStatus)) {
+    return NextResponse.json(
+      { ok: false, message: "โครงการนี้เริ่มดำเนินการแล้วหรืออยู่ในขั้นตอนถัดไป" },
+      { status: 409 },
+    );
+  }
+
+  const { error: updateError } = await auth.admin
+    .from("budget_projects")
+    .update({
+      status: "กำลังดำเนินการ",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", projectId);
+
+  if (updateError) {
+    console.error("Start budget project error:", updateError);
+    return NextResponse.json(
+      { ok: false, message: "ไม่สามารถเปลี่ยนสถานะโครงการได้" },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    message: "เริ่มดำเนินการโครงการแล้ว",
+    projectId,
+    status: "กำลังดำเนินการ",
   });
 }

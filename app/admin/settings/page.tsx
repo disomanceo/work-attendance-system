@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./settings.module.css";
+import AcademicYearSettingsField from "./AcademicYearSettingsField";
 import PositionWorkPolicySection from "./PositionWorkPolicySection";
 import DocumentNumberSection from "./DocumentNumberSection";
 
@@ -819,6 +820,8 @@ export default function DirectorSettingsPage() {
               />
             </label>
           </div>
+
+          <AcademicYearSettingsField />
 
           <p>
             ระบบเก็บปีงบประมาณเป็น พ.ศ. โดยตรง

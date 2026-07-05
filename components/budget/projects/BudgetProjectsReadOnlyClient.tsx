@@ -1,12 +1,20 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
-import { mapBudgetProject } from "@/lib/budget/project-mapper";
+import {
+  mapAndSortBudgetProjects,
+  sortBudgetProjects,
+} from "@/lib/budget/project-list";
 import type {
   BudgetProjectAttachment,
   BudgetProjectListItem,
 } from "@/lib/budget/types";
+import {
+  effectiveProjectBudget,
+  effectiveProjectRemaining,
+  effectiveProjectSpent,
+} from "@/lib/budget/project-financials";
 import {
   applyBudgetProjectOverrides,
   type EditableActivity,
@@ -21,8 +29,42 @@ type ApiResult = {
   ok?: boolean;
   configured?: boolean;
   projects?: unknown[];
+  canStartProjects?: boolean;
   message?: string;
 };
+
+type ProjectCodeApiResult = {
+  ok?: boolean;
+  academicYear?: string;
+  usedCodes?: string[];
+  message?: string;
+};
+
+const PROJECT_GROUP_OPTIONS = [
+  { code: "P1", label: "บริหารวิชาการ" },
+  { code: "P2", label: "บริหารงบประมาณ" },
+  { code: "P3", label: "บริหารงานบุคคล" },
+  { code: "P4", label: "บริหารทั่วไป" },
+] as const;
+
+const PROJECT_SEQUENCE_OPTIONS = Array.from(
+  { length: 50 },
+  (_, index) => String(index + 1).padStart(2, "0"),
+);
+
+function composeProjectCode(
+  groupCode: string,
+  sequence: string,
+  academicYear: string,
+) {
+  if (!groupCode || !sequence || !academicYear) return "";
+  return `${groupCode}-${sequence}-${academicYear}`;
+}
+
+function sequenceFromProjectCode(code: string) {
+  const match = code.trim().match(/^P[1-4]-(\d{2})-(\d{4})$/);
+  return match?.[1] ?? "";
+}
 
 type MemberOption = {
   id: string;
@@ -114,7 +156,9 @@ function toDateInputValue(value?: string) {
 function toEditableProject(project: BudgetProjectListItem): EditableProject {
   return {
     id: project.id,
-    fiscalYear: currentBudgetYear(),
+    code: project.code || "",
+    fiscalYear:
+      project.code?.match(/-(\d{4})$/)?.[1] || currentBudgetYear(),
     name: project.name,
     owner: project.owner,
     lead: project.lead,
@@ -176,15 +220,6 @@ function percent(spent: number, budget: number) {
 function rawPercent(spent: number, budget: number) {
   if (budget <= 0) return 0;
   return Math.round((spent / budget) * 100);
-}
-
-function effectiveProjectSpent(project: BudgetProjectListItem) {
-  if (project.activities.length === 0) return project.spent;
-
-  return project.activities.reduce(
-    (sum, activity) => sum + (Number(activity.spent) || 0),
-    0,
-  );
 }
 
 function activityStatusSummary(project: BudgetProjectListItem) {
@@ -261,6 +296,7 @@ function formatLoadedTime(value: string) {
 
 function statusClass(status: string) {
   if (status === "เสร็จสิ้น" || status === "เสร็จแล้ว") return "done";
+  if (status === "เบิกจ่าย" || status === "กำลังเบิกจ่าย") return "payment";
   if (status === "ดำเนินการ" || status === "กำลังดำเนินการ") return "active";
   if (status === "ยกเลิก") return "cancelled";
   return "pending";
@@ -327,6 +363,24 @@ function projectWorkflowStatus(project: BudgetProjectListItem) {
   const rawStatus = normalizedStatus(project.status);
 
   if (rawStatus === "ยกเลิก" || rawStatus === "cancelled") return "ยกเลิก";
+  if (
+    rawStatus === "เสร็จสิ้น" ||
+    rawStatus === "เสร็จแล้ว" ||
+    rawStatus === "done"
+  ) {
+    return "เสร็จสิ้น";
+  }
+  if (rawStatus === "เบิกจ่าย" || rawStatus === "กำลังเบิกจ่าย") {
+    return "เบิกจ่าย";
+  }
+  if (
+    rawStatus === "กำลังดำเนินการ" ||
+    rawStatus === "ดำเนินการ" ||
+    rawStatus === "active" ||
+    rawStatus === "approved"
+  ) {
+    return "กำลังดำเนินการ";
+  }
 
   if (project.activities.length > 0) {
     const allCompleted = project.activities.every((activity) =>
@@ -346,7 +400,7 @@ function projectWorkflowStatus(project: BudgetProjectListItem) {
 
 function projectBudgetStatus(project: BudgetProjectListItem) {
   const spent = effectiveProjectSpent(project);
-  const budget = Number(project.budget) || 0;
+  const budget = effectiveProjectBudget(project);
 
   if (spent <= 0) return "ยังไม่มีการเบิกจ่าย";
   if (budget > 0 && spent > budget) return "ใช้เกินงบ";
@@ -362,7 +416,8 @@ function budgetStatusClass(status: string) {
 }
 
 function workflowState(status: string) {
-  if (status === "เสร็จสิ้น") return 3;
+  if (status === "เสร็จสิ้น") return 4;
+  if (status === "เบิกจ่าย") return 3;
   if (status === "กำลังดำเนินการ") return 2;
   return 1;
 }
@@ -378,13 +433,15 @@ function workflowStatusValue(status: string) {
     return "เสร็จสิ้น";
   }
 
+  if (value === "เบิกจ่าย" || value === "กำลังเบิกจ่าย") {
+    return "เบิกจ่าย";
+  }
+
   if (
     value === "กำลังดำเนินการ" ||
     value === "ดำเนินการ" ||
     value === "active" ||
-    value === "approved" ||
-    value === "เบิกจ่าย" ||
-    value === "กำลังเบิกจ่าย"
+    value === "approved"
   ) {
     return "กำลังดำเนินการ";
   }
@@ -393,7 +450,12 @@ function workflowStatusValue(status: string) {
 }
 
 function automaticEditorProjectStatus(project: EditableProject) {
-  if (!project.useActivities || project.activities.length === 0) return project.status;
+  const explicitStatus = workflowStatusValue(project.status);
+  if (explicitStatus === "เสร็จสิ้น" || explicitStatus === "เบิกจ่าย") {
+    return explicitStatus;
+  }
+
+  if (!project.useActivities || project.activities.length === 0) return explicitStatus;
 
   const allCompleted = project.activities.every((activity) =>
     isCompletedActivityStatus(activity.status),
@@ -426,7 +488,7 @@ function editableProjectToListItem(
   return {
     id: project.id,
     legacyId: project.id,
-    code: project.id,
+    code: project.code || project.id,
     name: project.name,
     owner: project.owner,
     lead: project.lead,
@@ -454,10 +516,10 @@ function editableProjectToListItem(
 
 function createNewProjectDraft(): EditableProject {
   const fiscalYear = currentBudgetYear();
-  const suffix = Date.now().toString().slice(-6);
 
   return {
-    id: `PRJ-${fiscalYear}-${suffix}`,
+    id: crypto.randomUUID(),
+    code: "",
     fiscalYear,
     name: "",
     owner: "",
@@ -560,6 +622,101 @@ export default function BudgetProjectsReadOnlyClient() {
   const [memberOptions, setMemberOptions] = useState<MemberOption[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersMessage, setMembersMessage] = useState("");
+  const [canStartProjects, setCanStartProjects] = useState(false);
+  const [startingProjectId, setStartingProjectId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState("");
+  const [projectGroupCode, setProjectGroupCode] = useState("P1");
+  const [projectSequence, setProjectSequence] = useState("01");
+  const [academicYear, setAcademicYear] = useState("");
+  const [usedProjectCodes, setUsedProjectCodes] = useState<string[]>([]);
+  const [projectCodeLoading, setProjectCodeLoading] = useState(false);
+  const [showCustomBudgetSourceInput, setShowCustomBudgetSourceInput] = useState(false);
+  const [customBudgetSourceDraft, setCustomBudgetSourceDraft] = useState("");
+
+  function firstAvailableSequence(
+    groupCode: string,
+    year: string,
+    usedCodes: string[],
+  ) {
+    return (
+      PROJECT_SEQUENCE_OPTIONS.find(
+        (sequence) =>
+          !usedCodes.includes(
+            composeProjectCode(groupCode, sequence, year),
+          ),
+      ) ?? ""
+    );
+  }
+
+  async function loadProjectCodeOptions() {
+    setProjectCodeLoading(true);
+
+    try {
+      const supabase = createSupabaseClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("กรุณาเข้าสู่ระบบใหม่");
+      }
+
+      const response = await fetch("/api/budget/project-code", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+
+      const result = (await response.json().catch(() => ({}))) as ProjectCodeApiResult;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "โหลดข้อมูลรหัสโครงการไม่สำเร็จ");
+      }
+
+      const nextYear = String(result.academicYear || "").trim();
+
+      if (!/^\d{4}$/.test(nextYear)) {
+        throw new Error(
+          "ยังไม่ได้กำหนดปีการศึกษาในเมนูตั้งค่าระบบ",
+        );
+      }
+
+      const nextUsedCodes = Array.isArray(result.usedCodes)
+        ? result.usedCodes
+        : [];
+      const nextSequence = firstAvailableSequence(
+        "P1",
+        nextYear,
+        nextUsedCodes,
+      );
+
+      setAcademicYear(nextYear);
+      setUsedProjectCodes(nextUsedCodes);
+      setProjectGroupCode("P1");
+      setProjectSequence(nextSequence);
+
+      return {
+        academicYear: nextYear,
+        usedCodes: nextUsedCodes,
+        sequence: nextSequence,
+      };
+    } catch (error) {
+      setAcademicYear("");
+      setUsedProjectCodes([]);
+      setProjectGroupCode("P1");
+      setProjectSequence("");
+      setEditorMessage(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถโหลดปีการศึกษาได้",
+      );
+
+      return null;
+    } finally {
+      setProjectCodeLoading(false);
+    }
+  }
 
   async function loadMemberOptions() {
     setMembersLoading(true);
@@ -646,6 +803,7 @@ export default function BudgetProjectsReadOnlyClient() {
       const result = (await response.json()) as ApiResult;
 
       setConfigured(result.configured !== false);
+      setCanStartProjects(result.canStartProjects === true);
 
       if (!response.ok || !result.ok || !Array.isArray(result.projects)) {
         if (!background) {
@@ -655,14 +813,7 @@ export default function BudgetProjectsReadOnlyClient() {
         return;
       }
 
-      const mappedProjects = result.projects
-        .map(mapBudgetProject)
-        .sort((a, b) =>
-          a.code.localeCompare(b.code, "th", {
-            numeric: true,
-            sensitivity: "base",
-          })
-        );
+      const mappedProjects = mapAndSortBudgetProjects(result.projects);
       writeBudgetProjectsCache(result.projects);
 
       const editorState = await loadBudgetProjectEditorState();
@@ -688,19 +839,89 @@ export default function BudgetProjectsReadOnlyClient() {
     }
   }
 
+  async function startProject(project: BudgetProjectListItem) {
+    if (startingProjectId) return;
+
+    const confirmed = window.confirm(
+      `เริ่มดำเนินการโครงการ "${project.name}" ใช่หรือไม่`,
+    );
+    if (!confirmed) return;
+
+    setStartingProjectId(project.id);
+    setMessage("");
+    setActionMessage("");
+
+    try {
+      const supabase = createSupabaseClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error("กรุณาเข้าสู่ระบบใหม่");
+      }
+
+      const response = await fetch("/api/budget/projects", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "start",
+          projectId: project.id,
+        }),
+      });
+
+      const result = (await response.json().catch(() => ({}))) as {
+        ok?: boolean;
+        message?: string;
+      };
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "ไม่สามารถเริ่มดำเนินการได้");
+      }
+
+      setProjects((current) =>
+        current.map((item) =>
+          item.id === project.id
+            ? { ...item, status: "กำลังดำเนินการ" }
+            : item,
+        ),
+      );
+
+      writeBudgetProjectsCache(
+        projects.map((item) =>
+          item.id === project.id
+            ? { ...item, Status: "กำลังดำเนินการ" }
+            : item,
+        ),
+      );
+
+      setMessage("");
+      setActionMessage("เริ่มดำเนินการโครงการแล้ว");
+      window.setTimeout(() => {
+        setActionMessage("");
+      }, 3000);
+      void loadProjects({ background: true });
+    } catch (error) {
+      setActionMessage("");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "ไม่สามารถเริ่มดำเนินการได้",
+      );
+    } finally {
+      setStartingProjectId(null);
+    }
+  }
+
   useEffect(() => {
     const cached = readBudgetProjectsCache();
 
     if (cached) {
       setProjects(
-        cached.projects
-          .map(mapBudgetProject)
-          .sort((a, b) =>
-            a.code.localeCompare(b.code, "th", {
-              numeric: true,
-              sensitivity: "base",
-            })
-          )
+        mapAndSortBudgetProjects(cached.projects)
       );
       setLastLoadedAt(new Date(cached.savedAt).toISOString());
       setLoading(false);
@@ -739,15 +960,14 @@ export default function BudgetProjectsReadOnlyClient() {
   const filteredProjects = useMemo(() => {
     const keyword = query.trim().toLowerCase();
 
-    return projects
-      .filter((project) => {
-        const matchesKeyword =
-          !keyword ||
-          project.name.toLowerCase().includes(keyword) ||
-          project.owner.toLowerCase().includes(keyword) ||
-          project.lead.toLowerCase().includes(keyword) ||
-          project.code.toLowerCase().includes(keyword) ||
-          project.legacyId.toLowerCase().includes(keyword);
+    const filtered = projects.filter((project) => {
+      const matchesKeyword =
+        !keyword ||
+        project.name.toLowerCase().includes(keyword) ||
+        project.owner.toLowerCase().includes(keyword) ||
+        project.lead.toLowerCase().includes(keyword) ||
+        project.code.toLowerCase().includes(keyword) ||
+        project.legacyId.toLowerCase().includes(keyword);
 
       const matchesDepartment =
         department === "all" || project.owner === department;
@@ -755,25 +975,27 @@ export default function BudgetProjectsReadOnlyClient() {
       const matchesStatus =
         status === "all" || projectWorkflowStatus(project) === status;
 
-        return matchesKeyword && matchesDepartment && matchesStatus;
-      })
-      .sort((a, b) =>
-        a.code.localeCompare(b.code, "th", {
-          numeric: true,
-          sensitivity: "base",
-        })
-      );
+      return matchesKeyword && matchesDepartment && matchesStatus;
+    });
+
+    return sortBudgetProjects(filtered);
   }, [projects, query, department, status]);
 
   const totals = useMemo(
     () =>
       filteredProjects.reduce(
-        (sum, project) => ({
-          budget: sum.budget + project.budget,
-          spent: sum.spent + effectiveProjectSpent(project),
-          activities: sum.activities + project.activities.length,
-        }),
-        { budget: 0, spent: 0, activities: 0 },
+        (sum, project) => {
+          const budget = effectiveProjectBudget(project);
+          const spent = effectiveProjectSpent(project);
+
+          return {
+            budget: sum.budget + budget,
+            spent: sum.spent + spent,
+            remaining: sum.remaining + (budget - spent),
+            activities: sum.activities + project.activities.length,
+          };
+        },
+        { budget: 0, spent: 0, remaining: 0, activities: 0 },
       ),
     [filteredProjects],
   );
@@ -782,42 +1004,95 @@ export default function BudgetProjectsReadOnlyClient() {
     setExpandedProjectId((current) => (current === id ? null : id));
   }
 
-  function openNewProjectEditor() {
-    const draft = createNewProjectDraft();
+  async function openNewProjectEditor() {
+    setEditorMessage("");
+    const options = await loadProjectCodeOptions();
+
+    if (
+      !options?.academicYear ||
+      !options.sequence
+    ) {
+      return;
+    }
+
+    const generatedCode = composeProjectCode(
+      "P1",
+      options.sequence,
+      options.academicYear,
+    );
+    const draft = {
+      ...createNewProjectDraft(),
+      code: generatedCode,
+      fiscalYear: options.academicYear,
+    };
 
     setCreatingProject(true);
     setEditingProjectId(draft.id);
     setEditor(draft);
-    setEditorMessage("");
     setPendingFiles([]);
     setRemovedAttachmentIds([]);
+    setShowCustomBudgetSourceInput(false);
+    setCustomBudgetSourceDraft("");
   }
 
-  function openProjectEditor(project: BudgetProjectListItem) {
+  async function openProjectEditor(project: BudgetProjectListItem) {
     const savedProject = projectOverrides[project.id];
+    const existingCode = savedProject?.code || project.code || "";
+    const codeMatch = existingCode.match(
+      /^(P[1-4])-(\d{2})-(\d{4})$/,
+    );
+
+    let nextCode = existingCode;
+
+    if (codeMatch) {
+      setProjectGroupCode(codeMatch[1]);
+      setProjectSequence(codeMatch[2]);
+      setAcademicYear(codeMatch[3]);
+    } else {
+      const options = await loadProjectCodeOptions();
+      if (!options?.academicYear || !options.sequence) return;
+
+      setProjectGroupCode("P1");
+      setProjectSequence(options.sequence);
+      nextCode = composeProjectCode(
+        "P1",
+        options.sequence,
+        options.academicYear,
+      );
+    }
+
+    const editableProject = savedProject
+      ? {
+          ...savedProject,
+          code: nextCode,
+          startDate: toDateInputValue(savedProject.startDate),
+          endDate: toDateInputValue(savedProject.endDate),
+          attachments: Array.isArray(savedProject.attachments)
+            ? savedProject.attachments
+            : project.attachments,
+          activities: savedProject.activities.map((activity) => ({
+            ...activity,
+            startDate: toDateInputValue(activity.startDate),
+            endDate: toDateInputValue(activity.endDate),
+          })),
+        }
+      : {
+          ...toEditableProject(project),
+          code: nextCode,
+        };
 
     setCreatingProject(false);
     setEditingProjectId(project.id);
-    setEditor(
-      savedProject
-        ? {
-            ...savedProject,
-            startDate: toDateInputValue(savedProject.startDate),
-            endDate: toDateInputValue(savedProject.endDate),
-            attachments: Array.isArray(savedProject.attachments)
-              ? savedProject.attachments
-              : project.attachments,
-            activities: savedProject.activities.map((activity) => ({
-              ...activity,
-              startDate: toDateInputValue(activity.startDate),
-              endDate: toDateInputValue(activity.endDate),
-            })),
-          }
-        : toEditableProject(project),
+    setEditor(editableProject);
+    setEditorMessage(
+      codeMatch
+        ? ""
+        : "โครงการเดิมยังไม่มีรหัส กรุณาตรวจสอบรหัสที่ระบบเตรียมไว้แล้วกดบันทึก",
     );
-    setEditorMessage("");
     setPendingFiles([]);
     setRemovedAttachmentIds([]);
+    setShowCustomBudgetSourceInput(false);
+    setCustomBudgetSourceDraft("");
   }
 
   function closeProjectEditor() {
@@ -834,6 +1109,47 @@ export default function BudgetProjectsReadOnlyClient() {
     value: EditableProject[K],
   ) {
     setEditor((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  function updateProjectGroupCode(nextGroupCode: string) {
+    const nextSequence = firstAvailableSequence(
+      nextGroupCode,
+      academicYear,
+      usedProjectCodes,
+    );
+
+    setProjectGroupCode(nextGroupCode);
+    setProjectSequence(nextSequence);
+    setEditor((current) =>
+      current
+        ? {
+            ...current,
+            code: composeProjectCode(
+              nextGroupCode,
+              nextSequence,
+              academicYear,
+            ),
+            fiscalYear: academicYear,
+          }
+        : current,
+    );
+  }
+
+  function updateProjectSequence(nextSequence: string) {
+    setProjectSequence(nextSequence);
+    setEditor((current) =>
+      current
+        ? {
+            ...current,
+            code: composeProjectCode(
+              projectGroupCode,
+              nextSequence,
+              academicYear,
+            ),
+            fiscalYear: academicYear,
+          }
+        : current,
+    );
   }
 
   function updateActivity<K extends keyof EditableActivity>(
@@ -906,6 +1222,34 @@ export default function BudgetProjectsReadOnlyClient() {
         })),
       };
     });
+  }
+
+  function addCustomBudgetSource() {
+    const source = customBudgetSourceDraft.trim();
+
+    if (!source) return;
+
+    setEditor((current) => {
+      if (!current) return current;
+
+      const duplicate = current.budgetSources.some(
+        (item) => item.trim().toLowerCase() === source.toLowerCase(),
+      );
+
+      if (duplicate) return current;
+
+      return {
+        ...current,
+        budgetSources: [...current.budgetSources, source],
+      };
+    });
+
+    setCustomBudgetSourceDraft("");
+    setShowCustomBudgetSourceInput(false);
+  }
+
+  function removeCustomBudgetSource(source: string) {
+    toggleBudgetSource(source);
   }
 
   function updateCustomBudgetSource(value: string) {
@@ -1007,22 +1351,34 @@ export default function BudgetProjectsReadOnlyClient() {
     if (!editor || savingEditor) return;
 
     const normalizedProjectId = editor.id.trim();
+    const normalizedProjectCode = editor.code.trim();
 
-    if (!normalizedProjectId || !editor.name.trim()) {
-      setEditorMessage("กรุณากรอกรหัสโครงการและชื่อโครงการ");
+    if (
+      !normalizedProjectId ||
+      !normalizedProjectCode ||
+      !editor.name.trim()
+    ) {
+      setEditorMessage(
+        "กรุณาเลือกกลุ่มงาน ลำดับโครงการ และกรอกชื่อโครงการ",
+      );
+      return;
+    }
+
+    if (!/^P[1-4]-\d{2}-\d{4}$/.test(normalizedProjectCode)) {
+      setEditorMessage("รูปแบบรหัสโครงการไม่ถูกต้อง");
       return;
     }
 
     if (
-      creatingProject &&
       projects.some(
         (project) =>
-          project.id.trim().toLowerCase() ===
-          normalizedProjectId.toLowerCase(),
+          project.id !== editor.id &&
+          project.code.trim().toLowerCase() ===
+            normalizedProjectCode.toLowerCase(),
       )
     ) {
       setEditorMessage(
-        `รหัสโครงการ ${normalizedProjectId} มีอยู่แล้ว กรุณาใช้รหัสอื่น`,
+        `รหัสโครงการ ${normalizedProjectCode} มีอยู่แล้ว กรุณาใช้รหัสอื่น`,
       );
       return;
     }
@@ -1049,8 +1405,9 @@ export default function BudgetProjectsReadOnlyClient() {
     const savedEditor: EditableProject = {
       ...editor,
       id: normalizedProjectId,
+      code: normalizedProjectCode,
       name: editor.name.trim(),
-      status: editor.useActivities ? automaticEditorProjectStatus(editor) : workflowStatusValue(editor.status),
+      status: workflowStatusValue(editor.status),
       budget: Number(editor.budget) || 0,
       spent: editor.useActivities
         ? editorActivitySpent
@@ -1184,8 +1541,28 @@ export default function BudgetProjectsReadOnlyClient() {
     );
   }
 
+  const editorWorkflowSteps = [
+    "ยังไม่เริ่ม",
+    "กำลังดำเนินการ",
+    "เบิกจ่าย",
+    "เสร็จสิ้น",
+  ];
+  const currentEditorWorkflowStatus = workflowStatusValue(
+    editor?.status ?? "ยังไม่เริ่ม",
+  );
+  const currentEditorWorkflowIndex = Math.max(
+    0,
+    editorWorkflowSteps.indexOf(currentEditorWorkflowStatus),
+  );
+
   return (
     <div className="projectsRoot">
+      {actionMessage && (
+        <div className="actionSuccess" role="status">
+          {actionMessage}
+        </div>
+      )}
+
       <section className="pageTop">
         <div>
           <h2>รายการโครงการ</h2>
@@ -1222,14 +1599,16 @@ export default function BudgetProjectsReadOnlyClient() {
           <small>กิจกรรมภายใต้โครงการ</small>
         </article>
         <article>
-          <span>งบประมาณรวม</span>
-          <strong>{money(totals.budget)}</strong>
-          <small>บาท</small>
-        </article>
-        <article>
           <span>ใช้จริง</span>
           <strong>{money(totals.spent)}</strong>
           <small>{percent(totals.spent, totals.budget)}% ของงบทั้งหมด</small>
+        </article>
+        <article>
+          <span>งบประมาณคงเหลือ</span>
+          <strong className={totals.remaining < 0 ? "negative" : ""}>
+            {money(totals.remaining)}
+          </strong>
+          <small>บาท</small>
         </article>
       </section>
 
@@ -1278,8 +1657,6 @@ export default function BudgetProjectsReadOnlyClient() {
       </section>
 
       <section className="dataCard">
-        <div className="dataNotice">ใช้ข้อมูลจริงจากระบบงบประมาณปัจจุบัน</div>
-
         <div className="columnHeader">
           <div>#</div>
           <div>ชื่อโครงการ</div>
@@ -1296,8 +1673,9 @@ export default function BudgetProjectsReadOnlyClient() {
         <div className="projectList">
           {filteredProjects.map((project, index) => {
             const expanded = expandedProjectId === project.id;
+            const projectBudget = effectiveProjectBudget(project);
             const projectSpent = effectiveProjectSpent(project);
-            const remaining = project.budget - projectSpent;
+            const remaining = projectBudget - projectSpent;
             const displayStatus = projectWorkflowStatus(project);
             const displayBudgetStatus = projectBudgetStatus(project);
             const activitySummary = activityStatusSummary(project);
@@ -1342,7 +1720,7 @@ export default function BudgetProjectsReadOnlyClient() {
 
                   <div className="amountCell">
                     <span>งบจัดสรร</span>
-                    <b>{money(project.budget)}</b>
+                    <b>{money(projectBudget)}</b>
                   </div>
 
                   <div className="amountCell">
@@ -1361,6 +1739,18 @@ export default function BudgetProjectsReadOnlyClient() {
                     <span className={`statusBadge ${statusClass(displayStatus)}`}>
                       {displayStatus}
                     </span>
+                    {canStartProjects && displayStatus === "ยังไม่เริ่ม" && (
+                      <button
+                        type="button"
+                        className="startProjectButton"
+                        onClick={() => void startProject(project)}
+                        disabled={startingProjectId === project.id}
+                        aria-label={`เริ่มดำเนินการ ${project.name}`}
+                        title="เริ่มดำเนินการ"
+                      >
+                        {startingProjectId === project.id ? "…" : "▶"}
+                      </button>
+                    )}
                   </div>
 
                   <div className="fileCell">
@@ -1430,7 +1820,7 @@ export default function BudgetProjectsReadOnlyClient() {
                           </span>
                           <span>
                             ใช้งบไป{" "}
-                            <b>{rawPercent(projectSpent, project.budget)}%</b>
+                            <b>{rawPercent(projectSpent, projectBudget)}%</b>
                           </span>
                           <span className={`inlineBudgetStatus ${budgetStatusClass(displayBudgetStatus)}`}>
                             {displayBudgetStatus}
@@ -1456,8 +1846,14 @@ export default function BudgetProjectsReadOnlyClient() {
                             icon: "☷",
                           },
                           {
-                            label: "เสร็จสิ้น",
+                            label: "เบิกจ่าย",
                             step: 3,
+                            className: "timelinePayment",
+                            icon: "฿",
+                          },
+                          {
+                            label: "เสร็จสิ้น",
+                            step: 4,
                             className: "timelineDone",
                             icon: "✓",
                           },
@@ -1526,7 +1922,7 @@ export default function BudgetProjectsReadOnlyClient() {
                         const projectDetail =
                           projectOverrides[project.id] ||
                           toEditableProject(project);
-                        const projectRemaining = project.budget - projectSpent;
+                        const projectRemaining = projectBudget - projectSpent;
                         const projectBudgetSource = [
                           ...projectDetail.budgetSources,
                           projectDetail.customBudgetSource.trim(),
@@ -1571,7 +1967,7 @@ export default function BudgetProjectsReadOnlyClient() {
 
                               <div className="activityMetric">
                                 <span>งบประมาณ</span>
-                                <b>{money(project.budget)} บาท</b>
+                                <b>{money(projectBudget)} บาท</b>
                               </div>
 
                               <div className="activityMetric">
@@ -1739,24 +2135,145 @@ export default function BudgetProjectsReadOnlyClient() {
               <section className="editorSection">
                 <div className="editorSectionTitle">ข้อมูลโครงการ</div>
 
-                <div className="editorGrid twoColumns">
-                  <label>
-                    <span>รหัสโครงการ</span>
-                    <input
-                      value={editor.id}
-                      onChange={(e) => updateEditor("id", e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    <span>ปีงบประมาณ</span>
-                    <input
-                      value={editor.fiscalYear}
-                      onChange={(e) =>
-                        updateEditor("fiscalYear", e.target.value)
-                      }
-                    />
-                  </label>
-                </div>
+                {creatingProject ? (
+                  <div className="projectCodeBuilder">
+                    <label>
+                      <span>กลุ่มงาน</span>
+                      <select
+                        value={projectGroupCode}
+                        onChange={(event) =>
+                          updateProjectGroupCode(event.target.value)
+                        }
+                        disabled={projectCodeLoading}
+                      >
+                        {PROJECT_GROUP_OPTIONS.map((option) => (
+                          <option key={option.code} value={option.code}>
+                            {option.code} {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label>
+                      <span>ลำดับโครงการ</span>
+                      <select
+                        value={projectSequence}
+                        onChange={(event) =>
+                          updateProjectSequence(event.target.value)
+                        }
+                        disabled={projectCodeLoading}
+                      >
+                        {PROJECT_SEQUENCE_OPTIONS.map((sequence) => {
+                          const code = composeProjectCode(
+                            projectGroupCode,
+                            sequence,
+                            academicYear,
+                          );
+                          const used = usedProjectCodes.includes(code);
+
+                          return (
+                            <option
+                              key={sequence}
+                              value={sequence}
+                              disabled={used}
+                            >
+                              {sequence}
+                              {used ? " — ใช้แล้ว" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </label>
+
+                    <label>
+                      <span>ปีการศึกษา</span>
+                      <input value={academicYear} readOnly />
+                    </label>
+
+                    <label>
+                      <span>รหัสโครงการ</span>
+                      <input
+                        value={editor.code}
+                        readOnly
+                        className="projectCodePreview"
+                      />
+                    </label>
+                  </div>
+                ) : editor.code &&
+                  /^P[1-4]-\d{2}-\d{4}$/.test(editor.code) ? (
+                  <div className="editorGrid twoColumns">
+                    <label>
+                      <span>รหัสโครงการ</span>
+                      <input value={editor.code} readOnly />
+                    </label>
+                    <label>
+                      <span>ปีการศึกษา</span>
+                      <input value={editor.fiscalYear} readOnly />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="projectCodeBuilder legacyProjectCodeBuilder">
+                    <label>
+                      <span>กลุ่มงาน</span>
+                      <select
+                        value={projectGroupCode}
+                        onChange={(event) =>
+                          updateProjectGroupCode(event.target.value)
+                        }
+                      >
+                        {PROJECT_GROUP_OPTIONS.map((option) => (
+                          <option key={option.code} value={option.code}>
+                            {option.code} {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label>
+                      <span>ลำดับโครงการ</span>
+                      <select
+                        value={projectSequence}
+                        onChange={(event) =>
+                          updateProjectSequence(event.target.value)
+                        }
+                      >
+                        {PROJECT_SEQUENCE_OPTIONS.map((sequence) => {
+                          const code = composeProjectCode(
+                            projectGroupCode,
+                            sequence,
+                            academicYear,
+                          );
+                          const used = usedProjectCodes.includes(code);
+
+                          return (
+                            <option
+                              key={sequence}
+                              value={sequence}
+                              disabled={used}
+                            >
+                              {sequence}
+                              {used ? " — ใช้แล้ว" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </label>
+
+                    <label>
+                      <span>ปีการศึกษา</span>
+                      <input value={academicYear} readOnly />
+                    </label>
+
+                    <label>
+                      <span>กำหนดรหัสโครงการเดิม</span>
+                      <input
+                        value={editor.code}
+                        readOnly
+                        className="projectCodePreview"
+                      />
+                    </label>
+                  </div>
+                )}
 
                 <label>
                   <span>ชื่อโครงการ</span>
@@ -1795,44 +2312,42 @@ export default function BudgetProjectsReadOnlyClient() {
                   <label>
                     <span>สถานะการดำเนินงาน</span>
                     <div
-                      className={`workflowChoiceGroup ${
-                        editor.useActivities ? "workflowChoiceGroupLocked" : ""
-                      }`}
-                      role="group"
-                      aria-label="สถานะการดำเนินงานของโครงการ"
+                      className="editorWorkflowStepper"
+                      aria-label={`สถานะปัจจุบัน ${currentEditorWorkflowStatus}`}
                     >
-                      {["ยังไม่เริ่ม", "กำลังดำเนินการ", "เสร็จสิ้น"].map(
-                        (item) => {
-                          const currentStatus = workflowStatusValue(
-                            editor.useActivities
-                              ? automaticEditorProjectStatus(editor)
-                              : editor.status,
-                          );
+                      {editorWorkflowSteps.map((step, index) => {
+                        const isComplete =
+                          index < currentEditorWorkflowIndex;
+                        const isCurrent =
+                          index === currentEditorWorkflowIndex;
 
-                          return (
-                            <button
-                              type="button"
-                              key={item}
-                              className={`workflowChoiceButton ${
-                                currentStatus === item
-                                  ? "workflowChoiceButtonActive"
-                                  : ""
-                              }`}
-                              onClick={() => updateEditor("status", item)}
-                              disabled={editor.useActivities}
-                              aria-pressed={currentStatus === item}
-                            >
-                              {item}
-                            </button>
-                          );
-                        },
-                      )}
+                        return (
+                          <div
+                            key={step}
+                            className={`editorWorkflowStep ${
+                              isComplete
+                                ? "editorWorkflowStepComplete"
+                                : ""
+                            } ${
+                              isCurrent
+                                ? "editorWorkflowStepCurrent"
+                                : ""
+                            }`}
+                            aria-current={isCurrent ? "step" : undefined}
+                          >
+                            <span className="editorWorkflowCircle">
+                              {isComplete ? "✓" : index + 1}
+                            </span>
+                            <span className="editorWorkflowLabel">
+                              {step}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                    {editor.useActivities && (
-                      <small className="automaticStatusNote">
-                        คำนวณอัตโนมัติจากสถานะกิจกรรมย่อย
-                      </small>
-                    )}
+                    <small className="automaticStatusNote">
+                      สถานะเปลี่ยนตามขั้นตอนการทำงาน ไม่สามารถแก้ไขจากหน้านี้
+                    </small>
                   </label>
                   <label>
                     <span>งบจัดสรร</span>
@@ -1999,39 +2514,114 @@ export default function BudgetProjectsReadOnlyClient() {
 
               <section className="editorSection">
                 <div className="editorSectionTitle">
-                  แหล่งงบประมาณของโครงการ
-                </div>
-                <div className="budgetSourceOptions">
-                  {[
-                    "เงินอุดหนุน",
-                    "เงินรายได้สถานศึกษา",
-                    "อื่นๆ",
-                    "เงินอุดหนุนโครงการอาหารกลางวัน",
-                  ].map((source) => (
-                    <label className="sourceOption" key={source}>
-                      <input
-                        type="checkbox"
-                        checked={editor.budgetSources.includes(source)}
-                        onChange={() => toggleBudgetSource(source)}
-                      />
-                      <span>{source}</span>
-                    </label>
-                  ))}
+                  แหล่งเงินของโครงการ
                 </div>
 
-                {editor.budgetSources.includes("อื่นๆ") && (
-                  <label>
-                    <span>ระบุแหล่งงบประมาณอื่น</span>
+                <div className="budgetSourceQuickActions">
+                  {["เงินอุดหนุน", "เงินรายได้สถานศึกษา"].map((source) => {
+                    const selected = editor.budgetSources.includes(source);
+
+                    return (
+                      <button
+                        key={source}
+                        type="button"
+                        className={`budgetSourceButton ${selected ? "selected" : ""}`}
+                        onClick={() => toggleBudgetSource(source)}
+                      >
+                        {selected ? "✓ " : ""}
+                        {source}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    className="addBudgetSourceButton"
+                    aria-label="เพิ่มแหล่งเงิน"
+                    title="เพิ่มแหล่งเงิน"
+                    onClick={() =>
+                      setShowCustomBudgetSourceInput((current) => !current)
+                    }
+                  >
+                    +
+                  </button>
+                </div>
+
+                {showCustomBudgetSourceInput && (
+                  <div className="customBudgetSourceRow">
                     <input
-                      value={editor.customBudgetSource}
-                      placeholder="เช่น เงินบริจาค"
-                      onChange={(e) => updateCustomBudgetSource(e.target.value)}
+                      autoFocus
+                      value={customBudgetSourceDraft}
+                      placeholder="กรอกชื่อแหล่งเงิน เช่น เงินบริจาค"
+                      onChange={(event) =>
+                        setCustomBudgetSourceDraft(event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addCustomBudgetSource();
+                        }
+
+                        if (event.key === "Escape") {
+                          setCustomBudgetSourceDraft("");
+                          setShowCustomBudgetSourceInput(false);
+                        }
+                      }}
                     />
-                  </label>
+                    <button
+                      type="button"
+                      onClick={addCustomBudgetSource}
+                      disabled={!customBudgetSourceDraft.trim()}
+                    >
+                      เพิ่ม
+                    </button>
+                    <button
+                      type="button"
+                      className="cancelCustomSourceButton"
+                      onClick={() => {
+                        setCustomBudgetSourceDraft("");
+                        setShowCustomBudgetSourceInput(false);
+                      }}
+                    >
+                      ยกเลิก
+                    </button>
+                  </div>
+                )}
+
+                {editor.budgetSources.filter(
+                  (source) =>
+                    !["เงินอุดหนุน", "เงินรายได้สถานศึกษา", "อื่นๆ"].includes(
+                      source,
+                    ),
+                ).length > 0 && (
+                  <div className="customBudgetSourceList">
+                    {editor.budgetSources
+                      .filter(
+                        (source) =>
+                          ![
+                            "เงินอุดหนุน",
+                            "เงินรายได้สถานศึกษา",
+                            "อื่นๆ",
+                          ].includes(source),
+                      )
+                      .map((source) => (
+                        <span className="customBudgetSourceChip" key={source}>
+                          {source}
+                          <button
+                            type="button"
+                            aria-label={`ลบ ${source}`}
+                            title={`ลบ ${source}`}
+                            onClick={() => removeCustomBudgetSource(source)}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                  </div>
                 )}
 
                 <label>
-                  <span>แหล่งงบประมาณที่เลือก</span>
+                  <span>แหล่งเงินที่เลือก</span>
                   <input
                     className="selectedBudgetSourcesField"
                     value={editorBudgetSourceOptions.join(", ")}
@@ -2370,6 +2960,7 @@ export default function BudgetProjectsReadOnlyClient() {
         .summaryGrid span, .summaryGrid small { display: block; color: #6b7280; font-size: 11px; }
         .summaryGrid strong { display: block; margin-top: 7px; color: #166534; font-size: 21px; }
         .summaryGrid small { margin-top: 5px; }
+        .summaryGrid .negative { color: #dc2626 !important; }
 
         .filterCard { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(170px, 220px) minmax(150px, 190px) 42px; gap: 10px; padding: 13px; border: 1px solid #e5e7eb; border-radius: 15px; background: #fff; }
         .searchBox { display: flex; min-height: 40px; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid #d1d5db; border-radius: 10px; }
@@ -2587,6 +3178,7 @@ export default function BudgetProjectsReadOnlyClient() {
           white-space: nowrap;
         }
         .done { color: #166534; background: #dcfce7; }
+        .payment { color: #7c2d12; background: #ffedd5; }
         .active { color: #1d4ed8; background: #dbeafe; }
         .pending { color: #475569; background: #f1f5f9; }
         .cancelled { color: #991b1b; background: #fee2e2; }
@@ -3397,6 +3989,130 @@ export default function BudgetProjectsReadOnlyClient() {
           gap: 8px;
         }
 
+        .budgetSourceQuickActions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .budgetSourceButton,
+        .addBudgetSourceButton {
+          min-height: 38px;
+          border: 1px solid #d1d5db;
+          border-radius: 11px;
+          background: #ffffff;
+          color: #344054;
+          font-weight: 800;
+          cursor: pointer;
+          transition:
+            border-color 0.15s ease,
+            background 0.15s ease,
+            color 0.15s ease,
+            transform 0.15s ease;
+        }
+
+        .budgetSourceButton {
+          padding: 8px 14px;
+        }
+
+        .budgetSourceButton:hover,
+        .addBudgetSourceButton:hover {
+          transform: translateY(-1px);
+          border-color: #8b5cf6;
+        }
+
+        .budgetSourceButton.selected {
+          border-color: #7c3aed;
+          background: #f5f3ff;
+          color: #5b21b6;
+        }
+
+        .addBudgetSourceButton {
+          width: 38px;
+          padding: 0;
+          border-style: dashed;
+          border-color: #7c3aed;
+          color: #6d28d9;
+          font-size: 23px;
+          line-height: 1;
+        }
+
+        .customBudgetSourceRow {
+          display: grid;
+          grid-template-columns: minmax(220px, 1fr) auto auto;
+          gap: 8px;
+          align-items: center;
+          margin-top: 10px;
+        }
+
+        .customBudgetSourceRow button {
+          min-height: 38px;
+          padding: 0 13px;
+          border: 0;
+          border-radius: 9px;
+          color: #ffffff;
+          background: #7c3aed;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .customBudgetSourceRow button:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+
+        .customBudgetSourceRow .cancelCustomSourceButton {
+          color: #475467;
+          background: #f2f4f7;
+        }
+
+        .customBudgetSourceList {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          margin-top: 10px;
+        }
+
+        .customBudgetSourceChip {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-height: 32px;
+          padding: 5px 7px 5px 11px;
+          border: 1px solid #c4b5fd;
+          border-radius: 999px;
+          color: #5b21b6;
+          background: #f5f3ff;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .customBudgetSourceChip button {
+          display: grid;
+          width: 21px;
+          height: 21px;
+          padding: 0;
+          place-items: center;
+          border: 0;
+          border-radius: 50%;
+          color: #7c3aed;
+          background: #ede9fe;
+          font-size: 16px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        @media (max-width: 560px) {
+          .customBudgetSourceRow {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .customBudgetSourceRow input {
+            grid-column: 1 / -1;
+          }
+        }
+
         .selectedBudgetSourcesField {
           color: #166534 !important;
           border-color: #86efac !important;
@@ -3832,6 +4548,191 @@ export default function BudgetProjectsReadOnlyClient() {
         }
 
         .memberLoadMessage, .automaticStatusNote { display: block; margin-top: 5px; color: #b45309; font-size: 11px; font-weight: 700; }
+
+        .statusCell {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .startProjectButton {
+          width: 27px;
+          height: 27px;
+          flex: 0 0 27px;
+          display: inline-grid;
+          place-items: center;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          color: #fff;
+          background: #16a34a;
+          box-shadow: 0 3px 8px rgba(22, 163, 74, 0.24);
+          font-size: 11px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .startProjectButton:hover {
+          background: #15803d;
+        }
+
+        .startProjectButton:disabled {
+          cursor: wait;
+          opacity: 0.65;
+        }
+
+        .actionSuccess {
+          position: fixed;
+          top: 18px;
+          left: 50%;
+          z-index: 1200;
+          transform: translateX(-50%);
+          padding: 9px 14px;
+          border: 1px solid #86efac;
+          border-radius: 10px;
+          color: #166534;
+          background: #f0fdf4;
+          box-shadow: 0 10px 28px rgba(22, 101, 52, 0.18);
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        .editorWorkflowStepper {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          align-items: start;
+          min-height: 58px;
+          padding: 8px 7px 6px;
+          border: 1px solid #d8dee8;
+          border-radius: 10px;
+          background: #f8fafc;
+          pointer-events: none;
+          user-select: none;
+        }
+
+        .editorWorkflowStep {
+          position: relative;
+          display: grid;
+          justify-items: center;
+          gap: 4px;
+          min-width: 0;
+          color: #98a2b3;
+          text-align: center;
+        }
+
+        .editorWorkflowStep:not(:last-child)::after {
+          content: "";
+          position: absolute;
+          top: 12px;
+          left: calc(50% + 15px);
+          right: calc(-50% + 15px);
+          height: 2px;
+          border-radius: 999px;
+          background: #d8dee8;
+        }
+
+        .editorWorkflowCircle {
+          position: relative;
+          z-index: 1;
+          width: 25px;
+          height: 25px;
+          display: grid;
+          place-items: center;
+          border: 2px solid #cbd5e1;
+          border-radius: 50%;
+          color: #64748b;
+          background: #fff;
+          font-size: 10px;
+          font-weight: 900;
+          line-height: 1;
+        }
+
+        .editorWorkflowLabel {
+          max-width: 100%;
+          color: inherit;
+          font-size: 9px;
+          font-weight: 700;
+          line-height: 1.2;
+          white-space: nowrap;
+        }
+
+        .editorWorkflowStepComplete {
+          color: #15803d;
+        }
+
+        .editorWorkflowStepComplete .editorWorkflowCircle {
+          border-color: #22c55e;
+          color: #fff;
+          background: #22c55e;
+        }
+
+        .editorWorkflowStepComplete:not(:last-child)::after {
+          background: #86efac;
+        }
+
+        .editorWorkflowStepCurrent {
+          color: #6d28d9;
+        }
+
+        .editorWorkflowStepCurrent .editorWorkflowCircle {
+          border-color: #7c3aed;
+          color: #fff;
+          background: #7c3aed;
+          box-shadow: 0 0 0 3px #ede9fe;
+        }
+
+        @media (max-width: 640px) {
+          .editorWorkflowStepper {
+            padding-inline: 4px;
+          }
+
+          .editorWorkflowCircle {
+            width: 23px;
+            height: 23px;
+          }
+
+          .editorWorkflowStep:not(:last-child)::after {
+            top: 11px;
+            left: calc(50% + 14px);
+            right: calc(-50% + 14px);
+          }
+
+          .editorWorkflowLabel {
+            font-size: 8px;
+          }
+        }
+
+        .projectCodeBuilder {
+          display: grid;
+          grid-template-columns:
+            minmax(160px, 1.2fr)
+            minmax(120px, 0.8fr)
+            minmax(120px, 0.8fr)
+            minmax(170px, 1.1fr);
+          gap: 10px;
+          align-items: end;
+        }
+
+        .projectCodePreview {
+          color: #5b21b6 !important;
+          background: #f5f3ff !important;
+          font-weight: 900 !important;
+          letter-spacing: 0.04em;
+        }
+
+        @media (max-width: 900px) {
+          .projectCodeBuilder {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 560px) {
+          .projectCodeBuilder {
+            grid-template-columns: 1fr;
+          }
+        }
 
       `}</style>
     </div>

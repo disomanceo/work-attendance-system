@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+﻿import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import {
   clearBudgetProjectOverrides,
   countBudgetProjectOverrides,
@@ -25,6 +25,7 @@ export type UploadableBudgetAttachment = {
 export type BudgetProjectSavePayload = {
   project: {
     id: string;
+    projectCode: string;
     fiscalYear: string;
     name: string;
     planName: string;
@@ -118,6 +119,7 @@ export async function createBudgetProjectSavePayload(
   return {
     project: {
       id: project.id,
+      projectCode: project.code,
       fiscalYear: project.fiscalYear,
       name: project.name,
       planName: project.owner,
