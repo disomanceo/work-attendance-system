@@ -1,20 +1,17 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-
-type Project = {
-  id: string;
-  legacyId: string;
-  code: string;
-  name: string;
-  budget: number;
-  spent: number;
-  status: string;
-  department: string;
-  owner: string;
-  lead: string;
-};
+import {
+  mapAndSortBudgetProjects,
+  sortBudgetProjects,
+} from "@/lib/budget/project-list";
+import type { BudgetProjectListItem } from "@/lib/budget/types";
+import {
+  effectiveProjectBudget,
+  effectiveProjectRemaining,
+  effectiveProjectSpent,
+} from "@/lib/budget/project-financials";
 
 type RequesterOption = {
   id: string;
@@ -27,6 +24,8 @@ type RequesterOption = {
 type Payment = {
   id: string;
   project_id: string;
+  activity_id: string | null;
+  activity_name: string | null;
   details: string;
   payment_period: string | null;
   amount: number;
@@ -65,88 +64,6 @@ type PaymentsApiResponse = {
   message?: string;
 };
 
-function readText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function readNumber(value: unknown) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
-}
-
-function mapProject(raw: unknown): Project | null {
-  if (!raw || typeof raw !== "object") return null;
-
-  const item = raw as Record<string, unknown>;
-
-  const id =
-    readText(item.SupabaseID) ||
-    readText(item.supabaseId) ||
-    readText(item.supabase_id) ||
-    readText(item.ID) ||
-    readText(item.id) ||
-    readText(item.ProjectID) ||
-    readText(item.projectId) ||
-    readText(item.project_id) ||
-    readText(item.Code) ||
-    readText(item.code) ||
-    readText(item["รหัสโครงการ"]);
-
-  const name =
-    readText(item.ProjectName) ||
-    readText(item.projectName) ||
-    readText(item.project_name) ||
-    readText(item.Name) ||
-    readText(item.name) ||
-    readText(item.Title) ||
-    readText(item.title) ||
-    readText(item["ชื่อโครงการ"]);
-
-  if (!id || !name) return null;
-
-  return {
-    id,
-    legacyId:
-      readText(item.ID) ||
-      readText(item.legacy_project_id) ||
-      id,
-    code:
-      readText(item.ProjectCode) ||
-      readText(item.projectCode) ||
-      readText(item.project_code) ||
-      readText(item.ID) ||
-      id,
-    name,
-    status:
-      readText(item.Status) ||
-      readText(item.status) ||
-      "ยังไม่เริ่ม",
-    spent:
-      readNumber(item.SpentBudget) ||
-      readNumber(item.spentBudget),
-    department:
-      readText(item.Department) ||
-      readText(item.department) ||
-      readText(item.PlanName) ||
-      readText(item.planName) ||
-      readText(item["แผนงาน"]) ||
-      readText(item["หน่วยงาน"]) ||
-      "-",
-    owner:
-      readText(item.Department) ||
-      readText(item.department) ||
-      "-",
-    lead:
-      readText(item.OwnerName) ||
-      readText(item.ownerName) ||
-      readText(item.owner) ||
-      "-",
-    budget:
-      readNumber(item.ApprovedBudget) ||
-      readNumber(item.approvedBudget),
-  };
-}
-
 function money(value: number) {
   return new Intl.NumberFormat("th-TH", {
     minimumFractionDigits: 2,
@@ -163,6 +80,31 @@ function thaiDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "medium",
   }).format(date);
+}
+
+
+function requesterDutyLabel(person: RequesterOption) {
+  const labels: string[] = [];
+
+  if (person.permissions.includes("budget.finance")) {
+    labels.push("เจ้าหน้าที่การเงิน");
+  }
+
+  if (person.permissions.includes("budget.procurement")) {
+    labels.push("เจ้าหน้าที่พัสดุ");
+  }
+
+  if (person.permissions.includes("budget.requester")) {
+    labels.push("ผู้เบิกจ่าย");
+  }
+
+  if (person.role === "director") {
+    labels.push("ผู้บริหาร");
+  } else if (person.role === "admin") {
+    labels.push("ผู้ดูแลระบบ");
+  }
+
+  return [...new Set(labels)].join(" / ") || person.position || "ผู้ใช้งาน";
 }
 
 
@@ -216,7 +158,7 @@ function writeTimedCache<T>(key: string, value: T) {
 export default function BudgetPaymentsPage() {
   const supabase = useMemo(() => createClient(), []);
 
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<BudgetProjectListItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [requesterOptions, setRequesterOptions] = useState<RequesterOption[]>([]);
@@ -225,8 +167,11 @@ export default function BudgetPaymentsPage() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [sortMode, setSortMode] = useState("code");
   const [expandedProjectId, setExpandedProjectId] = useState("");
-  const [payingProject, setPayingProject] = useState<Project | null>(null);
+  const [payingProject, setPayingProject] = useState<BudgetProjectListItem | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [details, setDetails] = useState("");
@@ -235,6 +180,8 @@ export default function BudgetPaymentsPage() {
   const [note, setNote] = useState("");
   const [evidence, setEvidence] = useState<File | null>(null);
   const [requesterId, setRequesterId] = useState("");
+  const [activityId, setActivityId] = useState("");
+  const evidenceInputRef = useRef<HTMLInputElement | null>(null);
 
   async function getAccessToken() {
     const {
@@ -294,15 +241,9 @@ export default function BudgetPaymentsPage() {
         );
       }
 
-      const mappedProjects = (projectsResult.projects ?? [])
-        .map(mapProject)
-        .filter((project): project is Project => Boolean(project))
-        .sort((a, b) =>
-          a.code.localeCompare(b.code, "th", {
-            numeric: true,
-            sensitivity: "base",
-          })
-        );
+      const mappedProjects = mapAndSortBudgetProjects(
+        projectsResult.projects ?? [],
+      );
 
       const paymentsValue = paymentsResult.payments ?? [];
       const currentUserValue = paymentsResult.currentUser ?? null;
@@ -350,15 +291,9 @@ export default function BudgetPaymentsPage() {
     let hasCache = false;
 
     if (cachedProjects?.value) {
-      const mappedProjects = cachedProjects.value
-        .map(mapProject)
-        .filter((project): project is Project => Boolean(project))
-        .sort((a, b) =>
-          a.code.localeCompare(b.code, "th", {
-            numeric: true,
-            sensitivity: "base",
-          })
-        );
+      const mappedProjects = mapAndSortBudgetProjects(
+        cachedProjects.value,
+      );
       setProjects(mappedProjects);
       hasCache = mappedProjects.length > 0;
     }
@@ -394,6 +329,9 @@ export default function BudgetPaymentsPage() {
     >();
 
     for (const payment of activePayments) {
+      const project = projects.find((item) => item.id === payment.project_id);
+      if (project?.activities.length && !payment.activity_id) continue;
+
       const current = map.get(payment.project_id) ?? {
         total: 0,
         count: 0,
@@ -415,51 +353,99 @@ export default function BudgetPaymentsPage() {
     }
 
     return map;
+  }, [activePayments, projects]);
+
+  const paymentSummaryByActivity = useMemo(() => {
+    const map = new Map<string, number>();
+
+    for (const payment of activePayments) {
+      if (!payment.activity_id) continue;
+      map.set(
+        payment.activity_id,
+        (map.get(payment.activity_id) ?? 0) +
+          (Number(payment.amount) || 0),
+      );
+    }
+
+    return map;
   }, [activePayments]);
 
   const filteredProjects = useMemo(() => {
     const keyword = query.trim().toLowerCase();
+    const filtered = projects.filter((project) => {
+      const budget = effectiveProjectBudget(project);
+      const spent = paymentSummaryByProject.get(project.id)?.total ?? 0;
+      const remaining = budget - spent;
+      const matchesKeyword =
+        !keyword ||
+        project.name.toLowerCase().includes(keyword) ||
+        project.code.toLowerCase().includes(keyword) ||
+        project.owner.toLowerCase().includes(keyword) ||
+        project.lead.toLowerCase().includes(keyword) ||
+        project.legacyId.toLowerCase().includes(keyword) ||
+        project.activities.some((activity) =>
+          activity.name.toLowerCase().includes(keyword),
+        );
+      const matchesStatus =
+        statusFilter === "all" || project.status === statusFilter;
+      const matchesPayment =
+        paymentFilter === "all" ||
+        (paymentFilter === "unpaid" && spent <= 0) ||
+        (paymentFilter === "paid" && spent > 0 && remaining >= 0) ||
+        (paymentFilter === "over" && remaining < 0);
 
-    return projects
-      .filter(
-        (project) =>
-          !keyword ||
-          project.name.toLowerCase().includes(keyword) ||
-          project.code.toLowerCase().includes(keyword) ||
-          project.department.toLowerCase().includes(keyword) ||
-          project.owner.toLowerCase().includes(keyword) ||
-          project.lead.toLowerCase().includes(keyword) ||
-          project.legacyId.toLowerCase().includes(keyword)
-      )
-      .sort((a, b) =>
-        a.code.localeCompare(b.code, "th", {
-          numeric: true,
-          sensitivity: "base",
-        })
-      );
-  }, [projects, query]);
+      return matchesKeyword && matchesStatus && matchesPayment;
+    });
+
+    if (sortMode === "code") return sortBudgetProjects(filtered);
+
+    return [...filtered].sort((a, b) => {
+      const aBudget = effectiveProjectBudget(a);
+      const bBudget = effectiveProjectBudget(b);
+      const aSpent = paymentSummaryByProject.get(a.id)?.total ?? 0;
+      const bSpent = paymentSummaryByProject.get(b.id)?.total ?? 0;
+      const aRemaining = aBudget - aSpent;
+      const bRemaining = bBudget - bSpent;
+      const aLatest = paymentSummaryByProject.get(a.id)?.latest || "";
+      const bLatest = paymentSummaryByProject.get(b.id)?.latest || "";
+
+      if (sortMode === "name") return a.name.localeCompare(b.name, "th");
+      if (sortMode === "budget-desc") return bBudget - aBudget;
+      if (sortMode === "budget-asc") return aBudget - bBudget;
+      if (sortMode === "spent-desc") return bSpent - aSpent;
+      if (sortMode === "spent-asc") return aSpent - bSpent;
+      if (sortMode === "remaining-asc") return aRemaining - bRemaining;
+      if (sortMode === "remaining-desc") return bRemaining - aRemaining;
+      if (sortMode === "latest-desc") return new Date(bLatest || 0).getTime() - new Date(aLatest || 0).getTime();
+      if (sortMode === "latest-asc") return new Date(aLatest || 0).getTime() - new Date(bLatest || 0).getTime();
+      return 0;
+    });
+  }, [projects, query, statusFilter, paymentFilter, sortMode, paymentSummaryByProject]);
 
   const totals = useMemo(() => {
-    const budget = projects.reduce((sum, project) => sum + project.budget, 0);
-    const paid = activePayments.reduce(
-      (sum, payment) => sum + (Number(payment.amount) || 0),
-      0
+    const budget = projects.reduce(
+      (sum, project) => sum + effectiveProjectBudget(project),
+      0,
     );
-    const overBudgetProjects = projects.filter((project) => {
-      const summary = paymentSummaryByProject.get(project.id);
-      return project.budget - (summary?.total ?? 0) < 0;
-    }).length;
+    const paid = projects.reduce(
+      (sum, project) =>
+        sum + (paymentSummaryByProject.get(project.id)?.total ?? 0),
+      0,
+    );
 
     return {
       projectCount: projects.length,
+      activityCount: projects.reduce(
+        (sum, project) => sum + project.activities.length,
+        0,
+      ),
       budget,
       paid,
       remaining: budget - paid,
-      overBudgetProjects,
     };
-  }, [projects, activePayments, paymentSummaryByProject]);
+  }, [projects, paymentSummaryByProject]);
 
-  function openPayment(project: Project) {
+  function openPayment(project: BudgetProjectListItem) {
     const existingActivePayments = payments.filter(
       (payment) =>
         payment.project_id === project.id &&
@@ -469,11 +455,15 @@ export default function BudgetPaymentsPage() {
 
     setPayingProject(project);
     setDetails("");
-    setPaymentPeriod(`งวดที่ ${nextInstallment}`);
+    setPaymentPeriod("");
     setAmount("");
     setNote("");
     setEvidence(null);
+    if (evidenceInputRef.current) {
+      evidenceInputRef.current.value = "";
+    }
     setRequesterId("");
+    setActivityId(project.activities.length === 1 ? project.activities[0].id : "");
     setMessage("");
   }
 
@@ -499,6 +489,12 @@ export default function BudgetPaymentsPage() {
       return;
     }
 
+    if (payingProject.activities.length > 0 && !activityId) {
+      setMessageType("error");
+      setMessage("กรุณาเลือกกิจกรรมของโครงการ");
+      return;
+    }
+
     if (!details.trim()) {
       setMessageType("error");
       setMessage("กรุณากรอกรายละเอียดการจ่าย");
@@ -511,9 +507,14 @@ export default function BudgetPaymentsPage() {
       return;
     }
 
-    const currentSummary = paymentSummaryByProject.get(payingProject.id);
-    const nextRemaining =
-      payingProject.budget - (currentSummary?.total ?? 0) - numericAmount;
+    const selectedActivity = payingProject.activities.find((activity) => activity.id === activityId);
+    const currentBudget = selectedActivity
+      ? Number(selectedActivity.budget) || 0
+      : effectiveProjectBudget(payingProject);
+    const currentSpent = selectedActivity
+      ? Number(selectedActivity.spent) || 0
+      : effectiveProjectSpent(payingProject);
+    const nextRemaining = currentBudget - currentSpent - numericAmount;
 
     if (
       nextRemaining < 0 &&
@@ -535,6 +536,7 @@ export default function BudgetPaymentsPage() {
 
       form.set("projectId", payingProject.id);
       form.set("projectName", payingProject.name);
+      form.set("activityId", activityId);
       form.set("details", details.trim());
       form.set("paymentPeriod", paymentPeriod.trim());
       form.set("amount", String(numericAmount));
@@ -623,7 +625,7 @@ export default function BudgetPaymentsPage() {
     }
   }
 
-  async function completeProject(project: Project) {
+  async function completeProject(project: BudgetProjectListItem) {
     if (
       !window.confirm(
         `ยืนยันกำหนดโครงการ "${project.name}" เป็นเสร็จสิ้นหรือไม่`
@@ -678,16 +680,23 @@ export default function BudgetPaymentsPage() {
         )
     : [];
 
-  const payingSummary = payingProject
-    ? paymentSummaryByProject.get(payingProject.id)
-    : null;
-  const payingPaid = payingSummary?.total ?? 0;
-  const payingAmount = Number(amount);
-  const payingNextPaid =
-    payingPaid + (Number.isFinite(payingAmount) ? payingAmount : 0);
-  const payingNextRemaining = payingProject
-    ? payingProject.budget - payingNextPaid
+  const payingPaid = payingProject
+    ? paymentSummaryByProject.get(payingProject.id)?.total ?? 0
     : 0;
+  const payingAmount = Number(amount);
+  const selectedPayingActivity = payingProject?.activities.find((activity) => activity.id === activityId);
+  const payingBudget = selectedPayingActivity
+    ? Number(selectedPayingActivity.budget) || 0
+    : payingProject
+      ? effectiveProjectBudget(payingProject)
+      : 0;
+  const payingCurrentSpent = selectedPayingActivity
+    ? paymentSummaryByActivity.get(selectedPayingActivity.id) ?? 0
+    : payingProject
+      ? paymentSummaryByProject.get(payingProject.id)?.total ?? 0
+      : 0;
+  const payingNextPaid = payingCurrentSpent + (Number.isFinite(payingAmount) ? payingAmount : 0);
+  const payingNextRemaining = payingBudget - payingNextPaid;
   const canPay = Boolean(
     currentUser?.canFinance || currentUser?.canManageAll
   );
@@ -730,28 +739,26 @@ export default function BudgetPaymentsPage() {
 
       <section className="summaryGrid">
         <article>
-          <span>จำนวนโครงการ</span>
+          <span>โครงการ</span>
           <strong>{totals.projectCount}</strong>
-          <small>โครงการ</small>
+          <small>รายการทั้งหมด</small>
         </article>
         <article>
-          <span>จ่ายสะสม</span>
+          <span>กิจกรรม</span>
+          <strong>{totals.activityCount}</strong>
+          <small>กิจกรรมภายใต้โครงการ</small>
+        </article>
+        <article>
+          <span>ใช้จริง</span>
           <strong>{money(totals.paid)}</strong>
           <small>บาท</small>
         </article>
         <article>
-          <span>คงเหลือรวม</span>
+          <span>งบประมาณคงเหลือ</span>
           <strong className={totals.remaining < 0 ? "negative" : ""}>
             {money(totals.remaining)}
           </strong>
           <small>บาท</small>
-        </article>
-        <article>
-          <span>โครงการเกินงบ</span>
-          <strong className={totals.overBudgetProjects > 0 ? "negative" : ""}>
-            {totals.overBudgetProjects}
-          </strong>
-          <small>โครงการ</small>
         </article>
       </section>
 
@@ -761,11 +768,39 @@ export default function BudgetPaymentsPage() {
             <h2>รายการโครงการทั้งหมด</h2>
             <p>กดเบิกจ่ายที่โครงการที่ต้องการ หรือเปิดดูประวัติย้อนหลัง</p>
           </div>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="ค้นหาโครงการ รหัส หรือแผนงาน..."
-          />
+          <div className="filterBar">
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="ค้นหาโครงการ กิจกรรม รหัส หรือผู้รับผิดชอบ..."
+            />
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">ทุกสถานะ</option>
+              <option value="ยังไม่เริ่ม">ยังไม่เริ่ม</option>
+              <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
+              <option value="ดำเนินการ">ดำเนินการ</option>
+              <option value="เบิกจ่าย">เบิกจ่าย</option>
+              <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+            </select>
+            <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+              <option value="all">ทุกสถานะการจ่าย</option>
+              <option value="unpaid">ยังไม่จ่าย</option>
+              <option value="paid">มีการจ่ายแล้ว</option>
+              <option value="over">เกินงบ</option>
+            </select>
+            <select value={sortMode} onChange={(event) => setSortMode(event.target.value)}>
+              <option value="code">ลำดับเดียวกับหน้าโครงการ</option>
+              <option value="name">ชื่อโครงการ ก-ฮ</option>
+              <option value="budget-desc">งบมากไปน้อย</option>
+              <option value="budget-asc">งบน้อยไปมาก</option>
+              <option value="spent-desc">จ่ายมากไปน้อย</option>
+              <option value="spent-asc">จ่ายน้อยไปมาก</option>
+              <option value="remaining-asc">คงเหลือน้อยไปมาก</option>
+              <option value="remaining-desc">คงเหลือมากไปน้อย</option>
+              <option value="latest-desc">จ่ายล่าสุดก่อน</option>
+              <option value="latest-asc">จ่ายเก่าสุดก่อน</option>
+            </select>
+          </div>
         </div>
 
         <div className="tableHeader">
@@ -786,7 +821,9 @@ export default function BudgetPaymentsPage() {
               count: 0,
               latest: "",
             };
-            const remaining = project.budget - summary.total;
+            const effectiveBudget = effectiveProjectBudget(project);
+            const effectiveSpent = summary.total;
+            const remaining = effectiveBudget - effectiveSpent;
             const projectPayments = payments.filter(
               (payment) => payment.project_id === project.id
             );
@@ -809,43 +846,23 @@ export default function BudgetPaymentsPage() {
                   <div className="projectName">
                     <strong>{project.name}</strong>
                     <small>
-                      เลขทะเบียน {project.code} · {project.owner}
+                      {project.owner}
                       {project.lead !== "-" ? ` · ${project.lead}` : ""}
                     </small>
                   </div>
                   <div className="amountCell">
-                    <span>งบจัดสรร</span>
-                    <strong>{money(project.budget)}</strong>
+                    <strong>{money(effectiveBudget)}</strong>
                   </div>
                   <div className="amountCell">
-                    <span>จ่ายสะสม</span>
-                    <strong>{money(summary.total)}</strong>
+                    <strong>{money(effectiveSpent)}</strong>
                   </div>
                   <div className="amountCell">
-                    <span>คงเหลือ</span>
                     <strong className={remaining < 0 ? "negative" : "positive"}>
                       {money(remaining)}
                     </strong>
                     {remaining < 0 && <em>เกินงบ</em>}
                   </div>
-                  <div className="countCell">
-                    <span>{summary.count} ครั้ง</span>
-                    <small
-                      className={
-                        project.status === "เสร็จสิ้น"
-                          ? "statusDone"
-                          : summary.total > 0
-                            ? "statusProgress"
-                            : "statusPending"
-                      }
-                    >
-                      {project.status === "เสร็จสิ้น"
-                        ? "เสร็จสิ้น"
-                        : summary.total > 0
-                          ? "กำลังดำเนินการ"
-                          : "ยังไม่เริ่ม"}
-                    </small>
-                  </div>
+                  <div className="countCell"><strong>{summary.count}</strong></div>
                   <div className="latestCell">
                     {summary.latest ? thaiDateTime(summary.latest) : "-"}
                   </div>
@@ -917,7 +934,7 @@ export default function BudgetPaymentsPage() {
                               <small>บันทึกโดย {payment.created_by_name}</small>
                             </div>
                             <div className="historyDetails">
-                              <strong>{payment.details}</strong>
+                              <strong>{payment.activity_name ? `${payment.activity_name} · ${payment.details}` : payment.details}</strong>
                               <small>
                                 งวดที่จ่าย: {payment.payment_period || "-"}
                               </small>
@@ -927,6 +944,20 @@ export default function BudgetPaymentsPage() {
                             </div>
                             <div className="historyAmount">
                               <strong>{money(payment.amount)} บาท</strong>
+                              <small>
+                                จ่ายสะสม{" "}
+                                {money(
+                                  projectPayments
+                                    .slice(0, paymentIndex + 1)
+                                    .filter((item) => item.status === "active")
+                                    .reduce(
+                                      (sum, item) =>
+                                        sum + (Number(item.amount) || 0),
+                                      0,
+                                    ),
+                                )}{" "}
+                                บาท
+                              </small>
                               {payment.status === "cancelled" && (
                                 <span>ยกเลิกแล้ว</span>
                               )}
@@ -969,7 +1000,7 @@ export default function BudgetPaymentsPage() {
       </section>
 
       {payingProject && (
-        <div className="modalBackdrop" onClick={closePayment}>
+        <div className="modalBackdrop">
           <section
             className="paymentModal"
             role="dialog"
@@ -986,10 +1017,11 @@ export default function BudgetPaymentsPage() {
               </button>
             </header>
 
+            <div className="paymentModalBody">
             <div className="paymentPreview">
               <article>
                 <span>งบจัดสรร</span>
-                <strong>{money(payingProject.budget)}</strong>
+                <strong>{money(payingBudget)}</strong>
               </article>
               <article>
                 <span>จ่ายแล้ว</span>
@@ -1013,10 +1045,7 @@ export default function BudgetPaymentsPage() {
             <section className="installmentHistory">
               <div className="installmentHistoryHeader">
                 <div>
-                  <h3>งวดการจ่ายของโครงการนี้</h3>
-                  <p>
-                    ใช้ข้อมูลเดิมเป็นหลักฐานอ้างอิงก่อนเพิ่มงวดใหม่
-                  </p>
+                  <h3>ประวัติงวดการจ่าย</h3>
                 </div>
                 <strong>
                   {payingProjectPayments.filter(
@@ -1047,7 +1076,7 @@ export default function BudgetPaymentsPage() {
                         <strong>
                           {payment.payment_period || `งวดที่ ${index + 1}`}
                         </strong>
-                        <small>{payment.details}</small>
+                        <small>{payment.activity_name ? `${payment.activity_name} · ` : ""}{payment.details}</small>
                       </div>
                       <div className="installmentAmount">
                         <strong>{money(payment.amount)}</strong>
@@ -1064,8 +1093,25 @@ export default function BudgetPaymentsPage() {
             </section>
 
             <div className="formGrid">
+              {payingProject.activities.length > 0 && (
+                <label className="fullField">
+                  <span>กิจกรรมที่เบิกจ่าย <b className="requiredMark">*</b></span>
+                  <select value={activityId} onChange={(event) => setActivityId(event.target.value)}>
+                    <option value="">เลือกกิจกรรม</option>
+                    {payingProject.activities.map((activity) => (
+                      <option key={activity.id} value={activity.id}>
+                        {activity.name} · งบ {money(activity.budget)} · คงเหลือ {money(
+                          activity.budget -
+                            (paymentSummaryByActivity.get(activity.id) ?? 0)
+                        )}
+                      </option>
+                    ))}
+                  </select>
+                  <small>โครงการนี้มีกิจกรรมย่อย จึงต้องระบุกิจกรรมก่อนบันทึก</small>
+                </label>
+              )}
               <label className="fullField">
-                <span>ผู้เบิกจ่าย *</span>
+                <span>ผู้เบิกจ่าย <b className="requiredMark">*</b></span>
                 <select
                   value={requesterId}
                   onChange={(event) => setRequesterId(event.target.value)}
@@ -1073,41 +1119,35 @@ export default function BudgetPaymentsPage() {
                   <option value="">เลือกผู้เบิกจ่าย</option>
                   {requesterOptions.map((person) => (
                     <option key={person.id} value={person.id}>
-                      {person.fullName}
-                      {person.position ? ` · ${person.position}` : ""}
+                      {person.fullName} · {requesterDutyLabel(person)}
                     </option>
                   ))}
                 </select>
-                <small>
-                  แสดงเฉพาะบุคลากรที่มีสิทธิ์งานพัสดุ การเงิน ผู้เบิกจ่าย
-                  ผอ. หรือ Admin
-                </small>
+
               </label>
 
               <label className="fullField">
-                <span>รายละเอียด *</span>
+                <span>รายละเอียด <b className="requiredMark">*</b></span>
                 <textarea
                   value={details}
                   onChange={(event) => setDetails(event.target.value)}
                   placeholder="ระบุรายละเอียดรายการจ่าย"
-                  rows={3}
+                  rows={2}
                 />
               </label>
 
               <label>
-                <span>งวดที่จ่าย *</span>
+                <span>งวดที่จ่าย/ครั้งที่จ่าย <b className="requiredMark">*</b></span>
                 <input
                   value={paymentPeriod}
                   onChange={(event) => setPaymentPeriod(event.target.value)}
-                  placeholder="เช่น งวดที่ 2"
+                  placeholder="งวดที่ 1 หรือ ครั้งที่ 1"
                 />
-                <small>
-                  ระบบกำหนดงวดถัดไปจากจำนวนรายการเดิมให้อัตโนมัติ
-                </small>
+
               </label>
 
               <label>
-                <span>จำนวนเงิน (บาท) *</span>
+                <span>จำนวนเงิน (บาท) <b className="requiredMark">*</b></span>
                 <input
                   type="number"
                   min="0.01"
@@ -1120,19 +1160,39 @@ export default function BudgetPaymentsPage() {
 
               <label>
                 <span>หลักฐาน</span>
-                <input
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp"
-                  onChange={(event) =>
-                    setEvidence(event.target.files?.[0] ?? null)
-                  }
-                />
-                <small>ไม่บังคับ ขนาดไม่เกิน 10 MB</small>
-              </label>
-
-              <label>
-                <span>วันที่และเวลา</span>
-                <input value="ระบบประทับเวลา ณ วันที่บันทึก" disabled />
+                <div className="evidenceField">
+                  <input
+                    ref={evidenceInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp"
+                    onChange={(event) =>
+                      setEvidence(event.target.files?.[0] ?? null)
+                    }
+                  />
+                  {evidence && (
+                    <button
+                      type="button"
+                      className="removeEvidenceButton"
+                      aria-label="ลบไฟล์หลักฐาน"
+                      title="ลบไฟล์หลักฐาน"
+                      onClick={() => {
+                        setEvidence(null);
+                        if (evidenceInputRef.current) {
+                          evidenceInputRef.current.value = "";
+                        }
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {evidence ? (
+                  <small className="selectedEvidenceName">
+                    เลือกแล้ว: {evidence.name}
+                  </small>
+                ) : (
+                  <small>ไม่บังคับ ขนาดไม่เกิน 10 MB</small>
+                )}
               </label>
 
               <label className="fullField">
@@ -1144,6 +1204,8 @@ export default function BudgetPaymentsPage() {
                   rows={2}
                 />
               </label>
+            </div>
+
             </div>
 
             <footer>
@@ -1209,8 +1271,34 @@ export default function BudgetPaymentsPage() {
           margin: 0;
         }
 
+        .pageHeader {
+          padding: 16px 18px;
+          border: 1px solid #7c3aed;
+          border-radius: 16px;
+          color: #fff;
+          background:
+            radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 34%),
+            linear-gradient(135deg, #6d28d9, #9333ea 58%, #a855f7);
+          box-shadow: 0 10px 26px rgba(109, 40, 217, 0.2);
+        }
+
         .pageHeader h1 {
+          color: #fff;
           font-size: 28px;
+        }
+
+        .pageHeader p {
+          color: rgba(255, 255, 255, 0.88) !important;
+        }
+
+        .pageHeader .reloadArea small {
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .pageHeader .reloadButton {
+          color: #6d28d9;
+          background: #fff;
+          box-shadow: 0 5px 14px rgba(46, 16, 101, 0.2);
         }
 
         .pageHeader p,
@@ -1328,23 +1416,70 @@ export default function BudgetPaymentsPage() {
         }
 
         .summaryGrid article {
-          padding: 16px;
-          border: 1px solid #dfe4ec;
-          border-radius: 14px;
-          background: #fff;
-          box-shadow: 0 4px 14px rgba(30, 41, 59, 0.05);
+          padding: 15px;
+          border: 1px solid #dcfce7;
+          border-radius: 15px;
+          background: linear-gradient(180deg, #fff, #f8fffb);
+          box-shadow: 0 4px 14px rgba(30, 41, 59, 0.04);
         }
 
         .summaryGrid span,
         .summaryGrid small {
-          color: #667085;
-          font-size: 12px;
+          display: block;
+          color: #6b7280;
+          font-size: 11px;
         }
 
         .summaryGrid strong {
           display: block;
-          margin: 7px 0 2px;
-          font-size: 23px;
+          margin-top: 7px;
+          color: #166534;
+          font-size: 21px;
+        }
+
+        .summaryGrid small {
+          margin-top: 5px;
+        }
+
+        .requiredMark {
+          color: #dc2626;
+          font: inherit;
+          font-weight: 900;
+        }
+
+        .evidenceField {
+          position: relative;
+        }
+
+        .evidenceField input[type="file"] {
+          padding-right: 42px;
+        }
+
+        .removeEvidenceButton {
+          position: absolute;
+          top: 50%;
+          right: 7px;
+          width: 26px;
+          height: 26px;
+          transform: translateY(-50%);
+          border: 0;
+          border-radius: 50%;
+          color: #fff;
+          background: #dc2626;
+          font-size: 19px;
+          font-weight: 900;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .removeEvidenceButton:hover {
+          background: #b91c1c;
+        }
+
+        .selectedEvidenceName {
+          color: #166534 !important;
+          font-weight: 700;
+          overflow-wrap: anywhere;
         }
 
         .projectPanel {
@@ -1355,12 +1490,40 @@ export default function BudgetPaymentsPage() {
           background: #fff;
         }
 
-        .panelTop input {
-          width: min(360px, 100%);
-          height: 38px;
-          padding: 0 11px;
+        .panelTop {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 14px;
+        }
+
+        .panelTop > div:first-child {
+          flex: 0 0 auto;
+        }
+
+        .filterBar {
+          display: grid;
+          grid-template-columns:
+            minmax(280px, 1fr)
+            minmax(135px, 165px)
+            minmax(155px, 190px)
+            minmax(170px, 210px);
+          gap: 8px;
+          width: min(100%, 930px);
+          min-width: 0;
+        }
+
+        .filterBar input,
+        .filterBar select {
+          min-width: 0;
+          width: 100%;
+          height: 36px;
+          padding: 0 9px;
           border: 1px solid #cfd6e2;
-          border-radius: 9px;
+          border-radius: 8px;
+          background: #fff;
+          font-family: "Sarabun", "Noto Sans Thai", Tahoma, sans-serif;
+          font-size: 12px;
           outline: none;
         }
 
@@ -1368,20 +1531,28 @@ export default function BudgetPaymentsPage() {
         .projectRow {
           display: grid;
           grid-template-columns:
-            44px minmax(250px, 1.6fr) repeat(3, minmax(120px, 0.75fr))
-            95px minmax(150px, 0.9fr) 170px;
-          gap: 8px;
+            36px
+            minmax(380px, 2.8fr)
+            minmax(90px, 0.62fr)
+            minmax(90px, 0.62fr)
+            minmax(94px, 0.66fr)
+            64px
+            128px
+            142px;
+          gap: 6px;
           align-items: center;
+          font-family: "Sarabun", "Noto Sans Thai", Tahoma, sans-serif;
         }
 
         .tableHeader {
-          margin-top: 14px;
-          padding: 9px 10px;
-          border-radius: 9px;
+          margin-top: 12px;
+          padding: 7px 8px;
+          border-radius: 8px;
           color: #475467;
           background: #f2f4f7;
           font-size: 11px;
           font-weight: 800;
+          white-space: nowrap;
         }
 
         .projectList {
@@ -1422,6 +1593,17 @@ export default function BudgetPaymentsPage() {
           font-weight: 800;
         }
 
+        .projectRow {
+          padding: 6px 8px;
+          font-size: 12px;
+          line-height: 1.3;
+        }
+
+        .tableHeader > div:not(:nth-child(2)),
+        .projectRow > div:not(.projectName):not(.actionCell) {
+          white-space: nowrap;
+        }
+
         .projectName {
           min-width: 0;
         }
@@ -1429,14 +1611,26 @@ export default function BudgetPaymentsPage() {
         .projectName strong {
           display: block;
           overflow: hidden;
+          color: #172033;
           text-overflow: ellipsis;
           white-space: nowrap;
+          font-size: 13px;
+          font-weight: 700;
         }
 
-        .projectName small,
+        .projectName small {
+          display: block;
+          overflow: hidden;
+          margin-top: 1px;
+          color: #667085;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 10px;
+        }
+
         .amountCell span {
           display: block;
-          margin-top: 3px;
+          margin-top: 2px;
           color: #98a2b3;
           font-size: 10px;
         }
@@ -1444,7 +1638,12 @@ export default function BudgetPaymentsPage() {
         .amountCell strong,
         .countCell,
         .latestCell {
-          font-size: 13px;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+
+        .latestCell {
+          line-height: 1.25;
         }
 
         .amountCell em {
@@ -1475,8 +1674,8 @@ export default function BudgetPaymentsPage() {
 
         .payButton,
         .historyButton {
-          height: 34px;
-          padding: 0 10px;
+          height: 30px;
+          padding: 0 8px;
           border-radius: 8px;
           font-size: 12px;
           font-weight: 800;
@@ -1496,7 +1695,7 @@ export default function BudgetPaymentsPage() {
         }
 
         .historyHeader span {
-          padding: 5px 9px;
+          padding: 4px 8px;
           border-radius: 999px;
           color: #6d28d9;
           background: #f3e8ff;
@@ -1597,54 +1796,92 @@ export default function BudgetPaymentsPage() {
           cursor: pointer;
         }
 
+        .historyAmount small {
+          display: block;
+          margin-top: 3px;
+          color: #667085;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
         .modalBackdrop {
           position: fixed;
           inset: 0;
           z-index: 1000;
           display: grid;
           place-items: center;
-          padding: 16px;
-          background: rgba(15, 23, 42, 0.6);
+          padding: 12px;
+          background: rgba(15, 23, 42, 0.62);
+          overscroll-behavior: contain;
         }
 
         .paymentModal {
-          width: min(720px, 100%);
-          border-radius: 16px;
+          width: min(640px, 100%);
+          max-height: calc(100dvh - 24px);
+          display: flex;
+          flex-direction: column;
+          border-radius: 14px;
           background: #fff;
-          box-shadow: 0 28px 80px rgba(15, 23, 42, 0.3);
+          box-shadow: 0 24px 70px rgba(15, 23, 42, 0.32);
           overflow: hidden;
         }
 
         .paymentModal header {
-          padding: 14px 16px;
+          flex: 0 0 auto;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 10px 12px;
           border-bottom: 1px solid #e1e6ee;
           background: #faf7ff;
         }
 
+        .paymentModal header h2 {
+          margin: 0;
+          font-size: 17px;
+          line-height: 1.25;
+        }
+
+        .paymentModal header p {
+          margin: 3px 0 0;
+          color: #667085;
+          font-size: 12px;
+          line-height: 1.35;
+        }
+
         .paymentModal header button {
-          width: 32px;
-          height: 32px;
-          border: 2px solid #dc2626;
+          flex: 0 0 auto;
+          width: 30px;
+          height: 30px;
+          border: 0;
           border-radius: 50%;
           color: #fff;
           background: #dc2626;
-          font-size: 19px;
+          font-size: 18px;
           font-weight: 900;
           cursor: pointer;
+        }
+
+        .paymentModalBody {
+          min-height: 0;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          scrollbar-gutter: stable;
         }
 
         .formGrid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 12px;
-          padding: 16px;
+          gap: 8px 10px;
+          padding: 0 12px 12px;
         }
 
         .formGrid label span {
           display: block;
-          margin-bottom: 5px;
+          margin-bottom: 4px;
           color: #344054;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 800;
         }
 
@@ -1652,17 +1889,24 @@ export default function BudgetPaymentsPage() {
         .formGrid textarea,
         .formGrid select {
           width: 100%;
-          padding: 9px 10px;
+          padding: 7px 9px;
           border: 1px solid #cfd6e2;
-          border-radius: 9px;
+          border-radius: 8px;
           color: #172033;
           background: #fff;
           outline: none;
           box-sizing: border-box;
+          font-size: 13px;
         }
 
-        .formGrid input {
-          height: 39px;
+        .formGrid input,
+        .formGrid select {
+          height: 36px;
+        }
+
+        .formGrid textarea {
+          min-height: 52px;
+          resize: vertical;
         }
 
         .formGrid input:disabled {
@@ -1672,9 +1916,10 @@ export default function BudgetPaymentsPage() {
 
         .formGrid small {
           display: block;
-          margin-top: 4px;
+          margin-top: 3px;
           color: #98a2b3;
-          font-size: 10px;
+          font-size: 9px;
+          line-height: 1.3;
         }
 
         .fullField {
@@ -1682,15 +1927,21 @@ export default function BudgetPaymentsPage() {
         }
 
         .paymentModal footer {
-          padding: 12px 16px;
+          flex: 0 0 auto;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 12px;
           border-top: 1px solid #e1e6ee;
+          background: #fff;
+          box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.05);
         }
 
         .cancelButton,
         .saveButton {
-          min-width: 120px;
-          height: 38px;
-          border-radius: 9px;
+          min-width: 96px;
+          height: 36px;
+          border-radius: 8px;
           font-weight: 800;
           cursor: pointer;
         }
@@ -1757,6 +2008,16 @@ export default function BudgetPaymentsPage() {
             flex-direction: column;
           }
 
+          .panelTop {
+            display: grid;
+            align-items: stretch;
+          }
+
+          .filterBar {
+            grid-template-columns: 1fr;
+            width: 100%;
+          }
+
           .panelTop input {
             width: 100%;
           }
@@ -1805,11 +2066,24 @@ export default function BudgetPaymentsPage() {
             #fbf8f2;
         }
 
-        .pageHeader h1,
         .panelTop h2,
         .historyHeader h3,
         .paymentModal h2 {
           color: #5b3a16;
+        }
+
+        .pageHeader h1 {
+          color: #ffffff !important;
+          text-shadow: 0 1px 2px rgba(46, 16, 101, 0.34);
+        }
+
+        .pageHeader p {
+          color: #f5f3ff !important;
+          text-shadow: 0 1px 1px rgba(46, 16, 101, 0.22);
+        }
+
+        .pageHeader .reloadArea small {
+          color: #ede9fe !important;
         }
 
         .reloadButton,
@@ -1842,9 +2116,25 @@ export default function BudgetPaymentsPage() {
           background: linear-gradient(90deg, #fff4cf 0%, #ffffff 70%);
         }
 
+        .paymentPreview {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 7px;
+          padding: 10px 12px 0;
+        }
+
         .paymentPreview article {
+          min-height: 58px;
+          padding: 8px;
           border-color: #ead7a1;
           background: linear-gradient(180deg, #fffaf0, #fff7df);
+        }
+
+        .paymentPreview span {
+          font-size: 10px;
+        }
+
+        .paymentPreview strong {
+          font-size: 15px;
         }
 
         .paymentPreview strong {
@@ -1852,10 +2142,10 @@ export default function BudgetPaymentsPage() {
         }
 
         .installmentHistory {
-          margin: 14px 18px 0;
-          padding: 14px;
+          margin: 8px 12px 10px;
+          padding: 9px;
           border: 1px solid #ead7a1;
-          border-radius: 12px;
+          border-radius: 10px;
           background: linear-gradient(180deg, #fffdf7, #fff8e8);
         }
 
@@ -1864,13 +2154,13 @@ export default function BudgetPaymentsPage() {
           justify-content: space-between;
           gap: 16px;
           align-items: flex-start;
-          margin-bottom: 10px;
+          margin-bottom: 6px;
         }
 
         .installmentHistoryHeader h3 {
           margin: 0;
           color: #5b3a16;
-          font-size: 15px;
+          font-size: 13px;
         }
 
         .installmentHistoryHeader p {
@@ -1881,7 +2171,7 @@ export default function BudgetPaymentsPage() {
 
         .installmentHistoryHeader > strong {
           flex: 0 0 auto;
-          padding: 5px 9px;
+          padding: 4px 8px;
           border-radius: 999px;
           color: #6f4e21;
           background: #f5df9c;
@@ -1890,17 +2180,17 @@ export default function BudgetPaymentsPage() {
 
         .installmentList {
           display: grid;
-          gap: 8px;
-          max-height: 210px;
+          gap: 6px;
+          max-height: 120px;
           overflow-y: auto;
         }
 
         .installmentItem {
           display: grid;
-          grid-template-columns: 32px minmax(0, 1fr) auto;
-          gap: 10px;
+          grid-template-columns: 28px minmax(0, 1fr) auto;
+          gap: 8px;
           align-items: center;
-          padding: 9px 10px;
+          padding: 7px 8px;
           border: 1px solid #ead7a1;
           border-radius: 10px;
           background: #ffffff;
@@ -1914,8 +2204,8 @@ export default function BudgetPaymentsPage() {
         .installmentNumber {
           display: grid;
           place-items: center;
-          width: 28px;
-          height: 28px;
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           color: #ffffff;
           background: linear-gradient(135deg, #8b5e2f, #c28a2c);
@@ -1943,7 +2233,7 @@ export default function BudgetPaymentsPage() {
         }
 
         .emptyInstallment {
-          padding: 13px;
+          padding: 9px;
           border: 1px dashed #d7b75f;
           border-radius: 10px;
           color: #8a6a42;
@@ -1952,17 +2242,36 @@ export default function BudgetPaymentsPage() {
           font-size: 12px;
         }
 
-        .paymentModal footer {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
         .footerLeft {
           margin-right: auto;
+        }
+
+        @media (max-width: 760px) {
+          .modalBackdrop {
+            padding: 6px;
+            align-items: center;
+          }
+
+          .paymentModal {
+            width: 100%;
+            max-height: calc(100dvh - 12px);
+            border-radius: 12px;
+          }
+
+          .paymentPreview {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .formGrid {
+            grid-template-columns: 1fr;
+          }
+
+          .fullField {
+            grid-column: auto;
+          }
 
           .installmentItem {
-            grid-template-columns: 28px minmax(0, 1fr);
+            grid-template-columns: 24px minmax(0, 1fr);
           }
 
           .installmentAmount {
@@ -1971,21 +2280,204 @@ export default function BudgetPaymentsPage() {
           }
 
           .paymentModal footer {
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
           }
 
           .footerLeft {
-            width: 100%;
-            margin-right: 0;
+            margin-right: auto;
           }
 
           .footerLeft .completeButton {
-            width: 100%;
+            min-width: 0;
+            padding: 0 10px;
           }
 
+          .cancelButton,
+          .saveButton {
+            min-width: 82px;
+          }
         }
 
-      `}</style>
+
+      
+/* PAYMENTS_GOLD_THEME_STEP3_START */
+.paymentsPage {
+  --gold-950: #3f2a12;
+  --gold-900: #533817;
+  --gold-800: #6b481c;
+  --gold-700: #825a23;
+  --gold-600: #9c702d;
+  --gold-500: #b98b3e;
+  --gold-400: #d0aa64;
+  --gold-300: #e3c990;
+  --gold-200: #efe0bd;
+  --gold-100: #f8f0df;
+  --gold-50: #fcf8ef;
+
+  min-height: 100%;
+  color: var(--gold-950);
+  background:
+    radial-gradient(circle at top right, rgba(208, 170, 100, 0.18), transparent 34rem),
+    linear-gradient(180deg, #fffdf8 0%, var(--gold-50) 44%, #f7edd9 100%);
+}
+
+.paymentsPage .pageHeader {
+  color: #fffaf0;
+  border: 1px solid rgba(239, 224, 189, 0.5);
+  background:
+    linear-gradient(135deg, var(--gold-950) 0%, var(--gold-800) 52%, #a8792f 100%);
+  box-shadow: 0 14px 34px rgba(83, 56, 23, 0.18);
+}
+
+.paymentsPage .pageHeader h1,
+.paymentsPage .pageHeader p,
+.paymentsPage .pageHeader small {
+  color: inherit;
+}
+
+.paymentsPage .reloadButton,
+.paymentsPage .payButton,
+.paymentsPage .paymentModal footer button[type="submit"] {
+  color: #fffdf8;
+  border-color: var(--gold-700);
+  background: linear-gradient(135deg, var(--gold-700), var(--gold-500));
+  box-shadow: 0 8px 18px rgba(83, 56, 23, 0.18);
+}
+
+.paymentsPage .reloadButton:hover,
+.paymentsPage .payButton:hover,
+.paymentsPage .paymentModal footer button[type="submit"]:hover {
+  background: linear-gradient(135deg, var(--gold-800), var(--gold-600));
+}
+
+.paymentsPage .summaryGrid article,
+.paymentsPage .projectPanel,
+.paymentsPage .projectCard,
+.paymentsPage .historyPanel,
+.paymentsPage .paymentModal,
+.paymentsPage .paymentPreview article,
+.paymentsPage .installmentHistory,
+.paymentsPage .historyItem,
+.paymentsPage .installmentItem {
+  border-color: var(--gold-200);
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 10px 26px rgba(83, 56, 23, 0.08);
+}
+
+.paymentsPage .summaryGrid article {
+  background: linear-gradient(180deg, #fffdf9 0%, var(--gold-100) 100%);
+}
+
+.paymentsPage .summaryGrid span,
+.paymentsPage .summaryGrid small,
+.paymentsPage .panelTop p,
+.paymentsPage .projectName small,
+.paymentsPage .historyDate small,
+.paymentsPage .historyDetails small,
+.paymentsPage .historyAmount small {
+  color: var(--gold-700);
+}
+
+.paymentsPage .summaryGrid strong,
+.paymentsPage .panelTop h2,
+.paymentsPage .projectName strong,
+.paymentsPage .historyHeader h3,
+.paymentsPage .paymentModal h2,
+.paymentsPage .installmentHistoryHeader h3 {
+  color: var(--gold-950);
+}
+
+.paymentsPage .filterBar input,
+.paymentsPage .filterBar select,
+.paymentsPage .formGrid input,
+.paymentsPage .formGrid select,
+.paymentsPage .formGrid textarea,
+.paymentsPage .evidenceField {
+  color: var(--gold-950);
+  border-color: var(--gold-300);
+  background: #fffefa;
+}
+
+.paymentsPage .filterBar input:focus,
+.paymentsPage .filterBar select:focus,
+.paymentsPage .formGrid input:focus,
+.paymentsPage .formGrid select:focus,
+.paymentsPage .formGrid textarea:focus {
+  border-color: var(--gold-500);
+  box-shadow: 0 0 0 3px rgba(185, 139, 62, 0.17);
+  outline: none;
+}
+
+.paymentsPage .tableHeader,
+.paymentsPage .historyHeader,
+.paymentsPage .installmentHistoryHeader,
+.paymentsPage .paymentModal > header {
+  color: var(--gold-950);
+  border-color: var(--gold-200);
+  background: linear-gradient(180deg, var(--gold-100), #f3e5c8);
+}
+
+.paymentsPage .projectCard:hover {
+  border-color: var(--gold-400);
+  box-shadow: 0 14px 30px rgba(83, 56, 23, 0.12);
+}
+
+.paymentsPage .projectCardHighlighted {
+  border-color: var(--gold-500);
+  background: linear-gradient(180deg, #fffdf8 0%, #fbf1dc 100%);
+  box-shadow:
+    0 0 0 2px rgba(185, 139, 62, 0.14),
+    0 16px 34px rgba(83, 56, 23, 0.14);
+}
+
+.paymentsPage .historyButton {
+  color: var(--gold-800);
+  border-color: var(--gold-300);
+  background: var(--gold-100);
+}
+
+.paymentsPage .historyButton:hover {
+  border-color: var(--gold-500);
+  background: var(--gold-200);
+}
+
+.paymentsPage .modalBackdrop {
+  background: rgba(40, 27, 12, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.paymentsPage .paymentModal > header {
+  border-bottom-color: var(--gold-300);
+}
+
+.paymentsPage .paymentModal > header button {
+  color: var(--gold-800);
+  border-color: var(--gold-300);
+  background: var(--gold-100);
+}
+
+.paymentsPage .paymentPreview article {
+  background: linear-gradient(180deg, #fffdf9, var(--gold-100));
+}
+
+.paymentsPage .requiredMark {
+  color: #b42318;
+}
+
+.paymentsPage .successMessage,
+.paymentsPage .positive {
+  color: #166534;
+}
+
+.paymentsPage .errorMessage,
+.paymentsPage .negative,
+.paymentsPage .cancelledItem {
+  color: #b42318;
+}
+/* PAYMENTS_GOLD_THEME_STEP3_END */
+`}
+
+</style>
     </main>
   );
 }

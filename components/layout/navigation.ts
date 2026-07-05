@@ -83,24 +83,9 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       icon: "▧",
       href: "/budget/payments",
       section: "budget",
-      
-      match: (value) => value.startsWith("/budget/disbursements"),
-    },
-    {
-      label: "รายงาน · ",
-      icon: "▨",
-      href: "/budget/reports",
-      section: "budget",
-      disabled: true,
-      match: (value) => value.startsWith("/budget/reports"),
-    },
-    {
-      label: "รายการหนังสือราชการ · ",
-      icon: "▤",
-      href: "/documents",
-      section: "documents",
-      disabled: true,
-      match: (value) => value.startsWith("/documents"),
+      match: (value) =>
+        value.startsWith("/budget/payments") ||
+        value.startsWith("/budget/disbursements"),
     },
     {
       label: "ข้อมูลส่วนตัว",
@@ -153,3 +138,5 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
 
   return items;
 }
+
+
