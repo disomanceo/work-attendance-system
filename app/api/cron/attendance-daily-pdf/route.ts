@@ -242,6 +242,49 @@ export async function GET(request: Request) {
         persistSession: false,
       },
     });
+    // WORK_CALENDAR_PDF_STEP15
+    const { data: calendarDayData, error: calendarDayError } =
+      await supabase
+        .from("work_calendar_days")
+        .select("work_date, day_type, title, report_text, note")
+        .eq("work_date", today)
+        .maybeSingle();
+
+    if (calendarDayError) {
+      throw new Error("ไม่สามารถโหลดปฏิทินปฏิบัติงานได้");
+    }
+
+    const dateParts = today.split("-").map(Number);
+    const dayOfWeek = new Date(
+      Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2])
+    ).getUTCDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const calendarDay = calendarDayData as {
+      work_date: string;
+      day_type: "PUBLIC_HOLIDAY" | "SCHOOL_HOLIDAY" | "SPECIAL_WORKDAY";
+      title: string;
+      report_text: string;
+      note: string;
+    } | null;
+    const isSpecialWorkday =
+      calendarDay?.day_type === "SPECIAL_WORKDAY";
+    const isHoliday =
+      !isSpecialWorkday &&
+      (isWeekend ||
+        calendarDay?.day_type === "PUBLIC_HOLIDAY" ||
+        calendarDay?.day_type === "SCHOOL_HOLIDAY");
+    const calendarNote = isSpecialWorkday
+      ? calendarDay?.report_text?.trim() ||
+        (calendarDay?.title?.trim()
+          ? `เปิดปฏิบัติงานพิเศษ: ${calendarDay.title.trim()}`
+          : "เปิดปฏิบัติงานพิเศษ")
+      : calendarDay?.report_text?.trim() ||
+        calendarDay?.title?.trim() ||
+        (dayOfWeek === 6
+          ? "หยุดเรียนวันเสาร์"
+          : dayOfWeek === 0
+            ? "หยุดเรียนวันอาทิตย์"
+            : "");
 
     const { data: attendanceData, error: attendanceError } =
       await supabase
@@ -346,6 +389,9 @@ export async function GET(request: Request) {
     const rows = presentRecords.map((record, index) => {
       const profile = profileMap.get(record.user_id);
       const scheduledEndTime = getRoleEndTime(profile?.role ?? "", settings);
+      const isDirectorMorningDuty =
+        profile?.role === "director" &&
+        record.check_in_status === "late";
 
       return {
         order: index + 1,
@@ -354,7 +400,9 @@ export async function GET(request: Request) {
           profile?.position ||
           getRoleLabel(profile?.role ?? ""),
         checkIn: formatThaiTime(record.check_in_at),
-        status: reportAttendanceStatus(record) || attendanceStatus(record),
+        status: isDirectorMorningDuty
+          ? "ไปราชการช่วงเช้า"
+          : reportAttendanceStatus(record) || attendanceStatus(record),
         checkOut: formatThaiTime(record.check_out_at) || scheduledEndTime,
         signature: "",
         note:
@@ -383,12 +431,16 @@ export async function GET(request: Request) {
         };
       });
 
-    const notes = absentPeople
+        const personnelNotes = absentPeople
       .filter((person) => person.status !== "absent")
       .map(
         (person) => `${person.fullName} (${getAbsenceLabel(person.status)})`
       );
 
+    const notes = [
+      ...(calendarNote ? [calendarNote] : []),
+      ...(!isHoliday ? personnelNotes : []),
+    ];
     const normalizeReason = (value: string) =>
       value.replace(/\s+/g, "").toLowerCase();
 
@@ -405,7 +457,9 @@ export async function GET(request: Request) {
     ).length;
 
     const late = presentRecords.filter(
-      (record) => record.check_in_status === "late"
+      (record) =>
+        record.check_in_status === "late" &&
+        profileMap.get(record.user_id)?.role !== "director"
     ).length;
 
     const payload = {
@@ -414,15 +468,16 @@ export async function GET(request: Request) {
       date: today,
       rows,
       notes,
+      allowEmptyRows: isHoliday,
+      calendarDayType: calendarDay?.day_type ?? (isWeekend ? "WEEKEND" : "WORKDAY"),
       summary: {
         total: profiles.length,
         present: presentRecords.length,
-        sickLeave,
-        personalLeave,
-        officialDuty,
+        sickLeave: isHoliday ? 0 : sickLeave,
+        personalLeave: isHoliday ? 0 : personalLeave,
+        officialDuty: isHoliday ? 0 : officialDuty,
         late,
-        absent: absentPeople.filter((person) => person.status === "absent")
-          .length,
+        absent: isHoliday ? 0 : absentPeople.filter((person) => person.status === "absent").length,
       },
     };
 

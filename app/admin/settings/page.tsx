@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,6 +7,7 @@ import styles from "./settings.module.css";
 import AcademicYearSettingsField from "./AcademicYearSettingsField";
 import PositionWorkPolicySection from "./PositionWorkPolicySection";
 import DocumentNumberSection from "./DocumentNumberSection";
+import WorkCalendarSection from "./WorkCalendarSection";
 
 type RoleKey = "director" | "teacher" | "staff" | "janitor";
 
@@ -735,6 +736,8 @@ export default function DirectorSettingsPage() {
                 </div>
               </div>
             </section>
+            <WorkCalendarSection />
+
 
             <PositionWorkPolicySection
               roles={ROLE_ROWS}

@@ -425,6 +425,12 @@ async function buildDailyPdf(
     .select("director_end_time, teacher_end_time, staff_end_time, janitor_end_time")
     .eq("id", 1)
     .maybeSingle();
+  // WORK_CALENDAR_PDF_STEP15
+  const calendarPromise = adminClient
+    .from("work_calendar_days")
+    .select("work_date, day_type, title, report_text, note")
+    .eq("work_date", date)
+    .maybeSingle();
 
   const leavePromise = adminClient
     .from("leave_requests")
@@ -484,6 +490,44 @@ async function buildDailyPdf(
   }
 
   const { data: settingsData } = await settingsPromise;
+  const { data: calendarDayData, error: calendarDayError } =
+    await calendarPromise;
+
+  if (calendarDayError) {
+    throw new Error("ไม่สามารถโหลดปฏิทินปฏิบัติงานได้");
+  }
+
+  const dateParts = date.split("-").map(Number);
+  const dayOfWeek = new Date(
+    Date.UTC(dateParts[0], dateParts[1] - 1, dateParts[2])
+  ).getUTCDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const calendarDay = calendarDayData as {
+    work_date: string;
+    day_type: "PUBLIC_HOLIDAY" | "SCHOOL_HOLIDAY" | "SPECIAL_WORKDAY";
+    title: string;
+    report_text: string;
+    note: string;
+  } | null;
+  const isSpecialWorkday =
+    calendarDay?.day_type === "SPECIAL_WORKDAY";
+  const isHoliday =
+    !isSpecialWorkday &&
+    (isWeekend ||
+      calendarDay?.day_type === "PUBLIC_HOLIDAY" ||
+      calendarDay?.day_type === "SCHOOL_HOLIDAY");
+  const calendarNote = isSpecialWorkday
+    ? calendarDay?.report_text?.trim() ||
+      (calendarDay?.title?.trim()
+        ? `เปิดปฏิบัติงานพิเศษ: ${calendarDay.title.trim()}`
+        : "เปิดปฏิบัติงานพิเศษ")
+    : calendarDay?.report_text?.trim() ||
+      calendarDay?.title?.trim() ||
+      (dayOfWeek === 6
+        ? "หยุดเรียนวันเสาร์"
+        : dayOfWeek === 0
+          ? "หยุดเรียนวันอาทิตย์"
+          : "");
 
   const [
     { data: leaveData, error: leaveError },
@@ -549,6 +593,9 @@ async function buildDailyPdf(
   const rows = presentRecords.map((record, index) => {
     const profile = profileMap.get(record.user_id);
     const scheduledEndTime = getRoleEndTime(profile?.role ?? "", settings);
+    const isDirectorMorningDuty =
+      profile?.role === "director" &&
+      record.check_in_status === "late";
 
     return {
       order: index + 1,
@@ -557,7 +604,9 @@ async function buildDailyPdf(
         profile?.position ||
         getRoleLabel(profile?.role ?? ""),
       checkIn: formatThaiTime(record.check_in_at),
-      status: reportAttendanceStatus(record) || attendanceStatus(record),
+      status: isDirectorMorningDuty
+        ? "ไปราชการช่วงเช้า"
+        : reportAttendanceStatus(record) || attendanceStatus(record),
       checkOut: formatThaiTime(record.check_out_at) || scheduledEndTime,
       signature: "",
       note:
@@ -568,6 +617,14 @@ async function buildDailyPdf(
           : "",
     };
   });
+  // ALTERNATE_WORKPLACE_CALENDAR_FIX_V5
+  const selectedDateDay = new Date(`${date}T12:00:00+07:00`).getDay();
+
+  const allowAlternateWorkplace =
+    calendarDayData?.day_type === "special_workday" ||
+    (calendarDayData?.day_type !== "holiday" &&
+      selectedDateDay !== 0 &&
+      selectedDateDay !== 6);
 
   const absentPeople = profiles
     .filter((profile) => !attendanceMap.get(profile.id)?.check_in_at)
@@ -576,6 +633,7 @@ async function buildDailyPdf(
       const leave = leaveByUser.get(profile.id);
       const hasOfficialDuty = officialDutyByUser.has(profile.id);
       const isAlternateWorkplace =
+        allowAlternateWorkplace &&
         !leave &&
         !hasOfficialDuty &&
         profile.count_as_present_when_no_checkin &&
@@ -599,7 +657,7 @@ async function buildDailyPdf(
       };
     });
 
-  const noteItems = absentPeople
+    const personnelNoteItems = absentPeople
     .filter((person) => person.status !== "absent")
     .map((person) =>
       person.status === "alternate_workplace"
@@ -607,6 +665,10 @@ async function buildDailyPdf(
         : `${person.fullName} (${getAbsenceLabel(person.status)})`
     );
 
+  const noteItems = [
+    ...(calendarNote ? [calendarNote] : []),
+    ...(!isHoliday ? personnelNoteItems : []),
+  ];
   const normalizeReason = (value: string) =>
     value.replace(/\s+/g, "").toLowerCase();
 
@@ -627,7 +689,9 @@ async function buildDailyPdf(
   ).length;
 
   const late = presentRecords.filter(
-    (record) => record.check_in_status === "late"
+    (record) =>
+      record.check_in_status === "late" &&
+      profileMap.get(record.user_id)?.role !== "director"
   ).length;
 
   const payload = {
@@ -636,6 +700,8 @@ async function buildDailyPdf(
     date,
     rows,
     notes: noteItems,
+    allowEmptyRows: isHoliday,
+    calendarDayType: calendarDay?.day_type ?? (isWeekend ? "WEEKEND" : "WORKDAY"),
     director: {
       fullName: directorProfile?.full_name ?? "",
       position:
@@ -648,12 +714,11 @@ async function buildDailyPdf(
     summary: {
       total: profiles.length,
       present: presentRecords.length + alternateWorkplaceCount,
-      sickLeave,
-      personalLeave,
-      officialDuty,
+      sickLeave: isHoliday ? 0 : sickLeave,
+      personalLeave: isHoliday ? 0 : personalLeave,
+      officialDuty: isHoliday ? 0 : officialDuty,
       late,
-      absent: absentPeople.filter((person) => person.status === "absent")
-        .length,
+      absent: isHoliday ? 0 : absentPeople.filter((person) => person.status === "absent").length,
     },
   };
 

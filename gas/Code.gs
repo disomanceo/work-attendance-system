@@ -142,13 +142,15 @@ function handleBuildDailyPdf_(payload) {
   const notes = Array.isArray(payload.notes)
     ? payload.notes
     : [];
+  // WORK_CALENDAR_PDF_STEP15
+  const allowEmptyRows = Boolean(payload.allowEmptyRows);
   const summary = payload.summary || {};
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error("กรุณาระบุ date รูปแบบ YYYY-MM-DD");
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !allowEmptyRows) {
     throw new Error(
       "วันที่เลือกยังไม่มีผู้ลงเวลา จึงไม่สามารถสร้าง PDF ได้"
     );

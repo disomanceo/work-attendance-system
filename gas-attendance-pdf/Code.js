@@ -1,4 +1,4 @@
-const ATTENDANCE_REPORT_CONFIG = {
+﻿const ATTENDANCE_REPORT_CONFIG = {
   VERSION: "2.1.1",
   // ใส่โฟลเดอร์หลัก, โฟลเดอร์ปี หรือโฟลเดอร์เดือนก็ได้
   START_FOLDER_ID: "1AMMUrclwyrnZnFUmQ5v3fsfUz9zWOHxl",
@@ -23,6 +23,16 @@ const THAI_MONTHS = [
   "ตุลาคม",
   "พฤศจิกายน",
   "ธันวาคม",
+];
+// PDF_THAI_WEEKDAY_DATE_FIX_V2
+const THAI_DAYS = [
+  "วันอาทิตย์",
+  "วันจันทร์",
+  "วันอังคาร",
+  "วันพุธ",
+  "วันพฤหัสบดี",
+  "วันศุกร์",
+  "วันเสาร์",
 ];
 
 function doGet(e) {
@@ -153,6 +163,8 @@ function handleBuildDailyPdf_(payload) {
   const notes = Array.isArray(payload.notes)
     ? payload.notes
     : [];
+  // WORK_CALENDAR_PDF_STEP15
+  const allowEmptyRows = Boolean(payload.allowEmptyRows);
   const summary = payload.summary || {};
   const calculatedSummary =
     calculateAttendanceSummary_(rows, summary);
@@ -161,7 +173,7 @@ function handleBuildDailyPdf_(payload) {
     throw new Error("กรุณาระบุ date รูปแบบ YYYY-MM-DD");
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !allowEmptyRows) {
     throw new Error(
       "วันที่เลือกยังไม่มีผู้ลงเวลา จึงไม่สามารถสร้าง PDF ได้"
     );
@@ -1209,8 +1221,18 @@ function formatThaiDocumentDate_(
   month,
   day
 ) {
+  const date = new Date(
+    year,
+    month - 1,
+    day,
+    12,
+    0,
+    0
+  );
+
   return (
-    "วันที่ " +
+    THAI_DAYS[date.getDay()] +
+    "ที่ " +
     toThaiDigits_(day) +
     " " +
     THAI_MONTHS[month - 1] +
