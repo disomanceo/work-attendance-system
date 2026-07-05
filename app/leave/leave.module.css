@@ -1,4 +1,4 @@
-﻿.page{
+.page{
   --n950:#12031f;--n900:#1d0733;--n850:#2a0b49;--n800:#3b126d;--n700:#6d28d9;--n600:#8b5cf6;--n500:#a855f7;--n400:#c084fc;--pink:#e879f9;--cyan:#67e8f9;--line:rgba(216,180,254,.24);
   min-height:100vh;padding:32px;color:#f7f0ff;
   background:radial-gradient(circle at 10% 0,rgba(168,85,247,.28),transparent 28%),radial-gradient(circle at 92% 12%,rgba(232,121,249,.2),transparent 25%),radial-gradient(circle at 50% 100%,rgba(103,232,249,.09),transparent 28%),linear-gradient(145deg,#0b0312 0%,#160523 45%,#24083e 100%);
@@ -5204,3 +5204,74 @@
     min-width: 0;
   }
 }
+
+/* MOBILE_HISTORY_TABS_STEP11_START */
+.mobileSectionTabs {
+  display: none;
+}
+
+.mobileSectionTabActive {
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 18px rgba(109, 40, 217, 0.22);
+}
+
+.mobileSectionTabs button span {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 800px) {
+  .mobileSectionTabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin: 0 0 14px;
+    padding: 5px;
+    border: 1px solid #ddd6fe;
+    border-radius: 16px;
+    background: #f5f3ff;
+    position: sticky;
+    top: 8px;
+    z-index: 20;
+    box-shadow: 0 8px 20px rgba(76, 29, 149, 0.08);
+  }
+
+  .mobileSectionTabs button {
+    min-height: 44px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: #5b21b6;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .mobileSectionHidden {
+    display: none !important;
+  }
+
+  .mobileSectionVisible {
+    display: block;
+  }
+}
+
+@media (min-width: 801px) {
+  .mobileSectionHidden,
+  .mobileSectionVisible {
+    display: block;
+  }
+}
+/* MOBILE_HISTORY_TABS_STEP11_END */
+
