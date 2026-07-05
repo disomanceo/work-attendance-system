@@ -74,7 +74,7 @@ export default function AppSidebar({
   }, [items, pathname]);
 
   const [expandedModule, setExpandedModule] = useState<ModuleKey | null>(
-    activeModule,
+    activeModule ?? "personnel",
   );
 
   const showProfileImage = profileImageUrl && !imageFailed;

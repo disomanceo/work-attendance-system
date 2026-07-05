@@ -710,7 +710,7 @@ export default function BudgetPaymentsPage() {
     <main className="paymentsPage">
       <section className="pageHeader">
         <div>
-          <h1>เบิกจ่าย</h1>
+          <h1>การเบิกจ่าย</h1>
           <p>บันทึกรายการจ่ายและดูประวัติของแต่ละโครงการ</p>
         </div>
         <div className="reloadArea">
@@ -2300,33 +2300,35 @@ export default function BudgetPaymentsPage() {
 
 
       
-/* PAYMENTS_GOLD_THEME_STEP3_START */
+
+
+/* PAYMENTS_NEO_GREEN_STEP6_START */
 .paymentsPage {
-  --gold-950: #3f2a12;
-  --gold-900: #533817;
-  --gold-800: #6b481c;
-  --gold-700: #825a23;
-  --gold-600: #9c702d;
-  --gold-500: #b98b3e;
-  --gold-400: #d0aa64;
-  --gold-300: #e3c990;
-  --gold-200: #efe0bd;
-  --gold-100: #f8f0df;
-  --gold-50: #fcf8ef;
+  --neo-950: #052e2b;
+  --neo-900: #064e45;
+  --neo-800: #065f53;
+  --neo-700: #047857;
+  --neo-600: #059669;
+  --neo-500: #10b981;
+  --neo-400: #34d399;
+  --neo-300: #6ee7b7;
+  --neo-200: #a7f3d0;
+  --neo-100: #d1fae5;
+  --neo-50: #ecfdf5;
 
   min-height: 100%;
-  color: var(--gold-950);
+  color: var(--neo-950);
   background:
-    radial-gradient(circle at top right, rgba(208, 170, 100, 0.18), transparent 34rem),
-    linear-gradient(180deg, #fffdf8 0%, var(--gold-50) 44%, #f7edd9 100%);
+    radial-gradient(circle at top right, rgba(52, 211, 153, 0.18), transparent 34rem),
+    linear-gradient(180deg, #f8fffc 0%, var(--neo-50) 44%, #e6fff5 100%);
 }
 
 .paymentsPage .pageHeader {
-  color: #fffaf0;
-  border: 1px solid rgba(239, 224, 189, 0.5);
+  color: #f0fdf9;
+  border: 1px solid rgba(167, 243, 208, 0.55);
   background:
-    linear-gradient(135deg, var(--gold-950) 0%, var(--gold-800) 52%, #a8792f 100%);
-  box-shadow: 0 14px 34px rgba(83, 56, 23, 0.18);
+    linear-gradient(135deg, #043f37 0%, var(--neo-800) 52%, var(--neo-500) 100%);
+  box-shadow: 0 14px 34px rgba(6, 78, 69, 0.18);
 }
 
 .paymentsPage .pageHeader h1,
@@ -2338,16 +2340,16 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .reloadButton,
 .paymentsPage .payButton,
 .paymentsPage .paymentModal footer button[type="submit"] {
-  color: #fffdf8;
-  border-color: var(--gold-700);
-  background: linear-gradient(135deg, var(--gold-700), var(--gold-500));
-  box-shadow: 0 8px 18px rgba(83, 56, 23, 0.18);
+  color: #f0fdf9;
+  border-color: var(--neo-700);
+  background: linear-gradient(135deg, var(--neo-700), var(--neo-500));
+  box-shadow: 0 8px 18px rgba(6, 78, 69, 0.18);
 }
 
 .paymentsPage .reloadButton:hover,
 .paymentsPage .payButton:hover,
 .paymentsPage .paymentModal footer button[type="submit"]:hover {
-  background: linear-gradient(135deg, var(--gold-800), var(--gold-600));
+  background: linear-gradient(135deg, var(--neo-800), var(--neo-600));
 }
 
 .paymentsPage .summaryGrid article,
@@ -2359,13 +2361,13 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .installmentHistory,
 .paymentsPage .historyItem,
 .paymentsPage .installmentItem {
-  border-color: var(--gold-200);
-  background: rgba(255, 253, 248, 0.96);
-  box-shadow: 0 10px 26px rgba(83, 56, 23, 0.08);
+  border-color: var(--neo-200);
+  background: rgba(248, 255, 252, 0.97);
+  box-shadow: 0 10px 26px rgba(6, 78, 69, 0.08);
 }
 
 .paymentsPage .summaryGrid article {
-  background: linear-gradient(180deg, #fffdf9 0%, var(--gold-100) 100%);
+  background: linear-gradient(180deg, #fbfffd 0%, var(--neo-100) 100%);
 }
 
 .paymentsPage .summaryGrid span,
@@ -2375,7 +2377,7 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .historyDate small,
 .paymentsPage .historyDetails small,
 .paymentsPage .historyAmount small {
-  color: var(--gold-700);
+  color: var(--neo-700);
 }
 
 .paymentsPage .summaryGrid strong,
@@ -2384,7 +2386,7 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .historyHeader h3,
 .paymentsPage .paymentModal h2,
 .paymentsPage .installmentHistoryHeader h3 {
-  color: var(--gold-950);
+  color: var(--neo-950);
 }
 
 .paymentsPage .filterBar input,
@@ -2393,9 +2395,9 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .formGrid select,
 .paymentsPage .formGrid textarea,
 .paymentsPage .evidenceField {
-  color: var(--gold-950);
-  border-color: var(--gold-300);
-  background: #fffefa;
+  color: var(--neo-950);
+  border-color: var(--neo-300);
+  background: #fbfffd;
 }
 
 .paymentsPage .filterBar input:focus,
@@ -2403,8 +2405,8 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .formGrid input:focus,
 .paymentsPage .formGrid select:focus,
 .paymentsPage .formGrid textarea:focus {
-  border-color: var(--gold-500);
-  box-shadow: 0 0 0 3px rgba(185, 139, 62, 0.17);
+  border-color: var(--neo-500);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
   outline: none;
 }
 
@@ -2412,52 +2414,52 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .historyHeader,
 .paymentsPage .installmentHistoryHeader,
 .paymentsPage .paymentModal > header {
-  color: var(--gold-950);
-  border-color: var(--gold-200);
-  background: linear-gradient(180deg, var(--gold-100), #f3e5c8);
+  color: var(--neo-950);
+  border-color: var(--neo-200);
+  background: linear-gradient(180deg, var(--neo-100), #c6f7df);
 }
 
 .paymentsPage .projectCard:hover {
-  border-color: var(--gold-400);
-  box-shadow: 0 14px 30px rgba(83, 56, 23, 0.12);
+  border-color: var(--neo-400);
+  box-shadow: 0 14px 30px rgba(6, 78, 69, 0.12);
 }
 
 .paymentsPage .projectCardHighlighted {
-  border-color: var(--gold-500);
-  background: linear-gradient(180deg, #fffdf8 0%, #fbf1dc 100%);
+  border-color: var(--neo-500);
+  background: linear-gradient(180deg, #fbfffd 0%, #e7fbf3 100%);
   box-shadow:
-    0 0 0 2px rgba(185, 139, 62, 0.14),
-    0 16px 34px rgba(83, 56, 23, 0.14);
+    0 0 0 2px rgba(16, 185, 129, 0.14),
+    0 16px 34px rgba(6, 78, 69, 0.14);
 }
 
 .paymentsPage .historyButton {
-  color: var(--gold-800);
-  border-color: var(--gold-300);
-  background: var(--gold-100);
+  color: var(--neo-800);
+  border-color: var(--neo-300);
+  background: var(--neo-100);
 }
 
 .paymentsPage .historyButton:hover {
-  border-color: var(--gold-500);
-  background: var(--gold-200);
+  border-color: var(--neo-500);
+  background: var(--neo-200);
 }
 
 .paymentsPage .modalBackdrop {
-  background: rgba(40, 27, 12, 0.58);
+  background: rgba(3, 43, 38, 0.58);
   backdrop-filter: blur(5px);
 }
 
 .paymentsPage .paymentModal > header {
-  border-bottom-color: var(--gold-300);
+  border-bottom-color: var(--neo-300);
 }
 
 .paymentsPage .paymentModal > header button {
-  color: var(--gold-800);
-  border-color: var(--gold-300);
-  background: var(--gold-100);
+  color: var(--neo-800);
+  border-color: var(--neo-300);
+  background: var(--neo-100);
 }
 
 .paymentsPage .paymentPreview article {
-  background: linear-gradient(180deg, #fffdf9, var(--gold-100));
+  background: linear-gradient(180deg, #fbfffd, var(--neo-100));
 }
 
 .paymentsPage .requiredMark {
@@ -2474,7 +2476,7 @@ export default function BudgetPaymentsPage() {
 .paymentsPage .cancelledItem {
   color: #b42318;
 }
-/* PAYMENTS_GOLD_THEME_STEP3_END */
+/* PAYMENTS_NEO_GREEN_STEP6_END */
 `}
 
 </style>
