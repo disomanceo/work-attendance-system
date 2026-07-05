@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -550,7 +550,6 @@ export default function AdminMembersPage() {
                 borderRadius: 10,
                 color: "#ffffff",
                 background: "linear-gradient(135deg, #7c3aed, #a855f7)",
-                color: "#ffffff",
                 fontWeight: 800,
                 cursor: "pointer",
               }}
@@ -1299,7 +1298,6 @@ export default function AdminMembersPage() {
                                 color: "#ffffff",
                                 background:
                                   "linear-gradient(135deg, #7c3aed, #a855f7)",
-                                color: "#ffffff",
                                 fontWeight: 800,
                                 cursor: isSaving ? "wait" : "pointer",
                               }}
