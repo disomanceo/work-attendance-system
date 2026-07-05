@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   min-height: 100vh;
   padding: 30px;
   color: #30264a;
@@ -602,3 +602,74 @@
 .headerTitle {
   width: 100%;
 }
+
+/* MOBILE_HISTORY_TABS_STEP11_START */
+.mobileSectionTabs {
+  display: none;
+}
+
+.mobileSectionTabActive {
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 18px rgba(109, 40, 217, 0.22);
+}
+
+.mobileSectionTabs button span {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 800px) {
+  .mobileSectionTabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin: 0 0 14px;
+    padding: 5px;
+    border: 1px solid #ddd6fe;
+    border-radius: 16px;
+    background: #f5f3ff;
+    position: sticky;
+    top: 8px;
+    z-index: 20;
+    box-shadow: 0 8px 20px rgba(76, 29, 149, 0.08);
+  }
+
+  .mobileSectionTabs button {
+    min-height: 44px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: #5b21b6;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .mobileSectionHidden {
+    display: none !important;
+  }
+
+  .mobileSectionVisible {
+    display: block;
+  }
+}
+
+@media (min-width: 801px) {
+  .mobileSectionHidden,
+  .mobileSectionVisible {
+    display: block;
+  }
+}
+/* MOBILE_HISTORY_TABS_STEP11_END */
+

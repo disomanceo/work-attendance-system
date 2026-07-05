@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   FormEvent,
@@ -107,6 +107,7 @@ export default function OfficialDutyPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [mobileView, setMobileView] = useState<"form" | "history">("form");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] =
     useState<"success" | "error">("success");
@@ -298,6 +299,25 @@ export default function OfficialDutyPage() {
 
       </header>
 
+      
+      <div className={styles.mobileSectionTabs} aria-label="เมนูไปราชการ">
+        <button
+          type="button"
+          className={mobileView === "form" ? styles.mobileSectionTabActive : ""}
+          onClick={() => setMobileView("form")}
+        >
+          ขออนุญาต
+        </button>
+        <button
+          type="button"
+          className={mobileView === "history" ? styles.mobileSectionTabActive : ""}
+          onClick={() => setMobileView("history")}
+        >
+          ประวัติการขออนุญาต
+          {myRequests.length > 0 ? <span>{myRequests.length}</span> : null}
+        </button>
+      </div>
+
       <FeedbackToast message={message} type={messageType} />
 
       {message && (
@@ -317,7 +337,10 @@ export default function OfficialDutyPage() {
         <section className={styles.loadingCard}>กำลังโหลดข้อมูล...</section>
       ) : (
         <section className={styles.requestGrid}>
-          <form className={styles.card} onSubmit={handleSubmit}>
+          <form
+            className={`${styles.card} ${mobileView === "form" ? styles.mobileSectionVisible : styles.mobileSectionHidden}`}
+            onSubmit={handleSubmit}
+          >
             <div className={styles.cardHeading}>
               <div className={styles.iconBox}>✈</div>
               <div>
@@ -421,7 +444,9 @@ export default function OfficialDutyPage() {
             </button>
           </form>
 
-          <section className={styles.card}>
+          <section
+            className={`${styles.card} ${mobileView === "history" ? styles.mobileSectionVisible : styles.mobileSectionHidden}`}
+          >
             <div className={styles.cardHeading}>
               <div className={styles.iconBox}>◷</div>
               <div>

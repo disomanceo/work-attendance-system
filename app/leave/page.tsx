@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -225,6 +225,7 @@ export default function LeavePage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [adminLeavePage, setAdminLeavePage] = useState(1);
   const [memberHistoryPage, setMemberHistoryPage] = useState(1);
+  const [mobileView, setMobileView] = useState<"form" | "history">("form");
 
   const getToken = useCallback(async () => {
     const {
@@ -753,6 +754,28 @@ export default function LeavePage() {
 
 
 
+      
+      <div className={styles.mobileSectionTabs} aria-label="เมนูใบลา">
+        <button
+          type="button"
+          className={mobileView === "form" ? styles.mobileSectionTabActive : ""}
+          onClick={() => setMobileView("form")}
+        >
+          ยื่นใบลา
+        </button>
+        <button
+          type="button"
+          className={mobileView === "history" ? styles.mobileSectionTabActive : ""}
+          onClick={() => {
+            setMobileView("history");
+            setHistoryOpen(true);
+          }}
+        >
+          ประวัติการลา
+          {requests.length > 0 ? <span>{requests.length}</span> : null}
+        </button>
+      </div>
+
       <FeedbackToast
         message={errorMessage || message}
         type={errorMessage ? "error" : "success"}
@@ -761,7 +784,10 @@ export default function LeavePage() {
       {errorMessage && <div className={styles.error}>{errorMessage}</div>}
 
       <section className={styles.grid}>
-        <form className={styles.formCard} onSubmit={submitLeave}>
+        <form
+          className={`${styles.formCard} ${mobileView === "form" ? styles.mobileSectionVisible : styles.mobileSectionHidden}`}
+          onSubmit={submitLeave}
+        >
           <h2>เลือกประเภทการลา</h2>
 
           <div className={styles.typeGrid}>
@@ -951,7 +977,9 @@ export default function LeavePage() {
           </button>
         </form>
 
-        <section className={styles.historyCard}>
+        <section
+          className={`${styles.historyCard} ${mobileView === "history" ? styles.mobileSectionVisible : styles.mobileSectionHidden}`}
+        >
           <button
             type="button"
             className={styles.historyToggle}

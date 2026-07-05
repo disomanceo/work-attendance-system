@@ -1,4 +1,4 @@
-.shell {
+﻿.shell {
   --app-sidebar-width: 292px;
   min-height: 100svh;
 }
@@ -358,3 +358,148 @@
     min-height: calc(100svh - 58px);
   }
 }
+
+
+/* === Sidebar module accordion: step 4 === */
+.moduleList {
+  display: grid;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.moduleGroup {
+  --module-accent: #a855f7;
+  --module-soft: rgba(168, 85, 247, 0.1);
+  --module-border: rgba(192, 132, 252, 0.24);
+  overflow: hidden;
+  border: 1px solid var(--module-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.moduleGroupActive {
+  border-color: var(--module-accent);
+  background: var(--module-soft);
+}
+
+.modulePersonnel {
+  --module-accent: #c084fc;
+  --module-soft: rgba(168, 85, 247, 0.12);
+  --module-border: rgba(192, 132, 252, 0.25);
+}
+
+.moduleBudget {
+  --module-accent: #4ade80;
+  --module-soft: rgba(34, 197, 94, 0.11);
+  --module-border: rgba(74, 222, 128, 0.24);
+}
+
+.moduleDocuments {
+  --module-accent: #60a5fa;
+  --module-soft: rgba(59, 130, 246, 0.11);
+  --module-border: rgba(96, 165, 250, 0.24);
+}
+
+.moduleButton {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  color: #f8f5ff;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.moduleButton:hover {
+  background: var(--module-soft);
+}
+
+.moduleIcon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  color: var(--module-accent);
+  background: var(--module-soft);
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.moduleButton b {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+}
+
+.moduleChevron {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--module-accent);
+  font-size: 22px;
+  font-weight: 900;
+  transform: rotate(0deg);
+  transition: transform 0.18s ease;
+}
+
+.moduleChevronExpanded {
+  transform: rotate(90deg);
+}
+
+.moduleChildren {
+  display: grid;
+  gap: 2px;
+  padding: 0 7px 7px 14px;
+}
+
+.menuItemNested {
+  min-height: 36px;
+  padding: 5px 9px;
+  border-radius: 10px;
+}
+
+.menuItemNested .menuIcon {
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.sidebarCollapsed .moduleList {
+  gap: 6px;
+}
+
+.sidebarCollapsed .moduleGroup {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+}
+
+.sidebarCollapsed .moduleButton {
+  justify-content: center;
+  padding: 7px;
+}
+
+@media (max-width: 800px) {
+  .moduleButton {
+    min-height: 48px;
+  }
+
+  .menuItemNested {
+    min-height: 40px;
+  }
+}
+/* === End sidebar module accordion: step 4 === */
+

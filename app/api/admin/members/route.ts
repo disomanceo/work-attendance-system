@@ -1,14 +1,14 @@
 ﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-type MemberRole =
-  | "admin"
-  | "director"
-  | "teacher"
-  | "staff"
-  | "janitor";
-
+type MemberRole = "admin" | "director" | "teacher" | "staff" | "janitor";
 type AccountStatus = "pending" | "active" | "suspended";
+type WorkPermission = "budget.procurement" | "budget.finance";
+type Department =
+  | "academic_administration"
+  | "budget_administration"
+  | "personnel_administration"
+  | "general_administration";
 
 type UpdateMemberBody = {
   id?: unknown;
@@ -17,11 +17,11 @@ type UpdateMemberBody = {
   position?: unknown;
   alternateWorkplace?: unknown;
   countAsPresentWhenNoCheckin?: unknown;
+  workPermissions?: unknown;
+  departments?: unknown;
 };
 
-type DeleteMemberBody = {
-  id?: unknown;
-};
+type DeleteMemberBody = { id?: unknown };
 
 const ALLOWED_ROLES: MemberRole[] = [
   "admin",
@@ -37,127 +37,137 @@ const ALLOWED_STATUSES: AccountStatus[] = [
   "suspended",
 ];
 
-function getServerConfig() {
+const ALLOWED_WORK_PERMISSIONS: WorkPermission[] = [
+  "budget.procurement",
+  "budget.finance",
+];
+
+const ALLOWED_DEPARTMENTS: Department[] = [
+  "academic_administration",
+  "budget_administration",
+  "personnel_administration",
+  "general_administration",
+];
+
+const MEMBER_SELECT = `
+  id,
+  full_name,
+  phone,
+  position,
+  role,
+  account_status,
+  alternate_workplace,
+  count_as_present_when_no_checkin,
+  work_permissions,
+  departments,
+  profile_image_file_id,
+  signature_file_id,
+  created_at,
+  updated_at
+`;
+
+function config() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !publishableKey || !serviceRoleKey) {
-    return null;
-  }
-
-  return {
-    supabaseUrl,
-    publishableKey,
-    serviceRoleKey,
-  };
+  if (!supabaseUrl || !publishableKey || !serviceRoleKey) return null;
+  return { supabaseUrl, publishableKey, serviceRoleKey };
 }
 
-function getAccessToken(request: Request) {
-  const authorization = request.headers.get("authorization");
-
-  if (!authorization?.startsWith("Bearer ")) {
-    return "";
-  }
-
-  return authorization.slice("Bearer ".length).trim();
+function accessToken(request: Request) {
+  const value = request.headers.get("authorization");
+  return value?.startsWith("Bearer ")
+    ? value.slice("Bearer ".length).trim()
+    : "";
 }
 
-function getErrorMessage(error: unknown, fallback: string) {
+function stringArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function errorText(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
-
-  if (typeof error === "string" && error.trim()) {
-    return error.trim();
-  }
+  if (typeof error === "string" && error.trim()) return error.trim();
 
   if (error && typeof error === "object") {
-    const record = error as Record<string, unknown>;
-
-    for (const key of ["message", "msg", "error_description", "error"]) {
-      const value = record[key];
-      if (typeof value === "string" && value.trim()) {
-        return value.trim();
-      }
+    const data = error as Record<string, unknown>;
+    for (const key of ["message", "details", "hint", "code"]) {
+      const value = data[key];
+      if (typeof value === "string" && value.trim()) return value.trim();
     }
-
-    const serialized = JSON.stringify(record);
-    if (serialized && serialized !== "{}") return serialized;
   }
 
   return fallback;
 }
 
-async function requireAdmin(request: Request) {
-  const config = getServerConfig();
+function schemaMessage(error: unknown) {
+  const text = errorText(error, "").toLowerCase();
+  if (
+    text.includes("work_permissions") ||
+    text.includes("departments") ||
+    text.includes("column")
+  ) {
+    return "โครงสร้างฐานข้อมูลสมาชิกยังไม่ครบ กรุณารัน SQL migration สำหรับ work_permissions และ departments ใน Supabase ก่อน";
+  }
+  return "";
+}
 
-  if (!config) {
+async function requireManager(request: Request) {
+  const env = config();
+
+  if (!env) {
     return {
       ok: false as const,
       response: NextResponse.json(
-        {
-          ok: false,
-          message: "เธฃเธฐเธเธเธขเธฑเธเนเธกเนเนเธ”เนเธ•เธฑเนเธเธเนเธฒ Supabase เธเธฑเนเธ Server",
-        },
+        { ok: false, message: "ยังไม่ได้ตั้งค่า Supabase ฝั่ง Server" },
         { status: 500 }
       ),
     };
   }
 
-  const accessToken = getAccessToken(request);
+  const token = accessToken(request);
 
-  if (!accessToken) {
+  if (!token) {
     return {
       ok: false as const,
       response: NextResponse.json(
-        {
-          ok: false,
-          message: "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
-        },
+        { ok: false, message: "กรุณาเข้าสู่ระบบใหม่" },
         { status: 401 }
       ),
     };
   }
 
-  const authClient = createClient(
-    config.supabaseUrl,
-    config.publishableKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const authClient = createClient(env.supabaseUrl, env.publishableKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
   const {
     data: { user },
     error: userError,
-  } = await authClient.auth.getUser(accessToken);
+  } = await authClient.auth.getUser(token);
 
   if (userError || !user) {
     return {
       ok: false as const,
       response: NextResponse.json(
-        {
-          ok: false,
-          message: "Session เธซเธกเธ”เธญเธฒเธขเธธ เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
-        },
+        { ok: false, message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่" },
         { status: 401 }
       ),
     };
   }
 
-  const adminClient = createClient(
-    config.supabaseUrl,
-    config.serviceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+  const adminClient = createClient(env.supabaseUrl, env.serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
@@ -174,75 +184,45 @@ async function requireAdmin(request: Request) {
     return {
       ok: false as const,
       response: NextResponse.json(
-        {
-          ok: false,
-          message: "เธเธธเธ“เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธเธฑเธ”เธเธฒเธฃเธชเธกเธฒเธเธดเธ",
-        },
+        { ok: false, message: "คุณไม่มีสิทธิ์จัดการสมาชิก" },
         { status: 403 }
       ),
     };
   }
 
-  return {
-    ok: true as const,
-    user,
-    adminClient,
-  };
+  return { ok: true as const, user, adminClient };
 }
 
 export async function GET(request: Request) {
   try {
-    const authResult = await requireAdmin(request);
+    const auth = await requireManager(request);
+    if (!auth.ok) return auth.response;
 
-    if (!authResult.ok) {
-      return authResult.response;
-    }
-
-    const { data, error } = await authResult.adminClient
+    const { data, error } = await auth.adminClient
       .from("profiles")
-      .select(
-        `
-          id,
-          full_name,
-          phone,
-          position,
-          role,
-          account_status,
-          alternate_workplace,
-          count_as_present_when_no_checkin,
-          profile_image_file_id,
-          signature_file_id,
-          created_at,
-          updated_at
-        `
-      )
+      .select(MEMBER_SELECT)
       .not("phone", "like", "deleted:%")
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Load members error:", error);
-
       return NextResponse.json(
         {
           ok: false,
-          message: "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เนเธซเธฅเธ”เธฃเธฒเธขเธเธทเนเธญเธชเธกเธฒเธเธดเธเนเธ”เน",
+          message:
+            schemaMessage(error) ||
+            "ไม่สามารถโหลดรายชื่อสมาชิกได้: " +
+              errorText(error, "ไม่ทราบสาเหตุ"),
         },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      members: data ?? [],
-    });
+    return NextResponse.json({ ok: true, members: data ?? [] });
   } catch (error) {
     console.error("Members GET API error:", error);
-
     return NextResponse.json(
-      {
-        ok: false,
-        message: "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เธฃเธฐเธซเธงเนเธฒเธเนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธ",
-      },
+      { ok: false, message: "เกิดข้อผิดพลาดระหว่างโหลดข้อมูลสมาชิก" },
       { status: 500 }
     );
   }
@@ -250,113 +230,109 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const authResult = await requireAdmin(request);
-
-    if (!authResult.ok) {
-      return authResult.response;
-    }
+    const auth = await requireManager(request);
+    if (!auth.ok) return auth.response;
 
     const body = (await request.json()) as UpdateMemberBody;
-
     const id = typeof body.id === "string" ? body.id.trim() : "";
-
     const role =
       typeof body.role === "string"
         ? (body.role.trim() as MemberRole)
-        : "";
-
+        : ("" as MemberRole);
     const accountStatus =
       typeof body.accountStatus === "string"
         ? (body.accountStatus.trim() as AccountStatus)
-        : "";
-
+        : ("" as AccountStatus);
     const position =
-      typeof body.position === "string"
-        ? body.position.trim()
-        : "";
-
+      typeof body.position === "string" ? body.position.trim() : "";
     const alternateWorkplace =
       typeof body.alternateWorkplace === "string"
         ? body.alternateWorkplace.trim()
         : "";
-
     const countAsPresentWhenNoCheckin =
       body.countAsPresentWhenNoCheckin === true;
+    const workPermissions = stringArray(body.workPermissions);
+    const departments = stringArray(body.departments);
 
     if (!id) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เนเธกเนเธเธเธฃเธซเธฑเธชเธชเธกเธฒเธเธดเธ",
-        },
+        { ok: false, message: "ไม่พบรหัสสมาชิก" },
         { status: 400 }
       );
     }
 
-    if (!ALLOWED_ROLES.includes(role as MemberRole)) {
+    if (!ALLOWED_ROLES.includes(role)) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เธเธ—เธเธฒเธ—เธชเธกเธฒเธเธดเธเนเธกเนเธ–เธนเธเธ•เนเธญเธ",
-        },
+        { ok: false, message: "บทบาทสมาชิกไม่ถูกต้อง" },
         { status: 400 }
       );
     }
 
-    if (!ALLOWED_STATUSES.includes(accountStatus as AccountStatus)) {
+    if (!ALLOWED_STATUSES.includes(accountStatus)) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เธชเธ–เธฒเธเธฐเธชเธกเธฒเธเธดเธเนเธกเนเธ–เธนเธเธ•เนเธญเธ",
-        },
+        { ok: false, message: "สถานะสมาชิกไม่ถูกต้อง" },
         { status: 400 }
       );
     }
 
-    if (alternateWorkplace.length > 200) {
+    if (
+      workPermissions.some(
+        (item) => !ALLOWED_WORK_PERMISSIONS.includes(item as WorkPermission)
+      )
+    ) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เธเธทเนเธญเธชเธ–เธฒเธเธ—เธตเนเธเธเธดเธเธฑเธ•เธดเธเธฒเธเธขเธฒเธงเน€เธเธดเธเนเธ",
-        },
+        { ok: false, message: "สิทธิ์งานของสมาชิกไม่ถูกต้อง" },
         { status: 400 }
       );
     }
 
-    if (countAsPresentWhenNoCheckin && !alternateWorkplace) {
+    if (
+      departments.some(
+        (item) => !ALLOWED_DEPARTMENTS.includes(item as Department)
+      )
+    ) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธชเธ–เธฒเธเธ—เธตเนเธเธเธดเธเธฑเธ•เธดเธเธฒเธเน€เธเธดเนเธกเน€เธ•เธดเธก",
-        },
+        { ok: false, message: "ฝ่ายสังกัดของสมาชิกไม่ถูกต้อง" },
         { status: 400 }
       );
     }
 
     if (position.length > 150) {
       return NextResponse.json(
+        { ok: false, message: "ชื่อตำแหน่งยาวเกินไป" },
+        { status: 400 }
+      );
+    }
+
+    if (alternateWorkplace.length > 200) {
+      return NextResponse.json(
+        { ok: false, message: "ชื่อสถานที่ปฏิบัติงานยาวเกินไป" },
+        { status: 400 }
+      );
+    }
+
+    if (countAsPresentWhenNoCheckin && !alternateWorkplace) {
+      return NextResponse.json(
+        { ok: false, message: "กรุณาระบุสถานที่ปฏิบัติงานเพิ่มเติม" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      id === auth.user.id &&
+      (role !== "admin" || accountStatus !== "active")
+    ) {
+      return NextResponse.json(
         {
           ok: false,
-          message: "เธเธทเนเธญเธ•เธณเนเธซเธเนเธเธขเธฒเธงเน€เธเธดเธเนเธ",
+          message:
+            "ไม่สามารถลดสิทธิ์หรือระงับบัญชีผู้ดูแลที่กำลังใช้งานอยู่",
         },
         { status: 400 }
       );
     }
 
-    if (id === authResult.user.id) {
-      if (role !== "admin" || accountStatus !== "active") {
-        return NextResponse.json(
-          {
-            ok: false,
-            message:
-              "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธฅเธ”เธชเธดเธ—เธเธดเนเธซเธฃเธทเธญเธฃเธฐเธเธฑเธเธเธฑเธเธเธตเธเธนเนเธ”เธนเนเธฅเธ—เธตเนเธเธณเธฅเธฑเธเนเธเนเธเธฒเธเธญเธขเธนเน",
-          },
-          { status: 400 }
-        );
-      }
-    }
-
-    const { data, error } = await authResult.adminClient
+    const { data, error } = await auth.adminClient
       .from("profiles")
       .update({
         role,
@@ -366,34 +342,23 @@ export async function PATCH(request: Request) {
           ? alternateWorkplace
           : null,
         count_as_present_when_no_checkin: countAsPresentWhenNoCheckin,
+        work_permissions: workPermissions,
+        departments,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .select(
-        `
-          id,
-          full_name,
-          phone,
-          position,
-          role,
-          account_status,
-          alternate_workplace,
-          count_as_present_when_no_checkin,
-          profile_image_file_id,
-          signature_file_id,
-          created_at,
-          updated_at
-        `
-      )
+      .select(MEMBER_SELECT)
       .single();
 
     if (error) {
       console.error("Update member error:", error);
-
       return NextResponse.json(
         {
           ok: false,
-          message: "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธเนเธ”เน",
+          message:
+            schemaMessage(error) ||
+            "บันทึกข้อมูลสมาชิกไม่สำเร็จ: " +
+              errorText(error, "ไม่ทราบสาเหตุ"),
         },
         { status: 500 }
       );
@@ -402,16 +367,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({
       ok: true,
       member: data,
-      message: "เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง",
+      message: "บันทึกข้อมูลสมาชิกเรียบร้อยแล้ว",
     });
   } catch (error) {
     console.error("Members PATCH API error:", error);
-
     return NextResponse.json(
-      {
-        ok: false,
-        message: "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เธฃเธฐเธซเธงเนเธฒเธเธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธ",
-      },
+      { ok: false, message: "เกิดข้อผิดพลาดระหว่างบันทึกข้อมูลสมาชิก" },
       { status: 500 }
     );
   }
@@ -419,77 +380,54 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const authResult = await requireAdmin(request);
-
-    if (!authResult.ok) {
-      return authResult.response;
-    }
+    const auth = await requireManager(request);
+    if (!auth.ok) return auth.response;
 
     const body = (await request.json()) as DeleteMemberBody;
     const id = typeof body.id === "string" ? body.id.trim() : "";
 
     if (!id) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เนเธกเนเธเธเธฃเธซเธฑเธชเธชเธกเธฒเธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฅเธ",
-        },
+        { ok: false, message: "ไม่พบรหัสสมาชิกที่ต้องการลบ" },
         { status: 400 }
       );
     }
 
-    if (id === authResult.user.id) {
+    if (id === auth.user.id) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธฅเธเธเธฑเธเธเธตเธ—เธตเนเธเธณเธฅเธฑเธเนเธเนเธเธฒเธเธญเธขเธนเน",
-        },
+        { ok: false, message: "ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่" },
         { status: 400 }
       );
     }
 
-    const { data: member, error: memberError } = await authResult.adminClient
+    const { data: member, error: findError } = await auth.adminClient
       .from("profiles")
       .select("id, full_name, phone")
       .eq("id", id)
       .maybeSingle();
 
-    if (memberError) {
-      console.error("Find member before delete error:", memberError);
-
+    if (findError) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เธ•เธฃเธงเธเธชเธญเธเธชเธกเธฒเธเธดเธเธเนเธญเธเธฅเธเนเธกเนเธชเธณเน€เธฃเนเธ",
-        },
+        { ok: false, message: "ตรวจสอบสมาชิกก่อนลบไม่สำเร็จ" },
         { status: 500 }
       );
     }
 
     if (!member) {
       return NextResponse.json(
-        {
-          ok: false,
-          message: "เนเธกเนเธเธเธชเธกเธฒเธเธดเธเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฅเธ",
-        },
+        { ok: false, message: "ไม่พบสมาชิกที่ต้องการลบ" },
         { status: 404 }
       );
     }
 
     const { error: deleteAuthError } =
-      await authResult.adminClient.auth.admin.deleteUser(id, true);
-    const authDeleteWarning = deleteAuthError
-      ? getErrorMessage(
-          deleteAuthError,
-          "Supabase Auth เนเธกเนเธ•เธญเธเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธเธฅเธฑเธเธกเธฒ"
-        )
-      : "";
+      await auth.adminClient.auth.admin.deleteUser(id, true);
 
     if (deleteAuthError) {
-      console.error("Delete member auth user error:", deleteAuthError);
+      console.error("Delete auth user warning:", deleteAuthError);
     }
 
-    const { error: archiveProfileError } = await authResult.adminClient
+    const { error: archiveError } = await auth.adminClient
       .from("profiles")
       .update({
         account_status: "suspended",
@@ -500,16 +438,13 @@ export async function DELETE(request: Request) {
       })
       .eq("id", id);
 
-    if (archiveProfileError) {
-      console.error("Archive member profile error:", archiveProfileError);
-
+    if (archiveError) {
       return NextResponse.json(
         {
           ok: false,
-          message: `เธเธดเธ”เธเธฑเธเธเธตเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธฅเนเธง เนเธ•เนเธเนเธญเธเธชเธกเธฒเธเธดเธเนเธกเนเธชเธณเน€เธฃเนเธ: ${getErrorMessage(
-            archiveProfileError,
-            "เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเธชเธกเธฒเธเธดเธเธญเธตเธเธเธฃเธฑเนเธ"
-          )}`,
+          message:
+            "ปิดบัญชีเข้าสู่ระบบแล้ว แต่ซ่อนข้อมูลสมาชิกไม่สำเร็จ: " +
+            errorText(archiveError, "ไม่ทราบสาเหตุ"),
         },
         { status: 500 }
       );
@@ -518,20 +453,13 @@ export async function DELETE(request: Request) {
     return NextResponse.json({
       ok: true,
       deletedId: id,
-      message: authDeleteWarning
-        ? `เธเนเธญเธเธชเธกเธฒเธเธดเธ ${member.full_name || ""} เนเธฅเนเธง เนเธ•เน Supabase Auth เนเธเนเธเน€เธ•เธทเธญเธ: ${authDeleteWarning}`
-        : `เธฅเธเธชเธกเธฒเธเธดเธ ${member.full_name || ""} เน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง`,
+      message: `ลบสมาชิก ${member.full_name || ""} เรียบร้อยแล้ว`,
     });
   } catch (error) {
     console.error("Members DELETE API error:", error);
-
     return NextResponse.json(
-      {
-        ok: false,
-        message: "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เธฃเธฐเธซเธงเนเธฒเธเธฅเธเธชเธกเธฒเธเธดเธ",
-      },
+      { ok: false, message: "เกิดข้อผิดพลาดระหว่างลบสมาชิก" },
       { status: 500 }
     );
   }
 }
-

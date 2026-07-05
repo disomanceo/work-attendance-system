@@ -1,8 +1,17 @@
+export type AppNavigationSection =
+  | "home"
+  | "personnel"
+  | "budget"
+  | "documents"
+  | "review"
+  | "account";
+
 export type AppNavigationItem = {
   label: string;
   icon: string;
   href: string;
-  section: "main" | "review" | "account";
+  section: AppNavigationSection;
+  disabled?: boolean;
   match: (pathname: string) => boolean;
 };
 
@@ -16,50 +25,67 @@ export function getReportHref(role: string) {
 
 export function getAppNavigationItems(role: string): AppNavigationItem[] {
   const reportHref = getReportHref(role);
+
   const items: AppNavigationItem[] = [
     {
       label: "หน้าหลัก",
-      icon: "◷",
+      icon: "⌂",
       href: "/attendance",
-      section: "main",
+      section: "home",
       match: (value) => value === "/attendance",
     },
     {
       label: "การลงเวลาปฏิบัติงาน",
-      icon: "▣",
+      icon: "◷",
       href: reportHref,
-      section: "main",
+      section: "personnel",
       match: (value) =>
         value.startsWith("/admin/attendance") ||
         value.startsWith("/attendance/history"),
     },
     {
       label: "ขออนุญาตลาป่วย-ลากิจ",
-      icon: "▤",
+      icon: "▣",
       href: "/leave",
-      section: "main",
+      section: "personnel",
       match: (value) => value.startsWith("/leave"),
     },
     {
       label: "ขออนุญาตไปราชการ",
       icon: "✈",
       href: "/official-duty",
-      section: "main",
+      section: "personnel",
       match: (value) => value.startsWith("/official-duty"),
     },
     {
       label: "บันทึกข้อความ",
-      icon: "▦",
+      icon: "▤",
       href: "/memo",
-      section: "main",
+      section: "personnel",
       match: (value) => value.startsWith("/memo"),
     },
     {
       label: "คำสั่ง",
-      icon: "▧",
+      icon: "▥",
       href: "/orders",
-      section: "main",
+      section: "personnel",
       match: (value) => value.startsWith("/orders"),
+    },
+    {
+      label: "โครงการ / กิจกรรม",
+      icon: "▦",
+      href: "/budget/projects",
+      section: "budget",
+      match: (value) => value.startsWith("/budget/projects"),
+    },
+    {
+      label: "การเบิกจ่าย",
+      icon: "▧",
+      href: "/budget/payments",
+      section: "budget",
+      match: (value) =>
+        value.startsWith("/budget/payments") ||
+        value.startsWith("/budget/disbursements"),
     },
     {
       label: "ข้อมูลส่วนตัว",
@@ -74,21 +100,21 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
     items.push(
       {
         label: "พิจารณาใบลา",
-        icon: "▤",
+        icon: "▣",
         href: "/admin/leave",
         section: "review",
         match: (value) => value.startsWith("/admin/leave"),
       },
       {
         label: "พิจารณาไปราชการ",
-        icon: "▥",
+        icon: "▧",
         href: "/admin/official-duty",
         section: "review",
         match: (value) => value.startsWith("/admin/official-duty"),
       },
       {
         label: "พิจารณาบันทึกข้อความ",
-        icon: "▦",
+        icon: "▤",
         href: "/admin/memo",
         section: "review",
         match: (value) => value.startsWith("/admin/memo"),
@@ -106,9 +132,11 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
         href: "/admin/settings",
         section: "account",
         match: (value) => value.startsWith("/admin/settings"),
-      }
+      },
     );
   }
 
   return items;
 }
+
+
