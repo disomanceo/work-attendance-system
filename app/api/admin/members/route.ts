@@ -3,7 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 
 type MemberRole = "admin" | "director" | "teacher" | "staff" | "janitor";
 type AccountStatus = "pending" | "active" | "suspended";
-type WorkPermission = "budget.procurement" | "budget.finance";
+type WorkPermission =
+  | "budget.procurement"
+  | "budget.finance"
+  | "smart_area.clerk";
 type Department =
   | "academic_administration"
   | "budget_administration"
@@ -40,6 +43,7 @@ const ALLOWED_STATUSES: AccountStatus[] = [
 const ALLOWED_WORK_PERMISSIONS: WorkPermission[] = [
   "budget.procurement",
   "budget.finance",
+  "smart_area.clerk",
 ];
 
 const ALLOWED_DEPARTMENTS: Department[] = [

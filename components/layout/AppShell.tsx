@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,11 +9,14 @@ import { getAppNavigationItems } from "./navigation";
 import styles from "./AppShell.module.css";
 
 type Profile = {
+  id: string;
   full_name: string;
   position: string | null;
   role: string;
   account_status: string;
   profile_image_file_id: string | null;
+  signature_file_id: string | null;
+  work_permissions: string[];
 };
 
 function getRoleLabel(role: string) {
@@ -64,7 +67,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "full_name, position, role, account_status, profile_image_file_id"
+          "id, full_name, position, role, account_status, profile_image_file_id, signature_file_id, work_permissions"
         )
         .eq("id", user.id)
         .single();

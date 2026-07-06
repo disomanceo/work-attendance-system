@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +7,10 @@ import { createClient } from "@/lib/supabase/client";
 
 type MemberRole = "admin" | "director" | "teacher" | "staff" | "janitor";
 type AccountStatus = "pending" | "active" | "suspended";
-type WorkPermission = "budget.procurement" | "budget.finance";
+type WorkPermission =
+  | "budget.procurement"
+  | "budget.finance"
+  | "smart_area.clerk";
 type Department =
   | "academic_administration"
   | "budget_administration"
@@ -69,6 +72,10 @@ const workPermissionOptions: Array<{
 }> = [
   { value: "budget.procurement", label: "เจ้าหน้าที่พัสดุ" },
   { value: "budget.finance", label: "เจ้าหน้าที่การเงิน" },
+  {
+    value: "smart_area.clerk",
+    label: "เจ้าหน้าที่ธุรการหนังสือราชการ",
+  },
 ];
 
 const departmentOptions: Array<{ value: Department; label: string }> = [

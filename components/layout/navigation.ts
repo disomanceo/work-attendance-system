@@ -1,4 +1,4 @@
-export type AppNavigationSection =
+﻿export type AppNavigationSection =
   | "home"
   | "personnel"
   | "budget"
@@ -86,6 +86,13 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) =>
         value.startsWith("/budget/payments") ||
         value.startsWith("/budget/disbursements"),
+    },
+    {
+      label: "รายการหนังสือราชการ",
+      icon: "▤",
+      href: "/documents",
+      section: "documents",
+      match: (value) => value.startsWith("/documents"),
     },
     {
       label: "ข้อมูลส่วนตัว",
