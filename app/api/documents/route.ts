@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
 
 export const dynamic = "force-dynamic";
@@ -92,6 +92,7 @@ export async function GET(request: Request) {
       status,
       note,
       director_note,
+      legacy_payload,
       updated_at,
       smart_area_tasks (
         id,
@@ -143,6 +144,21 @@ export async function GET(request: Request) {
     status: book.status,
     note: book.note || "",
     directorNote: book.director_note || "",
+    smartAreaPage: Number(
+      book.legacy_payload?.smart_area_page ||
+        book.legacy_payload?.raw?.smartAreaPage ||
+        0,
+    ),
+    smartAreaOrder: Number(
+      book.legacy_payload?.raw?.rowOrder ||
+        book.legacy_payload?.raw?.order ||
+        book.registration_number ||
+        0,
+    ),
+    sourceUrl:
+      book.legacy_payload?.source_url ||
+      book.legacy_payload?.raw?.sourceUrl ||
+      "",
     updatedAt: book.updated_at,
     tasks: (book.smart_area_tasks ?? [])
       .filter((task: any) => task.is_active)
