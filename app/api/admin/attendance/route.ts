@@ -45,6 +45,11 @@ type Profile = {
   count_as_present_when_no_checkin: boolean;
 };
 
+type WorkCalendarDay = {
+  work_date: string;
+  day_type: "PUBLIC_HOLIDAY" | "SCHOOL_HOLIDAY" | "SPECIAL_WORKDAY";
+};
+
 function getServerConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey =
@@ -238,6 +243,8 @@ export async function GET(request: Request) {
       { data: attendanceData, error: attendanceError },
       { data: leaveData, error: leaveError },
       { data: officialDutyData, error: officialDutyError },
+      { data: workCalendarData, error: workCalendarError },
+
     ] = await Promise.all([
       authResult.adminClient
         .from("attendance_records")
@@ -271,6 +278,12 @@ export async function GET(request: Request) {
         .in("status", ["pending", "approved"])
         .lte("duty_date", endDate)
         .gte("duty_end_date", startDate),
+      authResult.adminClient
+        .from("work_calendar_days")
+        .select("work_date, day_type")
+        .gte("work_date", startDate)
+        .lte("work_date", endDate),
+
     ]);
 
     if (attendanceError) {
@@ -314,11 +327,28 @@ export async function GET(request: Request) {
         { status: 500 }
       );
     }
+    if (workCalendarError) {
+      console.error(
+        "Load admin attendance work calendar error:",
+        workCalendarError
+      );
+
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Unable to load the work calendar",
+        },
+        { status: 500 }
+      );
+    }
+
 
     const records = (attendanceData ?? []) as AttendanceRecord[];
     const leaveRequests = (leaveData ?? []) as LeaveRequest[];
     const officialDutyRequests =
       (officialDutyData ?? []) as OfficialDutyRequest[];
+    const workCalendarDays =
+      (workCalendarData ?? []) as WorkCalendarDay[];
 
     const { data: profileData, error: profilesError } =
       await authResult.adminClient
@@ -357,6 +387,9 @@ export async function GET(request: Request) {
     );
     const leaveByKey = new Map<string, LeaveRequest>();
     const officialDutyByKey = new Map<string, OfficialDutyRequest>();
+    const workCalendarByDate = new Map(
+      workCalendarDays.map((day) => [day.work_date, day.day_type])
+    );
 
     for (const request of leaveRequests) {
       for (
@@ -400,6 +433,19 @@ export async function GET(request: Request) {
         const officialDuty = officialDutyByKey.get(key);
         const leave = leaveByKey.get(key);
         const record = attendanceByKey.get(key);
+        const configuredDayType = workCalendarByDate.get(date);
+        const [year, month, day] = date.split("-").map(Number);
+        const dayOfWeek = new Date(year, month - 1, day).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isSpecialWorkday =
+          configuredDayType === "SPECIAL_WORKDAY";
+        const isConfiguredHoliday =
+          configuredDayType === "PUBLIC_HOLIDAY" ||
+          configuredDayType === "SCHOOL_HOLIDAY";
+        const canCountAlternateWorkplace =
+          isSpecialWorkday ||
+          (!isWeekend && !isConfiguredHoliday);
+
 
         if (record?.check_in_at) {
           const isDirectorMorningDuty =
@@ -472,6 +518,7 @@ export async function GET(request: Request) {
           };
         }
         if (
+          canCountAlternateWorkplace &&
           profile.count_as_present_when_no_checkin &&
           profile.alternate_workplace?.trim()
         ) {
