@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getCachedProfileImageUrl } from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
@@ -40,6 +40,7 @@ type BookItem = {
   smartAreaOrder: number;
   sourceUrl: string;
   updatedAt: string;
+  isRead: boolean;
   tasks: TaskItem[];
   attachments: AttachmentItem[];
 };
@@ -66,6 +67,28 @@ type DocumentsResponse = {
   message?: string;
 };
 
+type DocumentsVersionResponse = {
+  ok: boolean;
+  version?: number;
+  lastChangeAt?: string | null;
+  message?: string;
+};
+
+type DocumentsChangesResponse = {
+  ok: boolean;
+  books?: BookItem[];
+  deletedIds?: string[];
+  version?: number;
+  lastChangeAt?: string | null;
+  message?: string;
+};
+
+type SingleDocumentResponse = {
+  ok: boolean;
+  book?: BookItem | null;
+  message?: string;
+};
+
 type AssigneesResponse = {
   ok: boolean;
   assignees?: Assignee[];
@@ -76,6 +99,11 @@ type ProfileSummary = {
   fullName: string;
   position: string;
   profileImageFileId: string;
+};
+
+type ExtensionInfo = {
+  version: string;
+  downloadUrl: string;
 };
 
 type SortMode = "newest" | "oldest" | "registration";
@@ -104,6 +132,23 @@ function getStatusLabel(status: string) {
   return statusLabels[status] || status || "-";
 }
 
+function normalizedUrgency(value: string) {
+  const urgency = String(value || "").trim().replace(/\s+/g, "");
+  if (!urgency || urgency === "ปกติ") return "normal";
+  if (urgency.includes("ด่วนที่สุด")) return "most_urgent";
+  if (urgency.includes("ด่วนมาก")) return "very_urgent";
+  if (urgency.includes("ด่วน")) return "urgent";
+  return "normal";
+}
+
+function urgencyLabel(value: string) {
+  const urgency = normalizedUrgency(value);
+  if (urgency === "most_urgent") return "ด่วนที่สุด";
+  if (urgency === "very_urgent") return "ด่วนมาก";
+  if (urgency === "urgent") return "ด่วน";
+  return "ปกติ";
+}
+
 function registrationValue(value: string) {
   const match = String(value || "").match(/\d+/);
   return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
@@ -120,6 +165,49 @@ function shortThaiName(value: string) {
   return withoutTitle.split(/\s+/)[0] || trimmed;
 }
 
+function assigneeFirstNames(tasks: TaskItem[]) {
+  const names = tasks
+    .map((task) => shortThaiName(task.assigneeName))
+    .filter((name) => name && name !== "-");
+
+  return names.length > 0 ? names.join(", ") : "-";
+}
+
+function sourceDisplayParts(value: string) {
+  const raw = String(value || "").trim();
+
+  if (!raw) {
+    return { name: "-", group: "" };
+  }
+
+  const bracketValues = [...raw.matchAll(/\[([^\]]+)\]/g)]
+    .map((match) => String(match[1] || "").trim())
+    .filter(Boolean);
+
+  const lines = raw
+    .split(/\r?\n|\s{2,}/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const name =
+    bracketValues.at(-1) ||
+    lines.find(
+      (line) =>
+        !/^(กลุ่ม|ฝ่าย|งาน|สำนักงาน|สพป\.|สพม\.|รายละเอียด|เรื่อง|เลขที่|วันที่)/.test(
+          line,
+        ),
+    ) ||
+    lines[0] ||
+    raw;
+
+  const group =
+    lines.find((line) => /^(กลุ่ม|ฝ่าย|งาน)/.test(line)) ||
+    bracketValues.find((line) => /^(กลุ่ม|ฝ่าย|งาน)/.test(line)) ||
+    "";
+
+  return { name, group };
+}
+
 function displayAttachmentName(fileName: string, index: number) {
   const trimmed = String(fileName || "").trim();
 
@@ -132,6 +220,7 @@ function displayAttachmentName(fileName: string, index: number) {
 
 export default function DocumentsPage() {
   const router = useRouter();
+
   const supabase = useMemo(() => createClient(), []);
   const [books, setBooks] = useState<BookItem[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -163,6 +252,20 @@ export default function DocumentsPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [workloadCollapsed, setWorkloadCollapsed] = useState(false);
   const [selectedSmartAreaPage, setSelectedSmartAreaPage] = useState<number | null>(null);
+  const returnBookHandledRef = useRef(false);
+  const mobileScrollYRef = useRef(0);
+  const documentVersionRef = useRef(0);
+  const documentChangeAtRef = useRef("");
+  const documentCheckRunningRef = useRef(false);
+  const hadSelectedBookRef = useRef(false);
+  const [assigneeFilter, setAssigneeFilter] = useState("all");
+  const [urgencyFilter, setUrgencyFilter] = useState("all");
+  const [extensionInfo, setExtensionInfo] = useState<ExtensionInfo>({
+    version: "1.8.17",
+    downloadUrl:
+      "https://drive.google.com/file/d/1GvPboNgYoMsPY4nx6HHyf7mj3RrlI1Xf/view?usp=drive_link",
+  });
+  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
   const sessionToken = useCallback(async () => {
     const {
@@ -241,6 +344,7 @@ export default function DocumentsPage() {
 
       const loadedBooks = result.books ?? [];
       setBooks(loadedBooks);
+      setLastLoadedAt(new Date());
 
       const sourcePages = loadedBooks
         .map((book) => Number(book.smartAreaPage || 0))
@@ -269,6 +373,170 @@ export default function DocumentsPage() {
       setLoading(false);
     }
   }, [sessionToken]);
+
+  const loadExtensionInfo = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "/api/documents/import-area-pms?action=extensionInfo",
+        { cache: "no-store" },
+      );
+      const result = await response.json();
+
+      if (response.ok && result?.ok) {
+        setExtensionInfo({
+          version: String(result.version || "1.8.17"),
+          downloadUrl: String(
+            result.downloadUrl ||
+              "https://drive.google.com/file/d/1GvPboNgYoMsPY4nx6HHyf7mj3RrlI1Xf/view?usp=drive_link",
+          ),
+        });
+      }
+    } catch {
+      // Use the built-in fallback.
+    }
+  }, []);
+
+  const storeDocumentVersion = useCallback(
+    async (token: string) => {
+      const response = await fetch("/api/documents/version", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+
+      const result = (await response.json()) as DocumentsVersionResponse;
+
+      if (!response.ok || !result.ok) return;
+
+      documentVersionRef.current = Number(result.version || 0);
+      documentChangeAtRef.current = String(result.lastChangeAt || "");
+    },
+    [],
+  );
+
+  const mergeChangedBooks = useCallback(
+    (changedBooks: BookItem[], deletedIds: string[]) => {
+      const deleted = new Set(deletedIds);
+
+      setBooks((current) => {
+        const next = new Map(
+          current
+            .filter((book) => !deleted.has(book.id))
+            .map((book) => [book.id, book]),
+        );
+
+        for (const book of changedBooks) {
+          next.set(book.id, book);
+        }
+
+        return Array.from(next.values());
+      });
+
+      setSelectedBook((current) => {
+        if (!current || deleted.has(current.id)) return null;
+
+        return (
+          changedBooks.find((book) => book.id === current.id) || current
+        );
+      });
+    },
+    [],
+  );
+
+  const refreshBook = useCallback(
+    async (bookId: string) => {
+      const token = await sessionToken();
+      if (!token || !bookId) return;
+
+      const response = await fetch(
+        `/api/documents/book/${encodeURIComponent(bookId)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        },
+      );
+
+      if (response.status === 404) {
+        mergeChangedBooks([], [bookId]);
+        return;
+      }
+
+      const result = (await response.json()) as SingleDocumentResponse;
+
+      if (!response.ok || !result.ok || !result.book) {
+        throw new Error(result.message || "ไม่สามารถอัปเดตหนังสือรายการนี้ได้");
+      }
+
+      mergeChangedBooks([result.book], []);
+      await storeDocumentVersion(token);
+    },
+    [mergeChangedBooks, sessionToken, storeDocumentVersion],
+  );
+
+  const checkDocumentChanges = useCallback(
+    async (force = false) => {
+      if (documentCheckRunningRef.current) return;
+
+      documentCheckRunningRef.current = true;
+
+      try {
+        const token = await sessionToken();
+        if (!token) return;
+
+        const versionResponse = await fetch("/api/documents/version", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+
+        const versionResult =
+          (await versionResponse.json()) as DocumentsVersionResponse;
+
+        if (!versionResponse.ok || !versionResult.ok) return;
+
+        const nextVersion = Number(versionResult.version || 0);
+        const nextChangeAt = String(versionResult.lastChangeAt || "");
+
+        if (!documentChangeAtRef.current) {
+          documentVersionRef.current = nextVersion;
+          documentChangeAtRef.current = nextChangeAt;
+          return;
+        }
+
+        if (!force && nextVersion === documentVersionRef.current) {
+          return;
+        }
+
+        const changesResponse = await fetch(
+          `/api/documents/changes?after=${encodeURIComponent(
+            documentChangeAtRef.current,
+          )}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          },
+        );
+
+        const changesResult =
+          (await changesResponse.json()) as DocumentsChangesResponse;
+
+        if (!changesResponse.ok || !changesResult.ok) return;
+
+        mergeChangedBooks(
+          changesResult.books ?? [],
+          changesResult.deletedIds ?? [],
+        );
+
+        documentVersionRef.current = Number(
+          changesResult.version ?? nextVersion,
+        );
+        documentChangeAtRef.current = String(
+          changesResult.lastChangeAt || nextChangeAt,
+        );
+      } finally {
+        documentCheckRunningRef.current = false;
+      }
+    },
+    [mergeChangedBooks, sessionToken],
+  );
 
   const loadAssignees = useCallback(async () => {
     if (!capabilities.canAssign) return;
@@ -299,6 +567,34 @@ export default function DocumentsPage() {
     void loadAssignees();
   }, [loadAssignees]);
 
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") {
+        void checkDocumentChanges();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisible);
+    window.addEventListener("focus", handleVisible);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisible);
+      window.removeEventListener("focus", handleVisible);
+    };
+  }, [checkDocumentChanges]);
+
+  useEffect(() => {
+    if (selectedBook) {
+      hadSelectedBookRef.current = true;
+      return;
+    }
+
+    if (hadSelectedBookRef.current) {
+      hadSelectedBookRef.current = false;
+      void checkDocumentChanges();
+    }
+  }, [checkDocumentChanges, selectedBook]);
+
   async function postAction(payload: Record<string, unknown>, key: string) {
     setSavingKey(key);
     setMessage("");
@@ -323,7 +619,7 @@ export default function DocumentsPage() {
       }
 
       setSuccessMessage("บันทึกการดำเนินการเรียบร้อยแล้ว");
-      await loadBooks();
+      await refreshBook(String(result.bookId || payload.bookId || ""));
       return true;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "เกิดข้อผิดพลาด");
@@ -331,6 +627,55 @@ export default function DocumentsPage() {
     } finally {
       setSavingKey("");
     }
+  }
+
+  async function markBookRead(book: BookItem) {
+    if (book.isRead) return;
+
+    setBooks((current) =>
+      current.map((item) =>
+        item.id === book.id ? { ...item, isRead: true } : item,
+      ),
+    );
+
+    try {
+      const accessToken = await sessionToken();
+      if (!accessToken) return;
+
+      const response = await fetch("/api/documents/read", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookId: book.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to save read status");
+      }
+    } catch (error) {
+      console.error("Mark book as read error:", error);
+      setBooks((current) =>
+        current.map((item) =>
+          item.id === book.id ? { ...item, isRead: false } : item,
+        ),
+      );
+    }
+  }
+
+  function closeMobileDetail() {
+    setSelectedBook(null);
+    void checkDocumentChanges();
+
+    if (typeof window === "undefined") return;
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        top: mobileScrollYRef.current,
+        behavior: "auto",
+      });
+    });
   }
 
   async function updateTaskStatus(taskId: string, status: string) {
@@ -357,7 +702,12 @@ export default function DocumentsPage() {
       }
 
       setSuccessMessage("อัปเดตสถานะงานเรียบร้อยแล้ว");
-      await loadBooks();
+
+      if (result.bookId) {
+        await refreshBook(String(result.bookId));
+      } else {
+        await checkDocumentChanges(true);
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "เกิดข้อผิดพลาด");
     } finally {
@@ -467,6 +817,18 @@ export default function DocumentsPage() {
         return false;
       }
       if (statusFilter !== "all" && book.status !== statusFilter) return false;
+      if (
+        urgencyFilter !== "all" &&
+        normalizedUrgency(book.urgency) !== urgencyFilter
+      ) {
+        return false;
+      }
+      if (
+        assigneeFilter !== "all" &&
+        !book.tasks.some((task) => task.assigneeId === assigneeFilter)
+      ) {
+        return false;
+      }
 
       if (!normalized) return true;
 
@@ -499,15 +861,24 @@ export default function DocumentsPage() {
     });
   }, [
     books,
+    assigneeFilter,
     query,
     selectedSmartAreaPage,
     statusFilter,
+    urgencyFilter,
     viewMode,
   ]);
 
   useEffect(() => {
     setSelectedBook(null);
-  }, [query, selectedSmartAreaPage, statusFilter, viewMode]);
+  }, [
+    assigneeFilter,
+    query,
+    selectedSmartAreaPage,
+    statusFilter,
+    urgencyFilter,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (
@@ -520,6 +891,51 @@ export default function DocumentsPage() {
       );
     }
   }, [availableSmartAreaPages, selectedSmartAreaPage]);
+
+  useEffect(() => {
+    if (
+      returnBookHandledRef.current ||
+      books.length === 0 ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const requestedBookId = new URLSearchParams(window.location.search).get(
+      "book",
+    );
+
+    if (!requestedBookId) {
+      returnBookHandledRef.current = true;
+      return;
+    }
+
+    const requestedBook = books.find((book) => book.id === requestedBookId);
+
+    if (!requestedBook) {
+      returnBookHandledRef.current = true;
+      return;
+    }
+
+    returnBookHandledRef.current = true;
+    setSelectedBook(requestedBook);
+    void markBookRead(requestedBook);
+
+    if (requestedBook.smartAreaPage) {
+      setSelectedSmartAreaPage(Number(requestedBook.smartAreaPage));
+    }
+
+    window.requestAnimationFrame(() => {
+      const isMobile = window.matchMedia("(max-width: 768px)").matches;
+      const targetId = isMobile
+        ? `mobile-book-${requestedBookId}`
+        : `book-${requestedBookId}`;
+
+      document
+        .getElementById(targetId)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [books]);
 
   return (
     <main className={styles.page}>
@@ -664,15 +1080,6 @@ export default function DocumentsPage() {
               />
             </label>
 
-            <div className={styles.sourcePageSummary}>
-            <span>หน้าต้นทาง</span>
-            <strong>
-              {selectedSmartAreaPage
-                ? `Smart Area หน้า ${selectedSmartAreaPage}`
-                : "ยังไม่พบเลขหน้า"}
-            </strong>
-          </div>
-
             <label className={styles.selectField}>
               <span>สถานะ</span>
               <select
@@ -691,6 +1098,33 @@ export default function DocumentsPage() {
                   ))}
               </select>
             </label>
+          <label className={styles.selectField}>
+            <span>ความเร่งด่วน</span>
+            <select
+              value={urgencyFilter}
+              onChange={(event) => setUrgencyFilter(event.target.value)}
+            >
+              <option value="all">ทั้งหมด</option>
+              <option value="normal">ปกติ</option>
+              <option value="urgent">ด่วน</option>
+              <option value="very_urgent">ด่วนมาก</option>
+              <option value="most_urgent">ด่วนที่สุด</option>
+            </select>
+          </label>
+          <label className={styles.selectField}>
+            <span>ผู้รับผิดชอบ</span>
+            <select
+              value={assigneeFilter}
+              onChange={(event) => setAssigneeFilter(event.target.value)}
+            >
+              <option value="all">ทุกคน</option>
+              {assignees.map((assignee) => (
+                <option key={assignee.id} value={assignee.id}>
+                  {assignee.fullName}
+                </option>
+              ))}
+            </select>
+          </label>
           </div>
 
           {message && <div className={styles.errorBox}>{message}</div>}
@@ -773,6 +1207,408 @@ export default function DocumentsPage() {
             </div>
           </div>
 
+
+          {/* SMART AREA MOBILE V5.3 START */}
+          <div className={styles.mobileDocumentList}>
+            {filteredBooks.map((book) => {
+              const source = sourceDisplayParts(book.sourceAgency);
+              const isSelected = selectedBook?.id === book.id;
+              const urgencyKey = normalizedUrgency(book.urgency);
+              const ownAssignedTask = book.tasks.find(
+                (task) =>
+                  task.assigneeId === currentUserId &&
+                  task.status === "assigned",
+              );
+              const ownInProgressTask = book.tasks.find(
+                (task) =>
+                  task.assigneeId === currentUserId &&
+                  task.status === "in_progress",
+              );
+
+              return (
+                <article
+                  key={`mobile-${book.id}`}
+                  id={`mobile-book-${book.id}`}
+                  className={styles.mobileDocumentCard}
+                >
+                  <div className={styles.mobileCardTopline}>
+                    <span
+                      className={`${styles.mobileMailIcon} ${
+                        styles[`mobileMail_${urgencyKey}`] || ""
+                      }`}
+                      title={`ความเร่งด่วน: ${urgencyLabel(book.urgency)}`}
+                    >
+                      ✉
+                    </span>
+
+                    {!book.isRead ? (
+                      <span className={styles.mobileNewBadge}>
+                        <span className={styles.mobileUnreadDot} />
+                        ใหม่
+                      </span>
+                    ) : (
+                      <span className={styles.mobileReadBadge}>
+                        <span className={styles.mobileReadCheck}>✓</span>
+                        อ่านแล้ว
+                      </span>
+                    )}
+
+                    {urgencyKey !== "normal" && (
+                      <span
+                        className={`${styles.urgencyBadge} ${
+                          styles[`urgency_${urgencyKey}`] || ""
+                        }`}
+                      >
+                        {urgencyLabel(book.urgency)}
+                      </span>
+                    )}
+
+                    <span
+                      className={`${styles.statusBadge} ${
+                        styles[`status_${book.status}`] || ""
+                      }`}
+                    >
+                      {getStatusLabel(book.status)}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.mobileSubjectButton}
+                    onClick={() => {
+                      mobileScrollYRef.current = window.scrollY;
+                      void markBookRead(book);
+                      setSelectedBook(book);
+                    }}
+                  >
+                    {book.subject}
+                  </button>
+
+                  <div className={styles.mobileMetaGrid}>
+                    <div>
+                      <span>ที่</span>
+                      <strong>
+                        {book.documentNumber ||
+                          book.registrationNumber ||
+                          "-"}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>วันที่รับ</span>
+                      <strong>{formatDate(book.receivedDate)}</strong>
+                    </div>
+                    <div>
+                      <span>จาก</span>
+                      <strong>{source.name}</strong>
+                      {source.group && <small>{source.group}</small>}
+                    </div>
+                    <div>
+                      <span>ผู้รับผิดชอบ</span>
+                      <strong>{assigneeFirstNames(book.tasks)}</strong>
+                    </div>
+                  </div>
+
+                  <div className={styles.mobileFiles}>
+                    <span className={styles.mobileSectionLabel}>ไฟล์แนบ</span>
+                    {book.attachments.length === 0 ? (
+                      <span className={styles.noFile}>ไม่มีไฟล์แนบ</span>
+                    ) : (
+                      book.attachments.map((attachment, index) =>
+                        attachment.openUrl ? (
+                          <a
+                            key={attachment.id}
+                            href={attachment.openUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={attachment.fileName}
+                          >
+                            <span>{index + 1}.</span>
+                            <span>
+                              {displayAttachmentName(
+                                attachment.fileName,
+                                index,
+                              )}
+                            </span>
+                          </a>
+                        ) : (
+                          <span
+                            key={attachment.id}
+                            className={styles.missingFile}
+                          >
+                            {index + 1}. ไม่พบไฟล์
+                          </span>
+                        ),
+                      )
+                    )}
+                  </div>
+
+                  <div className={styles.mobilePrimaryActions}>
+                    <button
+                      type="button"
+                      className={styles.mobileDetailsButton}
+                      onClick={() => {
+                        mobileScrollYRef.current = window.scrollY;
+                      void markBookRead(book);
+                      setSelectedBook(book);
+                      }}
+                    >
+                      เปิดรายละเอียด
+                    </button>
+
+                    {capabilities.canSubmit &&
+                      book.status === "clerk_review" && (
+                        <button
+                          type="button"
+                          className={styles.primaryAction}
+                          onClick={() =>
+                            void postAction(
+                              { action: "submit", bookId: book.id },
+                              `submit:${book.id}`,
+                            )
+                          }
+                          disabled={savingKey === `submit:${book.id}`}
+                        >
+                          เสนอ ผอ.
+                        </button>
+                      )}
+
+                    {ownAssignedTask && (
+                      <button
+                        type="button"
+                        className={styles.primaryAction}
+                        onClick={() =>
+                          void updateTaskStatus(
+                            ownAssignedTask.id,
+                            "in_progress",
+                          )
+                        }
+                        disabled={savingKey === ownAssignedTask.id}
+                      >
+                        เริ่มดำเนินการ
+                      </button>
+                    )}
+
+                    {ownInProgressTask && (
+                      <button
+                        type="button"
+                        className={styles.doneAction}
+                        onClick={() =>
+                          void updateTaskStatus(
+                            ownInProgressTask.id,
+                            "done",
+                          )
+                        }
+                        disabled={savingKey === ownInProgressTask.id}
+                      >
+                        เสร็จสิ้น
+                      </button>
+                    )}
+                  </div>
+
+                  {isSelected && (
+                    <div
+                      className={styles.mobileDetailOverlay}
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label={`รายละเอียดหนังสือ ${book.subject}`}
+                    >
+                      <div className={styles.mobileDetailPage}>
+                        <header className={styles.mobileDetailTopbar}>
+                          <div>
+                            <span className={styles.mobileDetailEyebrow}>
+                              รายละเอียดหนังสือราชการ
+                            </span>
+                            <span className={styles.mobileDetailSubjectLabel}>
+                              เรื่อง
+                            </span>
+                            <strong>{book.subject}</strong>
+                            <small className={styles.mobileDetailReference}>
+                              {book.documentNumber ||
+                                book.registrationNumber ||
+                                "ไม่มีเลขที่หนังสือ"}
+                            </small>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={closeMobileDetail}
+                            aria-label="ปิดรายละเอียดและกลับหน้าหนังสือราชการ"
+                            className={styles.mobileCloseButton}
+                          >
+                            ×
+                          </button>
+                        </header>
+
+                        <main className={styles.mobileDetailScroll}>
+                          <div className={styles.mobileDetailStatusRow}>
+                            <span
+                              className={`${styles.mobileMailIcon} ${
+                                styles[`mobileMail_${urgencyKey}`] || ""
+                              }`}
+                            >
+                              ✉
+                            </span>
+
+                            {!book.isRead ? (
+                              <span className={styles.mobileNewBadge}>
+                                <span className={styles.mobileUnreadDot} />
+                                ใหม่
+                              </span>
+                            ) : (
+                              <span className={styles.mobileReadBadge}>
+                                <span className={styles.mobileReadCheck}>
+                                  ✓
+                                </span>
+                                อ่านแล้ว
+                              </span>
+                            )}
+
+                            {urgencyKey !== "normal" && (
+                              <span
+                                className={`${styles.urgencyBadge} ${
+                                  styles[`urgency_${urgencyKey}`] || ""
+                                }`}
+                              >
+                                {urgencyLabel(book.urgency)}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className={styles.mobileDetailGrid}>
+                            <section>
+                              <span>เลขทะเบียนรับ</span>
+                              <strong>
+                                {book.registrationNumber || "-"}
+                              </strong>
+                            </section>
+                            <section>
+                              <span>เลขที่หนังสือ</span>
+                              <strong>{book.documentNumber || "-"}</strong>
+                            </section>
+                            <section>
+                              <span>วันที่รับ</span>
+                              <strong>{formatDate(book.receivedDate)}</strong>
+                            </section>
+                            <section>
+                              <span>วันที่หนังสือ</span>
+                              <strong>
+                                {formatDate(book.documentDate)}
+                              </strong>
+                            </section>
+                            <section className={styles.mobileDetailWide}>
+                              <span>จาก</span>
+                              <strong>{source.name}</strong>
+                              {source.group && <small>{source.group}</small>}
+                            </section>
+                            <section className={styles.mobileDetailWide}>
+                              <span>ผู้รับผิดชอบ</span>
+                              <strong>
+                                {assigneeFirstNames(book.tasks)}
+                              </strong>
+                            </section>
+                          </div>
+
+                          <section className={styles.mobileDetailFiles}>
+                            <span>ไฟล์แนบ</span>
+                            {book.attachments.length === 0 ? (
+                              <p>ไม่มีไฟล์แนบ</p>
+                            ) : (
+                              book.attachments.map((attachment, index) =>
+                                attachment.openUrl ? (
+                                  <a
+                                    key={attachment.id}
+                                    href={attachment.openUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <span>{index + 1}.</span>
+                                    <span>
+                                      {displayAttachmentName(
+                                        attachment.fileName,
+                                        index,
+                                      )}
+                                    </span>
+                                  </a>
+                                ) : (
+                                  <p key={attachment.id}>
+                                    {index + 1}. ไม่พบไฟล์
+                                  </p>
+                                ),
+                              )
+                            )}
+                          </section>
+
+                          <section className={styles.mobileDetailText}>
+                            <span>หมายเหตุ</span>
+                            <p>{book.note || "-"}</p>
+                          </section>
+
+                          <section className={styles.mobileDetailText}>
+                            <span>ข้อความสั่งการ</span>
+                            <p>{book.directorNote || "-"}</p>
+                          </section>
+                        </main>
+
+                        <footer className={styles.mobileDetailActions}>
+                          {capabilities.canAssign &&
+                            book.status !== "done" && (
+                              <button
+                                type="button"
+                                className={styles.signAssignButton}
+                                onClick={() =>
+                                  router.push(
+                                    `/documents/sign/${book.id}`,
+                                  )
+                                }
+                              >
+                                ลงนามและมอบหมาย
+                              </button>
+                            )}
+
+                          {capabilities.canAssign &&
+                            book.status !== "done" && (
+                              <button
+                                type="button"
+                                className={styles.assignDetailButton}
+                                onClick={() => openAssignment(book)}
+                              >
+                                {book.tasks.length > 0
+                                  ? "แก้ไขผู้รับมอบหมาย"
+                                  : "มอบหมายโดยไม่ลงนาม"}
+                              </button>
+                            )}
+
+                          {capabilities.canClose &&
+                            book.status === "director_review" && (
+                              <button
+                                type="button"
+                                className={styles.secondaryAction}
+                                onClick={() =>
+                                  void postAction(
+                                    {
+                                      action: "close",
+                                      bookId: book.id,
+                                      note: "รับทราบและปิดเรื่อง",
+                                    },
+                                    `close:${book.id}`,
+                                  )
+                                }
+                                disabled={
+                                  savingKey === `close:${book.id}`
+                                }
+                              >
+                                รับทราบ/จบ
+                              </button>
+                            )}
+                        </footer>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+          {/* SMART AREA MOBILE V5.3 END */}
+
           <div className={styles.tableWrap}>
             <table className={styles.bookTable}>
               <thead>
@@ -789,6 +1625,7 @@ export default function DocumentsPage() {
                 {filteredBooks.map((book) => (
                   <Fragment key={book.id}>
                   <tr
+                    id={`book-${book.id}`}
                     className={
                       selectedBook?.id === book.id ? styles.selectedRow : ""
                     }
@@ -796,20 +1633,21 @@ export default function DocumentsPage() {
                     <td data-label="ลำดับ">
                       <div className={styles.registrationCell}>
                         <strong>{book.registrationNumber || "-"}</strong>
-                        <small className={styles.sourcePageLabel}>
-                          หน้า Smart Area: {book.smartAreaPage || "-"}
+                        {book.documentNumber && (
+                          <small className={styles.documentNumber}>
+                            {book.documentNumber}
+                          </small>
+                        )}
+                        <small>
+                          หน้า {book.smartAreaPage || "-"} · ID {book.legacySmartAreaId || "-"}
                         </small>
                         <small>
-                          Smart Area ID: {book.legacySmartAreaId || "-"}
-                        </small>
-                        <small>รับ {formatDate(book.receivedDate)}</small>
-                        <small>
-                          อัปเดต{" "}
+                          รับ {formatDate(book.receivedDate)} · อัปเดต{" "}
                           {book.updatedAt
                             ? new Intl.DateTimeFormat("th-TH", {
                                 day: "2-digit",
                                 month: "2-digit",
-                                year: "numeric",
+                                year: "2-digit",
                                 hour: "2-digit",
                                 minute: "2-digit",
                               }).format(new Date(book.updatedAt))
@@ -821,22 +1659,43 @@ export default function DocumentsPage() {
                     <td data-label="เรื่อง / ไฟล์แนบ">
                       <div className={styles.subjectCell}>
                         <div className={styles.subjectTopline}>
-                          {["clerk_review", "director_review"].includes(
-                            book.status,
-                          ) && (
+                          <span
+                            className={`${styles.desktopMailIcon} ${
+                              styles[
+                                `desktopMail_${normalizedUrgency(book.urgency)}`
+                              ] || ""
+                            }`}
+                            title={`ความเร่งด่วน: ${urgencyLabel(
+                              book.urgency,
+                            )}`}
+                          >
+                            ✉
+                          </span>
+
+                          {!book.isRead ? (
+                            <span className={styles.desktopNewBadge}>
+                              <span className={styles.desktopUnreadDot} />
+                              ใหม่
+                            </span>
+                          ) : (
+                            <span className={styles.desktopReadBadge}>
+                              <span className={styles.desktopReadCheck}>✓</span>
+                              อ่านแล้ว
+                            </span>
+                          )}
+
+                          {normalizedUrgency(book.urgency) !== "normal" && (
                             <span
-                              className={styles.newMailBadge}
-                              title="หนังสือใหม่"
-                              aria-label="หนังสือใหม่"
+                              className={`${styles.urgencyBadge} ${
+                                styles[
+                                  `urgency_${normalizedUrgency(book.urgency)}`
+                                ] || ""
+                              }`}
                             >
-                              ✉
+                              {urgencyLabel(book.urgency)}
                             </span>
                           )}
-                          {book.urgency && (
-                            <span className={styles.urgencyBadge}>
-                              {book.urgency}
-                            </span>
-                          )}
+
                           {book.documentType && (
                             <span className={styles.typeBadge}>
                               {book.documentType}
@@ -845,24 +1704,20 @@ export default function DocumentsPage() {
                         </div>
                         <button
                           type="button"
-                          className={styles.subjectButton}
-                          onClick={() =>
+                          className={`${styles.subjectButton} ${
+                            selectedBook?.id === book.id
+                              ? styles.selectedSubject
+                              : ""
+                          }`}
+                          onClick={() => {
+                            void markBookRead(book);
                             setSelectedBook((current) =>
                               current?.id === book.id ? null : book,
-                            )
-                          }
+                            );
+                          }}
                         >
                           {book.subject}
                         </button>
-                        <small>
-                          {book.documentNumber
-                            ? `เลขที่ ${book.documentNumber}`
-                            : "ไม่ระบุเลขที่หนังสือ"}
-                          {book.documentDate
-                            ? ` · ${formatDate(book.documentDate)}`
-                            : ""}
-                        </small>
-
                         <div className={styles.fileLinks}>
                           {book.attachments.length === 0 && (
                             <span className={styles.noFile}>ไม่มีไฟล์แนบ</span>
@@ -898,11 +1753,23 @@ export default function DocumentsPage() {
                       </div>
                     </td>
 
-                    <td data-label="จาก">
-                      <div className={styles.sourceCell}>
-                        <strong>{book.sourceAgency || "-"}</strong>
-                        <small>{book.note || "ไม่มีหมายเหตุ"}</small>
-                      </div>
+                    <td data-label="จาก" className={styles.fromColumn}>
+                      {(() => {
+                        const source = sourceDisplayParts(book.sourceAgency);
+
+                        return (
+                          <div className={styles.sourceCell}>
+                            <span className={styles.sourceName}>
+                              {source.name}
+                            </span>
+                            {source.group && (
+                              <span className={styles.sourceGroup}>
+                                {source.group}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     <td data-label="สถานะ">
@@ -917,17 +1784,7 @@ export default function DocumentsPage() {
 
                     <td data-label="ผู้รับผิดชอบ">
                       <div className={styles.assigneeCell}>
-                        {book.tasks.length === 0 ? (
-                          <span>-</span>
-                        ) : (
-                          <div className={styles.assigneeNames}>
-                            {book.tasks.map((task) => (
-                              <span key={task.id}>
-                                {shortThaiName(task.assigneeName)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <span>{assigneeFirstNames(book.tasks)}</span>
                       </div>
                     </td>
 
@@ -1031,7 +1888,7 @@ export default function DocumentsPage() {
                   </tr>
 
                   {selectedBook?.id === book.id && (
-                    <tr className={styles.detailRow}>
+                    <tr className={`${styles.detailRow} ${styles.selectedDetailRow}`}>
                       <td colSpan={6}>
                         <div className={styles.inlineDetail}>
                           <div className={styles.inlineDetailHeader}>
@@ -1061,15 +1918,17 @@ export default function DocumentsPage() {
                                   >
                                     {book.tasks.length > 0
                                       ? "แก้ไขผู้รับมอบหมาย"
-                                      : "มอบหมายงาน"}
+                                      : "มอบหมายโดยไม่ลงนาม"}
                                   </button>
                                 )}
                               <button
                                 type="button"
                                 className={styles.closeDetailButton}
                                 onClick={() => setSelectedBook(null)}
+                                aria-label="ปิดรายละเอียด"
+                                title="ปิดรายละเอียด"
                               >
-                                ปิด
+                                ×
                               </button>
                             </div>
                           </div>
@@ -1312,6 +2171,37 @@ export default function DocumentsPage() {
           </section>
         </div>
       )}
+
+      <footer className={styles.documentFooter}>
+        <div>
+          ระบบสารบรรณโรงเรียนจากข้อมูล Smart Area · โรงเรียนวัดไผ่มุ้ง
+        </div>
+        <div>
+          อัปเดตล่าสุด{" "}
+          {lastLoadedAt
+            ? new Intl.DateTimeFormat("th-TH", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }).format(lastLoadedAt)
+            : "-"}{" "}
+          · เวอร์ชัน {extensionInfo.version || "-"}
+        </div>
+        <div>
+          <a
+            href={extensionInfo.downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            ดาวน์โหลด Extension {extensionInfo.version || "-"}
+          </a>{" "}
+          · © 2026 นายสุธน พุทธรัตน์ ผู้อำนวยการโรงเรียนวัดไผ่มุ้ง
+          · สงวนลิขสิทธิ์ · โทร. 086-6271047
+        </div>
+      </footer>
+
     </main>
   );
 }
