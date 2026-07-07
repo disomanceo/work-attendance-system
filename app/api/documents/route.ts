@@ -35,6 +35,11 @@ export async function GET(request: Request) {
   const isManager =
     auth.profile.role === "admin" || auth.profile.role === "director";
   const isClerk = auth.profile.work_permissions.includes("smart_area.clerk");
+  const workspaceMode = isManager
+    ? "manager"
+    : isClerk
+      ? "clerk"
+      : "member";
 
   let visibleBookIds: string[] | null = null;
 
@@ -67,6 +72,7 @@ export async function GET(request: Request) {
         books: [],
         accessMode: "assigned",
         canManageAll: false,
+        workspaceMode,
         capabilities: {
           canSubmit: false,
           canAssign: false,
@@ -113,8 +119,6 @@ export async function GET(request: Request) {
         file_order,
         attachment_type,
         status,
-        assignment_opened_at,
-        assignment_acknowledged_at,
         is_active
       )
     `)
@@ -231,10 +235,11 @@ export async function GET(request: Request) {
     books,
     accessMode: auth.canManageAll ? "all" : "assigned",
     canManageAll: auth.canManageAll,
+    workspaceMode,
     capabilities: {
       canSubmit: isManager || isClerk,
       canAssign: isManager,
-      canClose: isManager,
+      canClose: isManager || isClerk,
     },
   });
 }

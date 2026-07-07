@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +13,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const allowed =
-    auth.profile.role === "admin" || auth.profile.role === "director";
+  const allowed = auth.canManageAll;
 
   if (!allowed) {
     return NextResponse.json(

@@ -2316,3 +2316,306 @@
   background: #059669;
 }
 /* SMART_AREA_ASSIGNMENT_STATE_V14_END */
+/* SMART_AREA_ASSIGNMENT_STATE_V16_START */
+.mobileFiles a[data-assignment-state],
+.mobileDetailFiles a[data-assignment-state],
+.fileLinks a[data-assignment-state],
+.detailFiles a[data-assignment-state] {
+  display: inline-flex !important;
+  width: fit-content !important;
+  min-width: 0 !important;
+  min-height: 28px !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  border-radius: 999px !important;
+  padding: 4px 9px !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}
+
+.mobileFiles a[data-assignment-state]::before,
+.mobileDetailFiles a[data-assignment-state]::before,
+.fileLinks a[data-assignment-state]::before,
+.detailFiles a[data-assignment-state]::before {
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px !important;
+  font-size: 10px !important;
+}
+/* SMART_AREA_ASSIGNMENT_STATE_V16_END */
+/* SMART_AREA_STATUS_COLORS_V17_START */
+.statusBadge {
+  border: 1px solid transparent;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.status_clerk_review {
+  border-color: #b8c7d1;
+  background: #e8eef3;
+  color: #425466;
+}
+
+.status_director_review {
+  border-color: #e2b43f;
+  background: #fff3cd;
+  color: #8a5b00;
+}
+
+.status_assigned {
+  border-color: #c5a7e8;
+  background: #f1e8ff;
+  color: #6b3fa0;
+}
+
+.status_in_progress {
+  border-color: #7cc5ea;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status_done {
+  border-color: #86d39d;
+  background: #dcfce7;
+  color: #15803d;
+}
+/* SMART_AREA_STATUS_COLORS_V17_END */
+/* SMART_AREA_WORKLOAD_BY_PERSON_V19_START */
+.workloadList {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+}
+
+.workloadList button {
+  display: grid;
+  width: 100%;
+  min-height: 28px;
+  grid-template-columns: minmax(72px, 0.9fr) minmax(70px, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 7px;
+  padding: 3px 4px;
+  background: transparent;
+  color: #27343a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workloadList button:hover,
+.workloadPersonActive {
+  background: #edf7f3 !important;
+}
+
+.workloadPersonName {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workloadBarTrack {
+  display: block;
+  width: 100%;
+  height: 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf1;
+}
+
+.workloadBarFill {
+  display: block;
+  min-width: 6px;
+  height: 100%;
+  border-radius: inherit;
+  background: #1fb96b;
+  transition: width 180ms ease;
+}
+
+.workloadBarHighest {
+  background: #ef4444;
+}
+
+.workloadBarHigh {
+  background: #f97316;
+}
+
+.workloadBarMedium {
+  background: #eab308;
+}
+
+.workloadBarNormal {
+  background: #1fb96b;
+}
+
+.workloadList button strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.workloadEmpty {
+  padding: 14px 8px;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+/* SMART_AREA_WORKLOAD_BY_PERSON_V19_END */
+/* SMART_AREA_WORKLOAD_BLOCKS_V20_START */
+.workloadPanel {
+  position: relative;
+}
+
+.workloadToggle {
+  position: absolute;
+  top: 13px;
+  right: 9px;
+  z-index: 4;
+  display: grid;
+  width: 16px;
+  min-width: 16px;
+  height: 20px;
+  min-height: 20px;
+  place-items: center;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1;
+  box-shadow: none !important;
+}
+
+.workloadPanelCollapsed .workloadToggle {
+  top: 12px;
+  right: 15px;
+  color: #075e50;
+}
+
+.workloadHeader {
+  min-height: 42px;
+  padding: 8px 32px 8px 10px;
+}
+
+.workloadHeader h2 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.workloadHeader > span {
+  min-width: 28px;
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.workloadList {
+  gap: 2px;
+  padding: 6px 8px 7px;
+}
+
+.workloadList button {
+  min-height: 23px;
+  grid-template-columns: minmax(66px, 0.85fr) minmax(92px, 1.35fr) 25px;
+  gap: 5px;
+  padding: 1px 3px;
+}
+
+.workloadPersonName {
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+
+.workloadBlocks {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1px;
+  line-height: 0;
+}
+
+.workloadBlock {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  flex: 0 0 7px;
+  border-radius: 0;
+}
+
+.workloadZero {
+  color: #a5b0b8;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.workloadList button strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.workloadFooter {
+  display: none !important;
+}
+/* SMART_AREA_WORKLOAD_BLOCKS_V20_END */
+/* SMART_AREA_WORKLOAD_COLLAPSE_FIX_V20_1_START */
+.workloadPanelCollapsed {
+  position: relative !important;
+  display: block !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  flex: 0 0 38px !important;
+  min-height: 48px;
+  overflow: visible !important;
+  border: 1px solid #c9ddd6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.workloadPanelCollapsed .workloadContent {
+  display: none !important;
+}
+
+.workloadPanelCollapsed .workloadToggle {
+  position: absolute !important;
+  top: 12px !important;
+  right: 9px !important;
+  z-index: 20 !important;
+  display: grid !important;
+  width: 18px !important;
+  min-width: 18px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  place-items: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  border: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: #075e50 !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  transform: none !important;
+}
+
+.workloadPanelCollapsed .workloadToggle:hover,
+.workloadPanelCollapsed .workloadToggle:focus-visible {
+  background: transparent !important;
+  color: #043f36 !important;
+  outline: none;
+}
+/* SMART_AREA_WORKLOAD_COLLAPSE_FIX_V20_1_END */

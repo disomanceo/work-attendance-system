@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
 
 type ActionBody = {
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         p_book_id: bookId,
         p_actor_id: auth.profile.id,
         p_note: note || null,
-        p_allowed: isManager,
+        p_allowed: isManager || isClerk,
       },
     );
 
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
       console.error("Close Smart Area book error:", error);
       return NextResponse.json(
         { ok: false, message: "ไม่สามารถปิดหนังสือราชการได้" },
-        { status: isManager ? 400 : 403 },
+        { status: isManager || isClerk ? 400 : 403 },
       );
     }
 

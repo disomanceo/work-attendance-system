@@ -10,6 +10,7 @@ import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
 import OfficialDutyReviewPopup from "@/components/attendance/OfficialDutyReviewPopup";
 import OrderReviewPopup from "@/components/attendance/OrderReviewPopup";
 import RequestResultPopup from "@/components/attendance/RequestResultPopup";
+import SmartAreaAssignmentPopup from "@/components/attendance/SmartAreaAssignmentPopup";
 
 type Profile = {
   full_name: string;
@@ -1293,7 +1294,8 @@ schoolName: settings?.school_name ?? null,
             </div>
           </section>
         </div>
-      )}
+      )}      <SmartAreaAssignmentPopup />
+
 
       <LeaveReviewPopup role={profile.role} />
       <OfficialDutyReviewPopup role={profile.role} />

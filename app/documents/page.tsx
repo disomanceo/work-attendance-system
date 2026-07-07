@@ -65,6 +65,7 @@ type DocumentsResponse = {
   books?: BookItem[];
   accessMode?: "all" | "assigned";
   canManageAll?: boolean;
+  workspaceMode?: WorkspaceMode;
   capabilities?: Capabilities;
   message?: string;
 };
@@ -109,7 +110,8 @@ type ExtensionInfo = {
 };
 
 type SortMode = "newest" | "oldest" | "registration";
-type ViewMode = "current" | "archive";
+type ViewMode = "clerk" | "mine" | "all" | "archive";
+type WorkspaceMode = "manager" | "clerk" | "member";
 
 const statusLabels: Record<string, string> = {
   clerk_review: "รอธุรการตรวจ",
@@ -274,6 +276,23 @@ function orderedAttachments(attachments: AttachmentItem[]) {
   return [...signed, ...originals];
 }
 
+function workloadBlockColor(index: number) {
+  const colors = [
+    "#22c55e",
+    "#4ade80",
+    "#84cc16",
+    "#a3e635",
+    "#eab308",
+    "#facc15",
+    "#f59e0b",
+    "#f97316",
+    "#ef6a45",
+    "#ef4444",
+  ];
+
+  return colors[Math.min(index, colors.length - 1)];
+}
+
 function assignmentState(book: BookItem, currentUserId: string) {
   const task = book.tasks.find((item) => item.assigneeId === currentUserId);
 
@@ -289,9 +308,21 @@ function assignmentState(book: BookItem, currentUserId: string) {
   return "pending";
 }
 
+function originalAttachmentNumber(
+  book: BookItem,
+  attachment: AttachmentItem,
+) {
+  if (attachment.attachmentType === "signed") return null;
+
+  const originalIndex = orderedAttachments(book.attachments)
+    .filter((item) => item.attachmentType !== "signed")
+    .findIndex((item) => item.id === attachment.id);
+
+  return originalIndex >= 0 ? originalIndex + 1 : null;
+}
+
 function attachmentDisplayLabel(
   attachment: AttachmentItem,
-  index: number,
   book: BookItem,
   currentUserId: string,
 ) {
@@ -302,7 +333,8 @@ function attachmentDisplayLabel(
     return "แจ้งมอบหมาย";
   }
 
-  return displayAttachmentName(attachment.fileName, index);
+  const number = originalAttachmentNumber(book, attachment) ?? 1;
+  return displayAttachmentName(attachment.fileName, number - 1);
 }
 export default function DocumentsPage() {
   const router = useRouter();
@@ -320,7 +352,8 @@ export default function DocumentsPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
-  const [viewMode, setViewMode] = useState<ViewMode>("current");
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("member");
   const [accessMode, setAccessMode] = useState<"all" | "assigned">("assigned");
   const [canManageAll, setCanManageAll] = useState(false);
   const [capabilities, setCapabilities] = useState<Capabilities>({
@@ -445,6 +478,25 @@ export default function DocumentsPage() {
 
       setAccessMode(result.accessMode ?? "assigned");
       setCanManageAll(result.canManageAll === true);
+
+      const nextWorkspaceMode = result.workspaceMode ?? "member";
+      setWorkspaceMode(nextWorkspaceMode);
+      setViewMode((current) => {
+        if (nextWorkspaceMode === "manager") {
+          return current === "archive" ? "archive" : "all";
+        }
+
+        if (nextWorkspaceMode === "clerk") {
+          return current === "clerk" ||
+            current === "mine" ||
+            current === "all" ||
+            current === "archive"
+            ? current
+            : "clerk";
+        }
+
+        return current === "archive" ? "archive" : "mine";
+      });
       setCapabilities(
         result.capabilities ?? {
           canSubmit: false,
@@ -624,7 +676,7 @@ export default function DocumentsPage() {
   );
 
   const loadAssignees = useCallback(async () => {
-    if (!capabilities.canAssign) return;
+    if (!canManageAll) return;
 
     const token = await sessionToken();
     if (!token) return;
@@ -638,7 +690,7 @@ export default function DocumentsPage() {
     if (response.ok && result.ok) {
       setAssignees(result.assignees ?? []);
     }
-  }, [capabilities.canAssign, sessionToken]);
+  }, [canManageAll, sessionToken]);
 
   useEffect(() => {
     void loadBooks();
@@ -898,14 +950,41 @@ export default function DocumentsPage() {
     };
   }, [books]);
 
-  const workload = useMemo(
-    () =>
-      Object.entries(statusLabels).map(([status, label]) => ({
-        status,
-        label,
-        count: books.filter((book) => book.status === status).length,
-      })),
-    [books],
+  const workload = useMemo(() => {
+    const pendingByAssignee = new Map<string, number>();
+
+    books.forEach((book) => {
+      book.tasks.forEach((task) => {
+        if (!task.assigneeId || task.status === "done") return;
+        pendingByAssignee.set(
+          task.assigneeId,
+          (pendingByAssignee.get(task.assigneeId) || 0) + 1,
+        );
+      });
+    });
+
+    return assignees
+      .map((person) => ({
+        id: person.id,
+        name: shortThaiName(person.fullName),
+        fullName: person.fullName,
+        count: pendingByAssignee.get(person.id) || 0,
+      }))
+      .sort(
+        (left, right) =>
+          right.count - left.count ||
+          left.fullName.localeCompare(right.fullName, "th"),
+      );
+  }, [assignees, books]);
+
+  const workloadMaximum = Math.max(
+    1,
+    ...workload.map((item) => item.count),
+  );
+
+  const pendingWorkloadTotal = workload.reduce(
+    (total, item) => total + item.count,
+    0,
   );
 
   const availableSmartAreaPages = useMemo(
@@ -947,8 +1026,21 @@ export default function DocumentsPage() {
     const normalized = query.trim().toLocaleLowerCase("th");
 
     const result = books.filter((book) => {
+      const hasOwnTask = book.tasks.some(
+        (task) => task.assigneeId === currentUserId,
+      );
+
       const inSelectedView =
-        viewMode === "archive" ? book.status === "done" : book.status !== "done";
+        viewMode === "clerk"
+          ? book.status === "clerk_review" ||
+            book.status === "director_review"
+          : viewMode === "mine"
+            ? hasOwnTask && book.status !== "done"
+            : viewMode === "all"
+              ? book.status !== "done"
+              : workspaceMode === "member"
+                ? hasOwnTask && book.status === "done"
+                : book.status === "done";
 
       if (!inSelectedView) return false;
       if (
@@ -985,13 +1077,13 @@ if (
       if (pageDifference !== 0) return pageDifference;
 
       const orderDifference =
-        Number(left.smartAreaOrder || 0) - Number(right.smartAreaOrder || 0);
+        Number(right.smartAreaOrder || 0) - Number(left.smartAreaOrder || 0);
 
       if (orderDifference !== 0) return orderDifference;
 
       return (
-        registrationValue(left.registrationNumber) -
-        registrationValue(right.registrationNumber)
+        registrationValue(right.registrationNumber) -
+        registrationValue(left.registrationNumber)
       );
     });
   }, [
@@ -1114,7 +1206,7 @@ if (
           type="button"
           className={`${styles.summaryCard} ${styles.summaryAll}`}
           onClick={() => {
-            setViewMode("current");
+            setViewMode(workspaceMode === "member" ? "mine" : "all");
             setStatusFilter("all");
           }}
         >
@@ -1129,7 +1221,7 @@ if (
           type="button"
           className={`${styles.summaryCard} ${styles.summaryPending}`}
           onClick={() => {
-            setViewMode("current");
+            setViewMode(workspaceMode === "member" ? "mine" : "all");
             setStatusFilter("director_review");
           }}
         >
@@ -1144,7 +1236,7 @@ if (
           type="button"
           className={`${styles.summaryCard} ${styles.summaryProgress}`}
           onClick={() => {
-            setViewMode("current");
+            setViewMode(workspaceMode === "member" ? "mine" : "all");
             setStatusFilter("in_progress");
           }}
         >
@@ -1178,27 +1270,91 @@ if (
       >
         <div className={styles.mainPanel}>
           <div className={styles.viewTabs}>
-            <button
-              type="button"
-              className={viewMode === "current" ? styles.activeTab : ""}
-              onClick={() => {
-                setViewMode("current");
-                if (statusFilter === "done") setStatusFilter("all");
-              }}
-            >
-              งานปัจจุบัน
-              <span>{books.filter((book) => book.status !== "done").length}</span>
-            </button>
+            {workspaceMode === "clerk" && (
+              <button
+                type="button"
+                className={viewMode === "clerk" ? styles.activeTab : ""}
+                onClick={() => {
+                  setViewMode("clerk");
+                  setStatusFilter("all");
+                  setAssigneeFilter("all");
+                }}
+              >
+                งานธุรการ
+                <span>
+                  {
+                    books.filter(
+                      (book) =>
+                        book.status === "clerk_review" ||
+                        book.status === "director_review",
+                    ).length
+                  }
+                </span>
+              </button>
+            )}
+
+            {workspaceMode !== "manager" && (
+              <button
+                type="button"
+                className={viewMode === "mine" ? styles.activeTab : ""}
+                onClick={() => {
+                  setViewMode("mine");
+                  setStatusFilter("all");
+                  setAssigneeFilter("all");
+                }}
+              >
+                งานของฉัน
+                <span>
+                  {
+                    books.filter(
+                      (book) =>
+                        book.status !== "done" &&
+                        book.tasks.some(
+                          (task) => task.assigneeId === currentUserId,
+                        ),
+                    ).length
+                  }
+                </span>
+              </button>
+            )}
+
+            {workspaceMode !== "member" && (
+              <button
+                type="button"
+                className={viewMode === "all" ? styles.activeTab : ""}
+                onClick={() => {
+                  setViewMode("all");
+                  setStatusFilter("all");
+                  setAssigneeFilter("all");
+                }}
+              >
+                งานทั้งหมด
+                <span>{books.filter((book) => book.status !== "done").length}</span>
+              </button>
+            )}
+
             <button
               type="button"
               className={viewMode === "archive" ? styles.activeTab : ""}
               onClick={() => {
                 setViewMode("archive");
                 setStatusFilter("all");
+                setAssigneeFilter("all");
               }}
             >
               คลังเสร็จแล้ว
-              <span>{summary.done}</span>
+              <span>
+                {
+                  books.filter(
+                    (book) =>
+                      book.status === "done" &&
+                      (workspaceMode !== "member" ||
+                        book.tasks.some(
+                          (task) => task.assigneeId === currentUserId,
+                        )),
+                  ).length
+                }
+              </span>
             </button>
           </div>
 
@@ -1255,7 +1411,13 @@ if (
           <div className={styles.resultBar}>
             <div>
               <strong>
-                {viewMode === "archive" ? "รายการที่เสร็จแล้ว" : "งานปัจจุบัน"}
+                {viewMode === "clerk"
+                  ? "งานธุรการ"
+                  : viewMode === "mine"
+                    ? "งานของฉัน"
+                    : viewMode === "all"
+                      ? "งานทั้งหมด"
+                      : "คลังเสร็จแล้ว"}
               </strong>
               <span>
                 {selectedSmartAreaPage
@@ -1435,9 +1597,13 @@ if (
                               void markAssignmentRead(book, attachment);
                             }}
                           >
-                            <span>{index + 1}.</span>
+                            {attachment.attachmentType !== "signed" && (
+                              <span>
+                                {originalAttachmentNumber(book, attachment)}.
+                              </span>
+                            )}
                             <span>
-                              {attachmentDisplayLabel(attachment, index, book, currentUserId)}
+                              {attachmentDisplayLabel(attachment, book, currentUserId)}
                             </span>
                           </a>
                         ) : (
@@ -1445,7 +1611,7 @@ if (
                             key={attachment.id}
                             className={styles.missingFile}
                           >
-                            {index + 1}. ไม่พบไฟล์
+                            {attachment.attachmentType === "signed" ? "ไม่พบไฟล์แจ้งมอบหมาย" : `${originalAttachmentNumber(book, attachment)}. ไม่พบไฟล์`}
                           </span>
                         ),
                       )
@@ -1585,7 +1751,7 @@ if (
                               <strong>{formatDate(book.receivedDate)}</strong>
                             </section>
                             <section>
-                              <span>วันที่หนังสือ</span>
+                              <span>ลงวันที่</span>
                               <strong>
                                 {formatDate(book.documentDate)}
                               </strong>
@@ -1637,14 +1803,18 @@ if (
                               void markAssignmentRead(book, attachment);
                             }}
                           >
-                                    <span>{index + 1}.</span>
+                                    {attachment.attachmentType !== "signed" && (
+                              <span>
+                                {originalAttachmentNumber(book, attachment)}.
+                              </span>
+                            )}
                                     <span>
-                                      {attachmentDisplayLabel(attachment, index, book, currentUserId)}
+                                      {attachmentDisplayLabel(attachment, book, currentUserId)}
                                     </span>
                                   </a>
                                 ) : (
                                   <p key={attachment.id}>
-                                    {index + 1}. ไม่พบไฟล์
+                                    {attachment.attachmentType === "signed" ? "ไม่พบไฟล์แจ้งมอบหมาย" : `${originalAttachmentNumber(book, attachment)}. ไม่พบไฟล์`}
                                   </p>
                                 ),
                               )
@@ -1834,9 +2004,13 @@ if (
                               void markAssignmentRead(book, attachment);
                             }}
                           >
-                                <span>{index + 1}.</span>
+                                {attachment.attachmentType !== "signed" && (
+                              <span>
+                                {originalAttachmentNumber(book, attachment)}.
+                              </span>
+                            )}
                                 <span>
-                                  {attachmentDisplayLabel(attachment, index, book, currentUserId)}
+                                  {attachmentDisplayLabel(attachment, book, currentUserId)}
                                 </span>
                               </a>
                             ) : (
@@ -1844,7 +2018,7 @@ if (
                                 key={attachment.id}
                                 className={styles.missingFile}
                               >
-                                {index + 1}. ไม่พบไฟล์
+                                {attachment.attachmentType === "signed" ? "ไม่พบไฟล์แจ้งมอบหมาย" : `${originalAttachmentNumber(book, attachment)}. ไม่พบไฟล์`}
                               </span>
                             ),
                           )}
@@ -2046,7 +2220,7 @@ if (
                               <strong>{book.documentNumber || "-"}</strong>
                             </div>
                             <div>
-                              <span>วันที่หนังสือ</span>
+                              <span>ลงวันที่</span>
                               <strong>{formatDate(book.documentDate)}</strong>
                             </div>
                             <div>
@@ -2113,14 +2287,18 @@ if (
                               void markAssignmentRead(book, attachment);
                             }}
                           >
-                                      <span>{index + 1}.</span>
+                                      {attachment.attachmentType !== "signed" && (
+                              <span>
+                                {originalAttachmentNumber(book, attachment)}.
+                              </span>
+                            )}
                                       <span>
-                                        {attachmentDisplayLabel(attachment, index, book, currentUserId)}
+                                        {attachmentDisplayLabel(attachment, book, currentUserId)}
                                       </span>
                                     </a>
                                   ) : (
                                     <span key={attachment.id}>
-                                      {index + 1}. ไม่พบไฟล์
+                                      {attachment.attachmentType === "signed" ? "ไม่พบไฟล์แจ้งมอบหมาย" : `${originalAttachmentNumber(book, attachment)}. ไม่พบไฟล์`}
                                     </span>
                                   ),
                                 )}
@@ -2172,46 +2350,66 @@ if (
             aria-label={workloadCollapsed ? "ขยายสรุปภาระงาน" : "ยุบสรุปภาระงาน"}
             title={workloadCollapsed ? "ขยายสรุปภาระงาน" : "ยุบสรุปภาระงาน"}
           >
-            {workloadCollapsed ? "<<" : ">>"}
+            {workloadCollapsed ? "▶" : "◀"}
           </button>
           <div className={styles.workloadContent}>
-          <div className={styles.workloadHeader}>
-            <div>
-              <p>ภาพรวมงาน</p>
+            <div className={styles.workloadHeader}>
               <h2>สรุปภาระงาน</h2>
+              <span>{pendingWorkloadTotal}</span>
             </div>
-            <span>{books.length}</span>
-          </div>
 
-          <div className={styles.workloadList}>
-            {workload.map((item) => (
-              <button
-                type="button"
-                key={item.status}
-                onClick={() => {
-                  setViewMode(item.status === "done" ? "archive" : "current");
-                  setStatusFilter(item.status === "done" ? "all" : item.status);
-                }}
-              >
-                <span
-                  className={`${styles.workloadDot} ${
-                    styles[`dot_${item.status}`] || ""
-                  }`}
-                />
-                <span>{item.label}</span>
-                <strong>{item.count}</strong>
-              </button>
-            ))}
-          </div>
+            <div className={styles.workloadList}>
+              {workload.map((item, index) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={
+                    assigneeFilter === item.id
+                      ? styles.workloadPersonActive
+                      : ""
+                  }
+                  title={`${item.fullName} ค้าง ${item.count} งาน`}
+                  onClick={() => {
+                    setViewMode(workspaceMode === "member" ? "mine" : "all");
+                    setStatusFilter("all");
+                    setAssigneeFilter((current) =>
+                      current === item.id ? "all" : item.id,
+                    );
+                  }}
+                >
+                  <span className={styles.workloadPersonName}>
+                    {item.name}
+                  </span>
+                  <span
+                    className={styles.workloadBlocks}
+                    aria-label={`${item.count} งานค้าง`}
+                  >
+                    {item.count === 0 ? (
+                      <span className={styles.workloadZero}>—</span>
+                    ) : (
+                      Array.from({ length: item.count }, (_, blockIndex) => (
+                        <span
+                          key={blockIndex}
+                          className={styles.workloadBlock}
+                          style={{
+                            backgroundColor: workloadBlockColor(blockIndex),
+                          }}
+                        />
+                      ))
+                    )}
+                  </span>
+                  <strong>{item.count}</strong>
+                </button>
+              ))}
 
-          <div className={styles.workloadFooter}>
-            <strong>
-              {accessMode === "all" ? "สิทธิ์ดูทั้งหมด" : "งานที่ได้รับมอบหมาย"}
-            </strong>
-            <span>
-              ข้อมูลอัปเดตจากฐานข้อมูล Supabase และระบบสิทธิ์ส่วนกลาง
-            </span>
-          </div>
+              {workload.length === 0 && (
+                <div className={styles.workloadEmpty}>
+                  ยังไม่มีรายชื่อผู้รับมอบหมาย
+                </div>
+              )}
+            </div>
+
+
           </div>
         </aside>
       </section>
