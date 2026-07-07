@@ -558,47 +558,6 @@
   align-items: flex-start;
   gap: 3px 10px;
 }
-
-.fileLinks,
-.detailFiles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 3px 10px;
-}
-
-.fileLinks,
-.detailFiles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 3px 10px;
-}
-
-.fileLinks,
-.detailFiles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 3px 10px;
-}
-
-.fileLinks,
-.detailFiles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 3px 10px;
-}
-
-.fileLinks,
-.detailFiles {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 3px 10px;
-}
-
 .fileNameLink,
 .detailFiles a {
   display: inline-flex;
@@ -2030,3 +1989,330 @@
   }
 }
 /* SMART AREA DETAIL WHITE V5.8 END */
+/* Distinct signing action */
+.signAssignButton {
+  border: 1px solid #b7791f !important;
+  background: #f6c344 !important;
+  color: #3f2a00 !important;
+  box-shadow: 0 2px 6px rgba(120, 77, 0, 0.2);
+}
+
+.signAssignButton:hover,
+.signAssignButton:focus-visible {
+  border-color: #8a5a12 !important;
+  background: #ffd666 !important;
+  color: #2f1d00 !important;
+  outline: 3px solid rgba(246, 195, 68, 0.28);
+  outline-offset: 1px;
+}
+
+/* Search, status, and assignee */
+.toolbar {
+  grid-template-columns:
+    minmax(260px, 1fr)
+    minmax(145px, 180px)
+    minmax(165px, 220px);
+}
+/* DOCUMENTS_MAIL_PILL_F_START */
+.mailStatePill {
+  display: inline-flex;
+  width: 34px;
+  height: 22px;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+.mailStateSvg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mailStateUnread:hover,
+.mailStateRead:hover {
+  filter: saturate(1.08);
+}
+
+/* Search, status, and assignee only */
+.toolbar {
+  grid-template-columns:
+    minmax(260px, 1fr)
+    minmax(145px, 180px)
+    minmax(165px, 220px);
+}
+/* DOCUMENTS_MAIL_PILL_F_END */
+/* DOCUMENTS_DETAIL_SPEED_START */
+
+/* The selected document remains visually connected to its detail panel. */
+.selectedRow td {
+  background: #d7eee3 !important;
+  border-top: 2px solid #075e50 !important;
+  border-bottom: 0 !important;
+}
+
+.selectedRow td:first-child {
+  border-left: 4px solid #075e50 !important;
+}
+
+.selectedRow td:last-child {
+  border-right: 2px solid #075e50 !important;
+}
+
+.selectedDetailRow td {
+  border-right: 2px solid #075e50 !important;
+  border-bottom: 3px solid #075e50 !important;
+  border-left: 4px solid #075e50 !important;
+  background: #eef8f3 !important;
+}
+
+.inlineDetail {
+  overflow: hidden;
+  border-top: 1px solid #8ec8ae;
+  background: #eef8f3;
+}
+
+.inlineDetailHeader {
+  border-bottom: 1px solid #0a6f5e;
+  background: #075e50;
+  color: #ffffff;
+}
+
+.inlineDetailHeader > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.inlineDetailHeader > div:first-child > span {
+  color: #bff3df;
+  font-weight: 700;
+}
+
+.inlineDetailHeader > div:first-child > strong {
+  color: #ffffff;
+}
+
+/* Keep labels and values clearly separated by approximately two characters. */
+.inlineDetailGrid > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.inlineDetailGrid > div > span {
+  flex: 0 0 auto;
+  color: #53656d;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.inlineDetailGrid > div > strong {
+  min-width: 0;
+  color: #18272d;
+  overflow-wrap: anywhere;
+}
+
+.mobileDetailGrid section {
+  column-gap: 1rem;
+}
+
+.mobileDetailGrid section > span {
+  margin-right: 1rem;
+}
+
+/* Speed text: normal and non-critical values are green; most urgent is red. */
+.detailSpeedNormal {
+  color: #137a45 !important;
+  font-weight: 900 !important;
+}
+
+.detailSpeedCritical {
+  color: #c81e2b !important;
+  font-weight: 900 !important;
+}
+
+/* Pill style F: shape shows read state; color shows urgency. */
+.mailStatePill {
+  display: inline-flex;
+  width: 30px;
+  height: 20px;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+.mailStateSvg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mailStateNormal {
+  border-color: #a7e3c1;
+  background: #dcfce7;
+  color: #137a45;
+}
+
+.mailStateCritical {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Prevent older read-state color rules from overriding urgency colors. */
+.mailStateNormal,
+.mailStateCritical {
+  box-shadow: none !important;
+}
+
+/* DOCUMENTS_DETAIL_SPEED_END */
+/* DOCUMENTS_COMPACT_ACTIONS_START */
+.inlineDetailActions {
+  display: grid;
+  grid-template-columns: auto auto 30px;
+  align-items: center;
+  justify-content: end;
+  gap: 6px;
+}
+
+.inlineDetailActions .signAssignButton,
+.inlineDetailActions .assignDetailButton {
+  min-height: 30px;
+  border-radius: 7px;
+  padding: 4px 9px;
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.inlineDetailActions .closeDetailButton {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  place-items: center;
+  border: 1px solid #ef9a9a;
+  border-radius: 7px;
+  padding: 0;
+  background: #fff1f1;
+  color: #c62828;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.inlineDetailActions .closeDetailButton:hover,
+.inlineDetailActions .closeDetailButton:focus-visible {
+  border-color: #d32f2f;
+  background: #ffe2e2;
+  color: #a30000;
+  outline: 2px solid rgba(211, 47, 47, 0.18);
+}
+
+@media (max-width: 680px) {
+  .inlineDetailActions {
+    grid-template-columns: 1fr 1fr 30px;
+    width: 100%;
+  }
+}
+/* DOCUMENTS_COMPACT_ACTIONS_END */
+
+
+
+
+/* SMART_AREA_ASSIGNMENT_STATE_V14_START */
+.mobileFiles a[data-assignment-state],
+.mobileDetailFiles a[data-assignment-state],
+.fileLinks a[data-assignment-state],
+.detailFiles a[data-assignment-state] {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  min-height: 36px;
+  border: 2px solid currentColor !important;
+  border-radius: 9px !important;
+  padding: 7px 12px !important;
+  font-weight: 900 !important;
+  text-decoration: none !important;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 14%);
+}
+
+.mobileFiles a[data-assignment-state]::before,
+.mobileDetailFiles a[data-assignment-state]::before,
+.fileLinks a[data-assignment-state]::before,
+.detailFiles a[data-assignment-state]::before {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  flex: 0 0 20px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.mobileFiles a[data-assignment-state="pending"],
+.mobileDetailFiles a[data-assignment-state="pending"],
+.fileLinks a[data-assignment-state="pending"],
+.detailFiles a[data-assignment-state="pending"] {
+  background: #fff1f2 !important;
+  color: #dc2626 !important;
+}
+
+.mobileFiles a[data-assignment-state="pending"]::before,
+.mobileDetailFiles a[data-assignment-state="pending"]::before,
+.fileLinks a[data-assignment-state="pending"]::before,
+.detailFiles a[data-assignment-state="pending"]::before {
+  content: "!";
+  background: #dc2626;
+}
+
+.mobileFiles a[data-assignment-state="read"],
+.mobileDetailFiles a[data-assignment-state="read"],
+.fileLinks a[data-assignment-state="read"],
+.detailFiles a[data-assignment-state="read"] {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.mobileFiles a[data-assignment-state="read"]::before,
+.mobileDetailFiles a[data-assignment-state="read"]::before,
+.fileLinks a[data-assignment-state="read"]::before,
+.detailFiles a[data-assignment-state="read"]::before {
+  content: "◉";
+  background: #2563eb;
+}
+
+.mobileFiles a[data-assignment-state="acknowledged"],
+.mobileDetailFiles a[data-assignment-state="acknowledged"],
+.fileLinks a[data-assignment-state="acknowledged"],
+.detailFiles a[data-assignment-state="acknowledged"] {
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+}
+
+.mobileFiles a[data-assignment-state="acknowledged"]::before,
+.mobileDetailFiles a[data-assignment-state="acknowledged"]::before,
+.fileLinks a[data-assignment-state="acknowledged"]::before,
+.detailFiles a[data-assignment-state="acknowledged"]::before {
+  content: "✓";
+  background: #059669;
+}
+/* SMART_AREA_ASSIGNMENT_STATE_V14_END */

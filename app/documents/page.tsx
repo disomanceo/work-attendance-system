@@ -11,6 +11,8 @@ type TaskItem = {
   assigneeId: string | null;
   assigneeName: string;
   status: string;
+  assignmentOpenedAt: string;
+  assignmentAcknowledgedAt: string;
 };
 
 type AttachmentItem = {
@@ -132,23 +134,6 @@ function getStatusLabel(status: string) {
   return statusLabels[status] || status || "-";
 }
 
-function normalizedUrgency(value: string) {
-  const urgency = String(value || "").trim().replace(/\s+/g, "");
-  if (!urgency || urgency === "ปกติ") return "normal";
-  if (urgency.includes("ด่วนที่สุด")) return "most_urgent";
-  if (urgency.includes("ด่วนมาก")) return "very_urgent";
-  if (urgency.includes("ด่วน")) return "urgent";
-  return "normal";
-}
-
-function urgencyLabel(value: string) {
-  const urgency = normalizedUrgency(value);
-  if (urgency === "most_urgent") return "ด่วนที่สุด";
-  if (urgency === "very_urgent") return "ด่วนมาก";
-  if (urgency === "urgent") return "ด่วน";
-  return "ปกติ";
-}
-
 function registrationValue(value: string) {
   const match = String(value || "").match(/\d+/);
   return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
@@ -217,7 +202,108 @@ function displayAttachmentName(fileName: string, index: number) {
 
   return trimmed;
 }
+function isMostUrgent(value: string) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .includes("ด่วนที่สุด");
+}
 
+function MailStateIcon({
+  isRead,
+  urgency,
+}: {
+  isRead: boolean;
+  urgency: string;
+}) {
+  const mostUrgent = isMostUrgent(urgency);
+
+  return (
+    <span
+      className={`${styles.mailStatePill} ${
+        mostUrgent ? styles.mailStateCritical : styles.mailStateNormal
+      }`}
+      title={
+        mostUrgent
+          ? isRead
+            ? "จดหมายด่วนที่สุด อ่านแล้ว"
+            : "จดหมายด่วนที่สุด ยังไม่อ่าน"
+          : isRead
+            ? "อ่านแล้ว"
+            : "ยังไม่อ่าน"
+      }
+      aria-label={
+        mostUrgent
+          ? isRead
+            ? "จดหมายเปิด ด่วนที่สุด อ่านแล้ว"
+            : "จดหมายปิด ด่วนที่สุด ยังไม่อ่าน"
+          : isRead
+            ? "จดหมายเปิด อ่านแล้ว"
+            : "จดหมายปิด ยังไม่อ่าน"
+      }
+    >
+      <svg
+        className={styles.mailStateSvg}
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        {isRead ? (
+          <>
+            <path d="M3.5 9.5 12 4l8.5 5.5v9H3.5v-9Z" />
+            <path d="m3.8 10 8.2 5 8.2-5" />
+            <path d="M7 7.2V4.8h10v2.4" />
+          </>
+        ) : (
+          <>
+            <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+            <path d="m4.3 7 7.7 5.2L19.7 7" />
+          </>
+        )}
+      </svg>
+    </span>
+  );
+}
+function orderedAttachments(attachments: AttachmentItem[]) {
+  const signed = attachments
+    .filter((attachment) => attachment.attachmentType === "signed")
+    .slice(0, 1);
+  const originals = attachments.filter(
+    (attachment) => attachment.attachmentType !== "signed",
+  );
+
+  return [...signed, ...originals];
+}
+
+function assignmentState(book: BookItem, currentUserId: string) {
+  const task = book.tasks.find((item) => item.assigneeId === currentUserId);
+
+  if (!task) return "pending";
+  if (
+    task.assignmentAcknowledgedAt ||
+    task.status === "in_progress" ||
+    task.status === "done"
+  ) {
+    return "acknowledged";
+  }
+  if (task.assignmentOpenedAt) return "read";
+  return "pending";
+}
+
+function attachmentDisplayLabel(
+  attachment: AttachmentItem,
+  index: number,
+  book: BookItem,
+  currentUserId: string,
+) {
+  if (attachment.attachmentType === "signed") {
+    const state = assignmentState(book, currentUserId);
+    if (state === "acknowledged") return "รับทราบแล้ว";
+    if (state === "read") return "อ่านแล้ว";
+    return "แจ้งมอบหมาย";
+  }
+
+  return displayAttachmentName(attachment.fileName, index);
+}
 export default function DocumentsPage() {
   const router = useRouter();
 
@@ -259,11 +345,10 @@ export default function DocumentsPage() {
   const documentCheckRunningRef = useRef(false);
   const hadSelectedBookRef = useRef(false);
   const [assigneeFilter, setAssigneeFilter] = useState("all");
-  const [urgencyFilter, setUrgencyFilter] = useState("all");
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInfo>({
     version: "1.8.17",
     downloadUrl:
-      "https://drive.google.com/file/d/1GvPboNgYoMsPY4nx6HHyf7mj3RrlI1Xf/view?usp=drive_link",
+      "https://drive.google.com/file/d/1u-aZKFLaAc5h_zAhh-KKBppLpbyYV-WP/view?usp=drive_link",
   });
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
@@ -387,7 +472,7 @@ export default function DocumentsPage() {
           version: String(result.version || "1.8.17"),
           downloadUrl: String(
             result.downloadUrl ||
-              "https://drive.google.com/file/d/1GvPboNgYoMsPY4nx6HHyf7mj3RrlI1Xf/view?usp=drive_link",
+              "https://drive.google.com/file/d/1u-aZKFLaAc5h_zAhh-KKBppLpbyYV-WP/view?usp=drive_link",
           ),
         });
       }
@@ -629,6 +714,62 @@ export default function DocumentsPage() {
     }
   }
 
+  async function markAssignmentRead(
+    book: BookItem,
+    attachment: AttachmentItem,
+  ) {
+    if (attachment.attachmentType !== "signed") return;
+
+    const ownTask = book.tasks.find(
+      (task) => task.assigneeId === currentUserId,
+    );
+
+    if (!ownTask || ownTask.assignmentOpenedAt) return;
+
+    const openedAt = new Date().toISOString();
+
+    setBooks((current) =>
+      current.map((item) =>
+        item.id === book.id
+          ? {
+              ...item,
+              tasks: item.tasks.map((task) =>
+                task.id === ownTask.id
+                  ? { ...task, assignmentOpenedAt: openedAt }
+                  : task,
+              ),
+            }
+          : item,
+      ),
+    );
+
+    try {
+      const accessToken = await sessionToken();
+      if (!accessToken) return;
+
+      const response = await fetch("/api/documents/assignment-read", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          taskId: ownTask.id,
+          attachmentId: attachment.id,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.ok) {
+        throw new Error(result?.message || "ไม่สามารถบันทึกสถานะการอ่านได้");
+      }
+    } catch (error) {
+      console.error("Mark assignment read error:", error);
+      await refreshBook(book.id);
+    }
+  }
+
   async function markBookRead(book: BookItem) {
     if (book.isRead) return;
 
@@ -817,13 +958,7 @@ export default function DocumentsPage() {
         return false;
       }
       if (statusFilter !== "all" && book.status !== statusFilter) return false;
-      if (
-        urgencyFilter !== "all" &&
-        normalizedUrgency(book.urgency) !== urgencyFilter
-      ) {
-        return false;
-      }
-      if (
+if (
         assigneeFilter !== "all" &&
         !book.tasks.some((task) => task.assigneeId === assigneeFilter)
       ) {
@@ -865,7 +1000,6 @@ export default function DocumentsPage() {
     query,
     selectedSmartAreaPage,
     statusFilter,
-    urgencyFilter,
     viewMode,
   ]);
 
@@ -876,7 +1010,6 @@ export default function DocumentsPage() {
     query,
     selectedSmartAreaPage,
     statusFilter,
-    urgencyFilter,
     viewMode,
   ]);
 
@@ -1099,19 +1232,6 @@ export default function DocumentsPage() {
               </select>
             </label>
           <label className={styles.selectField}>
-            <span>ความเร่งด่วน</span>
-            <select
-              value={urgencyFilter}
-              onChange={(event) => setUrgencyFilter(event.target.value)}
-            >
-              <option value="all">ทั้งหมด</option>
-              <option value="normal">ปกติ</option>
-              <option value="urgent">ด่วน</option>
-              <option value="very_urgent">ด่วนมาก</option>
-              <option value="most_urgent">ด่วนที่สุด</option>
-            </select>
-          </label>
-          <label className={styles.selectField}>
             <span>ผู้รับผิดชอบ</span>
             <select
               value={assigneeFilter}
@@ -1213,7 +1333,6 @@ export default function DocumentsPage() {
             {filteredBooks.map((book) => {
               const source = sourceDisplayParts(book.sourceAgency);
               const isSelected = selectedBook?.id === book.id;
-              const urgencyKey = normalizedUrgency(book.urgency);
               const ownAssignedTask = book.tasks.find(
                 (task) =>
                   task.assigneeId === currentUserId &&
@@ -1232,14 +1351,7 @@ export default function DocumentsPage() {
                   className={styles.mobileDocumentCard}
                 >
                   <div className={styles.mobileCardTopline}>
-                    <span
-                      className={`${styles.mobileMailIcon} ${
-                        styles[`mobileMail_${urgencyKey}`] || ""
-                      }`}
-                      title={`ความเร่งด่วน: ${urgencyLabel(book.urgency)}`}
-                    >
-                      ✉
-                    </span>
+                    <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
 
                     {!book.isRead ? (
                       <span className={styles.mobileNewBadge}>
@@ -1253,15 +1365,7 @@ export default function DocumentsPage() {
                       </span>
                     )}
 
-                    {urgencyKey !== "normal" && (
-                      <span
-                        className={`${styles.urgencyBadge} ${
-                          styles[`urgency_${urgencyKey}`] || ""
-                        }`}
-                      >
-                        {urgencyLabel(book.urgency)}
-                      </span>
-                    )}
+                    
 
                     <span
                       className={`${styles.statusBadge} ${
@@ -1313,7 +1417,7 @@ export default function DocumentsPage() {
                     {book.attachments.length === 0 ? (
                       <span className={styles.noFile}>ไม่มีไฟล์แนบ</span>
                     ) : (
-                      book.attachments.map((attachment, index) =>
+                      orderedAttachments(book.attachments).map((attachment, index) =>
                         attachment.openUrl ? (
                           <a
                             key={attachment.id}
@@ -1321,13 +1425,19 @@ export default function DocumentsPage() {
                             target="_blank"
                             rel="noreferrer"
                             title={attachment.fileName}
+                          
+                            data-assignment-state={
+                              attachment.attachmentType === "signed"
+                                ? assignmentState(book, currentUserId)
+                                : undefined
+                            }
+                            onClick={() => {
+                              void markAssignmentRead(book, attachment);
+                            }}
                           >
                             <span>{index + 1}.</span>
                             <span>
-                              {displayAttachmentName(
-                                attachment.fileName,
-                                index,
-                              )}
+                              {attachmentDisplayLabel(attachment, index, book, currentUserId)}
                             </span>
                           </a>
                         ) : (
@@ -1384,7 +1494,7 @@ export default function DocumentsPage() {
                         }
                         disabled={savingKey === ownAssignedTask.id}
                       >
-                        เริ่มดำเนินการ
+                        รับทราบ
                       </button>
                     )}
 
@@ -1440,13 +1550,7 @@ export default function DocumentsPage() {
 
                         <main className={styles.mobileDetailScroll}>
                           <div className={styles.mobileDetailStatusRow}>
-                            <span
-                              className={`${styles.mobileMailIcon} ${
-                                styles[`mobileMail_${urgencyKey}`] || ""
-                              }`}
-                            >
-                              ✉
-                            </span>
+                            <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
 
                             {!book.isRead ? (
                               <span className={styles.mobileNewBadge}>
@@ -1462,15 +1566,7 @@ export default function DocumentsPage() {
                               </span>
                             )}
 
-                            {urgencyKey !== "normal" && (
-                              <span
-                                className={`${styles.urgencyBadge} ${
-                                  styles[`urgency_${urgencyKey}`] || ""
-                                }`}
-                              >
-                                {urgencyLabel(book.urgency)}
-                              </span>
-                            )}
+                            
                           </div>
 
                           <div className={styles.mobileDetailGrid}>
@@ -1494,6 +1590,18 @@ export default function DocumentsPage() {
                                 {formatDate(book.documentDate)}
                               </strong>
                             </section>
+<section>
+  <span>ชั้นความเร็ว</span>
+  <strong
+    className={
+      isMostUrgent(book.urgency)
+        ? styles.detailSpeedCritical
+        : styles.detailSpeedNormal
+    }
+  >
+    {book.urgency || "ปกติ"}
+  </strong>
+</section>
                             <section className={styles.mobileDetailWide}>
                               <span>จาก</span>
                               <strong>{source.name}</strong>
@@ -1512,20 +1620,26 @@ export default function DocumentsPage() {
                             {book.attachments.length === 0 ? (
                               <p>ไม่มีไฟล์แนบ</p>
                             ) : (
-                              book.attachments.map((attachment, index) =>
+                              orderedAttachments(book.attachments).map((attachment, index) =>
                                 attachment.openUrl ? (
                                   <a
                                     key={attachment.id}
                                     href={attachment.openUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                  >
+                                  
+                            data-assignment-state={
+                              attachment.attachmentType === "signed"
+                                ? assignmentState(book, currentUserId)
+                                : undefined
+                            }
+                            onClick={() => {
+                              void markAssignmentRead(book, attachment);
+                            }}
+                          >
                                     <span>{index + 1}.</span>
                                     <span>
-                                      {displayAttachmentName(
-                                        attachment.fileName,
-                                        index,
-                                      )}
+                                      {attachmentDisplayLabel(attachment, index, book, currentUserId)}
                                     </span>
                                   </a>
                                 ) : (
@@ -1659,18 +1773,7 @@ export default function DocumentsPage() {
                     <td data-label="เรื่อง / ไฟล์แนบ">
                       <div className={styles.subjectCell}>
                         <div className={styles.subjectTopline}>
-                          <span
-                            className={`${styles.desktopMailIcon} ${
-                              styles[
-                                `desktopMail_${normalizedUrgency(book.urgency)}`
-                              ] || ""
-                            }`}
-                            title={`ความเร่งด่วน: ${urgencyLabel(
-                              book.urgency,
-                            )}`}
-                          >
-                            ✉
-                          </span>
+                          <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
 
                           {!book.isRead ? (
                             <span className={styles.desktopNewBadge}>
@@ -1684,17 +1787,7 @@ export default function DocumentsPage() {
                             </span>
                           )}
 
-                          {normalizedUrgency(book.urgency) !== "normal" && (
-                            <span
-                              className={`${styles.urgencyBadge} ${
-                                styles[
-                                  `urgency_${normalizedUrgency(book.urgency)}`
-                                ] || ""
-                              }`}
-                            >
-                              {urgencyLabel(book.urgency)}
-                            </span>
-                          )}
+                          
 
                           {book.documentType && (
                             <span className={styles.typeBadge}>
@@ -1722,7 +1815,7 @@ export default function DocumentsPage() {
                           {book.attachments.length === 0 && (
                             <span className={styles.noFile}>ไม่มีไฟล์แนบ</span>
                           )}
-                          {book.attachments.map((attachment, index) =>
+                          {orderedAttachments(book.attachments).map((attachment, index) =>
                             attachment.openUrl ? (
                               <a
                                 key={attachment.id}
@@ -1731,13 +1824,19 @@ export default function DocumentsPage() {
                                 target="_blank"
                                 rel="noreferrer"
                                 title={attachment.fileName}
-                              >
+                              
+                            data-assignment-state={
+                              attachment.attachmentType === "signed"
+                                ? assignmentState(book, currentUserId)
+                                : undefined
+                            }
+                            onClick={() => {
+                              void markAssignmentRead(book, attachment);
+                            }}
+                          >
                                 <span>{index + 1}.</span>
                                 <span>
-                                  {displayAttachmentName(
-                                    attachment.fileName,
-                                    index,
-                                  )}
+                                  {attachmentDisplayLabel(attachment, index, book, currentUserId)}
                                 </span>
                               </a>
                             ) : (
@@ -1955,13 +2054,19 @@ export default function DocumentsPage() {
                               <strong>{book.sourceAgency || "-"}</strong>
                             </div>
                             <div>
-                              <span>ประเภท / ชั้นความเร็ว</span>
-                              <strong>
-                                {[book.documentType, book.urgency]
-                                  .filter(Boolean)
-                                  .join(" · ") || "-"}
-                              </strong>
-                            </div>
+  <span>ประเภท / ชั้นความเร็ว</span>
+  <strong
+    className={
+      isMostUrgent(book.urgency)
+        ? styles.detailSpeedCritical
+        : styles.detailSpeedNormal
+    }
+  >
+    {[book.documentType, book.urgency]
+      .filter(Boolean)
+      .join(" · ") || "-"}
+  </strong>
+</div>
                           </div>
 
                           <div className={styles.inlineDetailSections}>
@@ -1990,7 +2095,7 @@ export default function DocumentsPage() {
                               <span>ไฟล์แนบ</span>
                               <div className={styles.detailFiles}>
                                 {book.attachments.length === 0 && <span>-</span>}
-                                {book.attachments.map((attachment, index) =>
+                                {orderedAttachments(book.attachments).map((attachment, index) =>
                                   attachment.openUrl ? (
                                     <a
                                       key={attachment.id}
@@ -1998,13 +2103,19 @@ export default function DocumentsPage() {
                                       target="_blank"
                                       rel="noreferrer"
                                       title={attachment.fileName}
-                                    >
+                                    
+                            data-assignment-state={
+                              attachment.attachmentType === "signed"
+                                ? assignmentState(book, currentUserId)
+                                : undefined
+                            }
+                            onClick={() => {
+                              void markAssignmentRead(book, attachment);
+                            }}
+                          >
                                       <span>{index + 1}.</span>
                                       <span>
-                                        {displayAttachmentName(
-                                          attachment.fileName,
-                                          index,
-                                        )}
+                                        {attachmentDisplayLabel(attachment, index, book, currentUserId)}
                                       </span>
                                     </a>
                                   ) : (

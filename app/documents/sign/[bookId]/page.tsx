@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getCachedProfileAssetUrl } from "@/lib/profile-image-cache";
 import styles from "./page.module.css";
 
 type ContextResponse = {
@@ -52,6 +53,23 @@ type Position = {
   x: number;
   y: number;
 };
+function compactThaiName(value: string) {
+  const normalized = String(value || "").trim().replace(/\s+/g, " ");
+  if (!normalized) return "-";
+
+  const parts = normalized.split(" ");
+  if (parts.length === 1) return parts[0];
+
+  if (
+    ["นาย", "นาง", "นางสาว", "น.ส.", "ดร.", "ว่าที่ร้อยตรี"].includes(
+      parts[0],
+    )
+  ) {
+    return `${parts[0]}${parts[1] || ""}`;
+  }
+
+  return parts[0];
+}
 
 export default function DocumentSigningPage() {
   const router = useRouter();
@@ -61,18 +79,24 @@ export default function DocumentSigningPage() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const previewScrollerRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pdfDocumentRef = useRef<any>(null);
   const renderTaskRef = useRef<any>(null);
   const sourceBytesRef = useRef<ArrayBuffer | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [context, setContext] = useState<ContextResponse | null>(null);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
-  const [assignmentNote, setAssignmentNote] = useState("มอบหมายให้ดำเนินการ");
-  const [instructionText, setInstructionText] = useState("มอบหมายให้ดำเนินการ");
-  const [fontSize, setFontSize] = useState(14);
+  const [instructionText, setInstructionText] = useState("มอบหมายให้");
+  const [fontSize, setFontSize] = useState(18);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const [signatureUrl, setSignatureUrl] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const [selectedFileMimeType, setSelectedFileMimeType] = useState("");
+  const [selectedFileBase64, setSelectedFileBase64] = useState("");
+  const [hasPreview, setHasPreview] = useState(false);
   const [signaturePosition, setSignaturePosition] = useState<Position>({
     x: 460,
     y: 560,
@@ -91,6 +115,22 @@ export default function DocumentSigningPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [popupMessage, setPopupMessage] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+
+  function returnToSelectedBook(checkUnsaved = true) {
+    if (
+      checkUnsaved &&
+      isDirty &&
+      !savedSuccessfully &&
+      !window.confirm("มีการแก้ไขที่ยังไม่ได้บันทึก ต้องการออกจากหน้าลงนามหรือไม่")
+    ) {
+      return;
+    }
+
+    router.push(`/documents?book=${encodeURIComponent(bookId)}`);
+    router.refresh();
+  }
 
   const token = useCallback(async () => {
     const {
@@ -129,10 +169,19 @@ export default function DocumentSigningPage() {
       const baseViewport = page.getViewport({ scale: 1 });
       const availableWidth = Math.max(
         320,
-        stageRef.current?.clientWidth || 900,
+        previewScrollerRef.current?.clientWidth ||
+          stageRef.current?.parentElement?.clientWidth ||
+          900,
       );
-      const scale = Math.min(1.6, availableWidth / baseViewport.width);
-      const viewport = page.getViewport({ scale });
+      const horizontalPadding = 24;
+      const scale = Math.min(
+        2.2,
+        Math.max(
+          0.5,
+          (Math.max(320, availableWidth - horizontalPadding) * 0.8) /
+            baseViewport.width,
+        ),
+      );const viewport = page.getViewport({ scale });
 
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
@@ -182,6 +231,154 @@ export default function DocumentSigningPage() {
       setRendering(false);
     }
   }, []);
+  /* SIGNING_MANUAL_FILE_FUNCTIONS_START */
+  function arrayBufferToBase64(buffer: ArrayBuffer) {
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    let binary = "";
+
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(
+        ...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)),
+      );
+    }
+
+    return window.btoa(binary);
+  }
+
+  function setDefaultPlacement(width: number, height: number) {
+    setTextPosition({
+      x: Math.max(20, Math.round(width * 0.1)),
+      y: Math.max(20, Math.round(height * 0.72)),
+    });
+    setSignaturePosition({
+      x: Math.max(20, Math.round(width * 0.62)),
+      y: Math.max(20, Math.round(height * 0.78)),
+    });
+  }
+
+  async function loadSigningFile(file: File) {
+    setMessage("");
+    setRendering(true);
+
+    try {
+      const mimeType = String(file.type || "").toLowerCase();
+      const isPdf =
+        mimeType.includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
+      const isImage =
+        mimeType.startsWith("image/") ||
+        /\.(png|jpe?g)$/i.test(file.name);
+
+      if (!isPdf && !isImage) {
+        throw new Error("รองรับเฉพาะไฟล์ PDF, PNG, JPG และ JPEG");
+      }
+
+      const sourceBytes = await file.arrayBuffer();
+      sourceBytesRef.current = sourceBytes;
+      setSelectedFileName(file.name);
+      setSelectedFileMimeType(
+        mimeType || (isPdf ? "application/pdf" : "image/jpeg"),
+      );
+      setSelectedFileBase64(arrayBufferToBase64(sourceBytes));
+      setPageNumber(1);
+      setPageCount(1);
+      setShowInstructionText(false);
+      setShowSignature(false);
+
+      if (isPdf) {
+        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+          import.meta.url,
+        ).toString();
+
+        const pdfDocument = await pdfjs.getDocument({
+          data: new Uint8Array(sourceBytes),
+        }).promise;
+
+        pdfDocumentRef.current = pdfDocument;
+        setPageCount(pdfDocument.numPages);
+        setHasPreview(true);
+        await renderPage(1);
+
+        const canvas = canvasRef.current;
+        if (canvas) setDefaultPlacement(canvas.width, canvas.height);
+        return;
+      }
+
+      pdfDocumentRef.current = null;
+      const canvas = canvasRef.current;
+      const stage = stageRef.current;
+
+      if (!canvas || !stage) {
+        throw new Error("ไม่พบพื้นที่แสดงตัวอย่าง");
+      }
+
+      const imageUrl = URL.createObjectURL(file);
+
+      try {
+        const image = new Image();
+        image.src = imageUrl;
+        await image.decode();
+
+        const availableWidth = Math.max(
+          320,
+          previewScrollerRef.current?.clientWidth ||
+            stage.parentElement?.clientWidth ||
+            900,
+        );
+        const horizontalPadding = 24;
+        const scale = Math.min(
+          2.2,
+          Math.max(
+            0.5,
+            (Math.max(320, availableWidth - horizontalPadding) * 0.8) /
+              image.naturalWidth,
+          ),
+        );const width = Math.max(1, Math.floor(image.naturalWidth * scale));
+        const height = Math.max(1, Math.floor(image.naturalHeight * scale));
+
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+
+        const context2d = canvas.getContext("2d");
+        if (!context2d) {
+          throw new Error("ไม่สามารถสร้างพื้นที่แสดงรูปภาพได้");
+        }
+
+        context2d.clearRect(0, 0, width, height);
+        context2d.drawImage(image, 0, 0, width, height);
+        setDefaultPlacement(width, height);
+        setHasPreview(true);
+      } finally {
+        URL.revokeObjectURL(imageUrl);
+      }
+    } catch (error) {
+      setHasPreview(false);
+      setSelectedFileName("");
+      setSelectedFileMimeType("");
+      setSelectedFileBase64("");
+      setMessage(
+        error instanceof Error ? error.message : "ไม่สามารถเปิดไฟล์ที่เลือกได้",
+      );
+    } finally {
+      setRendering(false);
+    }
+  }
+
+  function handleSigningFileChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (file) {
+      void loadSigningFile(file);
+    }
+  }
+  /* SIGNING_MANUAL_FILE_FUNCTIONS_END */
 
   useEffect(() => {
     let signatureObjectUrl = "";
@@ -206,75 +403,32 @@ export default function DocumentSigningPage() {
         if (
           !contextResponse.ok ||
           !result.ok ||
-          !result.book ||
-          !result.sourceAttachment
+          !result.book
         ) {
           throw new Error(result.message || "ไม่สามารถโหลดข้อมูลลงนามได้");
         }
 
         setContext(result);
-        setSelectedAssigneeIds(
+        
+        // SIGNING_FAST_SHELL_V8: show the page before PDF and signature work finishes.
+        setLoading(false);
+setSelectedAssigneeIds(
           result.book.tasks
             .map((task) => task.assigneeId)
             .filter(Boolean) as string[],
         );
-        setAssignmentNote(
-          result.book.directorNote || "มอบหมายให้ดำเนินการ",
-        );
         setInstructionText(
-          result.book.directorNote || "มอบหมายให้ดำเนินการ",
+          result.book.directorNote || "มอบหมายให้",
         );
-
-        const sourceResponse = await fetch(
-          `/api/documents/signing/source?attachmentId=${encodeURIComponent(
-            result.sourceAttachment.id,
-          )}`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            cache: "no-store",
-          },
-        );
-
-        if (!sourceResponse.ok) {
-          const errorResult = await sourceResponse.json().catch(() => null);
-          throw new Error(
-            errorResult?.message || "ไม่สามารถเปิดไฟล์ต้นฉบับได้",
+if (result.signer?.signatureFileId) {
+          const cachedSignatureUrl = await getCachedProfileAssetUrl(
+            "signature",
+            result.signer.signatureFileId,
+            accessToken,
           );
-        }
-
-        const sourceBytes = await sourceResponse.arrayBuffer();
-        sourceBytesRef.current = sourceBytes;
-
-        const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
-          import.meta.url,
-        ).toString();
-
-        const pdfDocument = await pdfjs.getDocument({
-          data: new Uint8Array(sourceBytes),
-        }).promise;
-
-        pdfDocumentRef.current = pdfDocument;
-        setPageCount(pdfDocument.numPages);
-        setPageNumber(1);
-
-        if (result.signer?.signatureFileId) {
-          const signatureResponse = await fetch(
-            `/api/admin/member-signature?fileId=${encodeURIComponent(
-              result.signer.signatureFileId,
-            )}`,
-            {
-              headers: { Authorization: `Bearer ${accessToken}` },
-              cache: "no-store",
-            },
-          );
-
-          if (signatureResponse.ok) {
-            signatureObjectUrl = URL.createObjectURL(
-              await signatureResponse.blob(),
-            );
-            setSignatureUrl(signatureObjectUrl);
+          if (cachedSignatureUrl) {
+            signatureObjectUrl = cachedSignatureUrl;
+            setSignatureUrl(cachedSignatureUrl);
           }
         }
 
@@ -299,15 +453,43 @@ export default function DocumentSigningPage() {
         renderTaskRef.current = null;
       }
 
-      if (signatureObjectUrl) URL.revokeObjectURL(signatureObjectUrl);
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
     };
   }, [bookId, renderPage, token]);
 
   useEffect(() => {
-    if (!loading && pdfDocumentRef.current) {
+    if (!loading && hasPreview && pdfDocumentRef.current) {
       void renderPage(pageNumber);
     }
-  }, [loading, pageNumber, renderPage]);
+  }, [hasPreview, loading, pageNumber, renderPage]);
 
   function startDrag(
     event: ReactPointerEvent<HTMLDivElement>,
@@ -392,7 +574,7 @@ export default function DocumentSigningPage() {
     context2d.clearRect(0, 0, overlay.width, overlay.height);
 
     if (showInstructionText && instructionText.trim()) {
-      context2d.font = `700 ${fontSize}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
+      context2d.font = `400 ${fontSize}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
       context2d.fillStyle = "#111827";
       context2d.textBaseline = "top";
 
@@ -432,9 +614,16 @@ export default function DocumentSigningPage() {
 
     return overlay.toDataURL("image/png").split(",")[1];
   }
+  function returnToSignedBook() {
+    const targetBookId = context?.book?.id || bookId;
+    const targetUrl = `/documents?book=${encodeURIComponent(targetBookId)}`;
+
+    window.location.assign(targetUrl);
+  }
+
 
   async function saveSignedDocument() {
-    if (!context?.book || !context.sourceAttachment) return;
+    if (!context?.book || !selectedFileBase64 || !hasPreview) return;
 
     setSaving(true);
     setMessage("");
@@ -445,7 +634,17 @@ export default function DocumentSigningPage() {
 
       const overlayBase64 = await createOverlayBase64();
 
-      const response = await fetch("/api/documents/signing/save", {
+      
+      const estimatedPayloadBytes =
+        Math.ceil((selectedFileBase64.length * 3) / 4) +
+        Math.ceil((overlayBase64.length * 3) / 4);
+
+      if (estimatedPayloadBytes > 4 * 1024 * 1024) {
+        throw new Error(
+          "ไฟล์รวมมีขนาดใหญ่เกิน 4 MB กรุณาลดขนาดไฟล์ก่อนบันทึกลงนาม",
+        );
+      }
+const response = await fetch("/api/documents/signing/save", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -453,21 +652,88 @@ export default function DocumentSigningPage() {
         },
         body: JSON.stringify({
           bookId: context.book.id,
-          sourceAttachmentId: context.sourceAttachment.id,
+          sourceAttachmentId: context.sourceAttachment?.id || "",
+          sourceFileName: selectedFileName,
+          sourceMimeType: selectedFileMimeType,
+          sourceFileBase64: selectedFileBase64,
           assigneeIds: selectedAssigneeIds,
-          assignmentNote,
+          assignmentNote: instructionText,
           pageNumber,
           overlayBase64,
         }),
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
+      let result: {
+        ok?: boolean;
+        message?: string;
+        [key: string]: unknown;
+      } = {};
 
-      if (!response.ok || !result.ok) {
-        throw new Error(result.message || "ไม่สามารถบันทึกฉบับลงนามได้");
+      if (responseText.trim()) {
+        try {
+          result = JSON.parse(responseText) as typeof result;
+        } catch {
+          throw new Error(
+            `Signing API returned an invalid response (HTTP ${response.status}).`,
+          );
+        }
       }
 
+      if (!response.ok || !result.ok) {
+        if (response.status === 413) {
+          throw new Error(
+            "ไฟล์มีขนาดใหญ่เกินกว่าที่เซิร์ฟเวอร์รับได้ กรุณาลดขนาดไฟล์ PDF หรือรูปภาพแล้วลองใหม่",
+          );
+        }
+
+        throw new Error(
+          result.message ||
+            `ไม่สามารถบันทึกฉบับลงนามได้ (HTTP ${response.status})`,
+        );
+      }
+
+      setSavedSuccessfully(true);
+      setIsDirty(false);
+      setSavedSuccessfully(true);
+      setIsDirty(false);
+      setSavedSuccessfully(true);
+      setIsDirty(false);
+      setSavedSuccessfully(true);
+      setIsDirty(false);
+      setSavedSuccessfully(true);
+      setIsDirty(false);
+      setSavedSuccessfully(true);
+      setIsDirty(false);
       setPopupMessage("บันทึกฉบับลงนามและมอบหมายงานเรียบร้อยแล้ว");
+
+      window.setTimeout(() => {
+        returnToSignedBook();
+      }, 900);
+
+      redirectTimerRef.current = setTimeout(() => {
+        returnToSelectedBook(false);
+      }, 1200);
+
+      redirectTimerRef.current = setTimeout(() => {
+        returnToSelectedBook(false);
+      }, 1200);
+
+      redirectTimerRef.current = setTimeout(() => {
+        returnToSelectedBook(false);
+      }, 1200);
+
+      redirectTimerRef.current = setTimeout(() => {
+        returnToSelectedBook(false);
+      }, 1200);
+
+      redirectTimerRef.current = setTimeout(() => {
+        returnToSelectedBook(false);
+      }, 1200);
+
+      redirectTimerRef.current = setTimeout(() => {
+        returnToSelectedBook(false);
+      }, 1200);
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
@@ -481,14 +747,17 @@ export default function DocumentSigningPage() {
     return <main className={styles.loading}>กำลังโหลดระบบลงนาม...</main>;
   }
 
-  if (!context?.book || !context.sourceAttachment) {
+  if (!context?.book) {
     return (
       <main className={styles.loading}>
         <strong>ไม่สามารถเปิดระบบลงนามได้</strong>
         <span>{message}</span>
-        <button type="button" onClick={() => router.push("/documents")}>
-          กลับหน้าหนังสือราชการ
-        </button>
+        <button
+              type="button"
+              onClick={returnToSignedBook}
+            >
+              กลับไปยังเรื่องนี้
+            </button>
       </main>
     );
   }
@@ -501,8 +770,14 @@ export default function DocumentSigningPage() {
           <h1>ลงนามและมอบหมายงาน</h1>
           <span>{context.book.subject}</span>
         </div>
-        <button type="button" onClick={() => router.push("/documents")}>
-          กลับ
+        <button
+          type="button"
+          className={styles.closeSigningButton}
+          onClick={() => returnToSelectedBook(true)}
+          aria-label="ปิดหน้าลงนาม"
+          title="ปิดหน้าลงนาม"
+        >
+          ×
         </button>
       </header>
 
@@ -513,7 +788,7 @@ export default function DocumentSigningPage() {
           <div className={styles.panelHeader}>
             <div>
               <strong>วางลายเซ็นและข้อความด้วยการลาก</strong>
-              <span>{context.sourceAttachment.fileName}</span>
+              <span>{selectedFileName || "ยังไม่ได้เลือกไฟล์เพื่อลงนาม"}</span>
             </div>
             <div className={styles.pageControls}>
               <button
@@ -521,7 +796,7 @@ export default function DocumentSigningPage() {
                 onClick={() =>
                   setPageNumber((value) => Math.max(1, value - 1))
                 }
-                disabled={pageNumber <= 1}
+                disabled={!hasPreview || pageNumber <= 1}
               >
                 ก่อนหน้า
               </button>
@@ -533,7 +808,7 @@ export default function DocumentSigningPage() {
                 onClick={() =>
                   setPageNumber((value) => Math.min(pageCount, value + 1))
                 }
-                disabled={pageNumber >= pageCount}
+                disabled={!hasPreview || pageNumber >= pageCount}
               >
                 ถัดไป
               </button>
@@ -547,10 +822,45 @@ export default function DocumentSigningPage() {
             </div>
 
             <div className={styles.toolbarActions}>
+              {/* SIGNING_MANUAL_FILE_CONTROLS_START */}
+              <button
+                type="button"
+                className={styles.sourceFileButton}
+                onClick={() => {
+                  const url = context.sourceAttachment?.openUrl;
+                  if (url) {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }
+                }}
+                disabled={!context.sourceAttachment?.openUrl}
+              >
+                ดูไฟล์ต้นฉบับ
+              </button>
+
+              <button
+                type="button"
+                className={styles.attachFileButton}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                แนบไฟล์เพื่อลงนาม
+              </button>
+
+              <input
+                ref={fileInputRef}
+                className={styles.hiddenFileInput}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                onChange={handleSigningFileChange}
+              />
+              {/* SIGNING_MANUAL_FILE_CONTROLS_END */}
+
               <button
                 type="button"
                 className={styles.addToolButton}
-                onClick={() => setShowInstructionText((value) => !value)}
+                onClick={() => {
+                  setShowInstructionText((value) => !value);
+                  setIsDirty(true);
+                }}
               >
                 {showInstructionText ? "ซ่อนข้อความ" : "เพิ่มข้อความ"}
               </button>
@@ -558,8 +868,11 @@ export default function DocumentSigningPage() {
               <button
                 type="button"
                 className={styles.addToolButton}
-                onClick={() => setShowSignature((value) => !value)}
-                disabled={!signatureUrl}
+                onClick={() => {
+                  setShowSignature((value) => !value);
+                  setIsDirty(true);
+                }}
+                disabled={!hasPreview || !signatureUrl}
               >
                 {showSignature ? "ซ่อนลายเซ็น" : "เพิ่มลายเซ็น"}
               </button>
@@ -570,6 +883,8 @@ export default function DocumentSigningPage() {
                 onClick={() => void saveSignedDocument()}
                 disabled={
                   saving ||
+                  !hasPreview ||
+                  !selectedFileBase64 ||
                   !signatureUrl ||
                   !showSignature ||
                   selectedAssigneeIds.length === 0
@@ -580,7 +895,16 @@ export default function DocumentSigningPage() {
             </div>
           </div>
 
-          <div className={styles.stageScroller}>
+          <div ref={previewScrollerRef} className={styles.stageScroller}>
+             {!hasPreview && (
+               <div className={styles.emptyPreview}>
+                 <strong>ยังไม่ได้แนบไฟล์เพื่อลงนาม</strong>
+                 <span>
+                   เลือกไฟล์ PDF, PNG, JPG หรือ JPEG เพื่อเริ่มวางลายเซ็น
+                 </span>
+               </div>
+             )}
+
             <div
               ref={stageRef}
               className={styles.stage}
@@ -634,10 +958,19 @@ export default function DocumentSigningPage() {
         </div>
 
         <aside className={styles.controlPanel}>
-          <section className={styles.card}>
-            <h2>ผู้ลงนาม</h2>
-            <strong>{context.signer?.fullName || "-"}</strong>
-            <span>{context.signer?.position || "-"}</span>
+                    <section className={`${styles.card} ${styles.signerCard}`}>
+            <div className={styles.signerInfo}>
+              <h2>ผู้ลงนาม</h2>
+              <strong>{context.signer?.fullName || "-"}</strong>
+              <span>ผอ.</span>
+            </div>
+            <div className={styles.signerSignaturePreview}>
+              {signatureUrl ? (
+                <img src={signatureUrl} alt="ลายเซ็นผู้ลงนาม" />
+              ) : (
+                <span>ไม่พบลายเซ็น</span>
+              )}
+            </div>
           </section>
 
           <section className={styles.card}>
@@ -655,17 +988,17 @@ export default function DocumentSigningPage() {
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() =>
+                      onChange={() => {
+                        setIsDirty(true);
                         setSelectedAssigneeIds((current) =>
                           checked
                             ? current.filter((id) => id !== person.id)
                             : [...current, person.id],
-                        )
-                      }
+                        );
+                      }}
                     />
                     <span>
-                      <strong>{person.fullName}</strong>
-                      <small>{person.position || "ไม่ระบุตำแหน่ง"}</small>
+                      <strong>{compactThaiName(person.fullName)}</strong>
                     </span>
                   </label>
                 );
@@ -674,10 +1007,13 @@ export default function DocumentSigningPage() {
           </section>
 
           <section className={styles.card}>
-            <h2>ข้อความบนเอกสาร</h2>
+            <h2>ข้อความสั่งการ</h2>
             <textarea
               value={instructionText}
-              onChange={(event) => setInstructionText(event.target.value)}
+              onChange={(event) => {
+                setInstructionText(event.target.value);
+                setIsDirty(true);
+              }}
               placeholder="พิมพ์ข้อความที่ต้องการวางบนเอกสาร"
             />
 
@@ -689,7 +1025,10 @@ export default function DocumentSigningPage() {
                 max={42}
                 step={1}
                 value={fontSize}
-                onChange={(event) => setFontSize(Number(event.target.value))}
+                onChange={(event) => {
+                  setFontSize(Number(event.target.value));
+                  setIsDirty(true);
+                }}
               />
               <small>{fontSize}px</small>
             </label>
@@ -710,15 +1049,6 @@ export default function DocumentSigningPage() {
             <small>{signatureWidth}px</small>
           </section>
 
-          <section className={styles.card}>
-            <h2>ข้อความสั่งการ</h2>
-            <textarea
-              value={assignmentNote}
-              onChange={(event) => setAssignmentNote(event.target.value)}
-              placeholder="มอบหมายให้ดำเนินการ"
-            />
-          </section>
-
 
         </aside>
       </section>
@@ -729,16 +1059,9 @@ export default function DocumentSigningPage() {
             <div className={styles.popupIcon}>✓</div>
             <h2>บันทึกสำเร็จ</h2>
             <p>{popupMessage}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setPopupMessage("");
-                router.push("/documents");
-                router.refresh();
-              }}
-            >
-              กลับหน้าหนังสือราชการ
-            </button>
+            <span className={styles.redirectMessage}>
+              กำลังกลับไปยังเรื่องที่เลือก...
+            </span>
           </div>
         </div>
       )}

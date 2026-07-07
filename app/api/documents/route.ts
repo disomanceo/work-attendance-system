@@ -99,6 +99,8 @@ export async function GET(request: Request) {
         assignee_id,
         assignee_name_snapshot,
         status,
+        assignment_opened_at,
+        assignment_acknowledged_at,
         is_active
       ),
       smart_area_attachments (
@@ -111,6 +113,8 @@ export async function GET(request: Request) {
         file_order,
         attachment_type,
         status,
+        assignment_opened_at,
+        assignment_acknowledged_at,
         is_active
       )
     `)
@@ -129,6 +133,19 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
+
+  const { data: readRows, error: readError } = await auth.admin
+    .from("smart_area_book_reads")
+    .select("book_id")
+    .eq("user_id", auth.profile.id);
+
+  if (readError) {
+    console.error("Load Smart Area read status error:", readError);
+  }
+
+  const readBookIds = new Set(
+    (readRows ?? []).map((row) => text(row.book_id)).filter(Boolean),
+  );
 
   const books = (data ?? []).map((book: any) => ({
     id: book.id,
@@ -160,6 +177,7 @@ export async function GET(request: Request) {
       book.legacy_payload?.raw?.sourceUrl ||
       "",
     updatedAt: book.updated_at,
+    isRead: readBookIds.has(text(book.id)),
     tasks: (book.smart_area_tasks ?? [])
       .filter((task: any) => task.is_active)
       .filter(
@@ -171,22 +189,41 @@ export async function GET(request: Request) {
         assigneeId: task.assignee_id,
         assigneeName: task.assignee_name_snapshot || "",
         status: task.status,
+        assignmentOpenedAt: task.assignment_opened_at || "",
+        assignmentAcknowledgedAt: task.assignment_acknowledged_at || "",
       })),
-    attachments: (book.smart_area_attachments ?? [])
-      .filter((attachment: any) => attachment.is_active)
-      .filter((attachment: any) => attachment.status === "active")
-      .sort(
-        (a: any, b: any) =>
-          Number(a.file_order || 0) - Number(b.file_order || 0),
-      )
-      .map((attachment: any) => ({
-        id: attachment.id,
-        fileName: attachment.file_name || "ไฟล์แนบ",
-        mimeType: attachment.mime_type || "",
-        attachmentType: attachment.attachment_type,
-        openUrl: fileOpenUrl(attachment),
-        hasDriveFile: Boolean(text(attachment.drive_file_id)),
-      })),
+    attachments: (() => {
+      const activeAttachments = (book.smart_area_attachments ?? [])
+        .filter((attachment: any) => attachment.is_active)
+        .filter((attachment: any) => attachment.status === "active");
+
+      const signedAttachment = activeAttachments
+        .filter((attachment: any) => attachment.attachment_type === "signed")
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.updated_at || b.created_at || 0).getTime() -
+            new Date(a.updated_at || a.created_at || 0).getTime(),
+        )
+        .slice(0, 1);
+
+      const originalAttachments = activeAttachments
+        .filter((attachment: any) => attachment.attachment_type !== "signed")
+        .sort(
+          (a: any, b: any) =>
+            Number(a.file_order || 0) - Number(b.file_order || 0),
+        );
+
+      return [...signedAttachment, ...originalAttachments].map(
+        (attachment: any) => ({
+          id: attachment.id,
+          fileName: attachment.file_name || "ไฟล์แนบ",
+          mimeType: attachment.mime_type || "",
+          attachmentType: attachment.attachment_type,
+          openUrl: fileOpenUrl(attachment),
+          hasDriveFile: Boolean(text(attachment.drive_file_id)),
+        }),
+      );
+    })(),
   }));
 
   return NextResponse.json({
