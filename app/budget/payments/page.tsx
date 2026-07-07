@@ -2540,6 +2540,291 @@ export default function BudgetPaymentsPage() {
 }
 /* BUDGET_TYPE_TABS_STEP8_FIXED_END */
 
+/* BUDGET_PAYMENTS_MOBILE_COMPACT_V1_START */
+@media (max-width: 760px) {
+  .paymentsPage {
+    padding: 10px;
+  }
+
+  .budgetTypeTabs {
+    gap: 5px;
+    margin-bottom: 8px;
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .budgetTypeTabs button {
+    min-height: 34px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .pageHeader {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .pageHeader h1 {
+    font-size: 21px;
+    line-height: 1.15;
+  }
+
+  .pageHeader p {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .pageHeader .reloadArea {
+    display: grid;
+    justify-items: end;
+    gap: 4px;
+  }
+
+  .pageHeader .reloadArea small {
+    max-width: 96px;
+    font-size: 9px;
+    line-height: 1.2;
+    text-align: right;
+  }
+
+  .reloadButton {
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+    margin-top: 9px;
+  }
+
+  .summaryGrid article {
+    min-height: auto;
+    padding: 10px 11px;
+    border-radius: 11px;
+  }
+
+  .summaryGrid span,
+  .summaryGrid small {
+    font-size: 9px;
+    line-height: 1.25;
+  }
+
+  .summaryGrid strong {
+    margin-top: 4px;
+    font-size: 17px;
+    line-height: 1.05;
+  }
+
+  .summaryGrid small {
+    margin-top: 3px;
+  }
+
+  .projectPanel {
+    margin-top: 9px;
+    padding: 9px;
+    border-radius: 11px;
+  }
+
+  .panelTop {
+    gap: 8px;
+  }
+
+  .panelTop h2 {
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  .panelTop p {
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .filterBar {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .filterBar input,
+  .filterBar select {
+    height: 34px;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .projectList {
+    gap: 7px;
+    margin-top: 8px;
+  }
+
+  .projectCard {
+    border-radius: 11px;
+  }
+
+  .projectRow {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    gap: 6px;
+    align-items: start;
+    padding: 8px;
+    font-size: 11px;
+    line-height: 1.18;
+  }
+
+  .indexCell {
+    padding-top: 1px;
+    font-size: 11px;
+  }
+
+  .projectName {
+    grid-column: 2 / 3;
+  }
+
+  .projectName strong {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 11.5px;
+    line-height: 1.22;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .projectName small {
+    margin-top: 2px;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .amountCell,
+  .countCell,
+  .latestCell {
+    display: none;
+  }
+
+  .actionCell {
+    grid-column: 3 / 4;
+    grid-row: 1 / span 2;
+    display: grid;
+    gap: 5px;
+    justify-content: end;
+  }
+
+  .payButton,
+  .historyButton {
+    min-width: 68px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+
+  .historyPanel {
+    padding: 9px;
+  }
+
+  .historyHeader {
+    gap: 7px;
+  }
+
+  .historyHeader h3 {
+    font-size: 14px;
+  }
+
+  .historyHeader p {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .historyHeader span {
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .historyItem {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 6px 8px;
+    padding: 8px;
+    border-radius: 9px;
+  }
+
+  .historyNumber {
+    width: 23px;
+    height: 23px;
+    font-size: 10px;
+  }
+
+  .historyDate,
+  .historyDetails,
+  .historyAmount,
+  .historyEvidence,
+  .historyAction {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .historyDate strong,
+  .historyDetails strong,
+  .historyAmount strong {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .historyDate small,
+  .historyDetails small,
+  .historyAmount small {
+    margin-top: 2px;
+    font-size: 9px;
+    line-height: 1.25;
+  }
+
+  .paymentPreview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    padding: 10px 10px 0;
+  }
+
+  .paymentPreview article {
+    padding: 9px;
+    border-radius: 9px;
+  }
+
+  .paymentPreview strong {
+    margin-top: 3px;
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .pageHeader {
+    padding: 13px 15px;
+  }
+
+  .summaryGrid article {
+    padding: 12px;
+  }
+
+  .projectPanel {
+    padding: 12px;
+  }
+}
+/* BUDGET_PAYMENTS_MOBILE_COMPACT_V1_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_START */
 .freeEducationTheme {
   --f15-green-950: #052e2b;

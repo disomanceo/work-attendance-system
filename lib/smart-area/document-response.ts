@@ -1,3 +1,8 @@
+import {
+  smartAreaPayloadDocumentDate,
+  smartAreaPayloadReceivedDate,
+} from "@/lib/smart-area/document-date";
+
 export const SMART_AREA_DOCUMENT_SELECT = `
   id,
   is_active,
@@ -20,6 +25,8 @@ export const SMART_AREA_DOCUMENT_SELECT = `
     assignee_id,
     assignee_name_snapshot,
     status,
+    assignment_opened_at,
+    assignment_acknowledged_at,
     is_active
   ),
   smart_area_attachments (
@@ -68,15 +75,22 @@ export function serializeSmartAreaBook(
     readBookIds: Set<string>;
   },
 ) {
+  const documentDate =
+    book.document_date || smartAreaPayloadDocumentDate(book.legacy_payload) || "";
+  const receivedDate =
+    book.received_date ||
+    smartAreaPayloadReceivedDate(book.legacy_payload) ||
+    documentDate;
+
   return {
     id: book.id,
     legacySmartAreaId: book.legacy_smart_area_id,
     registrationNumber: book.registration_number || "",
-    receivedDate: book.received_date || "",
+    receivedDate,
     sourceAgency: book.source_agency || "",
     subject: book.subject,
     documentNumber: book.document_number || "",
-    documentDate: book.document_date || "",
+    documentDate,
     documentType: book.document_type || "",
     urgency: book.urgency || "",
     status: book.status,
@@ -110,6 +124,8 @@ export function serializeSmartAreaBook(
         assigneeId: task.assignee_id,
         assigneeName: task.assignee_name_snapshot || "",
         status: task.status,
+        assignmentOpenedAt: task.assignment_opened_at || "",
+        assignmentAcknowledgedAt: task.assignment_acknowledged_at || "",
       })),
     attachments: (book.smart_area_attachments ?? [])
       .filter((attachment: any) => attachment.is_active)

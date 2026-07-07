@@ -141,6 +141,16 @@ function registrationValue(value: string) {
   return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
 }
 
+function bookLatestValue(book: BookItem) {
+  const dateValue = Date.parse(
+    book.receivedDate || book.documentDate || book.updatedAt || "",
+  );
+
+  if (Number.isFinite(dateValue)) return dateValue;
+
+  return Number(book.smartAreaPage || 0) * 100000 + Number(book.smartAreaOrder || 0);
+}
+
 function shortThaiName(value: string) {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "-";
@@ -372,6 +382,7 @@ export default function DocumentsPage() {
   const [workloadCollapsed, setWorkloadCollapsed] = useState(false);
   const [selectedSmartAreaPage, setSelectedSmartAreaPage] = useState<number | null>(null);
   const returnBookHandledRef = useRef(false);
+  const keepSelectedBookOnFilterChangeRef = useRef(false);
   const mobileScrollYRef = useRef(0);
   const documentVersionRef = useRef(0);
   const documentChangeAtRef = useRef("");
@@ -463,18 +474,6 @@ export default function DocumentsPage() {
       const loadedBooks = result.books ?? [];
       setBooks(loadedBooks);
       setLastLoadedAt(new Date());
-
-      const sourcePages = loadedBooks
-        .map((book) => Number(book.smartAreaPage || 0))
-        .filter((value) => value > 0);
-
-      if (sourcePages.length > 0) {
-        setSelectedSmartAreaPage((current) =>
-          current && sourcePages.includes(current)
-            ? current
-            : Math.max(...sourcePages),
-        );
-      }
 
       setAccessMode(result.accessMode ?? "assigned");
       setCanManageAll(result.canManageAll === true);
@@ -940,6 +939,28 @@ export default function DocumentsPage() {
     }
   }
 
+  function closeBookAsDone(book: BookItem) {
+    const hasIncompleteAssignments = book.tasks.some(
+      (task) => task.status !== "done",
+    );
+    const confirmed = window.confirm(
+      hasIncompleteAssignments
+        ? "เรื่องนี้ยังมีผู้รับมอบหมายที่ทำงานไม่เสร็จ ยืนยันปิดเรื่องเป็นเสร็จสิ้นหรือไม่"
+        : "ยืนยันปิดเรื่องนี้เป็นเสร็จสิ้นหรือไม่",
+    );
+
+    if (!confirmed) return;
+
+    void postAction(
+      {
+        action: "close",
+        bookId: book.id,
+        note: "ผอ. ปิดเรื่องเป็นเสร็จสิ้น",
+      },
+      `close:${book.id}`,
+    );
+  }
+
   function openAssignment(book: BookItem) {
     setEditingBook(book);
     setSelectedAssigneeIds(
@@ -1076,6 +1097,7 @@ export default function DocumentsPage() {
 
       if (!inSelectedView) return false;
       if (
+        viewMode !== "mine" &&
         selectedSmartAreaPage !== null &&
         Number(book.smartAreaPage || 0) !== selectedSmartAreaPage
       ) {
@@ -1102,7 +1124,12 @@ if (
       ].some((value) => value.toLocaleLowerCase("th").includes(normalized));
     });
 
-    return [...result].sort((left, right) => {
+    const sorted = [...result].sort((left, right) => {
+      if (selectedSmartAreaPage === null || sortMode === "newest") {
+        const latestDifference = bookLatestValue(right) - bookLatestValue(left);
+        if (latestDifference !== 0) return latestDifference;
+      }
+
       const pageDifference =
         Number(left.smartAreaPage || 0) - Number(right.smartAreaPage || 0);
 
@@ -1118,16 +1145,28 @@ if (
         registrationValue(left.registrationNumber)
       );
     });
+
+    if (selectedSmartAreaPage === null) return sorted.slice(0, 20);
+
+    return sorted;
   }, [
     books,
     assigneeFilter,
+    currentUserId,
     query,
     selectedSmartAreaPage,
+    sortMode,
     statusFilter,
     viewMode,
+    workspaceMode,
   ]);
 
   useEffect(() => {
+    if (keepSelectedBookOnFilterChangeRef.current) {
+      keepSelectedBookOnFilterChangeRef.current = false;
+      return;
+    }
+
     setSelectedBook(null);
   }, [
     assigneeFilter,
@@ -1139,9 +1178,9 @@ if (
 
   useEffect(() => {
     if (
+      selectedSmartAreaPage !== null &&
       availableSmartAreaPages.length > 0 &&
-      (selectedSmartAreaPage === null ||
-        !availableSmartAreaPages.includes(selectedSmartAreaPage))
+      !availableSmartAreaPages.includes(selectedSmartAreaPage)
     ) {
       setSelectedSmartAreaPage(
         availableSmartAreaPages[availableSmartAreaPages.length - 1],
@@ -1158,14 +1197,18 @@ if (
       return;
     }
 
-    const requestedBookId = new URLSearchParams(window.location.search).get(
-      "book",
-    );
+    const searchParams = new URLSearchParams(window.location.search);
+    const requestedBookId =
+      searchParams.get("book") ||
+      window.sessionStorage.getItem("smart-area-open-book-id") ||
+      "";
 
     if (!requestedBookId) {
       returnBookHandledRef.current = true;
       return;
     }
+
+    window.sessionStorage.removeItem("smart-area-open-book-id");
 
     const requestedBook = books.find((book) => book.id === requestedBookId);
 
@@ -1175,12 +1218,17 @@ if (
     }
 
     returnBookHandledRef.current = true;
-    setSelectedBook(requestedBook);
-    void markBookRead(requestedBook);
+    keepSelectedBookOnFilterChangeRef.current = true;
+    setStatusFilter("all");
+    setAssigneeFilter("all");
+    setViewMode(workspaceMode === "manager" ? "all" : "mine");
 
     if (requestedBook.smartAreaPage) {
       setSelectedSmartAreaPage(Number(requestedBook.smartAreaPage));
     }
+
+    setSelectedBook(requestedBook);
+    void markBookRead(requestedBook);
 
     window.requestAnimationFrame(() => {
       const isMobile = window.matchMedia("(max-width: 768px)").matches;
@@ -1454,7 +1502,7 @@ if (
               <span>
                 {selectedSmartAreaPage
                   ? `หน้า ${selectedSmartAreaPage} · ${filteredBooks.length} รายการ`
-                  : `พบ ${filteredBooks.length} รายการ`}
+                  : `${filteredBooks.length} หนังสือล่าสุด`}
               </span>
             </div>
 
@@ -1513,8 +1561,8 @@ if (
               <button
                 type="button"
                 className={styles.latestSourcePage}
-                onClick={() => setSelectedSmartAreaPage(latestSmartAreaPage)}
-                disabled={latestSmartAreaPage === null}
+                onClick={() => setSelectedSmartAreaPage(null)}
+                disabled={latestSmartAreaPage === null && books.length === 0}
               >
                 ล่าสุด
               </button>
@@ -1666,6 +1714,19 @@ if (
                     >
                       เปิดรายละเอียด
                     </button>
+
+                    {workspaceMode === "manager" &&
+                      capabilities.canClose &&
+                      book.status !== "done" && (
+                        <button
+                          type="button"
+                          className={`${styles.doneAction} ${styles.mobileFinishButton}`}
+                          onClick={() => closeBookAsDone(book)}
+                          disabled={savingKey === `close:${book.id}`}
+                        >
+                          เสร็จสิ้น
+                        </button>
+                      )}
 
                     {workspaceMode !== "manager" &&
                       capabilities.canSubmit &&
