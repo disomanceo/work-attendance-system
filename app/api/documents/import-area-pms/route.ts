@@ -25,6 +25,62 @@ function text(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function normalizedKey(value: string) {
+  return value
+    .toLocaleLowerCase("th")
+    .replace(/[\s._\-:/()[\]{}]+/g, "");
+}
+
+function firstText(payload: ImportPayload, keys: string[]) {
+  const normalizedEntries = Object.entries(payload).map(([key, value]) => [
+    normalizedKey(key),
+    value,
+  ] as const);
+
+  for (const key of keys) {
+    const value = text(payload[key]);
+    if (value) return value;
+  }
+
+  for (const key of keys) {
+    const matchKey = normalizedKey(key);
+    const entry = normalizedEntries.find(([candidate]) => candidate === matchKey);
+    const value = text(entry?.[1]);
+    if (value) return value;
+  }
+
+  return "";
+}
+
+function firstTextByKey(payload: ImportPayload, keys: string[]) {
+  const matchKeys = keys.map(normalizedKey);
+  const entry = Object.entries(payload).find(([key, value]) => {
+    if (!text(value)) return false;
+
+    const candidate = normalizedKey(key);
+    return matchKeys.some(
+      (matchKey) => candidate === matchKey || candidate.includes(matchKey),
+    );
+  });
+
+  return text(entry?.[1]);
+}
+
+function firstTextAfterLabel(payload: ImportPayload, keys: string[]) {
+  const detailText = Object.values(payload).map(text).filter(Boolean).join("\n");
+
+  for (const key of keys) {
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = detailText.match(
+      new RegExp(`${escapedKey}\\s*[:：]?\\s*([^\\n\\r]+)`, "i"),
+    );
+    const value = text(match?.[1]);
+    if (value) return value;
+  }
+
+  return "";
+}
+
 function number(value: unknown) {
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -106,10 +162,32 @@ const THAI_MONTHS: Record<string, number> = {
   "ธันวาคม": 12,
 };
 
+function thaiMonthNumber(value: string) {
+  const normalized = value.replace(/\s+/g, "").replace(/[.]/g, "");
+
+  for (const [month, numberValue] of Object.entries(THAI_MONTHS)) {
+    const monthKey = month.replace(/\s+/g, "").replace(/[.]/g, "");
+    if (normalized === monthKey || normalized.startsWith(monthKey)) {
+      return numberValue;
+    }
+  }
+
+  return 0;
+}
+
 function isoDate(value: unknown) {
   const raw = text(value);
 
   if (!raw) return null;
+
+  if (/^\d+(\.\d+)?$/.test(raw)) {
+    const serial = Number(raw);
+    if (serial > 20000 && serial < 80000) {
+      const epoch = Date.UTC(1899, 11, 30);
+      const date = new Date(epoch + serial * 86400000);
+      return date.toISOString().slice(0, 10);
+    }
+  }
 
   const iso = raw.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
   if (iso) return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
@@ -123,15 +201,20 @@ function isoDate(value: unknown) {
     return `${year}-${slash[2].padStart(2, "0")}-${slash[1].padStart(2, "0")}`;
   }
 
-  const thai = raw.match(/(\d{1,2})\s+([ก-๙.]+)\s+(\d{4})/);
+  const thai = raw.match(/(\d{1,2})\s*([ก-๙.]+)\s*(\d{4})/);
   if (thai) {
     let year = Number(thai[3]);
     if (year > 2400) year -= 543;
 
-    const month = THAI_MONTHS[thai[2]];
+    const month = THAI_MONTHS[thai[2]] || thaiMonthNumber(thai[2]);
     if (month) {
       return `${year}-${String(month).padStart(2, "0")}-${thai[1].padStart(2, "0")}`;
     }
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
   }
 
   return null;
@@ -147,18 +230,114 @@ function parseNumberedLines(value: unknown) {
 function extension(payload: ImportPayload) {
   const url = text(payload.sourceUrl);
   const match = url.match(/[?&]b_id=(\d+)/i);
+  const documentDate = isoDate(
+    firstText(payload, [
+      "documentDate",
+      "docDate",
+      "document_date",
+      "letterDate",
+      "bookDate",
+      "issuedDate",
+      "issueDate",
+      "dateOfDocument",
+      "dateDocument",
+      "วันที่หนังสือ",
+      "หนังสือลงวันที่",
+      "ลงวันที่",
+    ]) ||
+      firstTextByKey(payload, [
+        "documentDate",
+        "docDate",
+        "letterDate",
+        "bookDate",
+        "issuedDate",
+        "issueDate",
+        "dateOfDocument",
+        "วันที่หนังสือ",
+        "หนังสือลงวันที่",
+        "ลงวันที่",
+      ]) ||
+      firstTextAfterLabel(payload, [
+        "หนังสือลงวันที่",
+        "วันที่หนังสือ",
+        "ลงวันที่",
+      ]),
+  );
+  const receivedDate =
+    isoDate(
+      firstText(payload, [
+        "receivedDate",
+        "receiveDate",
+        "receive_date",
+        "receivedAt",
+        "receiveAt",
+        "receivedOn",
+        "receiveOn",
+        "sentAt",
+        "sentDate",
+        "submittedAt",
+        "dateReceived",
+        "วันที่รับ",
+        "วันรับ",
+        "วันเวลาที่ส่ง",
+        "วันที่ส่ง",
+        "ลงทะเบียนรับแล้วเมื่อ",
+      ]) ||
+        firstTextByKey(payload, [
+          "receivedDate",
+          "receiveDate",
+          "receivedAt",
+          "receiveAt",
+          "receivedOn",
+          "receiveOn",
+          "dateReceived",
+          "วันที่รับ",
+          "วันรับ",
+          "วันเวลาที่ส่ง",
+          "วันที่ส่ง",
+          "ลงทะเบียนรับแล้วเมื่อ",
+        ]) ||
+        firstTextAfterLabel(payload, [
+          "วันเวลาที่ส่ง",
+          "วันที่รับ",
+          "วันรับ",
+          "ลงทะเบียนรับแล้วเมื่อ",
+        ]),
+    ) || documentDate;
 
   return {
     smartAreaId: text(payload.smartAreaId) || (match ? match[1] : ""),
     sourceUrl: url,
-    subject: text(payload.subject),
-    receiveNo: text(payload.receiveNo),
-    documentNo: text(payload.documentNo),
-    documentDate: isoDate(payload.documentDate),
-    receivedDate: isoDate(payload.sentAt) || isoDate(payload.documentDate),
-    sender: text(payload.sender),
-    priority: text(payload.priority),
-    summary: text(payload.summary),
+    subject:
+      firstText(payload, ["subject", "เรื่อง"]) ||
+      firstTextByKey(payload, ["subject", "เรื่อง"]),
+    receiveNo:
+      firstText(payload, [
+        "receiveNo",
+        "registrationNumber",
+        "เลขทะเบียนหนังสือรับ",
+        "เลขทะเบียนรับ",
+      ]) ||
+      firstTextByKey(payload, [
+        "receiveNo",
+        "registrationNumber",
+        "เลขทะเบียนหนังสือรับ",
+        "เลขทะเบียนรับ",
+      ]),
+    documentNo:
+      firstText(payload, ["documentNo", "documentNumber", "เลขที่หนังสือ"]) ||
+      firstTextByKey(payload, ["documentNo", "documentNumber", "เลขที่หนังสือ"]),
+    documentDate,
+    receivedDate,
+    sender:
+      firstText(payload, ["sender", "sourceAgency", "ส่งโดย", "จาก"]) ||
+      firstTextByKey(payload, ["sender", "sourceAgency", "ส่งโดย", "จาก"]),
+    priority:
+      firstText(payload, ["priority", "urgency", "ชั้นความเร็ว", "ปกติ"]) ||
+      firstTextByKey(payload, ["priority", "urgency", "ชั้นความเร็ว"]),
+    summary:
+      firstText(payload, ["summary", "note", "เนื้อหาโดยสรุป"]) ||
+      firstTextByKey(payload, ["summary", "note", "เนื้อหาโดยสรุป"]),
     centralLatestPage: text(payload.centralLatestPage),
     smartAreaPage: text(payload.smartAreaPage),
     attachmentNames: parseNumberedLines(payload.attachmentText),
@@ -230,7 +409,7 @@ async function upsertDocument(payload: ImportPayload) {
 
   const { data: existing, error: existingError } = await admin
     .from("smart_area_books")
-    .select("id")
+    .select("id, received_date, document_date")
     .eq("legacy_smart_area_id", item.smartAreaId)
     .maybeSingle();
 
@@ -240,6 +419,36 @@ async function upsertDocument(payload: ImportPayload) {
   }
 
   if (existing?.id) {
+    const bookUpdates: Record<string, unknown> = {};
+
+    if (item.receivedDate && item.receivedDate !== existing.received_date) {
+      bookUpdates.received_date = item.receivedDate;
+    }
+
+    if (item.documentDate && item.documentDate !== existing.document_date) {
+      bookUpdates.document_date = item.documentDate;
+    }
+
+    if (Object.keys(bookUpdates).length > 0) {
+      const { error: updateError } = await admin
+        .from("smart_area_books")
+        .update(bookUpdates)
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("Import update existing book dates error:", updateError);
+        return json(
+          {
+            ok: false,
+            message: "Cannot update Smart Area book dates",
+            bookId: existing.id,
+            smartAreaId: item.smartAreaId,
+          },
+          500,
+        );
+      }
+    }
+
     return json({
       ok: true,
       message: "duplicate",
@@ -247,6 +456,9 @@ async function upsertDocument(payload: ImportPayload) {
       bookId: existing.id,
       smartAreaId: item.smartAreaId,
       attachments: 0,
+      updatedDates: Object.keys(bookUpdates),
+      receivedDate: item.receivedDate,
+      documentDate: item.documentDate,
     });
   }
 
@@ -332,6 +544,8 @@ async function upsertDocument(payload: ImportPayload) {
     bookId: book.id,
     smartAreaId: item.smartAreaId,
     attachments,
+    receivedDate: item.receivedDate,
+    documentDate: item.documentDate,
   });
 }
 

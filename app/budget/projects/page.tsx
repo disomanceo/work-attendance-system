@@ -5,7 +5,7 @@ export default function BudgetProjectsPage() {
     <main
       style={{
         minHeight: "100%",
-        padding: "20px",
+        padding: "clamp(10px, 2vw, 20px)",
         background: "#f8fafc",
       }}
     >

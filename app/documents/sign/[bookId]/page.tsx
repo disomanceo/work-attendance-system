@@ -118,6 +118,13 @@ export default function DocumentSigningPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
 
+  const clearRedirectTimer = useCallback(() => {
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+      redirectTimerRef.current = null;
+    }
+  }, []);
+
   function returnToSelectedBook(checkUnsaved = true) {
     if (
       checkUnsaved &&
@@ -131,6 +138,13 @@ export default function DocumentSigningPage() {
     router.push(`/documents?book=${encodeURIComponent(bookId)}`);
     router.refresh();
   }
+
+  const scheduleReturnToSelectedBook = useCallback(() => {
+    clearRedirectTimer();
+    redirectTimerRef.current = setTimeout(() => {
+      returnToSelectedBook(false);
+    }, 900);
+  }, [clearRedirectTimer, returnToSelectedBook]);
 
   const token = useCallback(async () => {
     const {
@@ -173,15 +187,18 @@ export default function DocumentSigningPage() {
           stageRef.current?.parentElement?.clientWidth ||
           900,
       );
-      const horizontalPadding = 24;
+      const horizontalPadding = window.matchMedia("(max-width: 680px)").matches
+        ? 28
+        : 56;
       const scale = Math.min(
         2.2,
         Math.max(
           0.5,
-          (Math.max(320, availableWidth - horizontalPadding) * 0.8) /
+          Math.max(320, availableWidth - horizontalPadding) /
             baseViewport.width,
         ),
-      );const viewport = page.getViewport({ scale });
+      );
+      const viewport = page.getViewport({ scale });
 
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
@@ -327,15 +344,18 @@ export default function DocumentSigningPage() {
             stage.parentElement?.clientWidth ||
             900,
         );
-        const horizontalPadding = 24;
+        const horizontalPadding = window.matchMedia("(max-width: 680px)").matches
+          ? 28
+          : 56;
         const scale = Math.min(
           2.2,
           Math.max(
             0.5,
-            (Math.max(320, availableWidth - horizontalPadding) * 0.8) /
+            Math.max(320, availableWidth - horizontalPadding) /
               image.naturalWidth,
           ),
-        );const width = Math.max(1, Math.floor(image.naturalWidth * scale));
+        );
+        const width = Math.max(1, Math.floor(image.naturalWidth * scale));
         const height = Math.max(1, Math.floor(image.naturalHeight * scale));
 
         canvas.width = width;
@@ -453,37 +473,9 @@ if (result.signer?.signatureFileId) {
         renderTaskRef.current = null;
       }
 
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = null;
-      }
-
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = null;
-      }
-
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = null;
-      }
-
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = null;
-      }
-
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = null;
-      }
-
-      if (redirectTimerRef.current) {
-        clearTimeout(redirectTimerRef.current);
-        redirectTimerRef.current = null;
-      }
+      clearRedirectTimer();
     };
-  }, [bookId, renderPage, token]);
+  }, [bookId, clearRedirectTimer, renderPage, token]);
 
   useEffect(() => {
     if (!loading && hasPreview && pdfDocumentRef.current) {
@@ -695,45 +687,9 @@ const response = await fetch("/api/documents/signing/save", {
 
       setSavedSuccessfully(true);
       setIsDirty(false);
-      setSavedSuccessfully(true);
-      setIsDirty(false);
-      setSavedSuccessfully(true);
-      setIsDirty(false);
-      setSavedSuccessfully(true);
-      setIsDirty(false);
-      setSavedSuccessfully(true);
-      setIsDirty(false);
-      setSavedSuccessfully(true);
-      setIsDirty(false);
       setPopupMessage("บันทึกฉบับลงนามและมอบหมายงานเรียบร้อยแล้ว");
 
-      window.setTimeout(() => {
-        returnToSignedBook();
-      }, 900);
-
-      redirectTimerRef.current = setTimeout(() => {
-        returnToSelectedBook(false);
-      }, 1200);
-
-      redirectTimerRef.current = setTimeout(() => {
-        returnToSelectedBook(false);
-      }, 1200);
-
-      redirectTimerRef.current = setTimeout(() => {
-        returnToSelectedBook(false);
-      }, 1200);
-
-      redirectTimerRef.current = setTimeout(() => {
-        returnToSelectedBook(false);
-      }, 1200);
-
-      redirectTimerRef.current = setTimeout(() => {
-        returnToSelectedBook(false);
-      }, 1200);
-
-      redirectTimerRef.current = setTimeout(() => {
-        returnToSelectedBook(false);
-      }, 1200);
+      scheduleReturnToSelectedBook();
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
@@ -765,11 +721,7 @@ const response = await fetch("/api/documents/signing/save", {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <div>
-          <p>SMART AREA SIGNING</p>
-          <h1>ลงนามและมอบหมายงาน</h1>
-          <span>{context.book.subject}</span>
-        </div>
+        <h1>ลงนามและมอบหมายงาน</h1>
         <button
           type="button"
           className={styles.closeSigningButton}
@@ -816,11 +768,6 @@ const response = await fetch("/api/documents/signing/save", {
           </div>
 
           <div className={styles.topToolbar}>
-            <div className={styles.toolbarInfo}>
-              <span>เลือกเพิ่มข้อความหรือลายเซ็น แล้วลากไปยังตำแหน่งที่ต้องการ</span>
-              {saving && <strong>กำลังบันทึก กรุณารอสักครู่...</strong>}
-            </div>
-
             <div className={styles.toolbarActions}>
               {/* SIGNING_MANUAL_FILE_CONTROLS_START */}
               <button
@@ -895,7 +842,13 @@ const response = await fetch("/api/documents/signing/save", {
             </div>
           </div>
 
-          <div ref={previewScrollerRef} className={styles.stageScroller}>
+          <div
+            ref={previewScrollerRef}
+            className={`${styles.stageScroller} ${
+              !hasPreview ? styles.stageScrollerEmpty : ""
+            }`}
+          >
+            <div className={styles.previewAreaLabel}>พื้นที่ตัวอย่างไฟล์ลงนาม</div>
              {!hasPreview && (
                <div className={styles.emptyPreview}>
                  <strong>ยังไม่ได้แนบไฟล์เพื่อลงนาม</strong>
@@ -907,7 +860,7 @@ const response = await fetch("/api/documents/signing/save", {
 
             <div
               ref={stageRef}
-              className={styles.stage}
+              className={`${styles.stage} ${!hasPreview ? styles.stageEmpty : ""}`}
               onPointerMove={moveDrag}
               onPointerUp={stopDrag}
               onPointerCancel={stopDrag}
@@ -962,7 +915,7 @@ const response = await fetch("/api/documents/signing/save", {
             <div className={styles.signerInfo}>
               <h2>ผู้ลงนาม</h2>
               <strong>{context.signer?.fullName || "-"}</strong>
-              <span>ผอ.</span>
+              <span>{context.signer?.position || "-"}</span>
             </div>
             <div className={styles.signerSignaturePreview}>
               {signatureUrl ? (
@@ -1017,7 +970,7 @@ const response = await fetch("/api/documents/signing/save", {
               placeholder="พิมพ์ข้อความที่ต้องการวางบนเอกสาร"
             />
 
-            <label>
+            <label className={styles.controlField}>
               <span>ขนาดข้อความ</span>
               <input
                 type="range"
@@ -1030,23 +983,27 @@ const response = await fetch("/api/documents/signing/save", {
                   setIsDirty(true);
                 }}
               />
-              <small>{fontSize}px</small>
+              <small className={styles.controlValue}>{fontSize}px</small>
             </label>
           </section>
 
           <section className={styles.card}>
             <h2>ขนาดลายเซ็น</h2>
-            <input
-              type="range"
-              min={60}
-              max={280}
-              step={10}
-              value={signatureWidth}
-              onChange={(event) =>
-                setSignatureWidth(Number(event.target.value))
-              }
-            />
-            <small>{signatureWidth}px</small>
+            <label className={styles.controlField}>
+              <span>ลากเพื่อขยาย / ย่อ</span>
+              <input
+                type="range"
+                min={60}
+                max={280}
+                step={10}
+                value={signatureWidth}
+                onChange={(event) => {
+                  setSignatureWidth(Number(event.target.value));
+                  setIsDirty(true);
+                }}
+              />
+              <small className={styles.controlValue}>{signatureWidth}px</small>
+            </label>
           </section>
 
 

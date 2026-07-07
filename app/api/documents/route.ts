@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import {
+  smartAreaPayloadDocumentDate,
+  smartAreaPayloadReceivedDate,
+} from "@/lib/smart-area/document-date";
 
 export const dynamic = "force-dynamic";
 
@@ -151,15 +155,23 @@ export async function GET(request: Request) {
     (readRows ?? []).map((row) => text(row.book_id)).filter(Boolean),
   );
 
-  const books = (data ?? []).map((book: any) => ({
-    id: book.id,
-    legacySmartAreaId: book.legacy_smart_area_id,
-    registrationNumber: book.registration_number || "",
-    receivedDate: book.received_date || "",
+  const books = (data ?? []).map((book: any) => {
+    const documentDate =
+      book.document_date || smartAreaPayloadDocumentDate(book.legacy_payload) || "";
+    const receivedDate =
+      book.received_date ||
+      smartAreaPayloadReceivedDate(book.legacy_payload) ||
+      documentDate;
+
+    return {
+      id: book.id,
+      legacySmartAreaId: book.legacy_smart_area_id,
+      registrationNumber: book.registration_number || "",
+      receivedDate,
     sourceAgency: book.source_agency || "",
     subject: book.subject,
     documentNumber: book.document_number || "",
-    documentDate: book.document_date || "",
+    documentDate,
     documentType: book.document_type || "",
     urgency: book.urgency || "",
     status: book.status,
@@ -227,8 +239,9 @@ export async function GET(request: Request) {
           hasDriveFile: Boolean(text(attachment.drive_file_id)),
         }),
       );
-    })(),
-  }));
+      })(),
+    };
+  });
 
   return NextResponse.json({
     ok: true,

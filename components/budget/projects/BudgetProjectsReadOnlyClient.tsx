@@ -4839,6 +4839,223 @@ export default function BudgetProjectsReadOnlyClient() {
 }
 /* BUDGET_TYPE_TABS_STEP8_FIXED_END */
 
+/* BUDGET_PROJECTS_MOBILE_COMPACT_V1_START */
+@media (max-width: 760px) {
+  .projectsRoot {
+    gap: 9px;
+  }
+
+  .budgetTypeTabs {
+    gap: 5px;
+    margin-bottom: 8px;
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .budgetTypeTabs button {
+    min-height: 34px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .pageTop {
+    gap: 9px;
+    padding: 12px 13px;
+    border-left-width: 5px;
+    border-radius: 12px;
+  }
+
+  .pageTop h2 {
+    font-size: 21px;
+    line-height: 1.15;
+  }
+
+  .pageTop p {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .pageTopActions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .sourceStatusGroup {
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .lastLoadedAt {
+    white-space: normal;
+    font-size: 9px;
+    line-height: 1.25;
+  }
+
+  .createProjectButton {
+    min-height: 34px;
+    padding: 7px 10px;
+    border-radius: 9px;
+    font-size: 11px;
+  }
+
+  .createProjectButton span {
+    font-size: 15px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  .summaryGrid article {
+    min-height: auto;
+    padding: 10px 11px;
+    border-radius: 11px;
+  }
+
+  .summaryGrid span,
+  .summaryGrid small {
+    font-size: 9px;
+    line-height: 1.25;
+  }
+
+  .summaryGrid strong {
+    margin-top: 4px;
+    font-size: 17px;
+    line-height: 1.05;
+  }
+
+  .summaryGrid small {
+    margin-top: 3px;
+  }
+
+  .filterCard {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 11px;
+  }
+
+  .searchBox,
+  .filterCard select,
+  .refreshButton {
+    min-height: 34px;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+
+  .dataCard {
+    border-radius: 11px;
+  }
+
+  .dataNotice {
+    padding: 6px 9px;
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .columnHeader {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .projectRow {
+    gap: 5px;
+    padding: 7px 8px;
+    font-size: 11px;
+    line-height: 1.22;
+  }
+
+  .indexCell {
+    font-size: 11px;
+  }
+
+  .projectMain {
+    grid-template-columns: 10px 22px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .chevron {
+    font-size: 14px;
+  }
+
+  .planIcon {
+    width: 21px;
+    height: 21px;
+    border-radius: 7px;
+    font-size: 10px;
+  }
+
+  .projectText b {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 11.5px;
+    line-height: 1.22;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .fileIcon,
+  .fileMore {
+    width: 23px;
+    height: 23px;
+    border-radius: 6px;
+    font-size: 8px;
+  }
+
+  .activityCount {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    font-size: 9px;
+  }
+
+  .expandedCard {
+    margin: 4px;
+    border-left-width: 4px;
+    border-radius: 11px;
+  }
+
+  .activityPanel {
+    padding: 9px;
+  }
+
+  .activityPanelTitle h3 {
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .activitySummaryBadges,
+  .activityProgressSummary {
+    gap: 4px;
+    margin-top: 5px;
+  }
+
+  .summaryBadge,
+  .activityProgressSummary > span {
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 9px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .pageTop {
+    padding: 14px 16px;
+  }
+
+  .summaryGrid article {
+    padding: 12px;
+  }
+}
+/* BUDGET_PROJECTS_MOBILE_COMPACT_V1_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_START */
 .freeEducationTheme {
   --f15-green-950: #052e2b;

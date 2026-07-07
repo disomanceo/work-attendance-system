@@ -372,25 +372,36 @@
 
 @media (max-width: 640px) {
   .popup {
+    height: auto;
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
     padding-top: 14px !important;
   }
 
+  .topBar {
+    justify-content: space-between;
+  }
+
   .navigation {
-    top: 14px;
-    right: 16px;
+    position: static !important;
+    justify-content: flex-end;
+    gap: 6px !important;
+    min-height: 32px;
+    margin: 4px 0 8px !important;
   }
 
   .arrowButton {
-    width: 28px !important;
-    min-width: 28px !important;
-    height: 28px !important;
-    min-height: 28px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
     padding: 0 !important;
+    font-size: 24px;
   }
 
   .iconRow {
     min-height: 40px;
-    margin-right: 68px !important;
+    margin: 0 0 8px !important;
     gap: 7px !important;
   }
 
@@ -418,5 +429,23 @@
     font-size: 16px !important;
     line-height: 1.5 !important;
     -webkit-line-clamp: 7;
+  }
+
+  .actions {
+    position: sticky;
+    bottom: 0;
+    padding-top: 10px;
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    background: #ffffff;
+  }
+
+  .primary,
+  .secondary {
+    min-height: 48px;
+  }
+
+  .notificationButton {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
   }
 }

@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import {
+  smartAreaPayloadDocumentDate,
+  smartAreaPayloadReceivedDate,
+} from "@/lib/smart-area/document-date";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +72,7 @@ export async function GET(request: Request) {
           urgency,
           status,
           director_note,
+          legacy_payload,
           smart_area_attachments (
             id,
             drive_file_id,
@@ -145,16 +150,23 @@ export async function GET(request: Request) {
     );
   }
 
+  const documentDate =
+    book.document_date || smartAreaPayloadDocumentDate(book.legacy_payload) || "";
+  const receivedDate =
+    book.received_date ||
+    smartAreaPayloadReceivedDate(book.legacy_payload) ||
+    documentDate;
+
   return NextResponse.json({
     ok: true,
     book: {
       id: book.id,
       registrationNumber: book.registration_number || "",
-      receivedDate: book.received_date || "",
+      receivedDate,
       sourceAgency: book.source_agency || "",
       subject: book.subject || "",
       documentNumber: book.document_number || "",
-      documentDate: book.document_date || "",
+      documentDate,
       documentType: book.document_type || "",
       urgency: book.urgency || "",
       status: book.status || "",
