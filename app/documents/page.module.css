@@ -2619,3 +2619,59 @@
   outline: none;
 }
 /* SMART_AREA_WORKLOAD_COLLAPSE_FIX_V20_1_END */
+
+/* SMART_AREA_DIRECTOR_FINISH_BLUE_ASSIGNMENT_V15 */
+/* "แจ้งมอบหมาย" is informational, so use a compact blue badge. */
+.mobileFiles a[data-assignment-state="pending"],
+.mobileDetailFiles a[data-assignment-state="pending"],
+.fileLinks a[data-assignment-state="pending"],
+.detailFiles a[data-assignment-state="pending"] {
+  min-height: 24px !important;
+  gap: 4px !important;
+  border: 1px solid #b8d4f4 !important;
+  border-radius: 999px !important;
+  padding: 2px 7px !important;
+  background: #eaf3ff !important;
+  color: #245f9e !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  box-shadow: none !important;
+}
+
+.mobileFiles a[data-assignment-state="pending"]::before,
+.mobileDetailFiles a[data-assignment-state="pending"]::before,
+.fileLinks a[data-assignment-state="pending"]::before,
+.detailFiles a[data-assignment-state="pending"]::before {
+  display: none !important;
+  content: none !important;
+}
+
+
+/* SMART_AREA_MOBILE_COLORS_AND_MINE_BADGE_V17 */
+.viewTabs .mineCount {
+  border: 1px solid #ef4444 !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+}
+
+@media (max-width: 760px) {
+  .mobilePrimaryActions .mobileDetailsButton {
+    border: 1px solid #86cfa8 !important;
+    background: #dff5e8 !important;
+    color: #176b3a !important;
+  }
+
+  .mobilePrimaryActions .mobileSubmitButton {
+    border: 1px solid #e3a51f !important;
+    background: #f8c84a !important;
+    color: #6c4300 !important;
+  }
+
+  .mobilePrimaryActions .mobileSubmitButton:hover,
+  .mobilePrimaryActions .mobileSubmitButton:focus-visible {
+    background: #f2bb2c !important;
+    color: #5b3800 !important;
+  }
+}

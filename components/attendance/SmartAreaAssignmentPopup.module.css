@@ -1,37 +1,126 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1200;
   display: grid;
   place-items: center;
   padding: 20px;
   background: rgba(15, 23, 42, 0.48);
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(4px);
 }
 
 .popup {
-  width: min(430px, 100%);
-  border: 1px solid #b7d9ce;
-  border-radius: 20px;
-  padding: 24px;
+  position: relative;
+  display: flex;
+  width: min(440px, 100%);
+  height: min(540px, calc(100dvh - 40px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #dbeafe;
+  border-radius: 24px;
+  padding: 18px 24px 24px;
   background: #ffffff;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
 }
 
 .urgentPopup {
-  border-color: #f3a6a6;
+  border-color: #fecaca;
+  box-shadow: 0 24px 70px rgba(185, 28, 28, 0.24);
+}
+
+.topBar {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.closeButton {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: #e2e8f0;
+}
+
+.position {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  border: 1px solid #86efac;
+  border-radius: 999px;
+  padding: 6px 13px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.navigation {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.arrowButton {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #dc2626;
+  font: inherit;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.arrowButton:hover:not(:disabled) {
+  border-color: #fca5a5;
+  background: #fee2e2;
+}
+
+.arrowButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
+}
+
+.iconRow {
+  display: flex;
+  min-height: 84px;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 44px;
 }
 
 .icon {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 auto;
   place-items: center;
-  border-radius: 16px;
-  background: #dff5ed;
-  color: #075e50;
-  font-size: 26px;
-  font-weight: 900;
+  border-radius: 20px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 34px;
 }
 
 .urgentPopup .icon {
@@ -40,94 +129,294 @@
 }
 
 .heading {
-  margin-top: 16px;
+  min-width: 0;
+  text-align: left;
 }
 
 .heading span {
-  color: #0f766e;
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #dcfce7;
+  color: #166534;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .urgentPopup .heading span {
+  background: #fee2e2;
   color: #b91c1c;
 }
 
 .heading h2 {
-  margin: 4px 0 0;
-  color: #17212b;
-  font-size: 23px;
-  line-height: 1.3;
+  margin: 7px 0 0;
+  color: #0f172a;
+  font-size: 20px;
+  line-height: 1.35;
 }
 
 .subject {
   display: grid;
-  gap: 4px;
-  margin-top: 18px;
-  border-radius: 14px;
-  padding: 14px;
-  background: #f4f8f7;
+  min-height: 142px;
+  align-content: start;
+  gap: 8px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 16px;
+  background: #f8fafc;
 }
 
 .subject small {
-  color: #66757d;
-  font-size: 12px;
-  font-weight: 800;
+  color: #64748b;
 }
 
 .subject strong {
-  color: #17212b;
-  font-size: 16px;
-  line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 17px;
+  line-height: 1.55;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
 
-.popup p {
+.popup > p {
+  min-height: 52px;
   margin: 14px 0 0;
-  color: #5c6870;
-  font-size: 14px;
+  color: #64748b;
+  text-align: center;
   line-height: 1.6;
 }
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1.25fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin-top: 22px;
+  margin-top: auto;
+  padding-top: 12px;
 }
 
-.actions button {
-  min-height: 44px;
-  border-radius: 12px;
+.primary,
+.secondary {
+  min-height: 46px;
+  border-radius: 14px;
   padding: 10px 14px;
   font: inherit;
-  font-weight: 900;
+  font-weight: 800;
   cursor: pointer;
 }
 
-.secondary {
-  border: 1px solid #cbd5d1;
-  background: #ffffff;
-  color: #45535a;
-}
-
 .primary {
-  border: 1px solid #075e50;
-  background: #075e50;
+  border: 1px solid #2563eb;
+  background: #2563eb;
   color: #ffffff;
 }
 
-@media (max-width: 560px) {
+.secondary {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.notificationButton {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 850;
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #ffffff;
+  color: #166534;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+  font: inherit;
+  cursor: pointer;
+}
+
+.notificationButton span {
+  font-size: 20px;
+}
+
+.notificationButton strong {
+  font-size: 14px;
+}
+
+.notificationButton b {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
   .backdrop {
     align-items: end;
     padding: 12px;
   }
 
   .popup {
-    border-radius: 20px 20px 14px 14px;
-    padding: 20px;
+    width: 100%;
+    height: min(520px, calc(100dvh - 24px));
+    border-radius: 24px 24px 18px 18px;
+    padding: 16px 18px 18px;
+  }
+
+  .iconRow {
+    padding: 0 24px;
   }
 
   .heading h2 {
-    font-size: 21px;
+    font-size: 18px;
+  }
+
+  .subject {
+    min-height: 132px;
+  }
+
+  .notificationButton strong {
+    display: none;
+  }
+}
+
+
+/* SMART_AREA_POPUP_LAYOUT_V17 */
+/*
+  Keep the existing JSX intact.
+  Navigation is positioned on the same visual row as the envelope and heading.
+*/
+.popup {
+  position: relative;
+}
+
+.navigation {
+  position: absolute !important;
+  top: 18px;
+  right: 20px;
+  z-index: 2;
+  display: flex !important;
+  align-items: center;
+  gap: 4px !important;
+  margin: 0 !important;
+}
+
+.iconRow {
+  min-height: 48px;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: 0 76px 6px 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+}
+
+.iconRow .icon {
+  width: 42px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  flex: 0 0 42px;
+  font-size: 21px !important;
+}
+
+.iconRow .heading {
+  min-width: 0;
+  text-align: left !important;
+}
+
+.iconRow .heading span {
+  display: block;
+  font-size: 14px !important;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.iconRow .heading h2 {
+  margin: 1px 0 0 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.25;
+}
+
+.subject {
+  min-height: 0 !important;
+  margin-top: 2px !important;
+  padding-top: 6px !important;
+}
+
+.subject small {
+  margin-bottom: 2px !important;
+}
+
+.subject strong {
+  display: -webkit-box !important;
+  overflow: hidden;
+  color: #263238 !important;
+  font-family: "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 1.55 !important;
+  text-align: left !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+@media (max-width: 640px) {
+  .popup {
+    padding-top: 14px !important;
+  }
+
+  .navigation {
+    top: 14px;
+    right: 16px;
+  }
+
+  .arrowButton {
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+  }
+
+  .iconRow {
+    min-height: 40px;
+    margin-right: 68px !important;
+    gap: 7px !important;
+  }
+
+  .iconRow .icon {
+    width: 38px !important;
+    height: 38px !important;
+    flex-basis: 38px;
+    font-size: 19px !important;
+  }
+
+  .iconRow .heading span {
+    font-size: 13px !important;
+  }
+
+  .iconRow .heading h2 {
+    font-size: 12px !important;
+  }
+
+  .subject {
+    margin-top: 0 !important;
+    padding-top: 4px !important;
+  }
+
+  .subject strong {
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    -webkit-line-clamp: 7;
   }
 }

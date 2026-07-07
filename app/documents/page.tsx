@@ -872,13 +872,39 @@ export default function DocumentsPage() {
   }
 
   async function updateTaskStatus(taskId: string, status: string) {
+    const currentBook = books.find((book) =>
+      book.tasks.some((task) => task.id === taskId),
+    );
+    const previousBooks = books;
+
     setSavingKey(taskId);
     setMessage("");
     setSuccessMessage("");
 
+    setBooks((current) =>
+      current.map((book) => {
+        if (book.id !== currentBook?.id) return book;
+
+        const tasks = book.tasks.map((task) =>
+          task.id === taskId ? { ...task, status } : task,
+        );
+        const allDone = tasks.length > 0 && tasks.every((task) => task.status === "done");
+        const hasInProgress = tasks.some((task) => task.status === "in_progress");
+
+        return {
+          ...book,
+          tasks,
+          status: allDone ? "done" : hasInProgress ? "in_progress" : book.status,
+        };
+      }),
+    );
+
     try {
       const token = await sessionToken();
-      if (!token) return;
+      if (!token) {
+        setBooks(previousBooks);
+        return;
+      }
 
       const response = await fetch("/api/documents/tasks", {
         method: "POST",
@@ -894,14 +920,20 @@ export default function DocumentsPage() {
         throw new Error(result.message || "ไม่สามารถเปลี่ยนสถานะงานได้");
       }
 
-      setSuccessMessage("อัปเดตสถานะงานเรียบร้อยแล้ว");
+      const updatedBookId = String(result.bookId || currentBook?.id || "");
 
-      if (result.bookId) {
-        await refreshBook(String(result.bookId));
-      } else {
-        await checkDocumentChanges(true);
+      if (updatedBookId) {
+        await refreshBook(updatedBookId);
       }
+
+      window.dispatchEvent(
+        new CustomEvent("smart-area-documents-updated", {
+          detail: { bookId: updatedBookId },
+        }),
+      );
+      setSuccessMessage("อัปเดตสถานะงานเรียบร้อยแล้ว");
     } catch (error) {
+      setBooks(previousBooks);
       setMessage(error instanceof Error ? error.message : "เกิดข้อผิดพลาด");
     } finally {
       setSavingKey("");
@@ -1304,7 +1336,7 @@ if (
                 }}
               >
                 งานของฉัน
-                <span>
+                <span className={styles.mineCount}>
                   {
                     books.filter(
                       (book) =>
@@ -1552,16 +1584,20 @@ if (
 
                   <div className={styles.mobileMetaGrid}>
                     <div>
-                      <span>ที่</span>
-                      <strong>
-                        {book.documentNumber ||
-                          book.registrationNumber ||
-                          "-"}
-                      </strong>
+                      <span>เลขรับ</span>
+                      <strong>{book.registrationNumber || "-"}</strong>
                     </div>
                     <div>
                       <span>วันที่รับ</span>
                       <strong>{formatDate(book.receivedDate)}</strong>
+                    </div>
+                    <div>
+                      <span>เลขที่หนังสือ</span>
+                      <strong>{book.documentNumber || "-"}</strong>
+                    </div>
+                    <div>
+                      <span>ลงวันที่</span>
+                      <strong>{formatDate(book.documentDate)}</strong>
                     </div>
                     <div>
                       <span>จาก</span>
@@ -1631,11 +1667,12 @@ if (
                       เปิดรายละเอียด
                     </button>
 
-                    {capabilities.canSubmit &&
+                    {workspaceMode !== "manager" &&
+                      capabilities.canSubmit &&
                       book.status === "clerk_review" && (
                         <button
                           type="button"
-                          className={styles.primaryAction}
+                          className={`${styles.primaryAction} ${styles.mobileSubmitButton}`}
                           onClick={() =>
                             void postAction(
                               { action: "submit", bookId: book.id },
@@ -1861,26 +1898,36 @@ if (
                               </button>
                             )}
 
-                          {capabilities.canClose &&
-                            book.status === "director_review" && (
+                          {workspaceMode === "manager" &&
+                      capabilities.canClose &&
+                      book.status !== "done" && (
                               <button
                                 type="button"
-                                className={styles.secondaryAction}
-                                onClick={() =>
-                                  void postAction(
+                                className={styles.doneAction}
+                                onClick={() => {
+                                const hasIncompleteAssignments = book.tasks.some(
+                                  (task) => task.status !== "done",
+                                );
+                                const confirmed = window.confirm(
+                                  hasIncompleteAssignments
+                                    ? "เรื่องนี้ยังมีผู้รับมอบหมายที่ทำงานไม่เสร็จ ยืนยันปิดเรื่องเป็นเสร็จสิ้นหรือไม่"
+                                    : "ยืนยันปิดเรื่องนี้เป็นเสร็จสิ้นหรือไม่",
+                                );
+                                if (!confirmed) return;
+                                void postAction(
                                     {
                                       action: "close",
                                       bookId: book.id,
-                                      note: "รับทราบและปิดเรื่อง",
+                                      note: "ผอ. ปิดเรื่องเป็นเสร็จสิ้น",
                                     },
                                     `close:${book.id}`,
-                                  )
-                                }
+                                  );
+                              }}
                                 disabled={
                                   savingKey === `close:${book.id}`
                                 }
                               >
-                                รับทราบ/จบ
+                                เสร็จสิ้น
                               </button>
                             )}
                         </footer>
@@ -1926,7 +1973,9 @@ if (
                           หน้า {book.smartAreaPage || "-"} · ID {book.legacySmartAreaId || "-"}
                         </small>
                         <small>
-                          รับ {formatDate(book.receivedDate)} · อัปเดต{" "}
+                          เลขรับ {book.registrationNumber || "-"} · รับ{" "}
+                          {formatDate(book.receivedDate)} · ลงวันที่{" "}
+                          {formatDate(book.documentDate)} · อัปเดต{" "}
                           {book.updatedAt
                             ? new Intl.DateTimeFormat("th-TH", {
                                 day: "2-digit",
@@ -2063,11 +2112,12 @@ if (
 
                     <td data-label="จัดการ">
                       <div className={styles.actionCell}>
-                        {capabilities.canSubmit &&
+                        {workspaceMode !== "manager" &&
+                      capabilities.canSubmit &&
                           book.status === "clerk_review" && (
                             <button
                               type="button"
-                              className={styles.primaryAction}
+                              className={`${styles.primaryAction} ${styles.mobileSubmitButton}`}
                               onClick={() =>
                                 void postAction(
                                   { action: "submit", bookId: book.id },
@@ -2136,24 +2186,34 @@ if (
                           </button>
                         )}
 
-                        {capabilities.canClose &&
-                          book.status === "director_review" && (
+                        {workspaceMode === "manager" &&
+                      capabilities.canClose &&
+                      book.status !== "done" && (
                             <button
                               type="button"
-                              className={styles.secondaryAction}
-                              onClick={() =>
+                              className={styles.doneAction}
+                              onClick={() => {
+                                const hasIncompleteAssignments = book.tasks.some(
+                                  (task) => task.status !== "done",
+                                );
+                                const confirmed = window.confirm(
+                                  hasIncompleteAssignments
+                                    ? "เรื่องนี้ยังมีผู้รับมอบหมายที่ทำงานไม่เสร็จ ยืนยันปิดเรื่องเป็นเสร็จสิ้นหรือไม่"
+                                    : "ยืนยันปิดเรื่องนี้เป็นเสร็จสิ้นหรือไม่",
+                                );
+                                if (!confirmed) return;
                                 void postAction(
                                   {
                                     action: "close",
                                     bookId: book.id,
-                                    note: "รับทราบและปิดเรื่อง",
+                                    note: "ผอ. ปิดเรื่องเป็นเสร็จสิ้น",
                                   },
                                   `close:${book.id}`,
-                                )
-                              }
+                                );
+                              }}
                               disabled={savingKey === `close:${book.id}`}
                             >
-                              รับทราบ/จบ
+                              เสร็จสิ้น
                             </button>
                           )}
                       </div>
