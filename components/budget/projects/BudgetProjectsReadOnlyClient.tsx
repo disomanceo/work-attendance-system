@@ -4878,11 +4878,14 @@ export default function BudgetProjectsReadOnlyClient() {
 
   .summaryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: 1fr;
     gap: 8px;
   }
 
   .summaryGrid article {
-    min-height: auto;
+    display: grid;
+    align-content: space-between;
+    min-height: 82px;
     padding: 10px 11px;
     border-radius: 11px;
   }
@@ -4904,8 +4907,8 @@ export default function BudgetProjectsReadOnlyClient() {
   }
 
   .filterCard {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
     padding: 8px;
     border-radius: 11px;
   }
@@ -4913,9 +4916,23 @@ export default function BudgetProjectsReadOnlyClient() {
   .searchBox,
   .filterCard select,
   .refreshButton {
+    min-width: 0;
     min-height: 34px;
     border-radius: 8px;
     font-size: 11px;
+  }
+
+  .searchBox {
+    padding-inline: 8px;
+  }
+
+  .searchBox span {
+    flex: 0 0 auto;
+  }
+
+  .refreshButton {
+    width: 100%;
+    font-size: 16px;
   }
 
   .dataCard {

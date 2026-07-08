@@ -2605,12 +2605,15 @@ export default function BudgetPaymentsPage() {
 
   .summaryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-auto-rows: 1fr;
     gap: 8px;
     margin-top: 9px;
   }
 
   .summaryGrid article {
-    min-height: auto;
+    display: grid;
+    align-content: space-between;
+    min-height: 82px;
     padding: 10px 11px;
     border-radius: 11px;
   }
@@ -2653,14 +2656,16 @@ export default function BudgetPaymentsPage() {
   }
 
   .filterBar {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
     width: 100%;
   }
 
   .filterBar input,
   .filterBar select {
+    min-width: 0;
     height: 34px;
+    padding-inline: 8px;
     border-radius: 8px;
     font-size: 11px;
   }

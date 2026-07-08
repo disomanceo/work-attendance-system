@@ -176,11 +176,13 @@ export default function AdminMembersPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const initializedFilter = useRef(false);
+  const requestedMemberImageIds = useRef(new Set<string>());
 
   const [members, setMembers] = useState<Member[]>([]);
   const [memberImageUrls, setMemberImageUrls] = useState<Record<string, string>>({});
   const [memberSignatureUrls, setMemberSignatureUrls] = useState<Record<string, string>>({});
   const [signaturePreviewMember, setSignaturePreviewMember] = useState<Member | null>(null);
+  const [signaturePreviewLoading, setSignaturePreviewLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
   const [activeFilter, setActiveFilter] = useState<MemberFilter>("all");
   const [expandedMemberId, setExpandedMemberId] = useState("");
@@ -238,35 +240,6 @@ export default function AdminMembersPage() {
         initializedFilter.current = true;
       }
 
-      const imageEntries = await Promise.all(
-        nextMembers
-          .filter((member) => Boolean(member.profile_image_file_id))
-          .map(async (member) => [
-            member.id,
-            await getCachedProfileImageUrl(
-              member.profile_image_file_id,
-              session.access_token
-            ),
-          ] as const)
-      );
-      setMemberImageUrls(
-        Object.fromEntries(imageEntries.filter((entry) => Boolean(entry[1])))
-      );
-
-      const signatureEntries = await Promise.all(
-        nextMembers
-          .filter((member) => Boolean(member.signature_file_id))
-          .map(async (member) => [
-            member.id,
-            await getCachedMemberSignatureUrl(
-              member.signature_file_id,
-              session.access_token
-            ),
-          ] as const)
-      );
-      setMemberSignatureUrls(
-        Object.fromEntries(signatureEntries.filter((entry) => Boolean(entry[1])))
-      );
     } catch (error) {
       console.error("Load members page error:", error);
       setMessageType("error");
@@ -302,6 +275,103 @@ export default function AdminMembersPage() {
     if (activeFilter === "all") return members;
     return members.filter((member) => member.account_status === activeFilter);
   }, [activeFilter, members]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVisibleProfileImages() {
+      const pendingMembers = filteredMembers
+        .filter(
+          (member) =>
+            member.profile_image_file_id &&
+            !memberImageUrls[member.id] &&
+            !requestedMemberImageIds.current.has(member.id)
+        )
+        .slice(0, 40);
+
+      if (pendingMembers.length === 0) return;
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) return;
+
+      pendingMembers.forEach((member) =>
+        requestedMemberImageIds.current.add(member.id)
+      );
+
+      const imageEntries = await Promise.all(
+        pendingMembers.map(async (member) => [
+          member.id,
+          await getCachedProfileImageUrl(member.profile_image_file_id, accessToken),
+        ] as const)
+      );
+
+      if (cancelled) return;
+
+      const nextImageUrls = Object.fromEntries(
+        imageEntries.filter((entry) => Boolean(entry[1]))
+      );
+      if (Object.keys(nextImageUrls).length === 0) return;
+
+      setMemberImageUrls((current) => ({ ...current, ...nextImageUrls }));
+    }
+
+    void loadVisibleProfileImages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filteredMembers, memberImageUrls, supabase]);
+
+  const openSignaturePreview = useCallback(
+    async (member: Member) => {
+      const cachedSignatureUrl = memberSignatureUrls[member.id];
+      const needsSignatureLoad = Boolean(
+        member.signature_file_id && !cachedSignatureUrl
+      );
+
+      setSignaturePreviewMember(member);
+      setSignaturePreviewLoading(needsSignatureLoad);
+
+      if (!needsSignatureLoad) return;
+
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        if (!accessToken) {
+          throw new Error("\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48\u0e23\u0e30\u0e1a\u0e1a\u0e43\u0e2b\u0e21\u0e48");
+        }
+
+        const signatureUrl = await getCachedMemberSignatureUrl(
+          member.signature_file_id,
+          accessToken
+        );
+
+        if (signatureUrl) {
+          setMemberSignatureUrls((current) => ({
+            ...current,
+            [member.id]: signatureUrl,
+          }));
+        }
+      } catch (error) {
+        console.error("Load member signature error:", error);
+        setMessageType("error");
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "\u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e42\u0e2b\u0e25\u0e14\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19\u0e44\u0e14\u0e49"
+        );
+      } finally {
+        setSignaturePreviewLoading(false);
+      }
+    },
+    [memberSignatureUrls, supabase]
+  );
 
   function updateLocalMember<K extends keyof Member>(
     id: string,
@@ -670,7 +740,6 @@ export default function AdminMembersPage() {
               const isSaving = savingId === member.id;
               const isExpanded = expandedMemberId === member.id;
               const memberImageUrl = memberImageUrls[member.id] ?? "";
-              const memberSignatureUrl = memberSignatureUrls[member.id] ?? "";
               const tone = statusTone(member.account_status);
               const initials =
                 member.full_name
@@ -1221,10 +1290,7 @@ export default function AdminMembersPage() {
                           {member.signature_file_id && (
                             <button
                               type="button"
-                              disabled={!memberSignatureUrl}
-                              onClick={() =>
-                                setSignaturePreviewMember(member)
-                              }
+                              onClick={() => void openSignaturePreview(member)}
                               style={{
                                 height: 36,
                                 padding: "0 11px",
@@ -1233,9 +1299,7 @@ export default function AdminMembersPage() {
                                 color: "#ffffff",
                                 background: "rgba(124,58,237,0.2)",
                                 fontWeight: 800,
-                                cursor: memberSignatureUrl
-                                  ? "pointer"
-                                  : "wait",
+                                cursor: "pointer",
                               }}
                             >
                               ลายเซ็น
@@ -1427,15 +1491,26 @@ export default function AdminMembersPage() {
                 borderRadius: 12,
               }}
             >
-              <img
-                src={memberSignatureUrls[signaturePreviewMember.id]}
-                alt={`ลายเซ็นของ ${signaturePreviewMember.full_name}`}
-                style={{
-                  width: "100%",
-                  maxHeight: 270,
-                  objectFit: "contain",
-                }}
-              />
+              {signaturePreviewLoading &&
+              !memberSignatureUrls[signaturePreviewMember.id] ? (
+                <span style={{ color: "#667085", fontWeight: 700 }}>
+                  {"\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19..."}
+                </span>
+              ) : memberSignatureUrls[signaturePreviewMember.id] ? (
+                <img
+                  src={memberSignatureUrls[signaturePreviewMember.id]}
+                  alt={`\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19\u0e02\u0e2d\u0e07 ${signaturePreviewMember.full_name}`}
+                  style={{
+                    width: "100%",
+                    maxHeight: 270,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <span style={{ color: "#b42318", fontWeight: 700 }}>
+                  {"\u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e44\u0e1f\u0e25\u0e4c\u0e25\u0e32\u0e22\u0e40\u0e0b\u0e47\u0e19"}
+                </span>
+              )}
             </div>
           </section>
         </div>
