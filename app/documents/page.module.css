@@ -3581,3 +3581,57 @@
   color: #b91c1c !important;
   font-weight: 800 !important;
 }
+
+/* MOBILE_DETAIL_NO_OVERLAP_V1 */
+@media (max-width: 768px) {
+  .mobileDetailOverlay {
+    overflow: hidden !important;
+  }
+
+  .mobileDetailPage {
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .mobileDetailScroll {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    padding-bottom: 14px !important;
+  }
+
+  .mobileDetailGrid,
+  .mobileDetailFiles,
+  .mobileDetailText {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .mobileDetailGrid section,
+  .mobileDetailFiles,
+  .mobileDetailText {
+    position: relative !important;
+    z-index: 1 !important;
+    overflow: visible !important;
+  }
+
+  .mobileDetailActions {
+    position: static !important;
+    z-index: 3 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 7px !important;
+    border-top: 1px solid #d7e6dc !important;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+    background: rgba(237, 246, 240, 0.99) !important;
+  }
+
+  .mobileDetailActions button {
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    white-space: normal !important;
+  }
+}

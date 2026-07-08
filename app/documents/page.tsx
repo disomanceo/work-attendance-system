@@ -1101,13 +1101,6 @@ export default function DocumentsPage() {
     );
   }
 
-  function openAssignment(book: BookItem) {
-    setEditingBook(book);
-    setSelectedAssigneeIds(
-      book.tasks.map((task) => task.assigneeId).filter(Boolean) as string[],
-    );
-    setActionNote(book.directorNote || "");
-  }
 
   async function saveAssignment() {
     if (!editingBook) return;
@@ -2076,7 +2069,7 @@ export default function DocumentsPage() {
                               <button
                                 type="button"
                                 className={`${styles.assignDetailButton} ${styles.assignAction}`}
-                                onClick={() => openAssignment(book)}
+                                onClick={() => router.push(`/documents/sign/${book.id}`)}
                               >
                                 {book.tasks.length > 0
                                   ? "แก้ไขผู้รับมอบหมาย"
@@ -2441,7 +2434,7 @@ export default function DocumentsPage() {
                                   <button
                                     type="button"
                                     className={`${styles.assignDetailButton} ${styles.assignAction}`}
-                                    onClick={() => openAssignment(book)}
+                                    onClick={() => router.push(`/documents/sign/${book.id}`)}
                                   >
                                     {book.tasks.length > 0
                                       ? "แก้ไขผู้รับมอบหมาย"
