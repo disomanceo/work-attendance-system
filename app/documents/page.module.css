@@ -3460,3 +3460,124 @@
     font-size: 12px;
   }
 }
+
+/* DOCUMENT_DIRECTOR_MOBILE_DETAIL_REFINEMENTS_V1 */
+@media (max-width: 760px) {
+  .summaryGrid {
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .summaryCard {
+    min-height: 50px !important;
+    gap: 6px !important;
+    border-radius: 8px !important;
+    padding: 7px 8px !important;
+  }
+
+  .summaryIcon {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 13px !important;
+  }
+
+  .summaryCard strong {
+    font-size: 15px !important;
+    line-height: 1.05 !important;
+  }
+
+  .summaryCard small,
+  .summaryCard span {
+    font-size: 9.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  .viewTabs {
+    gap: 3px !important;
+    padding: 5px 6px !important;
+  }
+
+  .viewTabs button {
+    min-height: 28px !important;
+    border-radius: 6px !important;
+    padding: 4px 7px !important;
+    font-size: 11.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  .viewTabs button span {
+    margin-left: 3px !important;
+    padding: 1px 5px !important;
+    font-size: 10px !important;
+  }
+}
+
+.inlineDetailGrid > .detailNumberField,
+.mobileDetailGrid > .detailNumberField,
+.inlineDetailGrid > .detailDateField,
+.mobileDetailGrid > .detailDateField {
+  border-color: #d9e8df !important;
+  background: #ffffff !important;
+}
+
+.inlineDetailGrid .detailPlainValue,
+.mobileDetailGrid .detailPlainValue {
+  font-weight: 500 !important;
+}
+
+.inlineDetailGrid .detailNumberField > span,
+.mobileDetailGrid .detailNumberField > span,
+.inlineDetailGrid .detailDateField > span,
+.mobileDetailGrid .detailDateField > span {
+  color: #587062 !important;
+}
+
+.inlineDetailGrid .detailNumberField > strong,
+.mobileDetailGrid .detailNumberField > strong,
+.inlineDetailGrid .detailDateField > strong,
+.mobileDetailGrid .detailDateField > strong {
+  color: #1f342b !important;
+  font-weight: 500 !important;
+}
+
+.inlineDetailGrid .detailSpeed_normal,
+.mobileDetailGrid .detailSpeed_normal,
+.detailSpeed_normal {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid #93c5fd !important;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  font-weight: 800 !important;
+}
+
+.inlineDetailGrid .detailSpeed_urgent,
+.mobileDetailGrid .detailSpeed_urgent,
+.detailSpeed_urgent {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid #fdba74 !important;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+  font-weight: 800 !important;
+}
+
+.inlineDetailGrid .detailSpeed_most_urgent,
+.mobileDetailGrid .detailSpeed_most_urgent,
+.detailSpeed_most_urgent {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border: 1px solid #fca5a5 !important;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  font-weight: 800 !important;
+}

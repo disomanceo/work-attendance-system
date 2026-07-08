@@ -161,13 +161,6 @@ function responsibleDisplayName(value: string) {
   return name.startsWith("\u0e04\u0e23\u0e39") ? name : "\u0e04\u0e23\u0e39" + name;
 }
 
-function assigneeFirstNames(tasks: TaskItem[]) {
-  const names = tasks
-    .map((task) => responsibleDisplayName(task.assigneeName))
-    .filter(Boolean);
-
-  return names.length > 0 ? names.join(", ") : "-";
-}
 
 function assigneeStatusSymbol(status: string) {
   if (status === "done") return "\u2713";
@@ -263,6 +256,18 @@ function urgencyFilterKey(value: string) {
   if (normalized.includes("\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14")) return "most_urgent";
   if (normalized.includes("\u0e14\u0e48\u0e27\u0e19")) return "urgent";
   return "normal";
+}
+
+function isDirectorNewBook(book: BookItem) {
+  return (
+    book.status === "clerk_review" ||
+    book.status === "director_review" ||
+    (book.tasks.length === 0 && book.status !== "done")
+  );
+}
+
+function detailSpeedClass(value: string) {
+  return styles["detailSpeed_" + urgencyFilterKey(value)] || styles.detailSpeed_normal;
 }
 
 type WorkflowStepKey = "not_started" | "assigned" | "acknowledged" | "done";
@@ -1121,12 +1126,13 @@ export default function DocumentsPage() {
   }
 
   const summary = useMemo(() => {
-        const assigned = books.filter((book) => book.status === "assigned").length;
+    const newBooks = books.filter(isDirectorNewBook).length;
+    const assigned = books.filter((book) => book.status === "assigned").length;
     const inProgress = books.filter((book) => book.status === "in_progress").length;
     const done = books.filter((book) => book.status === "done").length;
 
     return {
-      all: books.length,
+      newBooks,
       assigned,
       inProgress,
       done,
@@ -1234,7 +1240,11 @@ export default function DocumentsPage() {
       ) {
         return false;
       }
-      if (statusFilter !== "all" && book.status !== statusFilter) return false;
+      if (statusFilter === "new") {
+        if (!isDirectorNewBook(book)) return false;
+      } else if (statusFilter !== "all" && book.status !== statusFilter) {
+        return false;
+      }
       if (urgencyFilter !== "all" && urgencyFilterKey(book.urgency) !== urgencyFilter) {
         return false;
       }
@@ -1384,12 +1394,12 @@ export default function DocumentsPage() {
         <button
           type="button"
           className={`${styles.summaryCard} ${styles.summaryAll}`}
-          onClick={() => activateStatusView("all")}
+          onClick={() => activateStatusView("new")}
         >
           <span className={styles.summaryIcon}>▤</span>
           <span>
-            <small>หนังสือทั้งหมด</small>
-            <strong>{summary.all}</strong>
+            <small>{"\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e43\u0e2b\u0e21\u0e48"}</small>
+            <strong>{summary.newBooks}</strong>
           </span>
         </button>
 
@@ -1424,7 +1434,7 @@ export default function DocumentsPage() {
         >
           <span className={styles.summaryIcon}>✓</span>
           <span>
-            <small>เสร็จแล้ว</small>
+            <small>{"\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e2a\u0e34\u0e49\u0e19"}</small>
             <strong>{summary.done}</strong>
           </span>
         </button>
@@ -1954,47 +1964,41 @@ export default function DocumentsPage() {
                           </div>
 
                           <div className={styles.mobileDetailGrid}>
-                            <section>
-                              <span>เลขทะเบียนรับ</span>
-                              <strong>
+                            <section className={styles.detailNumberField}>
+                              <span>{"\u0e40\u0e25\u0e02\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e23\u0e31\u0e1a"}</span>
+                              <strong className={styles.detailPlainValue}>
                                 {book.registrationNumber || "-"}
                               </strong>
                             </section>
-                            <section>
-                              <span>เลขที่หนังสือ</span>
-                              <strong>{book.documentNumber || "-"}</strong>
+                            <section className={styles.detailNumberField}>
+                              <span>{"\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d"}</span>
+                              <strong className={styles.detailPlainValue}>{book.documentNumber || "-"}</strong>
                             </section>
-                            <section>
-                              <span>วันที่รับ</span>
-                              <strong>{formatDate(book.receivedDate)}</strong>
-                            </section>
-                            <section>
-                              <span>ลงวันที่</span>
-                              <strong>
+                            <section className={styles.detailDateField}>
+                              <span>{"\u0e25\u0e07\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48"}</span>
+                              <strong className={styles.detailPlainValue}>
                                 {formatDate(book.documentDate)}
                               </strong>
                             </section>
-<section>
-  <span>ชั้นความเร็ว</span>
-  <strong
-    className={
-      isMostUrgent(book.urgency)
-        ? styles.detailSpeedCritical
-        : styles.detailSpeedNormal
-    }
-  >
-    {book.urgency || "ปกติ"}
-  </strong>
-</section>
+                            <section className={styles.detailDateField}>
+                              <span>{"\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e23\u0e31\u0e1a"}</span>
+                              <strong className={styles.detailPlainValue}>{formatDate(book.receivedDate)}</strong>
+                            </section>
+                            <section>
+                              <span>{"\u0e0a\u0e31\u0e49\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27"}</span>
+                              <strong className={detailSpeedClass(book.urgency)}>
+                                {book.urgency || "\u0e1b\u0e01\u0e15\u0e34"}
+                              </strong>
+                            </section>
                             <section className={styles.mobileDetailWide}>
-                              <span>จาก</span>
+                              <span>{"\u0e08\u0e32\u0e01"}</span>
                               <strong>{source.name}</strong>
                               {source.group && <small>{source.group}</small>}
                             </section>
                             <section className={styles.mobileDetailWide}>
-                              <span>ผู้รับผิดชอบ</span>
+                              <span>{"\u0e1c\u0e39\u0e49\u0e23\u0e31\u0e1a\u0e1c\u0e34\u0e14\u0e0a\u0e2d\u0e1a"}</span>
                               <strong>
-                                {assigneeFirstNames(book.tasks)}
+                                <AssigneeStatusNames tasks={book.tasks} />
                               </strong>
                             </section>
                           </div>
@@ -2456,40 +2460,34 @@ export default function DocumentsPage() {
 
 
                           <div className={styles.inlineDetailGrid}>
-                            <div>
-                              <span>เลขทะเบียนรับ</span>
-                              <strong>{book.registrationNumber || "-"}</strong>
+                            <div className={styles.detailNumberField}>
+                              <span>{"\u0e40\u0e25\u0e02\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e23\u0e31\u0e1a"}</span>
+                              <strong className={styles.detailPlainValue}>{book.registrationNumber || "-"}</strong>
+                            </div>
+                            <div className={styles.detailNumberField}>
+                              <span>{"\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d"}</span>
+                              <strong className={styles.detailPlainValue}>{book.documentNumber || "-"}</strong>
+                            </div>
+                            <div className={styles.detailDateField}>
+                              <span>{"\u0e25\u0e07\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48"}</span>
+                              <strong className={styles.detailPlainValue}>{formatDate(book.documentDate)}</strong>
+                            </div>
+                            <div className={styles.detailDateField}>
+                              <span>{"\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e23\u0e31\u0e1a"}</span>
+                              <strong className={styles.detailPlainValue}>{formatDate(book.receivedDate)}</strong>
                             </div>
                             <div>
-                              <span>วันที่รับ</span>
-                              <strong>{formatDate(book.receivedDate)}</strong>
-                            </div>
-                            <div>
-                              <span>เลขที่หนังสือ</span>
-                              <strong>{book.documentNumber || "-"}</strong>
-                            </div>
-                            <div>
-                              <span>ลงวันที่</span>
-                              <strong>{formatDate(book.documentDate)}</strong>
-                            </div>
-                            <div>
-                              <span>จากหน่วยงาน</span>
+                              <span>{"\u0e08\u0e32\u0e01\u0e2b\u0e19\u0e48\u0e27\u0e22\u0e07\u0e32\u0e19"}</span>
                               <strong>{book.sourceAgency || "-"}</strong>
                             </div>
                             <div>
-  <span>ประเภท / ชั้นความเร็ว</span>
-  <strong
-    className={
-      isMostUrgent(book.urgency)
-        ? styles.detailSpeedCritical
-        : styles.detailSpeedNormal
-    }
-  >
-    {[book.documentType, book.urgency]
-      .filter(Boolean)
-      .join(" · ") || "-"}
-  </strong>
-</div>
+                              <span>{"\u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17 / \u0e0a\u0e31\u0e49\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27"}</span>
+                              <strong className={detailSpeedClass(book.urgency)}>
+                                {[book.documentType, book.urgency]
+                                  .filter(Boolean)
+                                  .join(" \u00b7 ") || "-"}
+                              </strong>
+                            </div>
                           </div>
 
                           <div className={styles.inlineDetailSections}>
@@ -2502,16 +2500,9 @@ export default function DocumentsPage() {
                               <p>{book.directorNote || "-"}</p>
                             </div>
                             <div>
-                              <span>ผู้รับผิดชอบ</span>
+                              <span>{"\u0e1c\u0e39\u0e49\u0e23\u0e31\u0e1a\u0e1c\u0e34\u0e14\u0e0a\u0e2d\u0e1a"}</span>
                               <p>
-                                {book.tasks.length > 0
-                                  ? book.tasks
-                                      .map(
-                                        (task) =>
-                                          `${task.assigneeName || "ไม่ระบุชื่อ"} (${getStatusLabel(task.status)})`,
-                                      )
-                                      .join(", ")
-                                  : "-"}
+                                <AssigneeStatusNames tasks={book.tasks} />
                               </p>
                             </div>
                             <div>
