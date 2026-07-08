@@ -2885,3 +2885,578 @@
       calc(8px + env(safe-area-inset-bottom)) !important;
   }
 }
+
+
+/* Document workflow refinements */
+.toolbar {
+  grid-template-columns:
+    minmax(240px, 1fr)
+    minmax(130px, 160px)
+    minmax(130px, 160px)
+    minmax(155px, 210px)
+    auto;
+  gap: 10px;
+  margin: 10px;
+  padding: 12px;
+  border: 1px solid #b8d5cd;
+  border-radius: 8px;
+  background: #f4fbf8;
+  box-shadow: 0 1px 2px rgba(15, 83, 70, 0.08);
+}
+
+.filterRefreshButton {
+  min-height: 38px;
+  border: 1px solid #0a6f5e;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #0a6f5e;
+  color: #ffffff;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.filterRefreshButton:hover,
+.filterRefreshButton:focus-visible {
+  background: #075f51;
+  border-color: #075f51;
+}
+
+.filterRefreshButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.workTreeLine {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(34px, 1fr));
+  align-items: start;
+  width: min(100%, 250px);
+  margin-top: 6px;
+  color: #64748b;
+}
+
+.workTreeStep {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.workTreeStep::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: #cbd5d1;
+}
+
+.workTreeStep:first-child::before {
+  display: none;
+}
+
+.workTreeStepActive::before {
+  background: #0a7c68;
+}
+
+.workTreeSymbol {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 2px solid #cbd5d1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.workTreeStepActive .workTreeSymbol {
+  border-color: #0a7c68;
+  background: #e7f7f2;
+  color: #0a6f5e;
+}
+
+.workTreeStep_done.workTreeStepActive .workTreeSymbol {
+  border-color: #15803d;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.workTreeLabel {
+  max-width: 62px;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workTreeStepActive .workTreeLabel {
+  color: #0f3f36;
+  font-weight: 800;
+}
+
+.assignAction {
+  border-color: #b56b0d;
+  background: #d88919;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(181, 107, 13, 0.2);
+}
+
+.assignAction:hover,
+.assignAction:focus-visible {
+  border-color: #9a5a08;
+  background: #c27410;
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(130px, 1fr);
+  }
+
+  .filterRefreshButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+    margin: 8px;
+    padding: 10px;
+  }
+
+  .workTreeLine {
+    width: 100%;
+    max-width: none;
+    margin: 6px 0 8px;
+  }
+
+  .workTreeLabel {
+    max-width: 72px;
+    font-size: 9px;
+  }
+}
+
+
+/* Detail-only workflow and assignee status chips */
+.assigneeStatusList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.assigneeStatusItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: #163832;
+  font-weight: 800;
+}
+
+.assigneeStatusIcon {
+  display: inline-grid;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1.5px solid #94a3b8;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.assigneeStatus_assigned {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.assigneeStatus_in_progress {
+  border-color: #0284c7;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.assigneeStatus_done {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.detailWorkflowPanel {
+  display: grid;
+  gap: 10px;
+  margin: 12px 16px 0;
+  padding: 12px 14px 14px;
+  border: 1px solid #c7e4da;
+  border-radius: 8px;
+  background: #f4fbf8;
+}
+
+.detailWorkflowPanel > span:first-child {
+  color: #0f3f36;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.detailWorkflowPanel .workTreeLine {
+  grid-template-columns: repeat(4, minmax(76px, 1fr));
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  color: #64748b;
+}
+
+.detailWorkflowPanel .workTreeStep {
+  gap: 6px;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.detailWorkflowPanel .workTreeStep::before {
+  top: 15px;
+  height: 3px;
+}
+
+.detailWorkflowPanel .workTreeSymbol {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+  font-size: 15px;
+}
+
+.detailWorkflowPanel .workTreeLabel {
+  max-width: 96px;
+  min-height: 32px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.detailWorkflowPanel .workTreeStep_not_started.workTreeStepActive::before,
+.detailWorkflowPanel .workTreeStep_not_started.workTreeStepActive .workTreeSymbol {
+  border-color: #64748b;
+  color: #475569;
+}
+
+.detailWorkflowPanel .workTreeStep_not_started.workTreeStepActive .workTreeSymbol {
+  background: #f1f5f9;
+}
+
+.detailWorkflowPanel .workTreeStep_assigned.workTreeStepActive::before {
+  background: #d97706;
+}
+
+.detailWorkflowPanel .workTreeStep_assigned.workTreeStepActive .workTreeSymbol {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.detailWorkflowPanel .workTreeStep_acknowledged.workTreeStepActive::before {
+  background: #0284c7;
+}
+
+.detailWorkflowPanel .workTreeStep_acknowledged.workTreeStepActive .workTreeSymbol {
+  border-color: #0284c7;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.detailWorkflowPanel .workTreeStep_done.workTreeStepActive::before {
+  background: #16a34a;
+}
+
+.detailWorkflowPanel .workTreeStep_done.workTreeStepActive .workTreeSymbol {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+@media (max-width: 640px) {
+  .assigneeStatusList {
+    gap: 5px 7px;
+  }
+
+  .detailWorkflowPanel {
+    margin: 10px 0 12px;
+    padding: 11px 10px 12px;
+  }
+
+  .detailWorkflowPanel .workTreeLine {
+    grid-template-columns: repeat(4, minmax(58px, 1fr));
+  }
+
+  .detailWorkflowPanel .workTreeStep {
+    padding: 0 2px;
+    font-size: 10.5px;
+  }
+
+  .detailWorkflowPanel .workTreeSymbol {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+
+  .detailWorkflowPanel .workTreeStep::before {
+    top: 13px;
+  }
+
+  .detailWorkflowPanel .workTreeLabel {
+    max-width: 68px;
+    min-height: 30px;
+    font-size: 10px;
+  }
+}
+
+
+/* Compact workflow placement */
+.inlineDetailHeader {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(360px, 520px) auto;
+  align-items: center;
+}
+
+.inlineDetailWorkflow {
+  justify-self: center;
+  width: 100%;
+}
+
+.inlineDetailWorkflow .workTreeLine {
+  grid-template-columns: repeat(4, minmax(70px, 1fr));
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.inlineDetailWorkflow .workTreeStep {
+  gap: 4px;
+  padding: 0 4px;
+  font-size: 11px;
+}
+
+.inlineDetailWorkflow .workTreeStep::before {
+  top: 13px;
+  height: 3px;
+}
+
+.inlineDetailWorkflow .workTreeSymbol {
+  width: 26px;
+  height: 26px;
+  border-width: 3px;
+  font-size: 13px;
+}
+
+.inlineDetailWorkflow .workTreeLabel {
+  max-width: 86px;
+  min-height: 28px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.mobileDetailStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobileDetailWorkflow {
+  flex: 1 1 auto;
+  min-width: 190px;
+}
+
+.mobileDetailWorkflow .workTreeLine {
+  grid-template-columns: repeat(4, minmax(40px, 1fr));
+  width: 100%;
+  max-width: 270px;
+  margin: 0 0 0 auto;
+}
+
+.mobileDetailWorkflow .workTreeStep {
+  gap: 2px;
+  padding: 0 1px;
+  font-size: 9px;
+}
+
+.mobileDetailWorkflow .workTreeStep::before {
+  top: 10px;
+  height: 2px;
+}
+
+.mobileDetailWorkflow .workTreeSymbol {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+  font-size: 10px;
+}
+
+.mobileDetailWorkflow .workTreeLabel {
+  max-width: 56px;
+  min-height: 22px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.inlineDetailWorkflow .workTreeStep_not_started.workTreeStepActive::before,
+.mobileDetailWorkflow .workTreeStep_not_started.workTreeStepActive::before {
+  background: #64748b;
+}
+
+.inlineDetailWorkflow .workTreeStep_not_started.workTreeStepActive .workTreeSymbol,
+.mobileDetailWorkflow .workTreeStep_not_started.workTreeStepActive .workTreeSymbol {
+  border-color: #64748b;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.inlineDetailWorkflow .workTreeStep_assigned.workTreeStepActive::before,
+.mobileDetailWorkflow .workTreeStep_assigned.workTreeStepActive::before {
+  background: #d97706;
+}
+
+.inlineDetailWorkflow .workTreeStep_assigned.workTreeStepActive .workTreeSymbol,
+.mobileDetailWorkflow .workTreeStep_assigned.workTreeStepActive .workTreeSymbol {
+  border-color: #d97706;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.inlineDetailWorkflow .workTreeStep_acknowledged.workTreeStepActive::before,
+.mobileDetailWorkflow .workTreeStep_acknowledged.workTreeStepActive::before {
+  background: #0284c7;
+}
+
+.inlineDetailWorkflow .workTreeStep_acknowledged.workTreeStepActive .workTreeSymbol,
+.mobileDetailWorkflow .workTreeStep_acknowledged.workTreeStepActive .workTreeSymbol {
+  border-color: #0284c7;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.inlineDetailWorkflow .workTreeStep_done.workTreeStepActive::before,
+.mobileDetailWorkflow .workTreeStep_done.workTreeStepActive::before {
+  background: #16a34a;
+}
+
+.inlineDetailWorkflow .workTreeStep_done.workTreeStepActive .workTreeSymbol,
+.mobileDetailWorkflow .workTreeStep_done.workTreeStepActive .workTreeSymbol {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+@media (max-width: 900px) {
+  .inlineDetailHeader {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inlineDetailWorkflow {
+    order: 2;
+  }
+
+  .inlineDetailActions {
+    order: 3;
+  }
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    display: flex;
+    align-items: end;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .toolbar .searchField {
+    flex: 0 0 210px;
+  }
+
+  .toolbar .selectField {
+    flex: 0 0 138px;
+  }
+
+  .toolbar .filterRefreshButton {
+    flex: 0 0 98px;
+    width: auto;
+  }
+
+  .mobileDetailStatusRow {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .mobileDetailWorkflow {
+    min-width: 170px;
+  }
+
+  .mobileDetailWorkflow .workTreeLine {
+    max-width: 230px;
+  }
+
+  .mobileDetailWorkflow .workTreeLabel {
+    max-width: 48px;
+    font-size: 8.5px;
+  }
+}
+
+
+/* Mobile filters: two rows, no horizontal scroll */
+@media (max-width: 640px) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+    overflow-x: visible;
+  }
+
+  .toolbar .searchField {
+    grid-column: span 4;
+    min-width: 0;
+    flex: initial;
+  }
+
+  .toolbar .filterRefreshButton {
+    grid-column: span 2;
+    width: 100%;
+    min-width: 0;
+    flex: initial;
+    padding-inline: 8px;
+  }
+
+  .toolbar .selectField {
+    grid-column: span 2;
+    min-width: 0;
+    flex: initial;
+  }
+
+  .toolbar .selectField span {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .toolbar .selectField select,
+  .toolbar .searchField input {
+    min-width: 0;
+    font-size: 12px;
+  }
+}

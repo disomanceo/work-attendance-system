@@ -720,22 +720,6 @@ export default function BudgetPaymentsPage() {
           : "paymentsPage"
       }
     >
-      <section className="budgetTypeTabs" aria-label="ประเภทการเบิกจ่าย">
-        <button
-          type="button"
-          className={activeRecordType === "project" ? "active" : ""}
-          onClick={() => setActiveRecordType("project")}
-        >
-          โครงการ / กิจกรรม
-        </button>
-        <button
-          type="button"
-          className={activeRecordType === "free_education" ? "active" : ""}
-          onClick={() => setActiveRecordType("free_education")}
-        >
-          เรียนฟรี 15 ปี
-        </button>
-      </section>
 
       <section className="pageHeader">
         <div>
@@ -754,6 +738,23 @@ export default function BudgetPaymentsPage() {
         </div>
       </section>
 
+      <section className="budgetTypeTabs" aria-label="ประเภทการเบิกจ่าย">
+        <button
+          type="button"
+          className={activeRecordType === "project" ? "active" : ""}
+          onClick={() => setActiveRecordType("project")}
+        >
+          โครงการ / กิจกรรม
+        </button>
+        <button
+          type="button"
+          className={activeRecordType === "free_education" ? "active" : ""}
+          onClick={() => setActiveRecordType("free_education")}
+        >
+          เรียนฟรี 15 ปี
+        </button>
+      </section>
+
       {message && (
         <div
           className={
@@ -765,6 +766,7 @@ export default function BudgetPaymentsPage() {
           {message}
         </div>
       )}
+
 
       <section className="summaryGrid">
         <article>
@@ -2979,6 +2981,53 @@ export default function BudgetPaymentsPage() {
 .freeEducationTheme .timelineConnectorFlow {
   background: linear-gradient(90deg, #065f46, #10b981);
 }
+
+
+/* PAYMENTS_HEADER_HARMONIZED_THEME_START */
+.paymentsPage .pageHeader {
+  color: #f0fdf9;
+  border-color: rgba(167, 243, 208, 0.55);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 34%),
+    linear-gradient(135deg, var(--neo-950) 0%, var(--neo-800) 54%, var(--neo-500) 100%);
+  box-shadow: 0 14px 34px rgba(6, 78, 69, 0.18);
+}
+
+.paymentsPage .pageHeader h1,
+.paymentsPage .pageHeader p,
+.paymentsPage .pageHeader small {
+  color: inherit;
+}
+
+.paymentsPage .pageHeader p,
+.paymentsPage .pageHeader small {
+  opacity: 0.9;
+}
+
+.paymentsPage .budgetTypeTabs {
+  border-color: rgba(6, 78, 69, 0.24);
+  background: var(--neo-50);
+}
+
+.paymentsPage .budgetTypeTabs button {
+  color: var(--neo-800);
+}
+
+.paymentsPage .budgetTypeTabs button.active {
+  background: linear-gradient(135deg, var(--neo-900), var(--neo-700));
+  box-shadow: 0 8px 18px rgba(6, 78, 69, 0.22);
+}
+
+.freeEducationTheme .pageTop,
+.freeEducationTheme .pageHeader {
+  border-color: rgba(167, 243, 208, 0.48);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 34%),
+    linear-gradient(135deg, #052e2b 0%, #064e3b 56%, #047857 100%);
+  box-shadow: 0 16px 34px rgba(5, 46, 43, 0.2);
+}
+/* PAYMENTS_HEADER_HARMONIZED_THEME_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}
 

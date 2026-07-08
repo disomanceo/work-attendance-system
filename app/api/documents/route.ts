@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import { requireSmartAreaUser, isSmartAreaManagerRole } from "@/lib/smart-area/auth";
 import {
   smartAreaPayloadDocumentDate,
   smartAreaPayloadReceivedDate,
@@ -36,9 +36,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const isManager =
-    auth.profile.role === "admin" || auth.profile.role === "director";
-  const isClerk = auth.profile.work_permissions.includes("smart_area.clerk");
+  const isManager = isSmartAreaManagerRole(auth.profile.role);
+  const isClerk = auth.canManageAll && !isManager;
   const workspaceMode = isManager
     ? "manager"
     : isClerk

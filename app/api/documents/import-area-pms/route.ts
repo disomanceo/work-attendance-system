@@ -409,7 +409,17 @@ async function upsertDocument(payload: ImportPayload) {
 
   const { data: existing, error: existingError } = await admin
     .from("smart_area_books")
-    .select("id, received_date, document_date")
+    .select(`
+      id,
+      registration_number,
+      received_date,
+      source_agency,
+      subject,
+      document_number,
+      document_date,
+      urgency,
+      legacy_payload
+    `)
     .eq("legacy_smart_area_id", item.smartAreaId)
     .maybeSingle();
 
@@ -418,132 +428,211 @@ async function upsertDocument(payload: ImportPayload) {
     return json({ ok: false, message: "Cannot check existing document" }, 500);
   }
 
-  if (existing?.id) {
-    const bookUpdates: Record<string, unknown> = {};
+  const bookValues = {
+    registration_number: item.receiveNo || null,
+    received_date: item.receivedDate,
+    source_agency: item.sender || null,
+    subject: item.subject,
+    document_number: item.documentNo || null,
+    document_date: item.documentDate,
+    urgency: item.priority || null,
+    source_system: "smart-area-central",
+    is_active: true,
+    legacy_payload: {
+      ...(existing?.legacy_payload && typeof existing.legacy_payload === "object"
+        ? existing.legacy_payload
+        : {}),
+      imported_by: "Import Area PMS",
+      source_url: item.sourceUrl,
+      smart_area_page: item.smartAreaPage,
+      central_latest_page: item.centralLatestPage,
+      last_synced_at: new Date().toISOString(),
+      raw: payload,
+    },
+  };
 
-    if (item.receivedDate && item.receivedDate !== existing.received_date) {
-      bookUpdates.received_date = item.receivedDate;
+  let bookId = text(existing?.id);
+  let bookChanged = false;
+  let message = "unchanged";
+
+  if (!bookId) {
+    const { data: inserted, error: insertError } = await admin
+      .from("smart_area_books")
+      .insert({
+        legacy_smart_area_id: item.smartAreaId,
+        ...bookValues,
+        document_type: null,
+        status: "clerk_review",
+        note: item.summary || null,
+        director_note: null,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !inserted) {
+      console.error("Import insert book error:", insertError);
+      return json({ ok: false, message: "Cannot insert Smart Area book" }, 500);
     }
 
-    if (item.documentDate && item.documentDate !== existing.document_date) {
-      bookUpdates.document_date = item.documentDate;
-    }
-
-    if (Object.keys(bookUpdates).length > 0) {
-      const { error: updateError } = await admin
-        .from("smart_area_books")
-        .update(bookUpdates)
-        .eq("id", existing.id);
-
-      if (updateError) {
-        console.error("Import update existing book dates error:", updateError);
-        return json(
-          {
-            ok: false,
-            message: "Cannot update Smart Area book dates",
-            bookId: existing.id,
-            smartAreaId: item.smartAreaId,
-          },
-          500,
-        );
-      }
-    }
-
-    return json({
-      ok: true,
-      message: "duplicate",
-      duplicate: true,
-      bookId: existing.id,
-      smartAreaId: item.smartAreaId,
-      attachments: 0,
-      updatedDates: Object.keys(bookUpdates),
-      receivedDate: item.receivedDate,
-      documentDate: item.documentDate,
-    });
-  }
-
-  const { data: book, error: insertError } = await admin
-    .from("smart_area_books")
-    .insert({
-      legacy_smart_area_id: item.smartAreaId,
+    bookId = text(inserted.id);
+    bookChanged = true;
+    message = "saved";
+  } else {
+    const comparable = {
       registration_number: item.receiveNo || null,
       received_date: item.receivedDate,
       source_agency: item.sender || null,
       subject: item.subject,
       document_number: item.documentNo || null,
       document_date: item.documentDate,
-      document_type: null,
       urgency: item.priority || null,
-      status: "clerk_review",
-      note: item.summary || null,
-      director_note: null,
-      source_system: "smart-area-central",
-      is_active: true,
-      legacy_payload: {
-        imported_by: "Import Area PMS",
-        source_url: item.sourceUrl,
-        smart_area_page: item.smartAreaPage,
-        central_latest_page: item.centralLatestPage,
-        raw: payload,
-      },
-    })
-    .select("id")
-    .single();
+    };
 
-  if (insertError || !book) {
-    console.error("Import insert book error:", insertError);
-    return json({ ok: false, message: "Cannot insert Smart Area book" }, 500);
-  }
+    bookChanged = Object.entries(comparable).some(
+      ([key, value]) => text((existing as any)[key]) !== text(value),
+    );
 
-  const attachmentRows = item.attachmentUrls.map((url, index) => ({
-    book_id: book.id,
-    legacy_smart_area_id: item.smartAreaId,
-    legacy_sheet_row: 0,
-    legacy_attachment_key: `${item.smartAreaId}:original:${index + 1}:${url}`,
-    source_url: url,
-    file_url: url,
-    drive_file_id: null,
-    file_name: item.attachmentNames[index] || `ไฟล์แนบ ${index + 1}`,
-    mime_type: null,
-    file_order: index + 1,
-    attachment_type: "original",
-    status: "active",
-    is_active: true,
-    legacy_payload: {
-      imported_by: "Import Area PMS",
-      source_text: item.attachmentNames[index] || "",
-    },
-  }));
-
-  let attachments = 0;
-
-  if (attachmentRows.length > 0) {
-    const { error: attachmentError } = await admin
-      .from("smart_area_attachments")
-      .insert(attachmentRows);
-
-    if (attachmentError) {
-      console.error("Import insert attachments error:", attachmentError);
-      return json(
-        {
-          ok: false,
-          message: "Book inserted but attachments failed",
-          bookId: book.id,
-        },
-        500,
-      );
+    const oldPage = text((existing as any).legacy_payload?.smart_area_page);
+    const oldUrl = text((existing as any).legacy_payload?.source_url);
+    if (oldPage !== text(item.smartAreaPage) || oldUrl !== item.sourceUrl) {
+      bookChanged = true;
     }
 
-    attachments = attachmentRows.length;
+    const { error: updateError } = await admin
+      .from("smart_area_books")
+      .update(bookValues)
+      .eq("id", bookId);
+
+    if (updateError) {
+      console.error("Import update book error:", updateError);
+      return json({ ok: false, message: "Cannot update Smart Area book" }, 500);
+    }
+
+    if (bookChanged) message = "updated";
   }
+
+  const { data: currentAttachments, error: currentAttachmentError } = await admin
+    .from("smart_area_attachments")
+    .select("id, source_url, file_url, file_name, file_order, is_active, status")
+    .eq("book_id", bookId)
+    .eq("attachment_type", "original");
+
+  if (currentAttachmentError) {
+    console.error("Import load attachments error:", currentAttachmentError);
+    return json({ ok: false, message: "Cannot load original attachments" }, 500);
+  }
+
+  const currentByUrl = new Map(
+    (currentAttachments ?? []).map((row: any) => [text(row.source_url) || text(row.file_url), row]),
+  );
+  const incomingUrls = new Set(item.attachmentUrls);
+  let attachmentChanges = 0;
+  let attachmentsAdded = 0;
+  let attachmentsUpdated = 0;
+  let attachmentsDeactivated = 0;
+
+  for (let index = 0; index < item.attachmentUrls.length; index += 1) {
+    const url = item.attachmentUrls[index];
+    const fileName = item.attachmentNames[index] || `ไฟล์แนบ ${index + 1}`;
+    const current = currentByUrl.get(url);
+
+    if (!current) {
+      const { error } = await admin.from("smart_area_attachments").insert({
+        book_id: bookId,
+        legacy_smart_area_id: item.smartAreaId,
+        legacy_sheet_row: 0,
+        legacy_attachment_key: `${item.smartAreaId}:original:${index + 1}:${url}`,
+        source_url: url,
+        file_url: url,
+        drive_file_id: null,
+        file_name: fileName,
+        mime_type: null,
+        file_order: index + 1,
+        attachment_type: "original",
+        status: "active",
+        is_active: true,
+        legacy_payload: {
+          imported_by: "Import Area PMS",
+          source_text: fileName,
+          last_synced_at: new Date().toISOString(),
+        },
+      });
+
+      if (error) {
+        console.error("Import insert attachment error:", error);
+        return json({ ok: false, message: "Cannot insert original attachment" }, 500);
+      }
+
+      attachmentChanges += 1;
+      attachmentsAdded += 1;
+      continue;
+    }
+
+    const attachmentChanged =
+      text(current.file_name) !== fileName ||
+      Number(current.file_order || 0) !== index + 1 ||
+      current.is_active !== true ||
+      text(current.status) !== "active";
+
+    if (attachmentChanged) {
+      const { error } = await admin
+        .from("smart_area_attachments")
+        .update({
+          source_url: url,
+          file_url: url,
+          file_name: fileName,
+          file_order: index + 1,
+          status: "active",
+          is_active: true,
+          legacy_payload: {
+            imported_by: "Import Area PMS",
+            source_text: fileName,
+            last_synced_at: new Date().toISOString(),
+          },
+        })
+        .eq("id", current.id);
+
+      if (error) {
+        console.error("Import update attachment error:", error);
+        return json({ ok: false, message: "Cannot update original attachment" }, 500);
+      }
+
+      attachmentChanges += 1;
+      attachmentsUpdated += 1;
+    }
+  }
+
+  for (const current of currentAttachments ?? []) {
+    const url = text((current as any).source_url) || text((current as any).file_url);
+    if (!url || incomingUrls.has(url) || (current as any).is_active === false) continue;
+
+    const { error } = await admin
+      .from("smart_area_attachments")
+      .update({ status: "inactive", is_active: false })
+      .eq("id", (current as any).id);
+
+    if (error) {
+      console.error("Import deactivate attachment error:", error);
+      return json({ ok: false, message: "Cannot deactivate removed original attachment" }, 500);
+    }
+
+    attachmentChanges += 1;
+    attachmentsDeactivated += 1;
+  }
+
+  if (message === "unchanged" && attachmentChanges > 0) message = "updated";
 
   return json({
     ok: true,
-    message: "saved",
-    duplicate: false,
-    bookId: book.id,
+    message,
+    duplicate: message === "unchanged",
+    bookId,
     smartAreaId: item.smartAreaId,
-    attachments,
+    attachments: item.attachmentUrls.length,
+    attachmentsAdded,
+    attachmentsUpdated,
+    attachmentsDeactivated,
+    bookChanged,
     receivedDate: item.receivedDate,
     documentDate: item.documentDate,
   });
@@ -570,6 +659,8 @@ async function finalizeImportScan(payload: ImportPayload) {
       scanEndPage: number(payload.scanEndPage),
       totalFound: number(payload.totalFound),
       addedCount: number(payload.addedCount),
+      updatedCount: number(payload.updatedCount),
+      unchangedCount: number(payload.unchangedCount),
       duplicateCount: number(payload.duplicateCount),
       errorCount: number(payload.errorCount),
     },
@@ -586,6 +677,17 @@ async function handle(request: Request) {
 
   if (action === "health") {
     return json({ ok: true, service: "Import Area PMS Next API" });
+  }
+
+  if (action === "extensionInfo") {
+    return json({
+      ok: true,
+      version:
+        process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.17",
+      downloadUrl:
+        process.env.SMART_AREA_EXTENSION_DOWNLOAD_URL?.trim() ||
+        "https://drive.google.com/file/d/1GvPboNgYoMsPY4nx6HHyf7mj3RrlI1Xf/view?usp=drive_link",
+    });
   }
 
   if (action === "getImportScanPlan") return getImportScanPlan(payload);

@@ -2,7 +2,6 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getCachedProfileImageUrl } from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./page.module.css";
 
@@ -98,19 +97,13 @@ type AssigneesResponse = {
   message?: string;
 };
 
-type ProfileSummary = {
-  fullName: string;
-  position: string;
-  profileImageFileId: string;
-};
-
 type ExtensionInfo = {
   version: string;
   downloadUrl: string;
 };
 
 type SortMode = "newest" | "oldest" | "registration";
-type ViewMode = "clerk" | "mine" | "all" | "archive";
+type ViewMode = "clerk" | "director" | "mine" | "all" | "archive";
 type WorkspaceMode = "manager" | "clerk" | "member";
 
 const statusLabels: Record<string, string> = {
@@ -162,12 +155,53 @@ function shortThaiName(value: string) {
   return withoutTitle.split(/\s+/)[0] || trimmed;
 }
 
+function responsibleDisplayName(value: string) {
+  const name = shortThaiName(value);
+  if (!name || name === "-") return "";
+  return name.startsWith("\u0e04\u0e23\u0e39") ? name : "\u0e04\u0e23\u0e39" + name;
+}
+
 function assigneeFirstNames(tasks: TaskItem[]) {
   const names = tasks
-    .map((task) => shortThaiName(task.assigneeName))
-    .filter((name) => name && name !== "-");
+    .map((task) => responsibleDisplayName(task.assigneeName))
+    .filter(Boolean);
 
   return names.length > 0 ? names.join(", ") : "-";
+}
+
+function assigneeStatusSymbol(status: string) {
+  if (status === "done") return "\u2713";
+  if (status === "in_progress") return "\u25cf";
+  if (status === "assigned") return "\u25d4";
+  return "\u25cb";
+}
+
+function AssigneeStatusNames({ tasks }: { tasks: TaskItem[] }) {
+  const visibleTasks = tasks.filter((task) => responsibleDisplayName(task.assigneeName));
+
+  if (visibleTasks.length === 0) return <span>-</span>;
+
+  return (
+    <span className={styles.assigneeStatusList}>
+      {visibleTasks.map((task) => (
+        <span key={task.id || task.assigneeId || task.assigneeName} className={styles.assigneeStatusItem}>
+          <span
+            className={[
+              styles.assigneeStatusIcon,
+              styles["assigneeStatus_" + task.status] || "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-label={getStatusLabel(task.status)}
+            title={getStatusLabel(task.status)}
+          >
+            {assigneeStatusSymbol(task.status)}
+          </span>
+          <span>{responsibleDisplayName(task.assigneeName)}</span>
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function sourceDisplayParts(value: string) {
@@ -219,6 +253,88 @@ function isMostUrgent(value: string) {
     .trim()
     .replace(/\s+/g, "")
     .includes("ด่วนที่สุด");
+}
+
+function urgencyFilterKey(value: string) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\s+/g, "");
+
+  if (normalized.includes("\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14")) return "most_urgent";
+  if (normalized.includes("\u0e14\u0e48\u0e27\u0e19")) return "urgent";
+  return "normal";
+}
+
+type WorkflowStepKey = "not_started" | "assigned" | "acknowledged" | "done";
+
+const workflowSteps: { key: WorkflowStepKey; symbol: string; label: string }[] = [
+  { key: "not_started", symbol: "\u25cb", label: "\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e40\u0e23\u0e34\u0e48\u0e21" },
+  { key: "assigned", symbol: "\u25d4", label: "\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22\u0e41\u0e25\u0e49\u0e27" },
+  { key: "acknowledged", symbol: "\u25cf", label: "\u0e23\u0e31\u0e1a\u0e17\u0e23\u0e32\u0e1a\u0e41\u0e25\u0e49\u0e27" },
+  { key: "done", symbol: "\u2713", label: "\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e2a\u0e34\u0e49\u0e19" },
+];
+
+function taskWorkflowStep(task?: TaskItem): WorkflowStepKey {
+  if (!task) return "not_started";
+  if (task.status === "done") return "done";
+  if (task.status === "in_progress" || task.assignmentAcknowledgedAt) return "acknowledged";
+  return "assigned";
+}
+
+function bookWorkflowStep(book: BookItem, currentUserId: string, personal: boolean): WorkflowStepKey {
+  if (personal) {
+    return taskWorkflowStep(book.tasks.find((task) => task.assigneeId === currentUserId));
+  }
+
+  if (book.status === "done") return "done";
+  if (book.tasks.length === 0) return "not_started";
+  if (book.tasks.every((task) => task.status === "done")) return "done";
+  if (
+    book.status === "in_progress" ||
+    book.tasks.some(
+      (task) => task.status === "in_progress" || task.status === "done" || task.assignmentAcknowledgedAt,
+    )
+  ) {
+    return "acknowledged";
+  }
+
+  return "assigned";
+}
+
+function WorkTreeLine({
+  book,
+  currentUserId,
+  personal,
+}: {
+  book: BookItem;
+  currentUserId: string;
+  personal: boolean;
+}) {
+  const currentStep = bookWorkflowStep(book, currentUserId, personal);
+  const activeIndex = workflowSteps.findIndex((step) => step.key === currentStep);
+
+  return (
+    <div
+      className={styles.workTreeLine}
+      aria-label={"\u0e40\u0e2a\u0e49\u0e19\u0e17\u0e32\u0e07\u0e07\u0e32\u0e19 " + (workflowSteps[activeIndex]?.label || "\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e40\u0e23\u0e34\u0e48\u0e21")}
+    >
+      {workflowSteps.map((step, index) => (
+        <span
+          key={step.key}
+          className={[
+            styles.workTreeStep,
+            index <= activeIndex ? styles.workTreeStepActive : "",
+            styles["workTreeStep_" + step.key] || "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <span className={styles.workTreeSymbol}>{step.symbol}</span>
+          <span className={styles.workTreeLabel}>{step.label}</span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function MailStateIcon({
@@ -352,15 +468,10 @@ export default function DocumentsPage() {
   const supabase = useMemo(() => createClient(), []);
   const [books, setBooks] = useState<BookItem[]>([]);
   const [currentUserId, setCurrentUserId] = useState("");
-  const [profileSummary, setProfileSummary] = useState<ProfileSummary>({
-    fullName: "",
-    position: "",
-    profileImageFileId: "",
-  });
-  const [profileImageUrl, setProfileImageUrl] = useState("");
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [urgencyFilter, setUrgencyFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("member");
@@ -396,6 +507,73 @@ export default function DocumentsPage() {
   });
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
+  function defaultDocumentViewMode(): ViewMode {
+    return canManageAll ? "all" : "mine";
+  }
+
+  function clearCrossFilters() {
+    setStatusFilter("all");
+    setUrgencyFilter("all");
+    setAssigneeFilter("all");
+    setSelectedSmartAreaPage(null);
+    setQuery("");
+  }
+
+  function activateLatestView() {
+    setViewMode(defaultDocumentViewMode());
+    clearCrossFilters();
+  }
+
+  function activateStatusView(nextStatus: string) {
+    setViewMode(nextStatus === "done" ? "archive" : defaultDocumentViewMode());
+    setStatusFilter(nextStatus === "done" ? "all" : nextStatus);
+    setUrgencyFilter("all");
+    setAssigneeFilter("all");
+    setSelectedSmartAreaPage(null);
+    setQuery("");
+  }
+
+  function activateWorkspaceView(nextViewMode: ViewMode) {
+    setViewMode(nextViewMode);
+    clearCrossFilters();
+  }
+
+  function activateSmartAreaPage(pageNumber: number) {
+    setViewMode(defaultDocumentViewMode());
+    setStatusFilter("all");
+    setUrgencyFilter("all");
+    setAssigneeFilter("all");
+    setSelectedSmartAreaPage(pageNumber);
+    setQuery("");
+  }
+
+  function activateSearch(nextQuery: string) {
+    setViewMode(defaultDocumentViewMode());
+    setStatusFilter("all");
+    setUrgencyFilter("all");
+    setAssigneeFilter("all");
+    setSelectedSmartAreaPage(null);
+    setQuery(nextQuery);
+  }
+
+  function activateAssigneeFilter(nextAssigneeId: string) {
+    setViewMode(defaultDocumentViewMode());
+    setStatusFilter("all");
+    setUrgencyFilter("all");
+    setSelectedSmartAreaPage(null);
+    setQuery("");
+    setAssigneeFilter(nextAssigneeId);
+  }
+
+  function activateUrgencyFilter(nextUrgency: string) {
+    setViewMode(defaultDocumentViewMode());
+    setStatusFilter("all");
+    setAssigneeFilter("all");
+    setSelectedSmartAreaPage(null);
+    setQuery("");
+    setUrgencyFilter(nextUrgency);
+  }
+
   const sessionToken = useCallback(async () => {
     const {
       data: { session },
@@ -410,48 +588,6 @@ export default function DocumentsPage() {
     return session.access_token;
   }, [router, supabase]);
 
-  const loadProfileSummary = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name, position, profile_image_file_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!data) return;
-
-    const nextProfile = {
-      fullName: String(data.full_name || ""),
-      position: String(data.position || ""),
-      profileImageFileId: String(data.profile_image_file_id || ""),
-    };
-
-    setProfileSummary(nextProfile);
-
-    if (!nextProfile.profileImageFileId) {
-      setProfileImageUrl("");
-      return;
-    }
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    try {
-      const imageUrl = await getCachedProfileImageUrl(
-        nextProfile.profileImageFileId,
-        session?.access_token,
-      );
-      setProfileImageUrl(imageUrl);
-    } catch {
-      setProfileImageUrl("");
-    }
-  }, [supabase]);
 
   const loadBooks = useCallback(async () => {
     setLoading(true);
@@ -695,9 +831,6 @@ export default function DocumentsPage() {
     void loadBooks();
   }, [loadBooks]);
 
-  useEffect(() => {
-    void loadProfileSummary();
-  }, [loadProfileSummary]);
 
   useEffect(() => {
     void loadAssignees();
@@ -888,12 +1021,14 @@ export default function DocumentsPage() {
           task.id === taskId ? { ...task, status } : task,
         );
         const allDone = tasks.length > 0 && tasks.every((task) => task.status === "done");
-        const hasInProgress = tasks.some((task) => task.status === "in_progress");
+        const hasStarted = tasks.some(
+          (task) => task.status === "in_progress" || task.status === "done",
+        );
 
         return {
           ...book,
           tasks,
-          status: allDone ? "done" : hasInProgress ? "in_progress" : book.status,
+          status: allDone ? "done" : hasStarted ? "in_progress" : "assigned",
         };
       }),
     );
@@ -986,19 +1121,14 @@ export default function DocumentsPage() {
   }
 
   const summary = useMemo(() => {
-    const pendingReview = books.filter(
-      (book) =>
-        book.status === "clerk_review" || book.status === "director_review",
-    ).length;
-    const activeWork = books.filter(
-      (book) => book.status === "assigned" || book.status === "in_progress",
-    ).length;
+        const assigned = books.filter((book) => book.status === "assigned").length;
+    const inProgress = books.filter((book) => book.status === "in_progress").length;
     const done = books.filter((book) => book.status === "done").length;
 
     return {
       all: books.length,
-      pendingReview,
-      activeWork,
+      assigned,
+      inProgress,
       done,
     };
   }, [books]);
@@ -1087,24 +1217,28 @@ export default function DocumentsPage() {
         viewMode === "clerk"
           ? book.status === "clerk_review" ||
             book.status === "director_review"
-          : viewMode === "mine"
-            ? hasOwnTask && book.status !== "done"
-            : viewMode === "all"
-              ? book.status !== "done"
-              : workspaceMode === "member"
-                ? hasOwnTask && book.status === "done"
-                : book.status === "done";
+          : viewMode === "director"
+            ? hasOwnTask
+            : viewMode === "mine"
+              ? hasOwnTask
+              : viewMode === "all"
+                ? true
+                : workspaceMode === "member"
+                  ? hasOwnTask && book.status === "done"
+                  : book.status === "done";
 
       if (!inSelectedView) return false;
       if (
-        viewMode !== "mine" &&
         selectedSmartAreaPage !== null &&
         Number(book.smartAreaPage || 0) !== selectedSmartAreaPage
       ) {
         return false;
       }
       if (statusFilter !== "all" && book.status !== statusFilter) return false;
-if (
+      if (urgencyFilter !== "all" && urgencyFilterKey(book.urgency) !== urgencyFilter) {
+        return false;
+      }
+      if (
         assigneeFilter !== "all" &&
         !book.tasks.some((task) => task.assigneeId === assigneeFilter)
       ) {
@@ -1157,6 +1291,7 @@ if (
     selectedSmartAreaPage,
     sortMode,
     statusFilter,
+    urgencyFilter,
     viewMode,
     workspaceMode,
   ]);
@@ -1173,6 +1308,7 @@ if (
     query,
     selectedSmartAreaPage,
     statusFilter,
+    urgencyFilter,
     viewMode,
   ]);
 
@@ -1244,51 +1380,11 @@ if (
 
   return (
     <main className={styles.page}>
-      <section className={styles.hero}>
-        <div className={styles.heroBrand}>
-          <div className={styles.heroProfile}>
-            {profileImageUrl ? (
-              <img
-                src={profileImageUrl}
-                alt={profileSummary.fullName || "รูปโปรไฟล์"}
-              />
-            ) : (
-              <span>
-                {(profileSummary.fullName || "ผู้").trim().charAt(0)}
-              </span>
-            )}
-          </div>
-          <div>
-            <p className={styles.heroEyebrow}>SMART AREA</p>
-            <h1>หนังสือราชการ</h1>
-            <p className={styles.heroUserName}>
-              {profileSummary.fullName || "กำลังโหลดข้อมูลผู้ใช้"}
-            </p>
-            <p className={styles.heroPosition}>
-              {profileSummary.position || "ไม่ระบุตำแหน่ง"}
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className={styles.refreshButton}
-          onClick={() => void loadBooks()}
-          disabled={loading}
-        >
-          <span aria-hidden="true">↻</span>
-          {loading ? "กำลังโหลด..." : "โหลดข้อมูลใหม่"}
-        </button>
-      </section>
-
       <section className={styles.summaryGrid}>
         <button
           type="button"
           className={`${styles.summaryCard} ${styles.summaryAll}`}
-          onClick={() => {
-            setViewMode(workspaceMode === "member" ? "mine" : "all");
-            setStatusFilter("all");
-          }}
+          onClick={() => activateStatusView("all")}
         >
           <span className={styles.summaryIcon}>▤</span>
           <span>
@@ -1300,40 +1396,31 @@ if (
         <button
           type="button"
           className={`${styles.summaryCard} ${styles.summaryPending}`}
-          onClick={() => {
-            setViewMode(workspaceMode === "member" ? "mine" : "all");
-            setStatusFilter("director_review");
-          }}
+          onClick={() => activateStatusView("assigned")}
         >
           <span className={styles.summaryIcon}>◉</span>
           <span>
-            <small>รอพิจารณา</small>
-            <strong>{summary.pendingReview}</strong>
+            <small>มอบหมายแล้ว</small>
+            <strong>{summary.assigned}</strong>
           </span>
         </button>
 
         <button
           type="button"
           className={`${styles.summaryCard} ${styles.summaryProgress}`}
-          onClick={() => {
-            setViewMode(workspaceMode === "member" ? "mine" : "all");
-            setStatusFilter("in_progress");
-          }}
+          onClick={() => activateStatusView("in_progress")}
         >
           <span className={styles.summaryIcon}>◷</span>
           <span>
             <small>กำลังดำเนินการ</small>
-            <strong>{summary.activeWork}</strong>
+            <strong>{summary.inProgress}</strong>
           </span>
         </button>
 
         <button
           type="button"
           className={`${styles.summaryCard} ${styles.summaryDone}`}
-          onClick={() => {
-            setViewMode("archive");
-            setStatusFilter("all");
-          }}
+          onClick={() => activateStatusView("done")}
         >
           <span className={styles.summaryIcon}>✓</span>
           <span>
@@ -1354,11 +1441,7 @@ if (
               <button
                 type="button"
                 className={viewMode === "clerk" ? styles.activeTab : ""}
-                onClick={() => {
-                  setViewMode("clerk");
-                  setStatusFilter("all");
-                  setAssigneeFilter("all");
-                }}
+                onClick={() => activateWorkspaceView("clerk")}
               >
                 งานธุรการ
                 <span>
@@ -1377,18 +1460,13 @@ if (
               <button
                 type="button"
                 className={viewMode === "mine" ? styles.activeTab : ""}
-                onClick={() => {
-                  setViewMode("mine");
-                  setStatusFilter("all");
-                  setAssigneeFilter("all");
-                }}
+                onClick={() => activateWorkspaceView("mine")}
               >
                 งานของฉัน
                 <span className={styles.mineCount}>
                   {
                     books.filter(
                       (book) =>
-                        book.status !== "done" &&
                         book.tasks.some(
                           (task) => task.assigneeId === currentUserId,
                         ),
@@ -1402,25 +1480,34 @@ if (
               <button
                 type="button"
                 className={viewMode === "all" ? styles.activeTab : ""}
-                onClick={() => {
-                  setViewMode("all");
-                  setStatusFilter("all");
-                  setAssigneeFilter("all");
-                }}
+                onClick={() => activateWorkspaceView("all")}
               >
                 งานทั้งหมด
-                <span>{books.filter((book) => book.status !== "done").length}</span>
+                <span>{books.length}</span>
+              </button>
+            )}
+
+            {workspaceMode === "manager" && (
+              <button
+                type="button"
+                className={viewMode === "director" ? styles.activeTab : ""}
+                onClick={() => activateWorkspaceView("director")}
+              >
+                {"\u0e07\u0e32\u0e19 \u0e1c\u0e2d."}
+                <span>
+                  {
+                    books.filter((book) =>
+                      book.tasks.some((task) => task.assigneeId === currentUserId),
+                    ).length
+                  }
+                </span>
               </button>
             )}
 
             <button
               type="button"
               className={viewMode === "archive" ? styles.activeTab : ""}
-              onClick={() => {
-                setViewMode("archive");
-                setStatusFilter("all");
-                setAssigneeFilter("all");
-              }}
+              onClick={() => activateWorkspaceView("archive")}
             >
               คลังเสร็จแล้ว
               <span>
@@ -1444,7 +1531,7 @@ if (
               <span className={styles.searchIcon} aria-hidden="true">⌕</span>
               <input
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => activateSearch(event.target.value)}
                 placeholder="ค้นหาเรื่อง เลขรับ หน่วยงาน ผู้รับผิดชอบ..."
               />
             </label>
@@ -1453,7 +1540,7 @@ if (
               <span>สถานะ</span>
               <select
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
+                onChange={(event) => activateStatusView(event.target.value)}
               >
                 <option value="all">ทั้งหมด</option>
                 {Object.entries(statusLabels)
@@ -1467,11 +1554,24 @@ if (
                   ))}
               </select>
             </label>
+
+            <label className={styles.selectField}>
+              <span>{"\u0e0a\u0e31\u0e49\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27"}</span>
+              <select
+                value={urgencyFilter}
+                onChange={(event) => activateUrgencyFilter(event.target.value)}
+              >
+                <option value="all">{"\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14"}</option>
+                <option value="normal">{"\u0e1b\u0e01\u0e15\u0e34"}</option>
+                <option value="urgent">{"\u0e14\u0e48\u0e27\u0e19"}</option>
+                <option value="most_urgent">{"\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14"}</option>
+              </select>
+            </label>
           <label className={styles.selectField}>
             <span>ผู้รับผิดชอบ</span>
             <select
               value={assigneeFilter}
-              onChange={(event) => setAssigneeFilter(event.target.value)}
+              onChange={(event) => activateAssigneeFilter(event.target.value)}
             >
               <option value="all">ทุกคน</option>
               {assignees.map((assignee) => (
@@ -1481,6 +1581,16 @@ if (
               ))}
             </select>
           </label>
+
+            <button
+              type="button"
+              className={styles.filterRefreshButton}
+              onClick={() => void loadBooks()}
+              disabled={loading}
+            >
+              <span aria-hidden="true">{"\u21bb"}</span>
+              {loading ? "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14..." : "\u0e42\u0e2b\u0e25\u0e14\u0e43\u0e2b\u0e21\u0e48"}
+            </button>
           </div>
 
           {message && <div className={styles.errorBox}>{message}</div>}
@@ -1492,12 +1602,14 @@ if (
             <div>
               <strong>
                 {viewMode === "clerk"
-                  ? "งานธุรการ"
-                  : viewMode === "mine"
-                    ? "งานของฉัน"
-                    : viewMode === "all"
-                      ? "งานทั้งหมด"
-                      : "คลังเสร็จแล้ว"}
+                  ? "\u0e07\u0e32\u0e19\u0e18\u0e38\u0e23\u0e01\u0e32\u0e23"
+                  : viewMode === "director"
+                    ? "\u0e07\u0e32\u0e19 \u0e1c\u0e2d."
+                    : viewMode === "mine"
+                      ? "\u0e07\u0e32\u0e19\u0e02\u0e2d\u0e07\u0e09\u0e31\u0e19"
+                      : viewMode === "all"
+                        ? "\u0e07\u0e32\u0e19\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14"
+                        : "\u0e04\u0e25\u0e31\u0e07\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e41\u0e25\u0e49\u0e27"}
               </strong>
               <span>
                 {selectedSmartAreaPage
@@ -1511,7 +1623,7 @@ if (
                 type="button"
                 onClick={() => {
                   if (selectedPageIndex > 0) {
-                    setSelectedSmartAreaPage(
+                    activateSmartAreaPage(
                       availableSmartAreaPages[selectedPageIndex - 1],
                     );
                   }
@@ -1531,7 +1643,7 @@ if (
                       ? styles.activeSourcePage
                       : ""
                   }
-                  onClick={() => setSelectedSmartAreaPage(pageNumber)}
+                  onClick={() => activateSmartAreaPage(pageNumber)}
                 >
                   {pageNumber}
                 </button>
@@ -1544,7 +1656,7 @@ if (
                     selectedPageIndex >= 0 &&
                     selectedPageIndex < availableSmartAreaPages.length - 1
                   ) {
-                    setSelectedSmartAreaPage(
+                    activateSmartAreaPage(
                       availableSmartAreaPages[selectedPageIndex + 1],
                     );
                   }
@@ -1560,8 +1672,10 @@ if (
 
               <button
                 type="button"
-                className={styles.latestSourcePage}
-                onClick={() => setSelectedSmartAreaPage(null)}
+                className={`${styles.latestSourcePage} ${
+                  selectedSmartAreaPage === null ? styles.activeSourcePage : ""
+                }`}
+                onClick={activateLatestView}
                 disabled={latestSmartAreaPage === null && books.length === 0}
               >
                 ล่าสุด
@@ -1654,7 +1768,7 @@ if (
                     </div>
                     <div>
                       <span>ผู้รับผิดชอบ</span>
-                      <strong>{assigneeFirstNames(book.tasks)}</strong>
+                      <strong><AssigneeStatusNames tasks={book.tasks} /></strong>
                     </div>
                   </div>
 
@@ -1830,7 +1944,13 @@ if (
                               </span>
                             )}
 
-                            
+                            <div className={styles.mobileDetailWorkflow}>
+                              <WorkTreeLine
+                              book={book}
+                              currentUserId={currentUserId}
+                              personal={viewMode === "mine" || viewMode === "director" || !canManageAll}
+                            />
+                            </div>
                           </div>
 
                           <div className={styles.mobileDetailGrid}>
@@ -1950,7 +2070,7 @@ if (
                             book.status !== "done" && (
                               <button
                                 type="button"
-                                className={styles.assignDetailButton}
+                                className={`${styles.assignDetailButton} ${styles.assignAction}`}
                                 onClick={() => openAssignment(book)}
                               >
                                 {book.tasks.length > 0
@@ -2167,7 +2287,7 @@ if (
 
                     <td data-label="ผู้รับผิดชอบ">
                       <div className={styles.assigneeCell}>
-                        <span>{assigneeFirstNames(book.tasks)}</span>
+                        <AssigneeStatusNames tasks={book.tasks} />
                       </div>
                     </td>
 
@@ -2290,6 +2410,13 @@ if (
                               <span>รายละเอียดหนังสือ</span>
                               <strong>{book.subject}</strong>
                             </div>
+                            <div className={styles.inlineDetailWorkflow}>
+                              <WorkTreeLine
+                              book={book}
+                              currentUserId={currentUserId}
+                              personal={viewMode === "mine" || viewMode === "director" || !canManageAll}
+                            />
+                            </div>
                             <div className={styles.inlineDetailActions}>
                               {capabilities.canAssign &&
                                 book.status !== "done" && (
@@ -2307,7 +2434,7 @@ if (
                                 book.status !== "done" && (
                                   <button
                                     type="button"
-                                    className={styles.assignDetailButton}
+                                    className={`${styles.assignDetailButton} ${styles.assignAction}`}
                                     onClick={() => openAssignment(book)}
                                   >
                                     {book.tasks.length > 0
@@ -2326,6 +2453,7 @@ if (
                               </button>
                             </div>
                           </div>
+
 
                           <div className={styles.inlineDetailGrid}>
                             <div>
@@ -2491,10 +2619,8 @@ if (
                   }
                   title={`${item.fullName} ค้าง ${item.count} งาน`}
                   onClick={() => {
-                    setViewMode(workspaceMode === "member" ? "mine" : "all");
-                    setStatusFilter("all");
-                    setAssigneeFilter((current) =>
-                      current === item.id ? "all" : item.id,
+                    activateAssigneeFilter(
+                      assigneeFilter === item.id ? "all" : item.id,
                     );
                   }}
                 >

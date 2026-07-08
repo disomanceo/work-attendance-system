@@ -42,6 +42,42 @@ function bearerToken(request: Request) {
     : "";
 }
 
+function normalizedKey(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, ".");
+}
+
+function hasSmartAreaManagePermission(workPermissions: string[]) {
+  const permissions = new Set(workPermissions.map(normalizedKey));
+
+  return [
+    "smart.area.clerk",
+    "smart.area.admin",
+    "smart.area.manager",
+    "smart.area.manage",
+    "smart.area.all",
+    "documents.clerk",
+    "documents.admin",
+    "documents.manager",
+  ].some((permission) => permissions.has(permission));
+}
+
+export function isSmartAreaManagerRole(role: string) {
+  const normalizedRole = normalizedKey(role);
+
+  return [
+    "admin",
+    "administrator",
+    "director",
+    "manager",
+    "school.director",
+    "ผอ",
+    "ผู้อำนวยการ",
+  ].some((candidate) => normalizedRole === normalizedKey(candidate));
+}
+
 export async function requireSmartAreaUser(
   request: Request,
 ): Promise<SmartAreaAuthSuccess | SmartAreaAuthFailure> {
@@ -123,9 +159,7 @@ export async function requireSmartAreaUser(
 
   const role = String(data.role || "").trim().toLowerCase();
   const canManageAll =
-    role === "admin" ||
-    role === "director" ||
-    workPermissions.includes("smart_area.clerk");
+    isSmartAreaManagerRole(role) || hasSmartAreaManagePermission(workPermissions);
 
   return {
     ok: true,

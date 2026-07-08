@@ -310,17 +310,6 @@ function statusClass(status: string) {
   return "pending";
 }
 
-function departmentIcon(owner: string) {
-  const value = owner.toLowerCase();
-
-  if (value.includes("วิชาการ")) return "⌁";
-  if (value.includes("บุคคล")) return "♙";
-  if (value.includes("งบ")) return "฿";
-  if (value.includes("บริหาร")) return "▤";
-  if (value.includes("ทั่วไป")) return "▦";
-  return "◇";
-}
-
 function fileKind(file: BudgetProjectAttachment) {
   const mime = file.mimeType.toLowerCase();
   const name = file.name.toLowerCase();
@@ -1596,23 +1585,6 @@ export default function BudgetProjectsReadOnlyClient() {
         </div>
       )}
 
-      <section className="budgetTypeTabs" aria-label="ประเภทงานงบประมาณ">
-        <button
-          type="button"
-          className={activeRecordType === "project" ? "active" : ""}
-          onClick={() => setActiveRecordType("project")}
-        >
-          โครงการ / กิจกรรม
-        </button>
-        <button
-          type="button"
-          className={activeRecordType === "free_education" ? "active" : ""}
-          onClick={() => setActiveRecordType("free_education")}
-        >
-          เรียนฟรี 15 ปี
-        </button>
-      </section>
-
       <section className="pageTop">
         <div>
           <h2>
@@ -1644,6 +1616,24 @@ export default function BudgetProjectsReadOnlyClient() {
           </button>
         </div>
       </section>
+
+      <section className="budgetTypeTabs" aria-label="ประเภทงานงบประมาณ">
+        <button
+          type="button"
+          className={activeRecordType === "project" ? "active" : ""}
+          onClick={() => setActiveRecordType("project")}
+        >
+          โครงการ / กิจกรรม
+        </button>
+        <button
+          type="button"
+          className={activeRecordType === "free_education" ? "active" : ""}
+          onClick={() => setActiveRecordType("free_education")}
+        >
+          เรียนฟรี 15 ปี
+        </button>
+      </section>
+
 
       <section className="summaryGrid">
         <article>
@@ -1758,10 +1748,7 @@ export default function BudgetProjectsReadOnlyClient() {
                       className={expanded ? "chevron chevronOpen" : "chevron"}
                     >
                       ›
-                    </span>
-                    <span className="planIcon" aria-hidden="true">
-                      {departmentIcon(project.owner)}
-                    </span>
+                    </span>
                     <span className="projectText">
                       <b>{project.name}</b>
                       <small></small>
@@ -3110,13 +3097,7 @@ export default function BudgetProjectsReadOnlyClient() {
 
         .expandedCard .projectText b {
           color: #14532d;
-        }
-
-        .expandedCard .planIcon {
-          border-color: #4ade80;
-          color: #ffffff;
-          background: linear-gradient(135deg, #22c55e, #15803d);
-        }
+        }
 
         .projectRow {
           display: grid;
@@ -3134,7 +3115,7 @@ export default function BudgetProjectsReadOnlyClient() {
 
         .projectMain {
           display: grid;
-          grid-template-columns: 16px 28px minmax(0, 1fr);
+          grid-template-columns: 16px minmax(0, 1fr);
           align-items: center;
           gap: 8px;
           padding: 0;
@@ -3146,20 +3127,7 @@ export default function BudgetProjectsReadOnlyClient() {
         }
 
         .chevron { color: #0ea5e9; font-size: 18px; font-weight: 900; transition: transform .18s ease; }
-        .chevronOpen { transform: rotate(90deg); }
-
-        .planIcon {
-          display: grid;
-          width: 25px;
-          height: 25px;
-          place-items: center;
-          border: 1px solid #bbf7d0;
-          border-radius: 8px;
-          color: #15803d;
-          background: #f0fdf4;
-          font-size: 13px;
-          font-weight: 900;
-        }
+        .chevronOpen { transform: rotate(90deg); }
 
         .projectText {
           display: flex;
@@ -4977,20 +4945,13 @@ export default function BudgetProjectsReadOnlyClient() {
   }
 
   .projectMain {
-    grid-template-columns: 10px 22px minmax(0, 1fr);
+    grid-template-columns: 10px minmax(0, 1fr);
     gap: 5px;
   }
 
   .chevron {
     font-size: 14px;
-  }
-
-  .planIcon {
-    width: 21px;
-    height: 21px;
-    border-radius: 7px;
-    font-size: 10px;
-  }
+  }
 
   .projectText b {
     display: -webkit-box;
@@ -5210,6 +5171,162 @@ export default function BudgetProjectsReadOnlyClient() {
 .freeEducationTheme .timelineConnectorFlow {
   background: linear-gradient(90deg, #065f46, #10b981);
 }
+
+
+        @media (max-width: 680px) {
+          .workflowTimeline {
+            justify-content: center;
+            overflow-x: hidden;
+            gap: 0;
+            width: 100%;
+            padding: 5px 4px 6px;
+          }
+
+          .timelineNode {
+            width: clamp(42px, 18vw, 52px);
+            flex: 1 1 0;
+            min-width: 0;
+          }
+
+          .timelineStage {
+            width: 28px;
+            height: 28px;
+            border-width: 1.5px;
+          }
+
+          .timelineCurrent {
+            transform: scale(1.04);
+            box-shadow:
+              0 0 0 3px rgba(34, 197, 94, .12),
+              0 4px 9px rgba(15, 23, 42, .07);
+          }
+
+          .timelineNumber {
+            top: -5px;
+            left: -3px;
+            width: 13px;
+            height: 13px;
+            font-size: 6px;
+          }
+
+          .timelineIcon {
+            font-size: 12px;
+          }
+
+          .timelineConnector {
+            width: clamp(10px, 4vw, 18px);
+            flex: 0 1 clamp(10px, 4vw, 18px);
+            height: 3px;
+            margin-top: 13px;
+          }
+
+          .timelineLabel {
+            min-height: 20px;
+            margin-top: 4px;
+            padding: 2px 2px;
+            font-size: 7px;
+            line-height: 1.1;
+            white-space: normal;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .workflowTimeline {
+            padding-inline: 2px;
+          }
+
+          .timelineNode {
+            width: clamp(38px, 17vw, 46px);
+          }
+
+          .timelineStage {
+            width: 24px;
+            height: 24px;
+          }
+
+          .timelineConnector {
+            width: 8px;
+            flex-basis: 8px;
+            margin-top: 11px;
+          }
+
+          .timelineLabel {
+            font-size: 6.5px;
+          }
+        }
+
+
+
+/* BUDGET_HEADER_HARMONIZED_THEME_START */
+.projectsRoot {
+  --budget-header-950: #052e2b;
+  --budget-header-900: #064e45;
+  --budget-header-800: #065f53;
+  --budget-header-700: #047857;
+  --budget-header-500: #10b981;
+  --budget-header-200: #a7f3d0;
+  --budget-header-50: #ecfdf5;
+}
+
+.pageTop {
+  color: #f0fdf9;
+  border-color: rgba(167, 243, 208, 0.55);
+  border-left-color: var(--budget-header-500);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 34%),
+    linear-gradient(135deg, var(--budget-header-950) 0%, var(--budget-header-800) 54%, var(--budget-header-500) 100%);
+  box-shadow: 0 14px 34px rgba(6, 78, 69, 0.18);
+}
+
+.pageTop h2,
+.pageTop p,
+.pageTop .lastLoadedAt {
+  color: inherit;
+}
+
+.pageTop p,
+.pageTop .lastLoadedAt {
+  opacity: 0.9;
+}
+
+.pageTop .sourceStatusGroup {
+  color: inherit;
+}
+
+.createProjectButton {
+  border-color: var(--budget-header-700);
+  background: linear-gradient(135deg, var(--budget-header-700), var(--budget-header-500));
+  box-shadow: 0 8px 18px rgba(6, 78, 69, 0.2);
+}
+
+.createProjectButton:hover {
+  background: linear-gradient(135deg, var(--budget-header-800), var(--budget-header-700));
+}
+
+.budgetTypeTabs {
+  border-color: rgba(6, 78, 69, 0.24);
+  background: var(--budget-header-50);
+}
+
+.budgetTypeTabs button {
+  color: var(--budget-header-800);
+}
+
+.budgetTypeTabs button.active {
+  background: linear-gradient(135deg, var(--budget-header-900), var(--budget-header-700));
+  box-shadow: 0 8px 18px rgba(6, 78, 69, 0.22);
+}
+
+.freeEducationTheme .pageTop,
+.freeEducationTheme .pageHeader {
+  border-color: rgba(167, 243, 208, 0.48);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 34%),
+    linear-gradient(135deg, #052e2b 0%, #064e3b 56%, #047857 100%);
+  box-shadow: 0 16px 34px rgba(5, 46, 43, 0.2);
+}
+/* BUDGET_HEADER_HARMONIZED_THEME_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}</style>
     </div>
