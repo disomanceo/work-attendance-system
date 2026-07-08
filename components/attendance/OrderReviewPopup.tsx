@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -23,6 +23,12 @@ type Props = {
   role: string;
 };
 
+type SeenRecord = {
+  seenAt?: string;
+  dismissedAt?: string;
+  dismissCount?: number;
+};
+
 function formatThaiDate(value: string) {
   return new Intl.DateTimeFormat("th-TH", {
     timeZone: "Asia/Bangkok",
@@ -34,6 +40,27 @@ function formatThaiDate(value: string) {
 
 function getNotificationKey(order: OrderItem) {
   return `${order.id}:${order.status}:${order.updated_at}`;
+}
+
+async function loadSeenRecords(token: string, keys: string[]) {
+  if (keys.length === 0) return {};
+
+  const response = await fetch("/api/notifications/seen", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "list",
+      keys,
+    }),
+  });
+  const result = await response.json();
+
+  if (!response.ok || !result.ok) return {};
+
+  return (result.records || {}) as Record<string, SeenRecord>;
 }
 
 export default function OrderReviewPopup({ role }: Props) {
@@ -103,7 +130,7 @@ export default function OrderReviewPopup({ role }: Props) {
           ? (result.orders as OrderItem[])
           : [];
 
-        const notificationItems = allOrders
+        let notificationItems = allOrders
           .filter((order) => {
             if (isManager) return order.status === "PENDING";
 
@@ -117,6 +144,16 @@ export default function OrderReviewPopup({ role }: Props) {
             return false;
           })
           .slice(0, 10);
+
+        if (isStaffUser) {
+          const seenRecords = await loadSeenRecords(
+            token,
+            notificationItems.map(getNotificationKey)
+          );
+          notificationItems = notificationItems.filter(
+            (order) => !seenRecords[getNotificationKey(order)]?.seenAt
+          );
+        }
 
         setItems(notificationItems);
         setCurrentIndex((index) =>
@@ -199,8 +236,51 @@ export default function OrderReviewPopup({ role }: Props) {
   const isRevision = current?.status === "REVISION";
   const isApproved = current?.status === "APPROVED";
 
+  async function markCurrentSeen() {
+    if (!current || !isStaffUser) return;
+
+    try {
+      const { token } = await getSessionData();
+      if (!token) return;
+
+      await fetch("/api/notifications/seen", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "mark",
+          key: getNotificationKey(current),
+          kind: "order-result",
+          referenceId: current.id,
+          metadata: {
+            status: current.status,
+            updatedAt: current.updated_at,
+          },
+        }),
+      });
+    } catch {
+      // Closing the popup should not be blocked by a temporary network issue.
+    }
+
+    setItems((previous) => {
+      const next = previous.filter((item) => item.id !== current.id);
+      setCurrentIndex((index) =>
+        Math.min(index, Math.max(next.length - 1, 0))
+      );
+      return next;
+    });
+  }
+
+  async function closeCurrent() {
+    setOpen(false);
+    await markCurrentSeen();
+  }
+
   function goToOrders() {
     setOpen(false);
+    void markCurrentSeen();
     router.push("/orders");
   }
 
@@ -244,6 +324,7 @@ export default function OrderReviewPopup({ role }: Props) {
       {items.length > 0 && (
         <button
           type="button"
+          style={{ bottom: "144px" }}
           className={`${styles.floatingButton} ${
             items[0]?.status === "REVISION"
               ? styles.floatingRevision
@@ -290,7 +371,7 @@ export default function OrderReviewPopup({ role }: Props) {
               <button
                 type="button"
                 className={styles.closeButton}
-                onClick={() => setOpen(false)}
+                onClick={closeCurrent}
                 aria-label="ปิด"
               >
                 ×
@@ -365,7 +446,7 @@ export default function OrderReviewPopup({ role }: Props) {
                   <button
                     type="button"
                     className={styles.secondary}
-                    onClick={() => setOpen(false)}
+                    onClick={closeCurrent}
                   >
                     {isPending ? "ไว้ภายหลัง" : "ปิด"}
                   </button>

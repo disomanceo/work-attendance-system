@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Work Attendance System - Leave Document Service
  *
  * Deploy as Web App:
@@ -17,7 +17,7 @@ function doGet() {
   return jsonOutput_({
     ok: true,
     service: "Work Attendance Leave Document Service",
-    version: "4.2.0",
+    version: "4.3.0",
     timestamp: new Date().toISOString()
   });
 }
@@ -70,7 +70,7 @@ function leaveCreatePending_(payload) {
   const yearFolder = getOrCreateFolder_(rootFolder, "ปีงบประมาณ " + fiscalYear);
   const pendingRoot = getOrCreateFolder_(yearFolder, "เอกสารชั่วคราวรอพิจารณา");
 
-  const leaveNumber = nextLeaveNumber_(payload.roleKey, fiscalYear);
+  const leaveNumber = requireDocumentNumber_(payload);
   const safeNumber = sanitizeFileName_(leaveNumber);
   const safeName = sanitizeFileName_(payload.fullName);
   const requestFolder = pendingRoot.createFolder(
@@ -98,13 +98,14 @@ function leaveCreatePending_(payload) {
         "ลายเซ็นผู้ยื่นลา"
       ]),
       payload.applicantSignatureBase64,
-      150
+      128,
+      48
     );
 
     const replacementReport = replaceFieldsInDocument_(document, [
       field_(
         ["LEAVE_NUMBER", "เลขใบลา", "เลขที่ใบลา"],
-        leaveNumber
+        toThaiDigits_(leaveNumber)
       ),
       field_(
         ["FULL_NAME", "ชื่อผู้ลา", "ชื่อ-นามสกุล", "ชื่อ นามสกุล", "ชื่อผู้ยื่นลา"],
@@ -114,12 +115,11 @@ function leaveCreatePending_(payload) {
       field_(["LEAVE_TYPE", "ประเภทการลา", "ประเภทลา"], leaveTypeLabel_(payload.leaveType)),
       field_(["START_DATE", "วันที่เริ่มลา", "ตั้งแต่วันที่"], formatThaiDate_(payload.startDate)),
       field_(["END_DATE", "วันที่สิ้นสุด", "ถึงวันที่"], formatThaiDate_(payload.endDate)),
-      field_(["TOTAL_DAYS", "จำนวนวันลา", "รวมวันลา"], String(payload.totalDays || "")),
+      field_(["TOTAL_DAYS", "จำนวนวันลา", "รวมวันลา"], toThaiDigits_(String(payload.totalDays || ""))),
       field_(["REASON", "เหตุผล", "เหตุผลการลา"], payload.reason),
       field_(["EVIDENCE_DESCRIPTION", "ใบรับรอง", "หลักฐาน", "ระบุหลักฐาน"], payload.evidenceBase64 ? (payload.evidenceDescription || payload.evidenceName || "หลักฐานการลา") : "-"),
-      field_(["SUBMITTED_DATE", "วันที่ยื่น", "วันที่ยื่นใบลา"], formatThaiDateTime_(payload.submittedAt || new Date())),
+      field_(["SUBMITTED_DATE", "วันที่ยื่น", "วันที่ยื่นใบลา"], formatThaiDate_(payload.submittedAt || new Date())),
       field_(["DIRECTOR_NOTE", "ความเห็นผู้อำนวยการ", "ความเห็น ผอ."], ""),
-      field_(["DECISION", "ผลการพิจารณา", "คำสั่ง"], "รอพิจารณา")
     ]);
 
     const requiredMissing = [];
@@ -142,13 +142,8 @@ function leaveCreatePending_(payload) {
         payload.evidenceBase64,
         payload.evidenceName || "หลักฐานการลา"
       );
+      // เก็บหลักฐานเป็นไฟล์แยก ไม่เพิ่มหน้าหลักฐานต่อท้าย Google Docs
       evidenceFile = requestFolder.createFile(evidenceBlob);
-
-      appendEvidenceToDocument_(
-        document.getBody(),
-        evidenceBlob,
-        payload.evidenceName || "หลักฐานการลา"
-      );
     }
 
     document.saveAndClose();
@@ -194,7 +189,8 @@ function leaveFinalize_(payload) {
       "ลายเซ็น ผอ."
     ]),
     payload.directorSignatureBase64,
-    150
+    128,
+    48
   );
 
   const decisionText =
@@ -203,7 +199,7 @@ function leaveFinalize_(payload) {
   replaceFieldsInDocument_(document, [
     field_(["DIRECTOR_NOTE", "ความเห็นผู้อำนวยการ", "ความเห็น ผอ."], payload.directorNote || ""),
     field_(["DECISION", "ผลการพิจารณา", "คำสั่ง"], decisionText),
-    field_(["REVIEWED_DATE", "วันที่พิจารณา", "วันที่อนุมัติ"], formatThaiDateTime_(new Date()))
+    field_(["REVIEWED_DATE", "วันที่พิจารณา", "วันที่อนุมัติ"], formatThaiDate_(new Date()))
   ]);
 
   document.saveAndClose();
@@ -214,6 +210,7 @@ function leaveFinalize_(payload) {
     "ปีงบประมาณ " + String(payload.fiscalYear)
   );
   const pdfFolder = getOrCreateFolder_(yearFolder, "ใบลา PDF");
+  const evidenceFolder = getOrCreateFolder_(yearFolder, "หลักฐานการลา");
 
   const pdfFileName =
     sanitizeFileName_(payload.leaveNumber) +
@@ -226,8 +223,29 @@ function leaveFinalize_(payload) {
   const pdfBlob = workingFile.getAs(MimeType.PDF).setName(pdfFileName);
   const pdfFile = pdfFolder.createFile(pdfBlob);
 
+  let finalEvidenceFile = null;
+  if (payload.evidenceFileId) {
+    try {
+      finalEvidenceFile = DriveApp.getFileById(String(payload.evidenceFileId));
+      const originalName = finalEvidenceFile.getName();
+      const extensionMatch = originalName.match(/(\.[^.]+)$/);
+      const extension = extensionMatch ? extensionMatch[1] : "";
+      const evidenceFileName =
+        sanitizeFileName_(payload.leaveNumber) +
+        " - " +
+        sanitizeFileName_(payload.fullName || "ผู้ลา") +
+        " - หลักฐานการลา" +
+        extension;
+
+      finalEvidenceFile.setName(evidenceFileName);
+      finalEvidenceFile.moveTo(evidenceFolder);
+    } catch (error) {
+      console.warn("ไม่สามารถย้ายไฟล์หลักฐานไปยังโฟลเดอร์ถาวรได้");
+      finalEvidenceFile = null;
+    }
+  }
+
   safeTrashFile_(payload.workingDocumentId);
-  safeTrashFile_(payload.evidenceFileId);
   safeTrashFolder_(payload.requestFolderId);
 
   return {
@@ -237,7 +255,11 @@ function leaveFinalize_(payload) {
     pdfFileId: pdfFile.getId(),
     pdfFileUrl: pdfFile.getUrl(),
     pdfFileName: pdfFile.getName(),
-    finalFolderId: pdfFolder.getId()
+    finalFolderId: pdfFolder.getId(),
+    evidenceFileId: finalEvidenceFile ? finalEvidenceFile.getId() : "",
+    evidenceFileUrl: finalEvidenceFile ? finalEvidenceFile.getUrl() : "",
+    evidenceFileName: finalEvidenceFile ? finalEvidenceFile.getName() : "",
+    evidenceFolderId: finalEvidenceFile ? evidenceFolder.getId() : ""
   };
 }
 
@@ -422,16 +444,22 @@ function replaceAllText_(container, placeholder, value) {
   return count;
 }
 
-function insertImageInDocument_(document, placeholders, dataUrl, maxWidth) {
+function insertImageInDocument_(document, placeholders, dataUrl, maxWidth, maxHeight) {
   const containers = documentContainers_(document);
+  let inserted = false;
 
   for (let i = 0; i < containers.length; i += 1) {
-    if (insertDataImageAtPlaceholder_(containers[i], placeholders, dataUrl, maxWidth)) {
-      return true;
-    }
+    inserted =
+      insertDataImageAtPlaceholder_(
+        containers[i],
+        placeholders,
+        dataUrl,
+        maxWidth,
+        maxHeight
+      ) || inserted;
   }
 
-  return false;
+  return inserted;
 }
 
 function replaceAliases_(body, replacements) {
@@ -447,29 +475,32 @@ function insertDataImageAtPlaceholder_(
   body,
   placeholders,
   dataUrl,
-  maxWidth
+  maxWidth,
+  maxHeight
 ) {
   if (!dataUrl) return false;
 
   const blob = dataUrlToBlob_(dataUrl, "signature.png");
+  let inserted = false;
 
   for (let i = 0; i < placeholders.length; i += 1) {
     const placeholder = placeholders[i];
-    const found = body.findText(escapeRegex_(placeholder));
+    let found = body.findText(escapeRegex_(placeholder));
 
-    if (!found) continue;
+    while (found) {
+      const text = found.getElement().asText();
+      const paragraph = text.getParent().asParagraph();
+      text.deleteText(found.getStartOffset(), found.getEndOffsetInclusive());
 
-    const text = found.getElement().asText();
-    const paragraph = text.getParent().asParagraph();
-    text.deleteText(found.getStartOffset(), found.getEndOffsetInclusive());
+      const image = paragraph.appendInlineImage(blob.copyBlob());
+      resizeImage_(image, maxWidth || 128, maxHeight || 48);
+      inserted = true;
 
-    const image = paragraph.appendInlineImage(blob);
-    resizeImage_(image, maxWidth || 150);
-
-    return true;
+      found = body.findText(escapeRegex_(placeholder));
+    }
   }
 
-  return false;
+  return inserted;
 }
 
 function appendEvidenceToDocument_(body, blob, fileName) {
@@ -484,15 +515,16 @@ function appendEvidenceToDocument_(body, blob, fileName) {
   resizeImage_(image, 500);
 }
 
-function resizeImage_(image, maxWidth) {
+function resizeImage_(image, maxWidth, maxHeight) {
   const width = image.getWidth();
   const height = image.getHeight();
 
-  if (width > maxWidth) {
-    const ratio = maxWidth / width;
-    image.setWidth(Math.round(width * ratio));
-    image.setHeight(Math.round(height * ratio));
-  }
+  if (!width || !height) return;
+
+  const ratio = Math.min(maxWidth / width, (maxHeight || height) / height, 1);
+
+  image.setWidth(Math.round(width * ratio));
+  image.setHeight(Math.round(height * ratio));
 }
 
 function dataUrlToBlob_(dataUrl, fileName) {
@@ -510,11 +542,31 @@ function dataUrlToBlob_(dataUrl, fileName) {
 }
 
 function formatThaiDate_(value) {
-  const date = value instanceof Date
-    ? value
-    : new Date(String(value) + "T00:00:00+07:00");
+  if (value === null || value === undefined || value === "") return "";
 
-  if (isNaN(date.getTime())) return String(value || "");
+  let date;
+
+  if (value instanceof Date) {
+    date = value;
+  } else {
+    const raw = String(value).trim();
+    const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (dateOnlyMatch) {
+      date = new Date(
+        Number(dateOnlyMatch[1]),
+        Number(dateOnlyMatch[2]) - 1,
+        Number(dateOnlyMatch[3]),
+        12,
+        0,
+        0
+      );
+    } else {
+      date = new Date(raw);
+    }
+  }
+
+  if (!date || isNaN(date.getTime())) return String(value || "");
 
   const day = Utilities.formatDate(date, LEAVE_TIMEZONE, "d");
   const month = Number(
@@ -540,14 +592,21 @@ function formatThaiDate_(value) {
     "ธันวาคม"
   ];
 
-  return day + " " + months[month] + " " + year;
+  return toThaiDigits_(day + " " + months[month] + " " + year);
+}
+
+function toThaiDigits_(value) {
+  const thaiDigits = ["๐", "๑", "๒", "๓", "๔", "๕", "๖", "๗", "๘", "๙"];
+  return String(value || "").replace(/\d/g, function(digit) {
+    return thaiDigits[Number(digit)];
+  });
 }
 
 function formatThaiDateTime_(value) {
   const date = value instanceof Date ? value : new Date(value);
   if (isNaN(date.getTime())) return String(value || "");
 
-  return (
+  return toThaiDigits_(
     formatThaiDate_(date) +
     " เวลา " +
     Utilities.formatDate(date, LEAVE_TIMEZONE, "HH:mm") +

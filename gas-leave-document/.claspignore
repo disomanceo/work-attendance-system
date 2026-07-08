@@ -1,0 +1,16 @@
+# Local files
+.clasp.json
+.claspignore
+.git/**
+node_modules/**
+_backup/**
+backup/**
+backups/**
+*.bak
+*.backup
+*.backup.gs
+*_backup.gs
+*-backup.gs
+README*
+*.md
+*.zip

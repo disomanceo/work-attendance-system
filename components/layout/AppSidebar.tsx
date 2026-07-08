@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import type { AppNavigationItem } from "./navigation";
 import styles from "./AppShell.module.css";
 
@@ -19,6 +20,22 @@ type AppSidebarProps = {
 };
 
 type ModuleKey = "personnel" | "budget" | "documents";
+
+type SidebarTask = {
+  assigneeId?: string | null;
+  status?: string;
+  assignmentOpenedAt?: string;
+};
+
+type SidebarBook = {
+  status?: string;
+  tasks?: SidebarTask[];
+};
+
+type SidebarDocumentsResponse = {
+  ok?: boolean;
+  books?: SidebarBook[];
+};
 
 const MODULES: Array<{
   key: ModuleKey;
@@ -60,6 +77,47 @@ export default function AppSidebar({
   onLogout,
 }: AppSidebarProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [newDocumentCount, setNewDocumentCount] = useState(0);
+  const supabase = useMemo(() => createClient(), []);
+
+  const loadNewDocumentCount = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setNewDocumentCount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/documents", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+      const result = (await response.json()) as SidebarDocumentsResponse;
+
+      if (!response.ok || !result.ok) return;
+
+      const currentUserId = session.user.id;
+      const count = (result.books ?? []).filter(
+        (book) =>
+          book.status !== "done" &&
+          (book.tasks ?? []).some(
+            (task) =>
+              task.assigneeId === currentUserId &&
+              task.status === "assigned" &&
+              !task.assignmentOpenedAt,
+          ),
+      ).length;
+
+      setNewDocumentCount(count);
+    } catch {
+      // Keep the previous badge value when the request is temporarily unavailable.
+    }
+  }, [supabase]);
 
   const activeModule = useMemo<ModuleKey | null>(() => {
     const activeItem = items.find((item) => item.match(pathname));
@@ -103,6 +161,22 @@ export default function AppSidebar({
       window.clearTimeout(timerId);
     };
   }, [activeModule]);
+
+  useEffect(() => {
+    void loadNewDocumentCount();
+
+    const handleUpdate = () => {
+      void loadNewDocumentCount();
+    };
+
+    window.addEventListener("smart-area-documents-updated", handleUpdate);
+    window.addEventListener("focus", handleUpdate);
+
+    return () => {
+      window.removeEventListener("smart-area-documents-updated", handleUpdate);
+      window.removeEventListener("focus", handleUpdate);
+    };
+  }, [loadNewDocumentCount, pathname]);
 
   function toggleModule(key: ModuleKey) {
     setExpandedModule((current) => (current === key ? null : key));
@@ -177,6 +251,7 @@ export default function AppSidebar({
                   pathname={pathname}
                   onToggle={() => toggleModule(module.key)}
                   onNavigate={onNavigate}
+                  newDocumentCount={newDocumentCount}
                 />
               );
             })}
@@ -227,6 +302,7 @@ function ModuleGroup({
   pathname,
   onToggle,
   onNavigate,
+  newDocumentCount,
 }: {
   collapsed: boolean;
   label: string;
@@ -238,6 +314,7 @@ function ModuleGroup({
   pathname: string;
   onToggle: () => void;
   onNavigate: (href: string) => void;
+  newDocumentCount: number;
 }) {
   if (items.length === 0) return null;
 
@@ -278,6 +355,7 @@ function ModuleGroup({
             pathname={pathname}
             onNavigate={onNavigate}
             nested
+            newDocumentCount={newDocumentCount}
           />
         </div>
       )}
@@ -319,12 +397,14 @@ function MenuItems({
   pathname,
   onNavigate,
   nested = false,
+  newDocumentCount = 0,
 }: {
   collapsed: boolean;
   items: AppNavigationItem[];
   pathname: string;
   onNavigate: (href: string) => void;
   nested?: boolean;
+  newDocumentCount?: number;
 }) {
   if (items.length === 0) return null;
 
@@ -365,6 +445,27 @@ function MenuItems({
               {item.icon}
             </span>
             {!collapsed && <b>{item.label}</b>}
+            {item.href === "/documents" && newDocumentCount > 0 && (
+              <span
+                aria-label={`งานใหม่ ${newDocumentCount} งาน`}
+                style={{
+                  display: "inline-grid",
+                  minWidth: 20,
+                  height: 20,
+                  marginLeft: "auto",
+                  placeItems: "center",
+                  borderRadius: 999,
+                  padding: "0 6px",
+                  background: "#dc2626",
+                  color: "#ffffff",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  lineHeight: 1,
+                }}
+              >
+                {newDocumentCount > 99 ? "99+" : newDocumentCount}
+              </span>
+            )}
           </button>
         );
       })}

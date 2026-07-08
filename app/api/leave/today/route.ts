@@ -45,14 +45,31 @@ export async function GET(request: Request) {
       .from("leave_requests")
       .select("id, leave_type, start_date, end_date, status")
       .eq("user_id", user.id)
-      .eq("status", "approved")
+      .in("status", ["pending", "approved"])
       .lte("start_date", today)
       .gte("end_date", today)
+      .limit(1)
       .maybeSingle();
 
     if (error) throw new Error("ตรวจสอบสถานะลาไม่สำเร็จ");
 
-    return NextResponse.json({ ok: true, leave: data ?? null });
+    const labels: Record<string, string> = {
+      sick: "ลาป่วย",
+      personal: "ลากิจ",
+      official_duty: "ไปราชการ",
+    };
+
+    const leave = data
+      ? {
+          ...data,
+          label: labels[data.leave_type] ?? data.leave_type,
+          message: `วันนี้คุณได้ขออนุญาต${
+            labels[data.leave_type] ?? data.leave_type
+          }แล้ว ไม่ต้องลงเวลา`,
+        }
+      : null;
+
+    return NextResponse.json({ ok: true, leave });
   } catch (error) {
     return NextResponse.json(
       {

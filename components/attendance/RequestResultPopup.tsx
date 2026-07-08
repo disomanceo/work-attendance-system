@@ -1,12 +1,12 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./RequestResultPopup.module.css";
 
-type ResultStatus = "approved" | "rejected";
-type ResultKind = "leave" | "official-duty";
+type ResultStatus = "approved" | "acknowledged" | "rejected" | "revision";
+type ResultKind = "leave" | "official-duty" | "memo";
 
 type ResultItem = {
   key: string;
@@ -47,6 +47,23 @@ type OfficialDutyRequest = {
   reviewed_at: string | null;
   updated_at?: string | null;
   created_at: string;
+};
+
+type MemoRequest = {
+  id: string;
+  subject: string;
+  reason: string;
+  status: string;
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  updated_at?: string | null;
+  created_at: string;
+};
+
+type SeenRecord = {
+  seenAt?: string;
+  dismissedAt?: string;
+  dismissCount?: number;
 };
 
 type Props = {
@@ -136,6 +153,60 @@ function normalizeOfficialDuty(
   };
 }
 
+function normalizeMemo(item: MemoRequest): ResultItem | null {
+  if (
+    item.status !== "approved" &&
+    item.status !== "acknowledged" &&
+    item.status !== "rejected" &&
+    item.status !== "revision"
+  ) {
+    return null;
+  }
+
+  const eventAt = getEventAt(item);
+  const subject = item.subject?.trim() || item.reason;
+  const isApproved =
+    item.status === "approved" || item.status === "acknowledged";
+
+  return {
+    key: `memo:${item.id}:${item.status}:${eventAt}`,
+    id: item.id,
+    kind: "memo",
+    status: item.status as ResultStatus,
+    title: isApproved
+      ? "บันทึกข้อความได้รับการพิจารณาแล้ว"
+      : item.status === "revision"
+        ? "บันทึกข้อความถูกส่งกลับให้แก้ไข"
+        : "บันทึกข้อความไม่อนุมัติ",
+    subtitle: `บันทึกข้อความ • ${subject}`,
+    detail: item.reason || subject,
+    reviewNote: item.review_note?.trim() || "",
+    eventAt,
+    href: "/memo",
+  };
+}
+
+async function loadSeenRecords(token: string, keys: string[]) {
+  if (keys.length === 0) return {};
+
+  const response = await fetch("/api/notifications/seen", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "list",
+      keys,
+    }),
+  });
+  const result = await response.json();
+
+  if (!response.ok || !result.ok) return {};
+
+  return (result.records || {}) as Record<string, SeenRecord>;
+}
+
 export default function RequestResultPopup({ role }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -178,7 +249,7 @@ export default function RequestResultPopup({ role }: Props) {
           Authorization: `Bearer ${token}`,
         };
 
-        const [leaveResponse, dutyResponse] = await Promise.all([
+        const [leaveResponse, dutyResponse, memoResponse] = await Promise.all([
           fetch("/api/leave", {
             headers,
             cache: "no-store",
@@ -187,11 +258,16 @@ export default function RequestResultPopup({ role }: Props) {
             headers,
             cache: "no-store",
           }),
+          fetch("/api/memo", {
+            headers,
+            cache: "no-store",
+          }),
         ]);
 
-        const [leaveResult, dutyResult] = await Promise.all([
+        const [leaveResult, dutyResult, memoResult] = await Promise.all([
           leaveResponse.json(),
           dutyResponse.json(),
+          memoResponse.json(),
         ]);
 
         if (!leaveResponse.ok || !leaveResult.ok) {
@@ -203,6 +279,12 @@ export default function RequestResultPopup({ role }: Props) {
         if (!dutyResponse.ok || !dutyResult.ok) {
           throw new Error(
             dutyResult.message || "โหลดผลพิจารณาไปราชการไม่สำเร็จ"
+          );
+        }
+
+        if (!memoResponse.ok || !memoResult.ok) {
+          throw new Error(
+            memoResult.message || "โหลดผลพิจารณาบันทึกข้อความไม่สำเร็จ"
           );
         }
 
@@ -222,13 +304,28 @@ export default function RequestResultPopup({ role }: Props) {
           .map(normalizeOfficialDuty)
           .filter((item): item is ResultItem => item !== null);
 
-        const nextItems = [...leaveItems, ...dutyItems]
+        const memoItems = (
+          Array.isArray(memoResult.requests)
+            ? (memoResult.requests as MemoRequest[])
+            : []
+        )
+          .map(normalizeMemo)
+          .filter((item): item is ResultItem => item !== null);
+
+        const allItems = [...leaveItems, ...dutyItems, ...memoItems]
           .sort(
             (first, second) =>
               new Date(second.eventAt).getTime() -
               new Date(first.eventAt).getTime()
           )
           .slice(0, 20);
+        const seenRecords = await loadSeenRecords(
+          token,
+          allItems.map((item) => item.key)
+        );
+        const nextItems = allItems.filter(
+          (item) => !seenRecords[item.key]?.seenAt
+        );
 
         setItems(nextItems);
         setCurrentIndex((index) =>
@@ -313,11 +410,55 @@ export default function RequestResultPopup({ role }: Props) {
   if (!canReceiveResult) return null;
 
   const current = items[currentIndex] ?? null;
-  const isApproved = current?.status === "approved";
+  const isApproved =
+    current?.status === "approved" || current?.status === "acknowledged";
+
+  async function markCurrentSeen() {
+    if (!current) return;
+
+    try {
+      const { token } = await getSessionData();
+      if (!token) return;
+
+      await fetch("/api/notifications/seen", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "mark",
+          key: current.key,
+          kind: `request-result:${current.kind}`,
+          referenceId: current.id,
+          metadata: {
+            status: current.status,
+            eventAt: current.eventAt,
+          },
+        }),
+      });
+    } catch {
+      // The local popup can still close even if the acknowledgement retry fails.
+    }
+
+    setItems((previous) => {
+      const next = previous.filter((item) => item.key !== current.key);
+      setCurrentIndex((index) =>
+        Math.min(index, Math.max(next.length - 1, 0))
+      );
+      return next;
+    });
+  }
+
+  async function closeCurrent() {
+    setOpen(false);
+    await markCurrentSeen();
+  }
 
   function goToDetail() {
     if (!current) return;
     setOpen(false);
+    void markCurrentSeen();
     router.push(current.href);
   }
 
@@ -342,15 +483,22 @@ export default function RequestResultPopup({ role }: Props) {
       {items.length > 0 && (
         <button
           type="button"
+          style={{ bottom: "84px" }}
           className={`${styles.floatingButton} ${
-            items[0]?.status === "approved"
+            items[0]?.status === "approved" ||
+            items[0]?.status === "acknowledged"
               ? styles.floatingApproved
               : styles.floatingRejected
           }`}
           onClick={() => setOpen(true)}
           aria-label={`ผลพิจารณาคำขอ ${items.length} รายการ`}
         >
-          <span>{items[0]?.status === "approved" ? "✅" : "❌"}</span>
+          <span>
+            {items[0]?.status === "approved" ||
+            items[0]?.status === "acknowledged"
+              ? "✅"
+              : "❌"}
+          </span>
           <strong>ผลพิจารณาคำขอ</strong>
           <b>{items.length}</b>
         </button>
@@ -379,7 +527,7 @@ export default function RequestResultPopup({ role }: Props) {
               <button
                 type="button"
                 className={styles.closeButton}
-                onClick={() => setOpen(false)}
+                onClick={closeCurrent}
                 aria-label="ปิด"
               >
                 ×
@@ -399,7 +547,9 @@ export default function RequestResultPopup({ role }: Props) {
                     <strong>
                       {current.kind === "leave"
                         ? "ระบบการลา"
-                        : "ระบบไปราชการ"}
+                        : current.kind === "official-duty"
+                          ? "ระบบไปราชการ"
+                          : "ระบบบันทึกข้อความ"}
                     </strong>
 
                     <span
@@ -457,7 +607,7 @@ export default function RequestResultPopup({ role }: Props) {
                   <button
                     type="button"
                     className={styles.secondary}
-                    onClick={() => setOpen(false)}
+                    onClick={closeCurrent}
                   >
                     ปิด
                   </button>

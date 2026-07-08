@@ -26,7 +26,38 @@ type DocumentsResponse = {
   books?: BookItem[];
 };
 
-const POPUP_DISMISSED_KEY = "smart-area-assignment-popup:dismissed";
+type SeenRecord = {
+  seenAt?: string;
+  dismissedAt?: string;
+  dismissCount?: number;
+};
+
+const MAX_POPUP_DISMISS_COUNT = 2;
+
+function popupKey(bookId: string) {
+  return `smart-area-assignment:${bookId}`;
+}
+
+async function loadSeenRecords(token: string, keys: string[]) {
+  if (keys.length === 0) return {};
+
+  const response = await fetch("/api/notifications/seen", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "list",
+      keys,
+    }),
+  });
+  const result = await response.json();
+
+  if (!response.ok || !result.ok) return {};
+
+  return (result.records || {}) as Record<string, SeenRecord>;
+}
 
 function getUrgencyRank(value: string) {
   const normalized = String(value || "").replace(/\s+/g, "");
@@ -56,6 +87,9 @@ export default function SmartAreaAssignmentPopup() {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visible, setVisible] = useState(false);
+  const [dismissCounts, setDismissCounts] = useState<Record<string, number>>(
+    {},
+  );
 
   useEffect(() => {
     let active = true;
@@ -96,10 +130,26 @@ export default function SmartAreaAssignmentPopup() {
 
       if (!active || newBooks.length === 0) return;
 
-      setBooks(newBooks);
-      setCurrentIndex(0);
+      const seenRecords = await loadSeenRecords(
+        session.access_token,
+        newBooks.map((item) => popupKey(item.id)),
+      );
+      const nextDismissCounts = Object.fromEntries(
+        newBooks.map((item) => [
+          item.id,
+          Number(seenRecords[popupKey(item.id)]?.dismissCount || 0),
+        ]),
+      );
+      const firstPopupIndex = newBooks.findIndex(
+        (item) =>
+          (nextDismissCounts[item.id] || 0) < MAX_POPUP_DISMISS_COUNT,
+      );
 
-      if (sessionStorage.getItem(POPUP_DISMISSED_KEY) !== "dismissed") {
+      setBooks(newBooks);
+      setDismissCounts(nextDismissCounts);
+      setCurrentIndex(firstPopupIndex >= 0 ? firstPopupIndex : 0);
+
+      if (firstPopupIndex >= 0) {
         setVisible(true);
       }
     }
@@ -113,6 +163,7 @@ export default function SmartAreaAssignmentPopup() {
 
   const book = books[currentIndex] ?? null;
   const count = books.length;
+  const currentDismissCount = book ? dismissCounts[book.id] || 0 : 0;
 
   if (!book || count === 0) return null;
 
@@ -123,13 +174,52 @@ export default function SmartAreaAssignmentPopup() {
   const hasPrevious = currentIndex > 0;
   const hasNext = currentIndex < count - 1;
 
-  function dismiss() {
-    sessionStorage.setItem(POPUP_DISMISSED_KEY, "dismissed");
+  async function dismiss() {
+    if (!book) {
+      setVisible(false);
+      return;
+    }
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        const response = await fetch("/api/notifications/seen", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "dismiss",
+            key: popupKey(book.id),
+            kind: "smart-area-assignment",
+            referenceId: book.id,
+          }),
+        });
+        const result = await response.json().catch(() => null);
+        const count = Number(result?.record?.dismissCount || 0);
+
+        if (response.ok && result?.ok && count > 0) {
+          setDismissCounts((previous) => ({
+            ...previous,
+            [book.id]: count,
+          }));
+        }
+      }
+    } catch {
+      setDismissCounts((previous) => ({
+        ...previous,
+        [book.id]: (previous[book.id] || 0) + 1,
+      }));
+    }
+
     setVisible(false);
   }
 
   function reopen() {
-    sessionStorage.removeItem(POPUP_DISMISSED_KEY);
     setVisible(true);
   }
 
@@ -184,6 +274,7 @@ export default function SmartAreaAssignmentPopup() {
                 className={styles.closeButton}
                 onClick={dismiss}
                 aria-label="ปิดการแจ้งเตือน"
+                data-dismiss-count={currentDismissCount}
               >
                 ×
               </button>

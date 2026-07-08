@@ -186,11 +186,14 @@ function officialDutyFinalize_(payload) {
     48
   );
 
+  const decisionText = decisionLabel_(payload.decision);
+  const directorNote = payload.directorNote || decisionText;
+
   replaceFieldsInDocument_(document, [
     field_(["ชื่อผู้อำนวยการ", "ชื่อผู้พิจารณา", "DIRECTOR_NAME", "REVIEWER_NAME"], payload.directorName || ""),
     field_(["ตำแหน่งผู้อำนวยการ", "ตำแหน่งผู้พิจารณา", "DIRECTOR_POSITION", "REVIEWER_POSITION"], payload.directorPosition || ""),
-    field_(["ความคิดเห็นผู้อำนวยการ", "ความเห็นผู้อำนวยการ", "DIRECTOR_NOTE", "REVIEWER_NOTE"], payload.directorNote || ""),
-    field_(["ผลการพิจารณา", "ผลพิจารณา", "DECISION"], decisionLabel_(payload.decision)),
+    field_(["ความคิดเห็นผู้อำนวยการ", "ความคิดเห็น ผอ.", "ความเห็นผู้อำนวยการ", "ความเห็น ผอ.", "DIRECTOR_NOTE", "REVIEWER_NOTE"], directorNote),
+    field_(["ผลการพิจารณา", "ผลพิจารณา", "DECISION"], decisionText),
     field_(["วันที่พิจารณา", "วันที่อนุมัติ", "REVIEWED_DATE", "APPROVED_DATE"], formatThaiLongDate_(payload.reviewedAt || new Date()))
   ]);
 
@@ -333,6 +336,9 @@ function placeholderVariants_(aliases) {
 
     variants.push("{{" + text + "}}");
     variants.push("{[" + text + "]}");
+    variants.push("[[" + text + "]]");
+    variants.push("<<" + text + ">>");
+    variants.push("«" + text + "»");
   });
 
   return variants;
@@ -361,27 +367,30 @@ function insertImageInDocument_(document, aliases, dataUrl, maxWidth, maxHeight)
 
   const body = document.getBody();
   const blob = dataUrlToBlob_(dataUrl, "signature.png");
+  let inserted = false;
 
   for (let i = 0; i < aliases.length; i += 1) {
-    const found = body.findText(escapeRegExp_(aliases[i]));
-    if (!found) continue;
+    let found = body.findText(escapeRegExp_(aliases[i]));
 
-    const textElement = found.getElement().asText();
-    const start = found.getStartOffset();
-    const end = found.getEndOffsetInclusive();
-    textElement.deleteText(start, end);
+    while (found) {
+      const textElement = found.getElement().asText();
+      const start = found.getStartOffset();
+      const end = found.getEndOffsetInclusive();
+      textElement.deleteText(start, end);
 
-    const parent = textElement.getParent();
-    const image = parent.insertInlineImage(
-      Math.max(0, parent.getChildIndex(textElement) + 1),
-      blob
-    );
-    resizeImage_(image, maxWidth || 150, maxHeight || 55);
+      const parent = textElement.getParent();
+      const image = parent.insertInlineImage(
+        Math.max(0, parent.getChildIndex(textElement) + 1),
+        blob.copyBlob()
+      );
+      resizeImage_(image, maxWidth || 128, maxHeight || 48);
+      inserted = true;
 
-    return true;
+      found = body.findText(escapeRegExp_(aliases[i]));
+    }
   }
 
-  return false;
+  return inserted;
 }
 
 function resizeImage_(image, maxWidth, maxHeight) {

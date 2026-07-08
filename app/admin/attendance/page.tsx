@@ -1325,6 +1325,45 @@ export default function AdminAttendancePage() {
                 })}
               </div>
 
+              {selectedWeeklyPeriod && (
+                <button
+                  type="button"
+                  className={styles.buildWeekButton}
+                  onClick={() => {
+                    const key = `${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay}`;
+                    const found = monthFileStatus.weeklyPdfPeriods.some(
+                      (item) =>
+                        item.startDay === selectedWeeklyPeriod.startDay &&
+                        item.endDay === selectedWeeklyPeriod.endDay &&
+                        item.found
+                    );
+
+                    if (
+                      found &&
+                      !window.confirm(
+                        `ช่วงวันที่ ${key} มี PDF รายสัปดาห์อยู่แล้ว\n\nต้องการสร้างใหม่และแทนที่ไฟล์เดิมหรือไม่?`
+                      )
+                    ) {
+                      return;
+                    }
+
+                    void buildWeeklyReport(selectedWeeklyPeriod);
+                  }}
+                  disabled={
+                    Boolean(buildingWeeklyKey) ||
+                    buildingMonthly ||
+                    closingMonth ||
+                    monthFileStatus.monthClosed
+                  }
+                  title={`สร้าง PDF รายสัปดาห์ช่วง ${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay}`}
+                >
+                  {buildingWeeklyKey ===
+                  `${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay}`
+                    ? "กำลังสร้าง PDF รายสัปดาห์..."
+                    : `สร้าง PDF รายสัปดาห์ ${selectedWeeklyPeriod.startDay}-${selectedWeeklyPeriod.endDay}`}
+                </button>
+              )}
+
               <button
                 type="button"
                 className={[

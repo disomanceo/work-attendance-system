@@ -212,6 +212,7 @@ export default function LeaveReviewPopup({ role }: Props) {
       {items.length > 0 && (
         <button
           type="button"
+          style={{ bottom: "264px" }}
           className={`${styles.floatingButton} ${styles.floatingButtonAlert}`}
           onClick={() => setOpen(true)}
           aria-label={`ใบลารอพิจารณา ${items.length} รายการ`}

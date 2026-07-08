@@ -244,6 +244,7 @@ export default function OfficialDutyReviewPopup({ role }: Props) {
       {items.length > 0 && (
         <button
           type="button"
+          style={{ bottom: "204px" }}
           className={`${styles.floatingButton} ${styles.floatingButtonAlert}`}
           onClick={() => setOpen(true)}
           aria-label={`คำขอไปราชการรอพิจารณา ${items.length} รายการ`}
