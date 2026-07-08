@@ -976,7 +976,7 @@ const response = await fetch("/api/documents/signing/save", {
             </div>
           </section>
 
-          <section className={styles.card}>
+          <section className={`${styles.card} ${styles.assigneeCard}`}>
             <div className={styles.assigneeHeader}>
               <h2>ผู้รับมอบหมาย</h2>
               <span>{selectedAssigneeIds.length} คน</span>
@@ -1009,7 +1009,7 @@ const response = await fetch("/api/documents/signing/save", {
             </div>
           </section>
 
-          <section className={styles.card}>
+          <section className={`${styles.card} ${styles.instructionCard}`}>
             <h2>ข้อความสั่งการ</h2>
             <textarea
               value={instructionText}
@@ -1037,7 +1037,7 @@ const response = await fetch("/api/documents/signing/save", {
             </label>
           </section>
 
-          <section className={styles.card}>
+          <section className={`${styles.card} ${styles.signatureSizeCard}`}>
             <h2>ขนาดลายเซ็น</h2>
             <label className={styles.controlField}>
               <span>ลากเพื่อขยาย / ย่อ</span>

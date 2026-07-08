@@ -1339,3 +1339,206 @@
     gap: 5px;
   }
 }
+
+/* SIGNING_MOBILE_CONTROL_GRID_V2 */
+@media (max-width: 680px) {
+  .mobileToolsToggle {
+    position: sticky !important;
+    right: auto !important;
+    bottom: 8px !important;
+    z-index: 12 !important;
+    width: fit-content !important;
+    margin: 6px 8px 6px auto !important;
+  }
+
+  .controlPanel {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 6px !important;
+    padding-bottom: max(14px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .signerCard {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 58px !important;
+    min-height: 76px !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .signatureSizeCard {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-height: 76px !important;
+  }
+
+  .assigneeCard {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+  }
+
+  .instructionCard {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+  }
+
+  .card {
+    min-width: 0 !important;
+    border-radius: 9px !important;
+    padding: 7px !important;
+  }
+
+  .card h2,
+  .assigneeHeader h2 {
+    margin: 0 !important;
+    font-size: 11.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  .signerInfo {
+    min-width: 0 !important;
+    gap: 1px !important;
+  }
+
+  .signerInfo strong {
+    overflow: hidden !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .signerInfo span {
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
+
+  .signerSignaturePreview {
+    width: 58px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    border-radius: 7px !important;
+  }
+
+  .signerSignaturePreview img {
+    max-width: 54px !important;
+    max-height: 32px !important;
+    object-fit: contain !important;
+  }
+
+  .assigneeHeader {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 4px !important;
+    align-items: center !important;
+  }
+
+  .assigneeHeader span {
+    min-width: 0 !important;
+    border-radius: 999px !important;
+    padding: 2px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  .assigneeList {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    max-height: 292px !important;
+    overflow: auto !important;
+    gap: 4px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .assigneeOption {
+    min-height: 30px !important;
+    border-radius: 8px !important;
+    padding: 4px 5px !important;
+    gap: 5px !important;
+  }
+
+  .assigneeOption input {
+    width: 15px !important;
+    height: 15px !important;
+    flex: 0 0 15px !important;
+  }
+
+  .assigneeOption strong {
+    overflow: hidden !important;
+    font-size: 10.8px !important;
+    line-height: 1.1 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .instructionCard textarea {
+    min-height: 92px !important;
+    max-height: 150px !important;
+    border-radius: 8px !important;
+    padding: 7px !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    resize: vertical !important;
+  }
+
+  .controlField {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 44px !important;
+    gap: 4px !important;
+    align-items: center !important;
+  }
+
+  .controlField span {
+    grid-column: 1 / -1 !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
+
+  .controlField input[type="range"] {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .controlValue {
+    min-width: 40px !important;
+    padding: 2px 4px !important;
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .controlPanel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr) !important;
+    gap: 5px !important;
+  }
+
+  .card {
+    padding: 6px !important;
+  }
+
+  .signerCard {
+    grid-template-columns: minmax(0, 1fr) 50px !important;
+  }
+
+  .signerSignaturePreview {
+    width: 50px !important;
+  }
+
+  .signerSignaturePreview img {
+    max-width: 47px !important;
+  }
+
+  .assigneeOption strong,
+  .signerInfo strong {
+    font-size: 10.5px !important;
+  }
+
+  .instructionCard textarea {
+    min-height: 86px !important;
+  }
+}
