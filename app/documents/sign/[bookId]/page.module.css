@@ -1076,3 +1076,266 @@
   display: block;
 }
 /* SIGNING_PREVIEW_V5_END */
+
+/* SIGNING_MOBILE_COMPACT_TOOLS_V1 */
+.mobilePageControls,
+.mobileToolsToggle {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding: 6px;
+    overflow-x: hidden;
+  }
+
+  .header {
+    min-height: 42px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    padding: 6px 8px;
+  }
+
+  .header h1 {
+    font-size: 15px;
+    line-height: 1.15;
+  }
+
+  .closeSigningButton {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    font-size: 23px;
+  }
+
+  .workspace {
+    gap: 6px;
+  }
+
+  .previewPanel {
+    position: relative;
+    gap: 0;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .panelHeader {
+    display: none;
+  }
+
+  .topToolbar {
+    position: sticky;
+    top: 48px;
+    z-index: 18;
+    min-height: 0;
+    border: 1px solid #d6e3df;
+    border-radius: 10px;
+    padding: 5px;
+    background: rgba(247, 250, 249, 0.96);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  }
+
+  .mobileToolbarCollapsed {
+    display: none;
+  }
+
+  .toolbarActions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .sourceFileButton,
+  .attachFileButton,
+  .addToolButton,
+  .topSaveButton {
+    width: 100%;
+    min-height: 32px;
+    border-radius: 8px;
+    padding: 4px 5px;
+    font-size: 10.5px;
+    line-height: 1.1;
+    white-space: normal;
+  }
+
+  .sourceFileButton,
+  .attachFileButton {
+    flex: none;
+  }
+
+  .topSaveButton {
+    grid-column: auto;
+    min-height: 32px;
+    font-size: 11px;
+  }
+
+  .mobilePageControls {
+    position: absolute;
+    top: 50px;
+    right: 8px;
+    left: 8px;
+    z-index: 14;
+    display: grid;
+    grid-template-columns: 34px minmax(54px, auto) 34px;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    pointer-events: none;
+  }
+
+  .mobilePageControls button,
+  .mobilePageControls span {
+    min-height: 32px;
+    border-radius: 999px;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.16);
+    pointer-events: auto;
+  }
+
+  .mobilePageControls button {
+    border: 1px solid rgba(10, 111, 94, 0.35);
+    padding: 0;
+    background: rgba(255, 255, 255, 0.94);
+    color: #075e50;
+    font-size: 23px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .mobilePageControls button:disabled {
+    opacity: 0.42;
+  }
+
+  .mobilePageControls span {
+    display: inline-grid;
+    min-width: 58px;
+    place-items: center;
+    border: 1px solid rgba(7, 94, 80, 0.28);
+    padding: 0 9px;
+    background: rgba(7, 94, 80, 0.9);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .stageScroller {
+    height: min(66dvh, 620px);
+    min-height: 390px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    overflow: auto;
+    touch-action: pan-x pan-y pinch-zoom;
+    border-radius: 10px;
+    padding: 8px;
+    background: #dfe7e4;
+  }
+
+  .stageScrollerEmpty {
+    height: 290px;
+    min-height: 290px;
+  }
+
+  .previewAreaLabel {
+    display: none;
+  }
+
+  .stage,
+  .pdfCanvas {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .stage {
+    max-width: none;
+  }
+
+
+  .draggableSignature,
+  .draggableText {
+    touch-action: none;
+  }
+
+  .emptyPreview {
+    min-height: 260px;
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .emptyPreview strong {
+    font-size: 13px;
+  }
+
+  .emptyPreview span {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .mobileToolsToggle {
+    position: fixed;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 35;
+    display: inline-grid;
+    min-height: 34px;
+    place-items: center;
+    border: 1px solid rgba(7, 94, 80, 0.35);
+    border-radius: 999px;
+    padding: 0 11px;
+    background: rgba(7, 94, 80, 0.94);
+    color: #ffffff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.24);
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .mobileToolsCollapsed {
+    display: none;
+  }
+
+  .controlPanel {
+    gap: 6px;
+    padding-bottom: calc(52px + env(safe-area-inset-bottom));
+  }
+
+  .card {
+    border-radius: 10px;
+    padding: 8px;
+  }
+
+  .card h2 {
+    font-size: 13px;
+  }
+
+  .signerCard {
+    grid-template-columns: minmax(0, 1fr) 68px;
+  }
+
+  .signerSignaturePreview {
+    width: 68px;
+    min-height: 40px;
+    height: 40px;
+  }
+
+  .signerSignaturePreview img {
+    max-width: 62px;
+    max-height: 34px;
+    object-fit: contain;
+  }
+
+  .assigneeList {
+    max-height: 180px;
+  }
+
+  .assigneeOption {
+    min-height: 28px;
+    padding: 4px 6px;
+  }
+
+  .card textarea {
+    min-height: 70px;
+    font-size: 12px;
+  }
+
+  .controlField {
+    gap: 5px;
+  }
+}

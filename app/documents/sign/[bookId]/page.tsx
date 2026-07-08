@@ -117,6 +117,7 @@ export default function DocumentSigningPage() {
   const [popupMessage, setPopupMessage] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+  const [mobileToolsCollapsed, setMobileToolsCollapsed] = useState(false);
 
   const clearRedirectTimer = useCallback(() => {
     if (redirectTimerRef.current) {
@@ -347,13 +348,20 @@ export default function DocumentSigningPage() {
         const horizontalPadding = window.matchMedia("(max-width: 680px)").matches
           ? 28
           : 56;
+        const availableHeight = Math.max(
+          280,
+          previewScrollerRef.current?.clientHeight ||
+            Math.round(window.innerHeight * 0.62),
+        );
+        const widthScale =
+          Math.max(320, availableWidth - horizontalPadding) /
+          image.naturalWidth;
+        const heightScale =
+          Math.max(260, availableHeight - horizontalPadding) /
+          image.naturalHeight;
         const scale = Math.min(
           2.2,
-          Math.max(
-            0.5,
-            Math.max(320, availableWidth - horizontalPadding) /
-              image.naturalWidth,
-          ),
+          Math.max(0.25, Math.min(widthScale, heightScale)),
         );
         const width = Math.max(1, Math.floor(image.naturalWidth * scale));
         const height = Math.max(1, Math.floor(image.naturalHeight * scale));
@@ -767,7 +775,11 @@ const response = await fetch("/api/documents/signing/save", {
             </div>
           </div>
 
-          <div className={styles.topToolbar}>
+          <div
+            className={`${styles.topToolbar} ${
+              mobileToolsCollapsed ? styles.mobileToolbarCollapsed : ""
+            }`}
+          >
             <div className={styles.toolbarActions}>
               {/* SIGNING_MANUAL_FILE_CONTROLS_START */}
               <button
@@ -843,6 +855,31 @@ const response = await fetch("/api/documents/signing/save", {
           </div>
 
           <div
+            className={styles.mobilePageControls}
+            aria-label="mobile page controls"
+          >
+            <button
+              type="button"
+              onClick={() => setPageNumber((value) => Math.max(1, value - 1))}
+              disabled={!hasPreview || pageNumber <= 1}
+              aria-label="previous page"
+            >
+              {"<<"}
+            </button>
+            <span>{pageNumber} / {pageCount}</span>
+            <button
+              type="button"
+              onClick={() =>
+                setPageNumber((value) => Math.min(pageCount, value + 1))
+              }
+              disabled={!hasPreview || pageNumber >= pageCount}
+              aria-label="next page"
+            >
+              {">>"}
+            </button>
+          </div>
+
+          <div
             ref={previewScrollerRef}
             className={`${styles.stageScroller} ${
               !hasPreview ? styles.stageScrollerEmpty : ""
@@ -908,9 +945,22 @@ const response = await fetch("/api/documents/signing/save", {
               )}
             </div>
           </div>
+
+          <button
+            type="button"
+            className={styles.mobileToolsToggle}
+            onClick={() => setMobileToolsCollapsed((value) => !value)}
+            aria-pressed={mobileToolsCollapsed}
+          >
+            {mobileToolsCollapsed ? "\u0e41\u0e2a\u0e14\u0e07\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e21\u0e37\u0e2d" : "\u0e0b\u0e48\u0e2d\u0e19\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e21\u0e37\u0e2d"}
+          </button>
         </div>
 
-        <aside className={styles.controlPanel}>
+        <aside
+          className={`${styles.controlPanel} ${
+            mobileToolsCollapsed ? styles.mobileToolsCollapsed : ""
+          }`}
+        >
                     <section className={`${styles.card} ${styles.signerCard}`}>
             <div className={styles.signerInfo}>
               <h2>ผู้ลงนาม</h2>
