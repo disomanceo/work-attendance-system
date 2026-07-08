@@ -1756,19 +1756,19 @@ export default function DocumentsPage() {
 
                   <div className={styles.mobileMetaGrid}>
                     <div>
-                      <span>เลขรับ</span>
+                      <span>{"\u0e40\u0e25\u0e02\u0e23\u0e31\u0e1a"}</span>
                       <strong>{book.registrationNumber || "-"}</strong>
                     </div>
                     <div>
-                      <span>วันที่รับ</span>
-                      <strong>{formatDate(book.receivedDate)}</strong>
-                    </div>
-                    <div>
-                      <span>เลขที่หนังสือ</span>
+                      <span>{"\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d"}</span>
                       <strong>{book.documentNumber || "-"}</strong>
                     </div>
                     <div>
-                      <span>ลงวันที่</span>
+                      <span>{"\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e23\u0e31\u0e1a"}</span>
+                      <strong>{formatDate(book.receivedDate)}</strong>
+                    </div>
+                    <div>
+                      <span>{"\u0e25\u0e07\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48"}</span>
                       <strong>{formatDate(book.documentDate)}</strong>
                     </div>
                     <div>
@@ -1841,7 +1841,8 @@ export default function DocumentsPage() {
 
                     {workspaceMode === "manager" &&
                       capabilities.canClose &&
-                      book.status !== "done" && (
+                      book.status !== "done" &&
+                      book.tasks.length === 0 && (
                         <button
                           type="button"
                           className={`${styles.doneAction} ${styles.mobileFinishButton}`}
@@ -2373,7 +2374,8 @@ export default function DocumentsPage() {
 
                         {workspaceMode === "manager" &&
                       capabilities.canClose &&
-                      book.status !== "done" && (
+                      book.status !== "done" &&
+                      book.tasks.length === 0 && (
                             <button
                               type="button"
                               className={styles.doneAction}

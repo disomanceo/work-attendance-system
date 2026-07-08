@@ -1663,3 +1663,71 @@
     justify-content: flex-start;
   }
 }
+/* ATTENDANCE_MOBILE_COMPACT_REFINEMENTS_V1 */
+@media (max-width: 760px) {
+  .page { padding: 70px 7px 12px !important; }
+  .panel { padding: 9px !important; border-radius: 14px !important; }
+  .pageHeader { padding: 10px 12px !important; border-radius: 14px !important; }
+  .pageHeader h1 { font-size: 20px !important; line-height: 1.15 !important; }
+  .filterPanel { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 6px !important; margin-top: 8px !important; padding: 8px !important; border-radius: 11px !important; align-items: end !important; }
+  .datePickerWrap,.field,.exportActions { min-width: 0 !important; }
+  .datePickerWrap { grid-column: 1/-1 !important; }
+  .field label,.datePickerWrap > label { margin-bottom: 3px !important; font-size: 10px !important; line-height: 1.1 !important; }
+  .dateButton,.field input,.field select,.csvButton { min-height: 32px !important; height: 32px !important; border-radius: 8px !important; padding-inline: 8px !important; font-size: 11px !important; line-height: 1.15 !important; }
+  .dateButton { gap: 6px !important; }
+  .dateButton strong { overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }
+  .dateButton svg,.csvButton svg { width: 15px !important; height: 15px !important; }
+  .exportActions { display: grid !important; grid-template-columns: 1fr !important; gap: 0 !important; }
+  .csvButton { width: 100% !important; gap: 4px !important; white-space: nowrap !important; }
+  .calendar { width: min(300px, calc(100vw - 28px)) !important; padding: 10px !important; border-radius: 12px !important; }
+  .monthReportPanel { margin: 8px 0 !important; padding: 8px !important; border-radius: 11px !important; }
+  .monthReportHeader { gap: 7px !important; margin-bottom: 8px !important; }
+  .monthReportHeader strong { font-size: 14px !important; line-height: 1.15 !important; }
+  .monthReportHeader span,.monthLegend { font-size: 10px !important; line-height: 1.2 !important; }
+  .weekReportButton,.buildMonthButton { min-height: 30px !important; border-radius: 8px !important; padding: 4px 7px !important; font-size: 10px !important; }
+  .monthDayStrip { gap: 4px !important; }
+  .monthDayStrip button { min-width: 27px !important; height: 27px !important; border-radius: 7px !important; font-size: 10px !important; }
+  .contentGrid,.leftColumn { gap: 8px !important; margin-top: 8px !important; }
+  .summaryCard,.listCard,.previewCard { border-radius: 12px !important; }
+  .summaryCard { padding: 8px !important; }
+  .summaryTitleRow { gap: 6px !important; align-items: start !important; }
+  .summaryEyebrow,.summaryTitleRow p,.summaryDate { display: none !important; }
+  .summaryCard h2,.cardHeader h2,.previewHeader h2 { font-size: 13px !important; line-height: 1.15 !important; }
+  .primarySummaryGrid { grid-template-columns: repeat(3,minmax(0,1fr)) !important; gap: 5px !important; margin-top: 7px !important; }
+  .primarySummaryGrid > div { min-height: 48px !important; border-radius: 8px !important; padding: 6px 5px !important; }
+  .primarySummaryGrid span { font-size: 9px !important; line-height: 1.1 !important; }
+  .primarySummaryGrid strong { margin-top: 2px !important; font-size: 16px !important; line-height: 1 !important; }
+  .primarySummaryGrid small { margin-left: 1px !important; font-size: 8px !important; }
+  .cardHeader,.previewHeader { gap: 6px !important; padding: 8px 9px !important; }
+  .cardHeader p,.previewHeader p,.cardHeader > span { font-size: 10px !important; line-height: 1.2 !important; }
+  .tableWrap { overflow: visible !important; }
+  .tableWrap table,.tableWrap thead,.tableWrap tbody,.tableWrap tr,.tableWrap th,.tableWrap td { display: block !important; width: 100% !important; min-width: 0 !important; }
+  .tableWrap thead { display: none !important; }
+  .tableWrap tr { display: grid !important; grid-template-columns: 22px minmax(0,1fr) auto !important; gap: 2px 6px !important; align-items: center !important; margin: 0 0 5px !important; border: 1px solid #e4deef !important; border-radius: 9px !important; padding: 5px 6px !important; background: #fff !important; }
+  .tableWrap td { border: 0 !important; padding: 0 !important; background: transparent !important; text-align: left !important; font-size: 10.5px !important; line-height: 1.15 !important; }
+  .tableWrap td:nth-child(1) { grid-column: 1 !important; grid-row: 1/span 2 !important; color: #6f6878 !important; text-align: center !important; font-weight: 900 !important; }
+  .tableWrap td:nth-child(2) { grid-column: 2 !important; grid-row: 1 !important; }
+  .tableWrap td:nth-child(3) { grid-column: 2 !important; grid-row: 2 !important; color: #6b6274 !important; font-size: 9.5px !important; }
+  .tableWrap td:nth-child(4) { grid-column: 3 !important; grid-row: 1 !important; justify-self: end !important; color: #30273a !important; font-weight: 900 !important; }
+  .tableWrap td:nth-child(5) { grid-column: 3 !important; grid-row: 2 !important; justify-self: end !important; }
+  .tableWrap td:nth-child(6) { grid-column: 2/-1 !important; grid-row: 3 !important; color: #6f6878 !important; font-size: 9.5px !important; }
+  .nameCell strong { font-size: 12px !important; line-height: 1.15 !important; white-space: normal !important; overflow-wrap: anywhere !important; }
+  .nameCell small { margin-top: 1px !important; font-size: 9px !important; line-height: 1.1 !important; }
+  .badge { min-height: 20px !important; padding: 2px 6px !important; font-size: 9px !important; line-height: 1 !important; white-space: nowrap !important; }
+  .statusNoteBox { margin-top: 6px !important; border-radius: 9px !important; padding: 7px 8px !important; }
+  .statusNoteBox strong,.statusNoteBox p { font-size: 10px !important; line-height: 1.25 !important; }
+  .previewCard { margin-top: 0 !important; }
+  .previewHeader { align-items: flex-start !important; flex-direction: column !important; }
+  .previewActions { gap: 5px !important; }
+  .previewActions button { min-height: 30px !important; border-radius: 8px !important; padding: 0 7px !important; font-size: 10px !important; }
+  .driveFileStatus { min-height: 0 !important; padding: 8px 9px !important; }
+  .driveFileStatus > div:not(.pdfMissing):not(.pdfLoading) { gap: 7px !important; }
+  .fileIcon { width: 30px !important; height: 30px !important; border-radius: 8px !important; font-size: 9px !important; }
+  .driveFileStatus strong,.pdfMissing strong { font-size: 11px !important; line-height: 1.2 !important; }
+  .driveFileStatus small,.pdfMissing p,.previewNote { font-size: 9.5px !important; line-height: 1.25 !important; }
+  .fileFound { margin-top: 6px !important; padding: 3px 7px !important; font-size: 9px !important; }
+  .paperViewport { padding: 6px !important; max-height: 420px !important; }
+  .pdfFrame { height: 360px !important; border-radius: 8px !important; }
+  .previewEmpty { min-height: 260px !important; gap: 5px !important; }
+  .previewEmptyIcon { width: 46px !important; height: 46px !important; border-radius: 12px !important; font-size: 11px !important; }
+}
