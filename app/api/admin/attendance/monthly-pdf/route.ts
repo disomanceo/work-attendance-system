@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildMergedAttendancePdf } from "@/lib/attendance-pdf-merge";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -283,12 +284,28 @@ async function handle(request: Request, allowWrite: boolean) {
         );
       }
 
-      const result = await callGas(config, month, "build-weekly", weekRange);
+      const result = await buildMergedAttendancePdf({
+        config,
+        month,
+        kind: "weekly",
+        range: weekRange,
+      });
+
       return NextResponse.json(result);
     }
 
-    if (allowWrite && (mode === "build" || mode === "close")) {
-      const result = await callGas(config, month, mode as "build" | "close");
+    if (allowWrite && mode === "build") {
+      const result = await buildMergedAttendancePdf({
+        config,
+        month,
+        kind: "monthly",
+      });
+
+      return NextResponse.json(result);
+    }
+
+    if (allowWrite && mode === "close") {
+      const result = await callGas(config, month, "close");
       return NextResponse.json(result);
     }
 

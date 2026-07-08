@@ -182,7 +182,8 @@ function officialDutyFinalize_(payload) {
       "ลายเซ็นผู้พิจารณา"
     ]),
     payload.directorSignatureBase64,
-    128
+    128,
+    48
   );
 
   replaceFieldsInDocument_(document, [
@@ -355,7 +356,7 @@ function replaceFieldsInDocument_(document, fields) {
   return report;
 }
 
-function insertImageInDocument_(document, aliases, dataUrl, width) {
+function insertImageInDocument_(document, aliases, dataUrl, maxWidth, maxHeight) {
   if (!dataUrl) return false;
 
   const body = document.getBody();
@@ -375,12 +376,24 @@ function insertImageInDocument_(document, aliases, dataUrl, width) {
       Math.max(0, parent.getChildIndex(textElement) + 1),
       blob
     );
-    image.setWidth(width || 150);
+    resizeImage_(image, maxWidth || 150, maxHeight || 55);
 
     return true;
   }
 
   return false;
+}
+
+function resizeImage_(image, maxWidth, maxHeight) {
+  const width = image.getWidth();
+  const height = image.getHeight();
+
+  if (!width || !height) return;
+
+  const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+
+  image.setWidth(Math.round(width * ratio));
+  image.setHeight(Math.round(height * ratio));
 }
 
 function dataUrlToBlob_(dataUrl, fallbackName) {

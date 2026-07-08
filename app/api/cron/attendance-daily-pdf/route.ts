@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildMergedAttendancePdf } from "@/lib/attendance-pdf-merge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -512,23 +513,13 @@ export async function GET(request: Request) {
     let weeklyResult: GasPdfResponse | null = null;
 
     if (weekPeriod) {
-      const weeklyUrl = new URL(gasUrl);
-      weeklyUrl.searchParams.set("action", "buildWeeklyPdf");
-      weeklyUrl.searchParams.set("month", today.slice(0, 7));
-      weeklyUrl.searchParams.set("mode", "metadata");
-      weeklyUrl.searchParams.set("startDay", String(weekPeriod.startDay));
-      weeklyUrl.searchParams.set("endDay", String(weekPeriod.endDay));
-      weeklyUrl.searchParams.set("secret", gasSecret);
-
-      const weeklyResponse = await fetch(weeklyUrl.toString(), {
-        method: "GET",
-        cache: "no-store",
-        redirect: "follow",
-      });
-      const weeklyText = await weeklyResponse.text();
-
       try {
-        weeklyResult = JSON.parse(weeklyText) as GasPdfResponse;
+        weeklyResult = await buildMergedAttendancePdf({
+          config: { gasUrl, gasSecret },
+          month: today.slice(0, 7),
+          kind: "weekly",
+          range: weekPeriod,
+        });
       } catch {
         weeklyResult = {
           ok: false,
@@ -536,7 +527,7 @@ export async function GET(request: Request) {
         };
       }
 
-      if (!weeklyResponse.ok || !weeklyResult.ok) {
+      if (!weeklyResult.ok) {
         console.error("Attendance weekly PDF cron error:", weeklyResult);
       }
     }

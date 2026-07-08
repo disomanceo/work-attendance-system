@@ -102,7 +102,7 @@ function doPost(e) {
       String(e?.postData?.contents || "{}")
     );
 
-    if (payload.action !== "buildDailyPdf") {
+    if (payload.action !== "buildDailyPdf" && payload.action !== "saveCombinedPdf") {
       return jsonOutput_({
         ok: false,
         message: "ไม่พบ action ที่ร้องขอ",
@@ -110,6 +110,10 @@ function doPost(e) {
     }
 
     verifySecretValue_(payload.secret);
+
+    if (payload.action === "saveCombinedPdf") {
+      return handleSaveCombinedPdf_(payload);
+    }
 
     return handleBuildDailyPdf_(payload);
   } catch (error) {
@@ -1749,6 +1753,72 @@ function buildCombinedPdf_(
     documentId: destinationDocument.getId(),
     includedDays: includedDays,
     missingDays: missingDays,
+  });
+}
+
+function handleSaveCombinedPdf_(payload) {
+  const month = String(payload.month || "").trim();
+  const monthInfo = parseMonth_(month);
+  const kind = String(payload.kind || "").trim();
+  const range = payload.range || {};
+  let fileName = "";
+
+  if (kind === "weekly") {
+    const startDay = Number(range.startDay || payload.startDay || 0);
+    const endDay = Number(range.endDay || payload.endDay || 0);
+    const validatedRange = parseWeekRange_(
+      {
+        parameter: {
+          startDay: String(startDay),
+          endDay: String(endDay),
+        },
+      },
+      monthInfo
+    );
+
+    fileName = weeklyPdfName_(
+      monthInfo,
+      validatedRange.startDay,
+      validatedRange.endDay
+    );
+  } else if (kind === "monthly") {
+    fileName = monthlyPdfName_(monthInfo);
+  } else {
+    throw new Error("kind ต้องเป็น weekly หรือ monthly");
+  }
+
+  const base64 = String(payload.base64 || "").trim();
+
+  if (!base64) {
+    throw new Error("ไม่พบข้อมูล PDF รวม");
+  }
+
+  const monthFolder = getOrCreateMonthFolder_(monthInfo);
+  trashFilesByName_(monthFolder, fileName);
+
+  const bytes = Utilities.base64Decode(base64);
+  const blob = Utilities.newBlob(bytes, MimeType.PDF, fileName);
+  const pdfFile = monthFolder.createFile(blob);
+
+  return jsonOutput_({
+    ok: true,
+    found: true,
+    fileName: pdfFile.getName(),
+    fileId: pdfFile.getId(),
+    fileUrl: pdfFile.getUrl(),
+    size: pdfFile.getSize(),
+    mimeType: pdfFile.getMimeType(),
+    includedDays: Array.isArray(payload.includedDays)
+      ? payload.includedDays
+      : [],
+    missingDays: Array.isArray(payload.missingDays)
+      ? payload.missingDays
+      : [],
+    pageCount: Number(payload.pageCount || 0),
+    message:
+      kind === "weekly"
+        ? "สร้าง PDF รวมสัปดาห์จากไฟล์ PDF รายวันจริงเรียบร้อยแล้ว"
+        : "สร้าง PDF รวมเดือนจากไฟล์ PDF รายวันจริงเรียบร้อยแล้ว",
   });
 }
 
