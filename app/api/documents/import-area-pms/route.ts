@@ -731,10 +731,10 @@ async function handle(request: Request) {
 
     return json({
       ok: true,
-      version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.29",
+      version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.30",
       downloadUrl:
         process.env.SMART_AREA_EXTENSION_DOWNLOAD_URL?.trim() ||
-        `${appUrl}/downloads/import-area-pms-1.8.29-installer.zip`,
+        `${appUrl}/downloads/import-area-pms-1.8.30-installer.zip`,
     });
   }
 
