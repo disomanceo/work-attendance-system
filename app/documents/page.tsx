@@ -111,7 +111,7 @@ const statusLabels: Record<string, string> = {
   director_review: "รอ ผอ. พิจารณา",
   assigned: "มอบหมายแล้ว",
   in_progress: "กำลังดำเนินการ",
-  done: "เสร็จแล้ว",
+  done: "\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e2a\u0e34\u0e49\u0e19",
 };
 
 function formatDate(value: string) {
@@ -123,6 +123,19 @@ function formatDate(value: string) {
     month: "short",
     year: "numeric",
   }).format(date);
+}
+
+function formatUpdatedAt(value: string) {
+  if (!value) return "\u0e2d\u0e31\u0e1e\u0e40\u0e14\u0e17 -";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return `${"\u0e2d\u0e31\u0e1e\u0e40\u0e14\u0e17"} ${value}`;
+  return `${"\u0e2d\u0e31\u0e1e\u0e40\u0e14\u0e17"} ${new Intl.DateTimeFormat("th-TH", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)}`;
 }
 
 function getStatusLabel(status: string) {
@@ -1707,7 +1720,9 @@ export default function DocumentsPage() {
                 <article
                   key={`mobile-${book.id}`}
                   id={`mobile-book-${book.id}`}
-                  className={styles.mobileDocumentCard}
+                  className={`${styles.mobileDocumentCard} ${
+                    book.status === "done" ? styles.doneCompactMobileCard : ""
+                  }`}
                 >
                   <div className={styles.mobileCardTopline}>
                     <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
@@ -1744,8 +1759,29 @@ export default function DocumentsPage() {
                       setSelectedBook(book);
                     }}
                   >
+                    {book.status === "done" && (
+                      <span className={styles.doneCompactMobileNumber}>
+                        {book.registrationNumber || "-"} /
+                      </span>
+                    )}
                     {book.subject}
                   </button>
+                  {book.status === "done" && (
+                    <div className={styles.doneCompactMobileMeta}>
+                      <span>
+                        {source.name}
+                        {source.group ? ` / ${source.group}` : ""}
+                      </span>
+                      <small>{formatUpdatedAt(book.updatedAt)}</small>
+                      <strong
+                        className={`${styles.statusBadge} ${
+                          styles.status_done || ""
+                        }`}
+                      >
+                        {getStatusLabel(book.status)}
+                      </strong>
+                    </div>
+                  )}
 
                   <div className={styles.mobileMetaGrid}>
                     <div>
@@ -2136,13 +2172,14 @@ export default function DocumentsPage() {
                   <Fragment key={book.id}>
                   <tr
                     id={`book-${book.id}`}
-                    className={
+                    className={`${
                       selectedBook?.id === book.id ? styles.selectedRow : ""
-                    }
+                    } ${book.status === "done" ? styles.doneCompactRow : ""}`}
                   >
                     <td data-label="ลำดับ">
                       <div className={styles.registrationCell}>
                         <strong>{book.registrationNumber || "-"}</strong>
+                        <small className={styles.doneCompactUpdated}>{formatUpdatedAt(book.updatedAt)}</small>
                         {book.documentNumber && (
                           <small className={styles.documentNumber}>
                             {book.documentNumber}
