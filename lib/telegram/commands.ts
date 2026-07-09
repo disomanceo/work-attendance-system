@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createClient } from "@supabase/supabase-js";
 import {
   currentBangkokDateKey,
   parseReportDateFromText,
@@ -176,43 +177,176 @@ export function buildHelpMessage() {
   ].join("\n");
 }
 
+type DailyProfile = {
+  id: string;
+  full_name: string;
+  account_status: string;
+};
+
+type DailyAttendanceRecord = {
+  user_id: string;
+  check_in_at: string | null;
+  check_in_status: string | null;
+};
+
+type DailyLeaveRequest = {
+  user_id: string;
+  leave_type: string;
+};
+
+type DailyOfficialDutyRequest = {
+  user_id: string;
+};
+
+function formatBangkokCheckInTime(value: string | null) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 async function fetchDailyAttendance(
   requestOrigin: string,
   date: string
 ): Promise<unknown> {
-  const secret = process.env.DAILY_REPORT_SECRET?.trim();
+  void requestOrigin;
 
-  if (!secret) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
-      "DAILY_REPORT_SECRET is not configured"
+      "Supabase server environment variables are not configured"
     );
   }
 
-  const url = new URL(
-    "/api/internal/daily-attendance",
-    requestOrigin
-  );
-
-  url.searchParams.set("date", date);
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      "x-report-secret": secret,
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
     },
-    cache: "no-store",
   });
 
-  const payload = (await response.json()) as unknown;
+  const [
+    profilesResult,
+    attendanceResult,
+    leavesResult,
+    officialDutyResult,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, full_name, account_status")
+      .eq("account_status", "active"),
+    supabase
+      .from("attendance_records")
+      .select("user_id, check_in_at, check_in_status")
+      .eq("work_date", date),
+    supabase
+      .from("leave_requests")
+      .select("user_id, leave_type")
+      .in("status", ["pending", "approved"])
+      .lte("start_date", date)
+      .gte("end_date", date),
+    supabase
+      .from("official_duty_requests")
+      .select("user_id")
+      .in("status", ["pending", "approved"])
+      .lte("duty_date", date)
+      .or(`duty_end_date.is.null,duty_end_date.gte.${date}`),
+  ]);
 
-  if (!response.ok) {
+  if (profilesResult.error) {
     throw new Error(
-      `daily-attendance returned HTTP ${response.status}`
+      `daily profiles query failed: ${profilesResult.error.message}`
     );
   }
 
-  return payload;
+  if (attendanceResult.error) {
+    throw new Error(
+      `daily attendance query failed: ${attendanceResult.error.message}`
+    );
+  }
+
+  if (leavesResult.error) {
+    throw new Error(
+      `daily leave query failed: ${leavesResult.error.message}`
+    );
+  }
+
+  if (officialDutyResult.error) {
+    throw new Error(
+      `daily official duty query failed: ${officialDutyResult.error.message}`
+    );
+  }
+
+  const profiles =
+    (profilesResult.data ?? []) as DailyProfile[];
+  const attendanceRecords =
+    (attendanceResult.data ?? []) as DailyAttendanceRecord[];
+  const leaves =
+    (leavesResult.data ?? []) as DailyLeaveRequest[];
+  const officialDuties =
+    (officialDutyResult.data ?? []) as DailyOfficialDutyRequest[];
+
+  const profileMap = new Map(
+    profiles.map((profile) => [profile.id, profile])
+  );
+
+  const checkedInRecords = attendanceRecords.filter(
+    (record) => record.check_in_at && profileMap.has(record.user_id)
+  );
+
+  const people = checkedInRecords
+    .map((record) => {
+      const profile = profileMap.get(record.user_id);
+
+      return {
+        fullName: profile?.full_name ?? "",
+        checkInTime: formatBangkokCheckInTime(record.check_in_at),
+        status:
+          record.check_in_status === "late" ? "late" : "normal",
+      };
+    })
+    .filter(
+      (person) => person.fullName && person.checkInTime
+    );
+
+  const sick = leaves.filter(
+    (leave) => leave.leave_type === "sick"
+  ).length;
+  const personal = leaves.filter(
+    (leave) => leave.leave_type === "personal"
+  ).length;
+  const officialDuty = new Set(
+    officialDuties.map((duty) => duty.user_id)
+  ).size;
+  const present = checkedInRecords.length;
+  const late = checkedInRecords.filter(
+    (record) => record.check_in_status === "late"
+  ).length;
+  const total = profiles.length;
+  const absent = Math.max(
+    total - present - sick - personal - officialDuty,
+    0
+  );
+
+  return {
+    total,
+    present,
+    late,
+    sick,
+    personal,
+    officialDuty,
+    absent,
+    people,
+  };
 }
 
 export async function buildSummaryMessage(
@@ -303,7 +437,7 @@ export async function buildSummaryMessage(
     people.length > 0
       ? people.map((person, index) => {
           const status =
-            person.status === "มาสาย"
+            person.status === "late"
               ? " (มาสาย)"
               : "";
 
@@ -334,3 +468,4 @@ export async function buildSummaryMessage(
     `ยังไม่ลงเวลา ${absent.toLocaleString("th-TH")} คน`,
   ].join("\n");
 }
+

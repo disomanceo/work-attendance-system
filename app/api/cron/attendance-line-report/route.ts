@@ -38,10 +38,15 @@ export async function GET(request: Request) {
   const date = todayBangkok();
   const requestOrigin = new URL(request.url).origin;
 
+  console.info("Attendance notification cron started", {
+    date,
+    schedule: request.headers.get("x-vercel-cron-schedule"),
+  });
+
   const [lineResult, telegramResult] =
     await Promise.allSettled([
       sendDailyAttendanceReport(date),
-      sendDailyTelegramReport(requestOrigin),
+      sendDailyTelegramReport(requestOrigin, date),
     ]);
 
   if (lineResult.status === "rejected") {
