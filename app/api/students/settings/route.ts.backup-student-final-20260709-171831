@@ -1,5 +1,4 @@
 ﻿import { NextResponse } from "next/server";
-
 type StudentSettingsInputRow = {
   class_level?: string;
   class_room?: string | null;
@@ -11,13 +10,7 @@ type StudentSettingsInputRow = {
   permission_key?: string | null;
   class_levels?: string[] | null;
   weekday?: number | string | null;
-};
-
-type StudentSettingsBody = {
-  type?: string;
-  rows?: StudentSettingsInputRow[];
-  profile_id?: string | null;
-  permissions?: StudentSettingsInputRow[];
+  is_active?: boolean | null;
 };
 import { createClient } from "@supabase/supabase-js";
 
@@ -78,7 +71,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as StudentSettingsBody;
+    const body = await request.json();
     const supabase = getAdminClient();
 
     if (body.type === "class-settings") {

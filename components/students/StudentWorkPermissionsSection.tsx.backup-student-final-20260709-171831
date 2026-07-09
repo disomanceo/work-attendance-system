@@ -1,0 +1,203 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  STUDENT_CLASS_LEVELS,
+  STUDENT_WORK_PERMISSION_KEYS,
+  STUDENT_WORK_PERMISSION_LABELS,
+} from "@/lib/students/settings";
+
+type StudentWorkPermissionsProps = {
+  profileId: string;
+  profileName?: string | null;
+};
+
+type Permission = {
+  profile_id: string;
+  permission_key: string;
+  class_levels: string[];
+};
+
+export function StudentWorkPermissionsSection({
+  profileId,
+  profileName,
+}: StudentWorkPermissionsProps) {
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const selected = useMemo(
+    () => permissions.filter((item) => item.profile_id === profileId),
+    [permissions, profileId]
+  );
+
+  const classAdviserPermission = selected.find(
+    (item) => item.permission_key === STUDENT_WORK_PERMISSION_KEYS.classAdviser
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      if (!profileId) return;
+      setLoading(true);
+      const response = await fetch("/api/students/settings", { cache: "no-store" });
+      const data = await response.json();
+
+      if (!cancelled) {
+        setPermissions(data.workPermissions ?? []);
+        setLoading(false);
+      }
+    }
+
+    load().catch(() => setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [profileId]);
+
+  function togglePermission(permissionKey: string, enabled: boolean) {
+    setPermissions((current) => {
+      const others = current.filter(
+        (item) => !(item.profile_id === profileId && item.permission_key === permissionKey)
+      );
+
+      if (!enabled) return others;
+
+      return [
+        ...others,
+        {
+          profile_id: profileId,
+          permission_key: permissionKey,
+          class_levels: [],
+        },
+      ];
+    });
+  }
+
+  function toggleLevel(level: string, enabled: boolean) {
+    setPermissions((current) => {
+      const existing = current.find(
+        (item) =>
+          item.profile_id === profileId &&
+          item.permission_key === STUDENT_WORK_PERMISSION_KEYS.classAdviser
+      );
+
+      const base = existing ?? {
+        profile_id: profileId,
+        permission_key: STUDENT_WORK_PERMISSION_KEYS.classAdviser,
+        class_levels: [],
+      };
+
+      const class_levels = enabled
+        ? Array.from(new Set([...(base.class_levels ?? []), level]))
+        : (base.class_levels ?? []).filter((item) => item !== level);
+
+      return [
+        ...current.filter(
+          (item) =>
+            !(
+              item.profile_id === profileId &&
+              item.permission_key === STUDENT_WORK_PERMISSION_KEYS.classAdviser
+            )
+        ),
+        { ...base, class_levels },
+      ];
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    await fetch("/api/students/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "work-permissions",
+        profile_id: profileId,
+        permissions: selected,
+      }),
+    });
+    setSaving(false);
+  }
+
+  if (!profileId) return null;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="font-bold text-slate-900">สิทธิ์งาน</h3>
+          <p className="text-sm text-slate-500">
+            {profileName ? `กำหนดสิทธิ์งานนักเรียนของ ${profileName}` : "กำหนดสิทธิ์งานนักเรียน"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={loading || saving}
+          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? "กำลังบันทึก..." : "บันทึกสิทธิ์งาน"}
+        </button>
+      </div>
+
+      <div className="grid gap-3">
+        <div className="rounded-xl bg-slate-50 p-3">
+          <label className="flex items-center gap-2 font-semibold">
+            <input
+              type="checkbox"
+              checked={Boolean(classAdviserPermission)}
+              onChange={(event) =>
+                togglePermission(STUDENT_WORK_PERMISSION_KEYS.classAdviser, event.target.checked)
+              }
+            />
+            {STUDENT_WORK_PERMISSION_LABELS[STUDENT_WORK_PERMISSION_KEYS.classAdviser]}
+          </label>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-4">
+            {STUDENT_CLASS_LEVELS.map((level) => (
+              <label key={level} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  disabled={!classAdviserPermission}
+                  checked={Boolean(classAdviserPermission?.class_levels?.includes(level))}
+                  onChange={(event) => toggleLevel(level, event.target.checked)}
+                />
+                {level}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <label className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 font-semibold">
+          <input
+            type="checkbox"
+            checked={selected.some(
+              (item) => item.permission_key === STUDENT_WORK_PERMISSION_KEYS.dutyRosterManager
+            )}
+            onChange={(event) =>
+              togglePermission(
+                STUDENT_WORK_PERMISSION_KEYS.dutyRosterManager,
+                event.target.checked
+              )
+            }
+          />
+          {STUDENT_WORK_PERMISSION_LABELS[STUDENT_WORK_PERMISSION_KEYS.dutyRosterManager]}
+        </label>
+
+        <label className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 font-semibold">
+          <input
+            type="checkbox"
+            checked={selected.some(
+              (item) => item.permission_key === STUDENT_WORK_PERMISSION_KEYS.allClassRecorder
+            )}
+            onChange={(event) =>
+              togglePermission(STUDENT_WORK_PERMISSION_KEYS.allClassRecorder, event.target.checked)
+            }
+          />
+          {STUDENT_WORK_PERMISSION_LABELS[STUDENT_WORK_PERMISSION_KEYS.allClassRecorder]}
+        </label>
+      </div>
+    </section>
+  );
+}
