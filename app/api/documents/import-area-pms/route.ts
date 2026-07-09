@@ -97,6 +97,17 @@ function importHasMeaningfulText(value: unknown) {
   return /[\u0E00-\u0E7Fa-zA-Z0-9]/.test(String(value ?? ""));
 }
 
+function importMojibakeScore(value: unknown) {
+  const raw = String(value ?? "");
+  return (
+    (raw.match(/[\u0080-\u009F]/g) || []).length * 3 +
+    (raw.match(/\u0E40\u0E18|\u0E40\u0E19|\u0E42\u20AC|\u0E40\u0E2E/g) || [])
+      .length *
+      2 +
+    (raw.match(/\u0E3A|\u0E4D/g) || []).length
+  );
+}
+
 function importLooksGarbled(value: unknown) {
   const raw = String(value ?? "").trim();
   if (!raw) return false;
@@ -105,7 +116,8 @@ function importLooksGarbled(value: unknown) {
     /^\?+$/.test(compact) ||
     (compact.length >= 6 &&
       importQuestionMarkRatio(compact) >= 0.5 &&
-      !importHasMeaningfulText(compact))
+      !importHasMeaningfulText(compact)) ||
+    importMojibakeScore(compact) >= 6
   );
 }
 
@@ -731,10 +743,10 @@ async function handle(request: Request) {
 
     return json({
       ok: true,
-      version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.31",
+      version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.32",
       downloadUrl:
         process.env.SMART_AREA_EXTENSION_DOWNLOAD_URL?.trim() ||
-        `${appUrl}/downloads/import-area-pms-1.8.31-installer.zip`,
+        `${appUrl}/downloads/import-area-pms-1.8.32-installer.zip`,
     });
   }
 
