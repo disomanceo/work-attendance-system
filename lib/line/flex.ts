@@ -213,8 +213,25 @@ export function helpFlex() {
             }),
           ],
         },
+        {
+          type: "box",
+          layout: "horizontal",
+          margin: "md",
+          contents: [
+            t("สรุป 09-07-2569", {
+              weight: "bold",
+              color: GREEN_DARK,
+              flex: 3,
+            }),
+            t("รายงานการลงเวลาของวันที่ระบุ", {
+              size: "xs",
+              color: MUTED,
+              flex: 5,
+            }),
+          ],
+        },
         { type: "separator", margin: "lg", color: BORDER },
-        t("รองรับ: คำสั่ง · เมนู · help · รายงาน · รายงานวันนี้", {
+        t("รองรับ: คำสั่ง · เมนู · help · รายงาน · รายงานวันนี้ · สรุป 09-07-2569", {
           size: "xxs",
           color: MUTED,
           margin: "lg",

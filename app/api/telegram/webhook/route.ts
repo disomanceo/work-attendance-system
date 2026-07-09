@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   buildHelpMessage,
   buildSummaryMessage,
+  getTelegramCommandDate,
   normalizeTelegramCommand,
 } from "@/lib/telegram/commands";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
@@ -82,7 +83,8 @@ export async function POST(request: Request) {
     } else if (command === "summary") {
       try {
         reply = await buildSummaryMessage(
-          new URL(request.url).origin
+          new URL(request.url).origin,
+          getTelegramCommandDate(text) || undefined
         );
       } catch (error) {
         console.error("Telegram summary command failed:", error);

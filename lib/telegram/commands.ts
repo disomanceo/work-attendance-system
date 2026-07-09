@@ -1,5 +1,11 @@
 import "server-only";
 
+import {
+  currentBangkokDateKey,
+  parseReportDateFromText,
+  removeReportDateFromText,
+} from "@/lib/attendance-report-date";
+
 type UnknownRecord = Record<string, unknown>;
 
 type TelegramAttendancePerson = {
@@ -98,15 +104,6 @@ function escapeHtml(value: string) {
     .replaceAll(">", "&gt;");
 }
 
-function getBangkokDate() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
 function formatThaiDate(date: string) {
   return new Intl.DateTimeFormat("th-TH", {
     timeZone: "Asia/Bangkok",
@@ -126,7 +123,7 @@ function formatThaiTime() {
 }
 
 export function normalizeTelegramCommand(text: string) {
-  const command = text
+  const command = removeReportDateFromText(text)
     .trim()
     .toLowerCase()
     .replace(/^\/+/, "")
@@ -162,15 +159,20 @@ export function normalizeTelegramCommand(text: string) {
   return "unknown";
 }
 
+export function getTelegramCommandDate(text: string) {
+  return parseReportDateFromText(text);
+}
+
 export function buildHelpMessage() {
   return [
     "คำสั่ง Telegram Bot",
     "",
     "สรุป — รายงานการลงเวลาวันนี้",
+    "สรุป 09-07-2569 — รายงานการลงเวลาของวันที่ระบุ",
     "ช่วยเหลือ — แสดงรายการคำสั่ง",
     "",
     "คำที่รองรับ:",
-    "สรุปวันนี้, รายงาน, รายงานวันนี้, ลงเวลาวันนี้",
+    "สรุปวันนี้, รายงาน, รายงานวันนี้, ลงเวลาวันนี้, สรุป 09-07-2569",
   ].join("\n");
 }
 
@@ -214,9 +216,9 @@ async function fetchDailyAttendance(
 }
 
 export async function buildSummaryMessage(
-  requestOrigin: string
+  requestOrigin: string,
+  date = currentBangkokDateKey()
 ) {
-  const date = getBangkokDate();
   const payload = await fetchDailyAttendance(
     requestOrigin,
     date

@@ -1,6 +1,7 @@
 import { PDFDocument } from "pdf-lib";
 import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
 
 type SaveBody = {
   bookId?: unknown;
@@ -446,6 +447,15 @@ async function handleSigningPost(request: Request) {
       },
       { status: 500 },
     );
+  }
+
+  try {
+    await notifySmartAreaAssignments({
+      bookId,
+      assignedByName: signer.full_name || "ผู้อำนวยการ",
+    });
+  } catch (notifyError) {
+    console.error("Smart Area signed assignment LINE notification error:", notifyError);
   }
 
   return NextResponse.json({

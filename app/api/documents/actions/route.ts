@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
 
 type ActionBody = {
   action?: unknown;
@@ -100,6 +101,16 @@ export async function POST(request: Request) {
     }
 
     const result = Array.isArray(data) ? data[0] : null;
+
+    try {
+      await notifySmartAreaAssignments({
+        bookId,
+        assignedByName: auth.profile.full_name || "ผู้อำนวยการ",
+      });
+    } catch (notifyError) {
+      console.error("Smart Area assignment LINE notification error:", notifyError);
+    }
+
     return NextResponse.json({
       ok: true,
       bookId,

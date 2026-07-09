@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import { notifySmartAreaTaskDone } from "@/lib/telegram/smart-area-notifications";
 
 type UpdateTaskBody = {
   taskId?: unknown;
@@ -66,6 +67,15 @@ export async function POST(request: Request) {
   }
 
   const result = Array.isArray(data) ? data[0] : null;
+
+  try {
+    await notifySmartAreaTaskDone({
+      taskId,
+      nextStatus,
+    });
+  } catch (notifyError) {
+    console.error("Smart Area done Telegram notification error:", notifyError);
+  }
 
   return NextResponse.json({
     ok: true,

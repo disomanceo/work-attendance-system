@@ -9,6 +9,7 @@ import {
   leaveReviewedFlex,
   leaveSubmittedFlex,
 } from "./flex";
+import { currentBangkokDateKey as bangkokDateKey } from "@/lib/attendance-report-date";
 
 function appUrl() {
   const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
@@ -40,12 +41,7 @@ function thaiTime(value: string | null) {
 }
 
 export function currentBangkokDateKey() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  return bangkokDateKey();
 }
 
 export function currentBangkokTime() {
@@ -312,10 +308,7 @@ export async function sendDailyAttendanceReport(dateKey: string) {
     };
   }
 
-  const report = await buildAttendanceReportMessage(
-    dateKey,
-    "08:15"
-  );
+  const report = await buildAttendanceReportMessage(dateKey, "08:30");
 
   if (!report.ok) {
     await log(

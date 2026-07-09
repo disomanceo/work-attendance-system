@@ -11,6 +11,10 @@ import {
   currentBangkokDateKey,
   currentBangkokTime,
 } from "@/lib/line/notifications";
+import {
+  parseReportDateFromText,
+  removeReportDateFromText,
+} from "@/lib/attendance-report-date";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +51,7 @@ const SUMMARY_COMMANDS = new Set([
 ]);
 
 function normalizeCommand(value: string) {
-  return value
+  return removeReportDateFromText(value)
     .trim()
     .toLocaleLowerCase("th-TH")
     .replace(/\s+/g, " ");
@@ -116,9 +120,14 @@ async function handleCommand(event: LineEvent) {
   }
 
   if (SUMMARY_COMMANDS.has(command)) {
+    const requestedDate =
+      parseReportDateFromText(event.message.text) ||
+      currentBangkokDateKey();
     const report = await buildAttendanceReportMessage(
-      currentBangkokDateKey(),
-      currentBangkokTime()
+      requestedDate,
+      requestedDate === currentBangkokDateKey()
+        ? currentBangkokTime()
+        : "ย้อนหลัง"
     );
 
     if (!report.ok) {
