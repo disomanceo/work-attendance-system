@@ -86,6 +86,35 @@ function number(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+
+function importQuestionMarkRatio(value: unknown) {
+  const raw = String(value ?? "").replace(/\s+/g, "");
+  if (!raw) return 0;
+  return (raw.match(/\?/g) || []).length / raw.length;
+}
+
+function importHasMeaningfulText(value: unknown) {
+  return /[\u0E00-\u0E7Fa-zA-Z0-9]/.test(String(value ?? ""));
+}
+
+function importLooksGarbled(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return false;
+  const compact = raw.replace(/\s+/g, "");
+  return (
+    /^\?+$/.test(compact) ||
+    (compact.length >= 6 &&
+      importQuestionMarkRatio(compact) >= 0.5 &&
+      !importHasMeaningfulText(compact))
+  );
+}
+
+function importGarbledFields(values: Record<string, unknown>) {
+  return Object.entries(values)
+    .filter(([, value]) => importLooksGarbled(value))
+    .map(([key]) => key);
+}
+
 function serverConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -407,6 +436,22 @@ async function upsertDocument(payload: ImportPayload) {
     return json({ ok: false, message: "Missing document subject" }, 400);
   }
 
+  const garbledFields = importGarbledFields({
+    subject: item.subject,
+    sender: item.sender,
+    documentNo: item.documentNo,
+    receiveNo: item.receiveNo,
+    summary: item.summary,
+  });
+  if (garbledFields.length) {
+    return json({
+      ok: false,
+      message: "Garbled Thai text detected",
+      fields: garbledFields,
+      smartAreaId: item.smartAreaId,
+    }, 400);
+  }
+
   const { data: existing, error: existingError } = await admin
     .from("smart_area_books")
     .select(`
@@ -680,13 +725,16 @@ async function handle(request: Request) {
   }
 
   if (action === "extensionInfo") {
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ||
+      "https://work-attendance-system-beige.vercel.app";
+
     return json({
       ok: true,
-      version:
-        process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.17",
+      version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.29",
       downloadUrl:
         process.env.SMART_AREA_EXTENSION_DOWNLOAD_URL?.trim() ||
-        "https://drive.google.com/file/d/1GvPboNgYoMsPY4nx6HHyf7mj3RrlI1Xf/view?usp=drive_link",
+        `${appUrl}/downloads/import-area-pms-1.8.29-installer.zip`,
     });
   }
 

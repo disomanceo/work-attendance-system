@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     "**/*.backup*",
     "**/*.bak",
     "supabase/.temp/**",
+    "tools/import-area-pms-extension/vendor/**",
   ]),
   {
     rules: {
