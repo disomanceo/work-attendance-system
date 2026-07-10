@@ -54,7 +54,12 @@ export async function sendTelegramCheckInNotification(input: TelegramCheckInInpu
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
+  const chatId =
+    process.env.TELEGRAM_ATTENDANCE_CHAT_ID?.trim() ||
+    process.env.TELEGRAM_ALLOWED_CHAT_IDS?.split(",")
+      .map((value) => value.trim())
+      .find((value) => value.startsWith("-")) ||
+    "";
 
   if (!botToken || !chatId) {
     throw new Error("Telegram environment variables are not configured");
