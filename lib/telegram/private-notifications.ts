@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
+import { isTelegramNotificationEnabled } from "@/lib/telegram/notification-settings";
 
 type NotificationEvent =
   | "document.assigned"
@@ -90,7 +91,7 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
       ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`
       : `${baseUrl}/documents`;
 
-    return [[{ text: "เปิดงาน", url }]];
+    return [[{ text: "เน€เธเธดเธ”เธเธฒเธ", url }]];
   }
 
   if (
@@ -101,11 +102,11 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
       ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`
       : `${baseUrl}/documents`;
 
-    return [[{ text: "เปิดหนังสือ", url }]];
+    return [[{ text: "เน€เธเธดเธ”เธซเธเธฑเธเธชเธทเธญ", url }]];
   }
 
   if (input.event === "leave.submitted") {
-    return [[{ text: "เปิดพิจารณา", url: `${baseUrl}/admin/leave` }]];
+    return [[{ text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒ", url: `${baseUrl}/admin/leave` }]];
   }
 
   if (
@@ -113,13 +114,13 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
     input.event === "leave.rejected" ||
     input.event === "leave.revision_requested"
   ) {
-    return [[{ text: "เปิดรายการลา", url: `${baseUrl}/leave` }]];
+    return [[{ text: "เน€เธเธดเธ”เธฃเธฒเธขเธเธฒเธฃเธฅเธฒ", url: `${baseUrl}/leave` }]];
   }
 
   if (input.event === "official_duty.submitted") {
     return [[
       {
-        text: "เปิดพิจารณา",
+        text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒ",
         url: `${baseUrl}/admin/official-duty`,
       },
     ]];
@@ -131,14 +132,14 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
   ) {
     return [[
       {
-        text: "เปิดรายการไปราชการ",
+        text: "เน€เธเธดเธ”เธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธฒเธเธเธฒเธฃ",
         url: `${baseUrl}/official-duty`,
       },
     ]];
   }
 
   if (input.event === "memo.submitted") {
-    return [[{ text: "เปิดพิจารณา", url: `${baseUrl}/admin/memo` }]];
+    return [[{ text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒ", url: `${baseUrl}/admin/memo` }]];
   }
 
   if (
@@ -148,14 +149,14 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
     input.event === "memo.revision" ||
     input.event === "memo.revision_requested"
   ) {
-    return [[{ text: "เปิดบันทึกข้อความ", url: `${baseUrl}/memo` }]];
+    return [[{ text: "เน€เธเธดเธ”เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก", url: `${baseUrl}/memo` }]];
   }
 
   if (
     input.event === "order.submitted" ||
     input.event === "order.resubmitted"
   ) {
-    return [[{ text: "เปิดพิจารณาคำสั่ง", url: `${baseUrl}/orders` }]];
+    return [[{ text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒเธเธณเธชเธฑเนเธ", url: `${baseUrl}/orders` }]];
   }
 
   if (
@@ -164,7 +165,7 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
     input.event === "order.assigned" ||
     input.event === "order.acknowledged"
   ) {
-    return [[{ text: "เปิดรายการคำสั่ง", url: `${baseUrl}/orders` }]];
+    return [[{ text: "เน€เธเธดเธ”เธฃเธฒเธขเธเธฒเธฃเธเธณเธชเธฑเนเธ", url: `${baseUrl}/orders` }]];
   }
 
   return undefined;
@@ -203,6 +204,18 @@ async function writeLog(input: {
 }
 
 export async function notifyTelegramProfiles(input: NotifyProfilesInput) {
+  const enabled = await isTelegramNotificationEnabled(input.event);
+
+  if (!enabled) {
+    return {
+      requested: input.recipientProfileIds.length,
+      sent: 0,
+      skipped: input.recipientProfileIds.length,
+      failed: 0,
+      reason: "notification_disabled",
+    };
+  }
+
   const profileIds = uniqueProfileIds(input.recipientProfileIds);
 
   if (profileIds.length === 0) {

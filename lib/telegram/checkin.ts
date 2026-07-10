@@ -1,5 +1,7 @@
 import "server-only";
 
+import { isTelegramNotificationEnabled } from "@/lib/telegram/notification-settings";
+
 type TelegramCheckInInput = {
   fullName: string;
   checkInAt: string;
@@ -35,22 +37,39 @@ function formatBangkokTime(isoDate: string) {
 }
 
 function getStatusLabel(checkInStatus: string | null, note: string | null) {
-  if (note === "ปฏิบัติราชการก่อนเข้าโรงเรียน") {
-    return { icon: "🚗", label: "ไปราชการก่อนเข้าโรงเรียน" };
+  if (note === "เธเธเธดเธเธฑเธ•เธดเธฃเธฒเธเธเธฒเธฃเธเนเธญเธเน€เธเนเธฒเนเธฃเธเน€เธฃเธตเธขเธ") {
+    return { icon: "๐—", label: "เนเธเธฃเธฒเธเธเธฒเธฃเธเนเธญเธเน€เธเนเธฒเนเธฃเธเน€เธฃเธตเธขเธ" };
   }
 
   if (checkInStatus === "late") {
-    return { icon: "⏰", label: "มาสาย" };
+    return { icon: "โฐ", label: "เธกเธฒเธชเธฒเธข" };
   }
 
-  return { icon: "✅", label: "ปกติ" };
+  return { icon: "โ…", label: "เธเธเธ•เธด" };
 }
 
 export async function sendTelegramCheckInNotification(input: TelegramCheckInInput) {
-  const enabled = process.env.TELEGRAM_CHECKIN_ENABLED?.trim().toLowerCase() === "true";
+  const environmentEnabled =
+    process.env.TELEGRAM_CHECKIN_ENABLED?.trim().toLowerCase() === "true";
 
-  if (!enabled) {
-    return { sent: false, reason: "Telegram check-in notification is disabled" };
+  if (!environmentEnabled) {
+    return {
+      sent: false,
+      skipped: true,
+      reason: "telegram_checkin_environment_disabled",
+    };
+  }
+
+  const settingEnabled = await isTelegramNotificationEnabled(
+    "attendance.check_in_group"
+  );
+
+  if (!settingEnabled) {
+    return {
+      sent: false,
+      skipped: true,
+      reason: "notification_disabled",
+    };
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -68,19 +87,19 @@ export async function sendTelegramCheckInNotification(input: TelegramCheckInInpu
   const status = getStatusLabel(input.checkInStatus, input.note);
   const distanceText =
     typeof input.distanceMeters === "number"
-      ? `${Math.round(input.distanceMeters).toLocaleString("th-TH")} เมตร`
+      ? `${Math.round(input.distanceMeters).toLocaleString("th-TH")} เน€เธกเธ•เธฃ`
       : "-";
-  const schoolName = input.schoolName?.trim() || "โรงเรียนวัดไผ่มุ้ง";
+  const schoolName = input.schoolName?.trim() || "เนเธฃเธเน€เธฃเธตเธขเธเธงเธฑเธ”เนเธเนเธกเธธเนเธ";
 
   const message = [
-    `${status.icon} <b>มีผู้เช็กอินเข้าปฏิบัติงาน</b>`,
+    `${status.icon} <b>เธกเธตเธเธนเนเน€เธเนเธเธญเธดเธเน€เธเนเธฒเธเธเธดเธเธฑเธ•เธดเธเธฒเธ</b>`,
     "",
-    `<b>ชื่อ:</b> ${escapeHtml(input.fullName)}`,
-    `<b>วันที่:</b> ${escapeHtml(formatBangkokDate(input.checkInAt))}`,
-    `<b>เวลา:</b> ${escapeHtml(formatBangkokTime(input.checkInAt))} น.`,
-    `<b>สถานะ:</b> ${escapeHtml(status.label)}`,
-    `<b>สถานที่:</b> ${escapeHtml(schoolName)}`,
-    `<b>ระยะห่าง:</b> ${escapeHtml(distanceText)}`,
+    `<b>เธเธทเนเธญ:</b> ${escapeHtml(input.fullName)}`,
+    `<b>เธงเธฑเธเธ—เธตเน:</b> ${escapeHtml(formatBangkokDate(input.checkInAt))}`,
+    `<b>เน€เธงเธฅเธฒ:</b> ${escapeHtml(formatBangkokTime(input.checkInAt))} เธ.`,
+    `<b>เธชเธ–เธฒเธเธฐ:</b> ${escapeHtml(status.label)}`,
+    `<b>เธชเธ–เธฒเธเธ—เธตเน:</b> ${escapeHtml(schoolName)}`,
+    `<b>เธฃเธฐเธขเธฐเธซเนเธฒเธ:</b> ${escapeHtml(distanceText)}`,
   ].join("\n");
 
   const controller = new AbortController();

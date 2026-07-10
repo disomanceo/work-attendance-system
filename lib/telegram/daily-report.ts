@@ -3,6 +3,7 @@ import "server-only";
 import { getLineAdminClient } from "@/lib/line/client";
 import { buildSummaryMessage } from "@/lib/telegram/commands";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
+import { isTelegramNotificationEnabled } from "@/lib/telegram/notification-settings";
 
 function getTelegramChatIds() {
   const attendanceChatId =
@@ -63,6 +64,21 @@ export async function sendDailyTelegramReport(
   requestOrigin: string,
   dateKey: string
 ) {
+  const enabled = await isTelegramNotificationEnabled(
+    "attendance.daily_summary"
+  );
+
+  if (!enabled) {
+    return {
+      sent: false,
+      skipped: true,
+      sentCount: 0,
+      failedCount: 0,
+      totalChatIds: 0,
+      message: "Telegram daily summary is disabled",
+    };
+  }
+
   const key = `attendance-daily-telegram:${dateKey}`;
 
   if (await wasSent(key)) {
@@ -85,7 +101,7 @@ export async function sendDailyTelegramReport(
       failedCount: 0,
       totalChatIds: 0,
       message:
-        "TELEGRAM_ALLOWED_CHAT_IDS à¸«à¸£à¸·à¸­ TELEGRAM_CHAT_ID à¹„à¸¡à¹ˆà¹„à¸”à¹‰à¸•à¸±à¹‰à¸‡à¸„à¹ˆà¸²",
+        "TELEGRAM_ALLOWED_CHAT_IDS ร ยธยซร ยธยฃร ยธยทร ยธยญ TELEGRAM_CHAT_ID ร ยนโ€ร ยธยกร ยนหร ยนโ€ร ยธโ€ร ยนโ€ฐร ยธโ€ขร ยธยฑร ยนโ€ฐร ยธโ€กร ยธโ€ร ยนหร ยธยฒ",
     };
 
     await logDailyTelegram(key, result, false);
