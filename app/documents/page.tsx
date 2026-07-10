@@ -519,9 +519,9 @@ export default function DocumentsPage() {
   const hadSelectedBookRef = useRef(false);
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInfo>({
-    version: "1.8.17",
+    version: "1.8.32",
     downloadUrl:
-      "https://drive.google.com/file/d/1u-aZKFLaAc5h_zAhh-KKBppLpbyYV-WP/view?usp=drive_link",
+      "https://drive.google.com/file/d/1Iwbi7jQNxGNHlvsrh-UjKxDoCO-zwIzf/view?usp=drive_link",
   });
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
@@ -677,7 +677,7 @@ export default function DocumentsPage() {
           version: String(result.version || "1.8.17"),
           downloadUrl: String(
             result.downloadUrl ||
-              "https://drive.google.com/file/d/1u-aZKFLaAc5h_zAhh-KKBppLpbyYV-WP/view?usp=drive_link",
+              "https://drive.google.com/file/d/1Iwbi7jQNxGNHlvsrh-UjKxDoCO-zwIzf/view?usp=drive_link",
           ),
         });
       }

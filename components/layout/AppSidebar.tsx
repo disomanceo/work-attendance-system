@@ -19,7 +19,7 @@ type AppSidebarProps = {
   onLogout: () => void;
 };
 
-type ModuleKey = "personnel" | "budget" | "documents";
+type ModuleKey = "personnel" | "budget" | "students" | "documents";
 
 type SidebarTask = {
   assigneeId?: string | null;
@@ -54,7 +54,13 @@ const MODULES: Array<{
     label: "งานงบประมาณ",
     icon: "฿",
     toneClass: styles.moduleBudget,
+  },  {
+    key: "students",
+    label: "งานนักเรียน",
+    icon: "▥",
+    toneClass: styles.moduleDocuments,
   },
+
   {
     key: "documents",
     label: "งานหนังสือราชการ",
@@ -124,6 +130,7 @@ export default function AppSidebar({
     if (
       activeItem?.section === "personnel" ||
       activeItem?.section === "budget" ||
+      activeItem?.section === "students" ||
       activeItem?.section === "documents"
     ) {
       return activeItem.section;

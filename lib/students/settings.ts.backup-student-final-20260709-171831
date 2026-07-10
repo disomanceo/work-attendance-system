@@ -1,0 +1,54 @@
+export const STUDENT_CLASS_LEVELS = [
+  "อนุบาล 2",
+  "อนุบาล 3",
+  "ป.1",
+  "ป.2",
+  "ป.3",
+  "ป.4",
+  "ป.5",
+  "ป.6",
+] as const;
+
+export type StudentClassLevel = (typeof STUDENT_CLASS_LEVELS)[number];
+
+export const STUDENT_WORK_PERMISSION_KEYS = [
+  "manage_student_settings",
+  "manage_class_advisers",
+  "manage_duty_roster",
+  "view_duty_roster",
+  "student_attendance_all_classes",
+] as const;
+
+export type StudentWorkPermissionKey = (typeof STUDENT_WORK_PERMISSION_KEYS)[number];
+
+export const STUDENT_WORK_PERMISSION_LABELS: Record<StudentWorkPermissionKey, string> = {
+  manage_student_settings: "จัดการตั้งค่างานนักเรียน",
+  manage_class_advisers: "แต่งตั้งครูประจำชั้น",
+  manage_duty_roster: "กำหนดครูเวรประจำวัน",
+  view_duty_roster: "ดูตารางเวรประจำวัน",
+  student_attendance_all_classes: "กรอกเช็คชื่อได้ทุกห้อง",
+};
+
+export const STUDENT_WEEKDAYS = [
+  { value: 1, label: "วันจันทร์" },
+  { value: 2, label: "วันอังคาร" },
+  { value: 3, label: "วันพุธ" },
+  { value: 4, label: "วันพฤหัสบดี" },
+  { value: 5, label: "วันศุกร์" },
+] as const;
+
+export type StudentWeekday = (typeof STUDENT_WEEKDAYS)[number]["value"];
+
+export function getStudentClassLevelLabel(value: string | null | undefined): string {
+  return value || "ไม่ระบุชั้น";
+}
+
+export function getStudentWorkPermissionLabel(value: string | null | undefined): string {
+  if (!value) return "ไม่ระบุสิทธิ์";
+  return STUDENT_WORK_PERMISSION_LABELS[value as StudentWorkPermissionKey] || value;
+}
+
+export function getStudentWeekdayLabel(value: number | string | null | undefined): string {
+  const weekday = Number(value);
+  return STUDENT_WEEKDAYS.find((item) => item.value === weekday)?.label || "ไม่ระบุวัน";
+}

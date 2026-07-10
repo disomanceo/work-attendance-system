@@ -1,7 +1,8 @@
-﻿export type AppNavigationSection =
+export type AppNavigationSection =
   | "home"
   | "personnel"
   | "budget"
+  | "students"
   | "documents"
   | "review"
   | "account";
@@ -86,7 +87,28 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) =>
         value.startsWith("/budget/payments") ||
         value.startsWith("/budget/disbursements"),
+    },    {
+      label: "ข้อมูลนักเรียน",
+      icon: "▥",
+      href: "/students",
+      section: "students",
+      match: (value) => value === "/students",
     },
+    {
+      label: "เช็คชื่อนักเรียน",
+      icon: "✓",
+      href: "/students/attendance",
+      section: "students",
+      match: (value) => value.startsWith("/students/attendance"),
+    },
+    {
+      label: "ตั้งค่าห้องเรียน",
+      icon: "⚙",
+      href: "/students/settings",
+      section: "students",
+      match: (value) => value.startsWith("/students/settings"),
+    },
+
     {
       label: "รายการหนังสือราชการ",
       icon: "▤",
