@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { notifyMemoReviewed } from "@/lib/line/memo-notifications";
+import { notifyMemoReviewedTelegram } from "@/lib/telegram/memo-workflow-notifications";
 import { loadMemoLogsByRequest } from "@/lib/memo-logs";
 import {
   callMemoGas,
@@ -48,7 +49,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 500,
-      message: "ระบบยังไม่ได้ตั้งค่า Supabase ฝั่ง Server",
+      message: "เธฃเธฐเธเธเธขเธฑเธเนเธกเนเนเธ”เนเธ•เธฑเนเธเธเนเธฒ Supabase เธเธฑเนเธ Server",
     };
   }
 
@@ -59,7 +60,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 401,
-      message: "กรุณาเข้าสู่ระบบใหม่",
+      message: "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
     };
   }
 
@@ -75,7 +76,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 401,
-      message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+      message: "Session เธซเธกเธ”เธญเธฒเธขเธธ เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
     };
   }
 
@@ -97,7 +98,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 403,
-      message: "คุณไม่มีสิทธิ์พิจารณาบันทึกข้อความ",
+      message: "เธเธธเธ“เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธเธดเธเธฒเธฃเธ“เธฒเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก",
     };
   }
 
@@ -189,7 +190,7 @@ export async function GET(request: Request) {
         message:
           error instanceof Error
             ? error.message
-            : "โหลดรายการบันทึกข้อความไม่สำเร็จ",
+            : "เนเธซเธฅเธ”เธฃเธฒเธขเธเธฒเธฃเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเนเธกเนเธชเธณเน€เธฃเนเธ",
       },
       { status: 500 }
     );
@@ -220,7 +221,7 @@ export async function PATCH(request: Request) {
       !["approve", "acknowledge", "reject", "send_back"].includes(action)
     ) {
       return NextResponse.json(
-        { ok: false, message: "ข้อมูลการพิจารณาไม่ครบ" },
+        { ok: false, message: "เธเนเธญเธกเธนเธฅเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธกเนเธเธฃเธ" },
         { status: 400 }
       );
     }
@@ -228,7 +229,7 @@ export async function PATCH(request: Request) {
     const { data: memo, error: memoError } = await auth.admin
       .from("memo_requests")
       .select(
-        "id, status, memo_number, full_name, position, subject, reason, body, attachment_description, working_document_id, working_document_url"
+        "id, user_id, status, memo_number, full_name, position, subject, reason, body, attachment_description, working_document_id, working_document_url"
       )
       .eq("id", body.requestId)
       .maybeSingle();
@@ -239,7 +240,7 @@ export async function PATCH(request: Request) {
 
     if (!memo) {
       return NextResponse.json(
-        { ok: false, message: "ไม่พบบันทึกข้อความนี้" },
+        { ok: false, message: "เนเธกเนเธเธเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเธเธตเน" },
         { status: 404 }
       );
     }
@@ -248,7 +249,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "พิจารณาได้เฉพาะรายการที่รอพิจารณาเท่านั้น",
+          message: "เธเธดเธเธฒเธฃเธ“เธฒเนเธ”เนเน€เธเธเธฒเธฐเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธฃเธญเธเธดเธเธฒเธฃเธ“เธฒเน€เธ—เนเธฒเธเธฑเนเธ",
         },
         { status: 409 }
       );
@@ -261,7 +262,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "กรุณาระบุความคิดเห็นอย่างน้อย 3 ตัวอักษร",
+          message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธเธงเธฒเธกเธเธดเธ”เน€เธซเนเธเธญเธขเนเธฒเธเธเนเธญเธข 3 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ",
         },
         { status: 400 }
       );
@@ -295,7 +296,7 @@ export async function PATCH(request: Request) {
             {
               ok: false,
               message:
-                "กรุณาอัปโหลดลายเซ็นในข้อมูลส่วนตัวก่อนพิจารณาบันทึกข้อความ",
+                "เธเธฃเธธเธ“เธฒเธญเธฑเธเนเธซเธฅเธ”เธฅเธฒเธขเน€เธเนเธเนเธเธเนเธญเธกเธนเธฅเธชเนเธงเธเธ•เธฑเธงเธเนเธญเธเธเธดเธเธฒเธฃเธ“เธฒเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก",
             },
             { status: 400 }
           );
@@ -305,7 +306,7 @@ export async function PATCH(request: Request) {
           memoDocumentConfig.profileGasUrl,
           memoDocumentConfig.profileGasSecret,
           auth.profile.signature_file_id,
-          "ลายเซ็นผู้พิจารณา"
+          "เธฅเธฒเธขเน€เธเนเธเธเธนเนเธเธดเธเธฒเธฃเธ“เธฒ"
         );
 
         const gasResult = (await callMemoGas(memoDocumentConfig.memoGasUrl, {
@@ -329,7 +330,7 @@ export async function PATCH(request: Request) {
         })) as MemoFinalizeResponse;
 
         if (!gasResult.pdfFileId || !gasResult.pdfFileUrl) {
-          throw new Error("GAS สร้าง PDF บันทึกข้อความไม่สำเร็จหรือไม่คืน File ID");
+          throw new Error("GAS เธชเธฃเนเธฒเธ PDF เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเนเธกเนเธชเธณเน€เธฃเนเธเธซเธฃเธทเธญเนเธกเนเธเธทเธ File ID");
         }
 
         updatePayload.pdf_file_id = gasResult.pdfFileId;
@@ -349,7 +350,7 @@ export async function PATCH(request: Request) {
       .single();
 
     if (error || !data) {
-      throw new Error(error?.message || "บันทึกผลการพิจารณาไม่สำเร็จ");
+      throw new Error(error?.message || "เธเธฑเธเธ—เธถเธเธเธฅเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
     }
 
     await logMemoStatus(auth.admin, {
@@ -360,22 +361,44 @@ export async function PATCH(request: Request) {
       note,
     });
 
-    await notifyMemoReviewed({
-      requestId: memo.id,
-      fullName: data.full_name,
-      subject: data.subject,
-      memoNumber: data.memo_number,
-      status,
-      reviewerName: auth.profile.full_name,
-      reviewNote: note || null,
-    }).catch((lineError) => {
-      console.error("LINE memo reviewed notification error:", lineError);
+    await Promise.allSettled([
+      notifyMemoReviewed({
+        requestId: memo.id,
+        fullName: data.full_name,
+        subject: data.subject,
+        memoNumber: data.memo_number,
+        status,
+        reviewerName: auth.profile.full_name,
+        reviewNote: note || null,
+      }),
+      notifyMemoReviewedTelegram({
+        requestId: memo.id,
+        applicantProfileId: memo.user_id,
+        reviewerProfileId: auth.profile.id,
+        reviewerName: auth.profile.full_name,
+        status,
+        memoNumber: data.memo_number,
+        subject: data.subject,
+        reviewNote: note || null,
+        pdfFileUrl: data.pdf_file_url || null,
+      }),
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(
+            index === 0
+              ? "LINE memo reviewed notification error:"
+              : "Telegram memo reviewed notification error:",
+            result.reason
+          );
+        }
+      });
     });
 
     return NextResponse.json({
       ok: true,
       request: data,
-      message: "บันทึกผลการพิจารณาแล้ว",
+      message: "เธเธฑเธเธ—เธถเธเธเธฅเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธฅเนเธง",
     });
   } catch (error) {
     return NextResponse.json(
@@ -384,7 +407,7 @@ export async function PATCH(request: Request) {
         message:
           error instanceof Error
             ? error.message
-            : "พิจารณาบันทึกข้อความไม่สำเร็จ",
+            : "เธเธดเธเธฒเธฃเธ“เธฒเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเนเธกเนเธชเธณเน€เธฃเนเธ",
       },
       { status: 500 }
     );

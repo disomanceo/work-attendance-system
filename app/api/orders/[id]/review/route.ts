@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { notifyOrderReviewedTelegram } from "@/lib/telegram/order-workflow-notifications";
 import {
   authorizeOrderRequest,
   isOrderManager,
@@ -22,7 +23,7 @@ export async function POST(
 
     if (!isOrderManager(auth.profile.role)) {
       return NextResponse.json(
-        { ok: false, message: "เฉพาะ ผอ. หรือ Admin เท่านั้น" },
+        { ok: false, message: "เน€เธเธเธฒเธฐ เธเธญ. เธซเธฃเธทเธญ Admin เน€เธ—เนเธฒเธเธฑเนเธ" },
         { status: 403 }
       );
     }
@@ -34,7 +35,7 @@ export async function POST(
 
     if (!["approve", "return"].includes(action)) {
       return NextResponse.json(
-        { ok: false, message: "คำสั่งดำเนินการไม่ถูกต้อง" },
+        { ok: false, message: "เธเธณเธชเธฑเนเธเธ”เธณเน€เธเธดเธเธเธฒเธฃเนเธกเนเธ–เธนเธเธ•เนเธญเธ" },
         { status: 400 }
       );
     }
@@ -43,7 +44,7 @@ export async function POST(
       return NextResponse.json(
         {
           ok: false,
-          message: "กรุณาระบุรายละเอียดที่ต้องแก้ไขอย่างน้อย 3 ตัวอักษร",
+          message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธ—เธตเนเธ•เนเธญเธเนเธเนเนเธเธญเธขเนเธฒเธเธเนเธญเธข 3 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ",
         },
         { status: 400 }
       );
@@ -57,7 +58,7 @@ export async function POST(
 
     if (loadError || !current) {
       return NextResponse.json(
-        { ok: false, message: "ไม่พบรายการคำสั่ง" },
+        { ok: false, message: "เนเธกเนเธเธเธฃเธฒเธขเธเธฒเธฃเธเธณเธชเธฑเนเธ" },
         { status: 404 }
       );
     }
@@ -66,7 +67,7 @@ export async function POST(
       return NextResponse.json(
         {
           ok: false,
-          message: "พิจารณาได้เฉพาะรายการที่รออนุมัติ",
+          message: "เธเธดเธเธฒเธฃเธ“เธฒเนเธ”เนเน€เธเธเธฒเธฐเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธฃเธญเธญเธเธธเธกเธฑเธ•เธด",
         },
         { status: 409 }
       );
@@ -106,7 +107,7 @@ export async function POST(
 
     if (saveError || !saved) {
       throw new Error(
-        saveError?.message || "บันทึกผลการพิจารณาไม่สำเร็จ"
+        saveError?.message || "เธเธฑเธเธ—เธถเธเธเธฅเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธกเนเธชเธณเน€เธฃเนเธ"
       );
     }
 
@@ -123,13 +124,29 @@ export async function POST(
       note: note || null,
     });
 
+    await notifyOrderReviewedTelegram({
+      orderId: saved.id,
+      recipientProfileId: saved.responsible_user_id,
+      reviewerProfileId: auth.profile.id,
+      reviewerName: auth.profile.full_name,
+      approved: action === "approve",
+      orderNumber: saved.order_number,
+      subject: saved.subject,
+      orderDate: saved.order_date,
+      revisionCount: nextRevision,
+      reviewNote: note || null,
+      pdfFileUrl: saved.pdf_file_url || null,
+    }).catch((telegramError) => {
+      console.error("Telegram order reviewed notification error:", telegramError);
+    });
+
     return NextResponse.json({
       ok: true,
       order: saved,
       message:
         action === "approve"
-          ? "อนุมัติคำสั่งเรียบร้อยแล้ว"
-          : `ส่งกลับแก้ไข ครั้งที่ ${nextRevision} แล้ว`,
+          ? "เธญเธเธธเธกเธฑเธ•เธดเธเธณเธชเธฑเนเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง"
+          : `เธชเนเธเธเธฅเธฑเธเนเธเนเนเธ เธเธฃเธฑเนเธเธ—เธตเน ${nextRevision} เนเธฅเนเธง`,
     });
   } catch (error) {
     return NextResponse.json(
@@ -138,7 +155,7 @@ export async function POST(
         message:
           error instanceof Error
             ? error.message
-            : "พิจารณาคำสั่งไม่สำเร็จ",
+            : "เธเธดเธเธฒเธฃเธ“เธฒเธเธณเธชเธฑเนเธเนเธกเนเธชเธณเน€เธฃเนเธ",
       },
       { status: 500 }
     );

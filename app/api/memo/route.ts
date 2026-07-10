@@ -5,6 +5,7 @@ import {
   markDocumentNumberIssue,
 } from "@/lib/document-numbers";
 import { notifyMemoSubmitted } from "@/lib/line/memo-notifications";
+import { notifyMemoSubmittedTelegram } from "@/lib/telegram/memo-workflow-notifications";
 import { loadMemoLogsByRequest } from "@/lib/memo-logs";
 import {
   callMemoGas,
@@ -75,7 +76,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 500,
-      message: "ระบบยังไม่ได้ตั้งค่า Supabase ฝั่ง Server",
+      message: "เธฃเธฐเธเธเธขเธฑเธเนเธกเนเนเธ”เนเธ•เธฑเนเธเธเนเธฒ Supabase เธเธฑเนเธ Server",
     };
   }
 
@@ -86,7 +87,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 401,
-      message: "กรุณาเข้าสู่ระบบใหม่",
+      message: "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
     };
   }
 
@@ -102,7 +103,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 401,
-      message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่",
+      message: "Session เธซเธกเธ”เธญเธฒเธขเธธ เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธเนเธซเธกเน",
     };
   }
 
@@ -123,7 +124,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 403,
-      message: "บัญชียังไม่พร้อมใช้งาน",
+      message: "เธเธฑเธเธเธตเธขเธฑเธเนเธกเนเธเธฃเนเธญเธกเนเธเนเธเธฒเธ",
     };
   }
 
@@ -140,15 +141,15 @@ function validateMemoInput(input: {
   body: string;
 }) {
   if (input.subject.length < 3 || input.subject.length > 200) {
-    return "กรุณาระบุเรื่อง 3-200 ตัวอักษร";
+    return "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเน€เธฃเธทเนเธญเธ 3-200 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ";
   }
 
   if (input.reason.length < 3 || input.reason.length > 500) {
-    return "กรุณาระบุเหตุผล 3-500 ตัวอักษร";
+    return "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเน€เธซเธ•เธธเธเธฅ 3-500 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ";
   }
 
   if (input.body.length < 5 || input.body.length > 4000) {
-    return "กรุณาระบุข้อความ 5-4000 ตัวอักษร";
+    return "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธเนเธญเธเธงเธฒเธก 5-4000 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ";
   }
 
   return "";
@@ -162,7 +163,7 @@ function parseSubmittedDate(value: string | undefined) {
   }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new Error("กรุณาระบุวันที่ยื่นให้ถูกต้อง");
+    throw new Error("เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธงเธฑเธเธ—เธตเนเธขเธทเนเธเนเธซเนเธ–เธนเธเธ•เนเธญเธ");
   }
 
   const now = new Date();
@@ -253,7 +254,7 @@ export async function GET(request: Request) {
         message:
           error instanceof Error
             ? error.message
-            : "โหลดบันทึกข้อความไม่สำเร็จ",
+            : "เนเธซเธฅเธ”เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเนเธกเนเธชเธณเน€เธฃเนเธ",
       },
       { status: 500 }
     );
@@ -369,7 +370,7 @@ export async function POST(request: Request) {
 
       if (!existing) {
         return NextResponse.json(
-          { ok: false, message: "ไม่พบบันทึกข้อความนี้" },
+          { ok: false, message: "เนเธกเนเธเธเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเธเธตเน" },
           { status: 404 }
         );
       }
@@ -379,7 +380,7 @@ export async function POST(request: Request) {
           {
             ok: false,
             message:
-              "แก้ไขได้เฉพาะฉบับร่างหรือรายการที่ถูกส่งกลับแก้ไขเท่านั้น",
+              "เนเธเนเนเธเนเธ”เนเน€เธเธเธฒเธฐเธเธเธฑเธเธฃเนเธฒเธเธซเธฃเธทเธญเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธ–เธนเธเธชเนเธเธเธฅเธฑเธเนเธเนเนเธเน€เธ—เนเธฒเธเธฑเนเธ",
           },
           { status: 409 }
         );
@@ -402,14 +403,14 @@ export async function POST(request: Request) {
     if (attachment) {
       if (attachment.size > MAX_ATTACHMENT_SIZE) {
         return NextResponse.json(
-          { ok: false, message: "ไฟล์แนบต้องมีขนาดไม่เกิน 10 MB" },
+          { ok: false, message: "เนเธเธฅเนเนเธเธเธ•เนเธญเธเธกเธตเธเธเธฒเธ”เนเธกเนเน€เธเธดเธ 10 MB" },
           { status: 400 }
         );
       }
 
       if (!ALLOWED_ATTACHMENT_TYPES.has(attachment.type)) {
         return NextResponse.json(
-          { ok: false, message: "รองรับเฉพาะไฟล์ PDF, JPG และ PNG" },
+          { ok: false, message: "เธฃเธญเธเธฃเธฑเธเน€เธเธเธฒเธฐเนเธเธฅเน PDF, JPG เนเธฅเธฐ PNG" },
           { status: 400 }
         );
       }
@@ -470,7 +471,7 @@ export async function POST(request: Request) {
           {
             ok: false,
             message:
-              "กรุณาอัปโหลดลายเซ็นในข้อมูลส่วนตัวก่อนส่งบันทึกข้อความ",
+              "เธเธฃเธธเธ“เธฒเธญเธฑเธเนเธซเธฅเธ”เธฅเธฒเธขเน€เธเนเธเนเธเธเนเธญเธกเธนเธฅเธชเนเธงเธเธ•เธฑเธงเธเนเธญเธเธชเนเธเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก",
           },
           { status: 400 }
         );
@@ -490,7 +491,7 @@ export async function POST(request: Request) {
         memoDocumentConfig.profileGasUrl,
         memoDocumentConfig.profileGasSecret,
         auth.profile.signature_file_id,
-        "ลายเซ็นผู้ยื่น"
+        "เธฅเธฒเธขเน€เธเนเธเธเธนเนเธขเธทเนเธ"
       );
 
       const gasResult = (await callMemoGas(memoDocumentConfig.memoGasUrl, {
@@ -511,7 +512,7 @@ export async function POST(request: Request) {
       })) as MemoPendingResponse;
 
       if (!gasResult.workingDocumentId) {
-        throw new Error("GAS ไม่คืนข้อมูล Google Docs ของบันทึกข้อความ");
+        throw new Error("GAS เนเธกเนเธเธทเธเธเนเธญเธกเธนเธฅ Google Docs เธเธญเธเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก");
       }
 
       pendingMemoDocumentId = gasResult.workingDocumentId;
@@ -560,7 +561,7 @@ export async function POST(request: Request) {
           .single();
 
     if (error || !data) {
-      throw new Error(error?.message || "บันทึกข้อความไม่สำเร็จ");
+      throw new Error(error?.message || "เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเนเธกเนเธชเธณเน€เธฃเนเธ");
     }
 
     pendingMemoDocumentId = null;
@@ -579,7 +580,7 @@ export async function POST(request: Request) {
       actorId: auth.profile.id,
       fromStatus: existing?.status ?? null,
       toStatus: nextStatus,
-      note: action === "submit" ? "ส่งให้ผู้บริหารพิจารณา" : "บันทึกฉบับร่าง",
+      note: action === "submit" ? "เธชเนเธเนเธซเนเธเธนเนเธเธฃเธดเธซเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒ" : "เธเธฑเธเธ—เธถเธเธเธเธฑเธเธฃเนเธฒเธ",
     });
 
     if (action === "submit") {
@@ -589,16 +590,35 @@ export async function POST(request: Request) {
         status: "COMPLETED",
       });
 
-      await notifyMemoSubmitted({
-        requestId,
-        fullName: auth.profile.full_name,
-        position: auth.profile.position,
-        subject,
-        reason,
-        memoNumber,
-        submittedAt,
-      }).catch((lineError) => {
-        console.error("LINE memo submitted notification error:", lineError);
+      await Promise.allSettled([
+        notifyMemoSubmitted({
+          requestId,
+          fullName: auth.profile.full_name,
+          position: auth.profile.position,
+          subject,
+          reason,
+          memoNumber,
+          submittedAt,
+        }),
+        notifyMemoSubmittedTelegram({
+          requestId,
+          applicantProfileId: auth.profile.id,
+          applicantName: auth.profile.full_name,
+          memoNumber,
+          subject,
+          reason,
+        }),
+      ]).then((results) => {
+        results.forEach((result, index) => {
+          if (result.status === "rejected") {
+            console.error(
+              index === 0
+                ? "LINE memo submitted notification error:"
+                : "Telegram memo submitted notification error:",
+              result.reason
+            );
+          }
+        });
       });
     }
 
@@ -607,8 +627,8 @@ export async function POST(request: Request) {
       request: data,
       message:
         action === "submit"
-          ? `ส่งบันทึกข้อความสำเร็จ เลขที่ ${memoNumber}`
-          : "บันทึกฉบับร่างแล้ว",
+          ? `เธชเนเธเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเธชเธณเน€เธฃเนเธ เน€เธฅเธเธ—เธตเน ${memoNumber}`
+          : "เธเธฑเธเธ—เธถเธเธเธเธฑเธเธฃเนเธฒเธเนเธฅเนเธง",
     });
   } catch (error) {
     if (uploadAdmin && uploadedAttachmentPath) {
@@ -624,7 +644,7 @@ export async function POST(request: Request) {
         referenceId: issuedReferenceId,
         status: "FAILED",
         failureReason:
-          error instanceof Error ? error.message : "บันทึกข้อความไม่สำเร็จ",
+          error instanceof Error ? error.message : "เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเนเธกเนเธชเธณเน€เธฃเนเธ",
       });
     }
 
@@ -642,7 +662,7 @@ export async function POST(request: Request) {
         message:
           error instanceof Error
             ? error.message
-            : "บันทึกข้อความไม่สำเร็จ",
+            : "เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเนเธกเนเธชเธณเน€เธฃเนเธ",
       },
       { status: 500 }
     );

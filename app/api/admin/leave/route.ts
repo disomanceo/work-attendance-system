@@ -1,6 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { notifyLeaveReviewed } from "@/lib/line/notifications";
+import { notifyLeaveReviewedTelegram } from "@/lib/telegram/leave-workflow-notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -371,19 +372,44 @@ export async function PATCH(request: Request) {
       );
     }
 
-    await notifyLeaveReviewed({
-      requestId: leave.id,
-      fullName: leave.profiles?.full_name || "ไม่พบชื่อ",
-      leaveType: leave.leave_type,
-      startDate: leave.start_date,
-      endDate: leave.end_date,
-      totalDays: Number(leave.total_work_days || 0),
-      approved: nextStatus === "approved",
-      reviewerName: profile.full_name || "ผู้บริหาร",
-      reviewNote: body.note?.trim() || "",
-      leaveNumber: leave.leave_number,
-    }).catch((lineError) => {
-      console.error("LINE leave reviewed notification error:", lineError);
+    await Promise.allSettled([
+      notifyLeaveReviewed({
+        requestId: leave.id,
+        fullName: leave.profiles?.full_name || "ไม่พบชื่อ",
+        leaveType: leave.leave_type,
+        startDate: leave.start_date,
+        endDate: leave.end_date,
+        totalDays: Number(leave.total_work_days || 0),
+        approved: nextStatus === "approved",
+        reviewerName: profile.full_name || "ผู้บริหาร",
+        reviewNote: body.note?.trim() || "",
+        leaveNumber: leave.leave_number,
+      }),
+      notifyLeaveReviewedTelegram({
+        requestId: leave.id,
+        applicantProfileId: leave.user_id,
+        reviewerProfileId: profile.id,
+        reviewerName: profile.full_name || "ผู้บริหาร",
+        approved: nextStatus === "approved",
+        leaveNumber: leave.leave_number,
+        leaveType: leave.leave_type,
+        startDate: leave.start_date,
+        endDate: leave.end_date,
+        totalDays: Number(leave.total_work_days || 0),
+        reviewNote: body.note?.trim() || "",
+        pdfFileUrl: gasResult.pdfFileUrl,
+      }),
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(
+            index === 0
+              ? "LINE leave reviewed notification error:"
+              : "Telegram leave reviewed notification error:",
+            result.reason
+          );
+        }
+      });
     });
 
     return NextResponse.json({

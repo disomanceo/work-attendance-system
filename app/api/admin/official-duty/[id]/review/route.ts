@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeOfficialDuty } from "@/lib/official-duty-auth";
 import { notifyOfficialDutyReviewed } from "@/lib/line/official-duty-notifications";
+import { notifyOfficialDutyReviewedTelegram } from "@/lib/telegram/official-duty-workflow-notifications";
 import {
   callOfficialDutyDocumentGas,
   getOfficialDutyDocumentConfig,
@@ -50,7 +51,7 @@ export async function POST(request: Request, context: Params) {
 
     if (!["director", "admin"].includes(auth.profile.role)) {
       return NextResponse.json(
-        { ok: false, message: "ไม่มีสิทธิ์พิจารณาคำขอ" },
+        { ok: false, message: "เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธเธดเธเธฒเธฃเธ“เธฒเธเธณเธเธญ" },
         { status: 403 }
       );
     }
@@ -68,14 +69,14 @@ export async function POST(request: Request, context: Params) {
       body = (await request.json()) as typeof body;
     } catch {
       return NextResponse.json(
-        { ok: false, message: "ข้อมูลที่ส่งมาไม่ถูกต้อง" },
+        { ok: false, message: "เธเนเธญเธกเธนเธฅเธ—เธตเนเธชเนเธเธกเธฒเนเธกเนเธ–เธนเธเธ•เนเธญเธ" },
         { status: 400 }
       );
     }
 
     if (!["approve", "reject"].includes(String(body.action))) {
       return NextResponse.json(
-        { ok: false, message: "คำสั่งพิจารณาไม่ถูกต้อง" },
+        { ok: false, message: "เธเธณเธชเธฑเนเธเธเธดเธเธฒเธฃเธ“เธฒเนเธกเนเธ–เธนเธเธ•เนเธญเธ" },
         { status: 400 }
       );
     }
@@ -88,14 +89,14 @@ export async function POST(request: Request, context: Params) {
 
     if (loadError || !item) {
       return NextResponse.json(
-        { ok: false, message: "ไม่พบคำขอไปราชการ" },
+        { ok: false, message: "เนเธกเนเธเธเธเธณเธเธญเนเธเธฃเธฒเธเธเธฒเธฃ" },
         { status: 404 }
       );
     }
 
     if (item.status !== "pending") {
       return NextResponse.json(
-        { ok: false, message: "คำขอนี้ได้รับการพิจารณาแล้ว" },
+        { ok: false, message: "เธเธณเธเธญเธเธตเนเนเธ”เนเธฃเธฑเธเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธฅเนเธง" },
         { status: 409 }
       );
     }
@@ -114,7 +115,7 @@ export async function POST(request: Request, context: Params) {
 
       if (!reviewerProfile.signature_file_id) {
         throw new Error(
-          "กรุณาอัปโหลดลายเซ็นในข้อมูลส่วนตัวก่อนพิจารณาคำขอไปราชการ"
+          "เธเธฃเธธเธ“เธฒเธญเธฑเธเนเธซเธฅเธ”เธฅเธฒเธขเน€เธเนเธเนเธเธเนเธญเธกเธนเธฅเธชเนเธงเธเธ•เธฑเธงเธเนเธญเธเธเธดเธเธฒเธฃเธ“เธฒเธเธณเธเธญเนเธเธฃเธฒเธเธเธฒเธฃ"
         );
       }
 
@@ -122,7 +123,7 @@ export async function POST(request: Request, context: Params) {
         documentConfig.profileGasUrl,
         documentConfig.profileGasSecret,
         reviewerProfile.signature_file_id,
-        "ลายเซ็นผู้อำนวยการ"
+        "เธฅเธฒเธขเน€เธเนเธเธเธนเนเธญเธณเธเธงเธขเธเธฒเธฃ"
       );
 
       const gasResult = (await callOfficialDutyDocumentGas(
@@ -152,7 +153,7 @@ export async function POST(request: Request, context: Params) {
       )) as OfficialDutyFinalizeResponse;
 
       if (!gasResult.pdfFileId || !gasResult.pdfFileUrl) {
-        throw new Error("GAS สร้าง PDF ไปราชการไม่สำเร็จหรือไม่คืน File ID");
+        throw new Error("GAS เธชเธฃเนเธฒเธ PDF เนเธเธฃเธฒเธเธเธฒเธฃเนเธกเนเธชเธณเน€เธฃเนเธเธซเธฃเธทเธญเนเธกเนเธเธทเธ File ID");
       }
 
       return {
@@ -189,26 +190,52 @@ export async function POST(request: Request, context: Params) {
 
       if (rejectError || !rejected) {
         throw new Error(
-          rejectError?.message || "บันทึกผลไม่อนุญาตไม่สำเร็จ"
+          rejectError?.message || "เธเธฑเธเธ—เธถเธเธเธฅเนเธกเนเธญเธเธธเธเธฒเธ•เนเธกเนเธชเธณเน€เธฃเนเธ"
         );
       }
 
-      void notifyOfficialDutyReviewed({
-        requestId: rejected.id,
-        fullName: rejected.full_name,
-        dutyDate: rejected.duty_date,
-        reason: rejected.reason,
-        approved: false,
-        reviewerName: reviewerProfile.full_name,
-        reviewNote: rejected.review_note || "",
-      }).catch((error) => {
-        console.error("Official duty rejected notification error:", error);
+      void Promise.allSettled([
+        notifyOfficialDutyReviewed({
+          requestId: rejected.id,
+          fullName: rejected.full_name,
+          dutyDate: rejected.duty_date,
+          reason: rejected.reason,
+          approved: false,
+          reviewerName: reviewerProfile.full_name,
+          reviewNote: rejected.review_note || "",
+        }),
+        notifyOfficialDutyReviewedTelegram({
+          requestId: rejected.id,
+          applicantProfileId: rejected.user_id,
+          reviewerProfileId: reviewerProfile.id,
+          reviewerName: reviewerProfile.full_name,
+          approved: false,
+          officialDutyNumber: rejected.official_duty_number,
+          dutyDate: rejected.duty_date,
+          dutyEndDate: rejected.duty_end_date || rejected.duty_date,
+          totalDays: Number(rejected.total_days || 1),
+          subject: rejected.subject || rejected.reason,
+          location: rejected.location || "-",
+          reviewNote: rejected.review_note || "",
+          pdfFileUrl: rejected.pdf_file_url || null,
+        }),
+      ]).then((results) => {
+        results.forEach((result, index) => {
+          if (result.status === "rejected") {
+            console.error(
+              index === 0
+                ? "LINE official duty rejected notification error:"
+                : "Telegram official duty rejected notification error:",
+              result.reason
+            );
+          }
+        });
       });
 
       return NextResponse.json({
         ok: true,
         request: rejected,
-        message: "บันทึกผลไม่อนุญาตแล้ว",
+        message: "เธเธฑเธเธ—เธถเธเธเธฅเนเธกเนเธญเธเธธเธเธฒเธ•เนเธฅเนเธง",
       });
     }
 
@@ -235,7 +262,7 @@ export async function POST(request: Request, context: Params) {
         {
           ok: false,
           message:
-            "ผู้ขอลงเวลาเข้าแล้วในบางวันของช่วงนี้ จึงไม่สามารถอนุญาตไปราชการย้อนหลังได้",
+            "เธเธนเนเธเธญเธฅเธเน€เธงเธฅเธฒเน€เธเนเธฒเนเธฅเนเธงเนเธเธเธฒเธเธงเธฑเธเธเธญเธเธเนเธงเธเธเธตเน เธเธถเธเนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธญเธเธธเธเธฒเธ•เนเธเธฃเธฒเธเธเธฒเธฃเธขเนเธญเธเธซเธฅเธฑเธเนเธ”เน",
         },
         { status: 409 }
       );
@@ -246,7 +273,7 @@ export async function POST(request: Request, context: Params) {
         {
           ok: false,
           message:
-            "วันที่ขอไปราชการมีคำขอลาหรือการลาที่อนุมัติแล้ว จึงไม่สามารถอนุญาตซ้ำได้",
+            "เธงเธฑเธเธ—เธตเนเธเธญเนเธเธฃเธฒเธเธเธฒเธฃเธกเธตเธเธณเธเธญเธฅเธฒเธซเธฃเธทเธญเธเธฒเธฃเธฅเธฒเธ—เธตเนเธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง เธเธถเธเนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธญเธเธธเธเธฒเธ•เธเนเธณเนเธ”เน",
         },
         { status: 409 }
       );
@@ -269,7 +296,7 @@ export async function POST(request: Request, context: Params) {
             check_out_at: null,
             check_in_status: null,
             check_out_status: null,
-            note: "ไปราชการ",
+            note: "เนเธเธฃเธฒเธเธเธฒเธฃ",
             updated_at: nowForAttendance,
           })
           .eq("id", existingId)
@@ -278,7 +305,7 @@ export async function POST(request: Request, context: Params) {
 
         if (error || !updated) {
           throw new Error(
-            error?.message || "บันทึกสถานะไปราชการไม่สำเร็จ"
+            error?.message || "เธเธฑเธเธ—เธถเธเธชเธ–เธฒเธเธฐเนเธเธฃเธฒเธเธเธฒเธฃเนเธกเนเธชเธณเน€เธฃเนเธ"
           );
         }
 
@@ -291,7 +318,7 @@ export async function POST(request: Request, context: Params) {
             work_date: workDate,
             check_in_at: null,
             check_out_at: null,
-            note: "ไปราชการ",
+            note: "เนเธเธฃเธฒเธเธเธฒเธฃ",
           })
           .select("id")
           .single();
@@ -299,7 +326,7 @@ export async function POST(request: Request, context: Params) {
         if (error || !inserted) {
           throw new Error(
             error?.message ||
-              "สร้างรายการไปราชการในระบบลงเวลาไม่สำเร็จ"
+              "เธชเธฃเนเธฒเธเธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธฒเธเธเธฒเธฃเนเธเธฃเธฐเธเธเธฅเธเน€เธงเธฅเธฒเนเธกเนเธชเธณเน€เธฃเนเธ"
           );
         }
 
@@ -328,26 +355,52 @@ export async function POST(request: Request, context: Params) {
 
     if (reviewError || !reviewed) {
       throw new Error(
-        reviewError?.message || "บันทึกผลการพิจารณาไม่สำเร็จ"
+        reviewError?.message || "เธเธฑเธเธ—เธถเธเธเธฅเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธกเนเธชเธณเน€เธฃเนเธ"
       );
     }
 
-    void notifyOfficialDutyReviewed({
-      requestId: reviewed.id,
-      fullName: reviewed.full_name,
-      dutyDate: reviewed.duty_date,
-      reason: reviewed.reason,
-      approved: true,
-      reviewerName: reviewerProfile.full_name,
-      reviewNote: reviewed.review_note || "",
-    }).catch((error) => {
-      console.error("Official duty approved notification error:", error);
+    void Promise.allSettled([
+      notifyOfficialDutyReviewed({
+        requestId: reviewed.id,
+        fullName: reviewed.full_name,
+        dutyDate: reviewed.duty_date,
+        reason: reviewed.reason,
+        approved: true,
+        reviewerName: reviewerProfile.full_name,
+        reviewNote: reviewed.review_note || "",
+      }),
+      notifyOfficialDutyReviewedTelegram({
+        requestId: reviewed.id,
+        applicantProfileId: reviewed.user_id,
+        reviewerProfileId: reviewerProfile.id,
+        reviewerName: reviewerProfile.full_name,
+        approved: true,
+        officialDutyNumber: reviewed.official_duty_number,
+        dutyDate: reviewed.duty_date,
+        dutyEndDate: reviewed.duty_end_date || reviewed.duty_date,
+        totalDays: Number(reviewed.total_days || 1),
+        subject: reviewed.subject || reviewed.reason,
+        location: reviewed.location || "-",
+        reviewNote: reviewed.review_note || "",
+        pdfFileUrl: reviewed.pdf_file_url || null,
+      }),
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(
+            index === 0
+              ? "LINE official duty approved notification error:"
+              : "Telegram official duty approved notification error:",
+            result.reason
+          );
+        }
+      });
     });
 
     return NextResponse.json({
       ok: true,
       request: reviewed,
-      message: "อนุญาตให้ไปราชการและบันทึกสถานะลงเวลาแล้ว",
+      message: "เธญเธเธธเธเธฒเธ•เนเธซเนเนเธเธฃเธฒเธเธเธฒเธฃเนเธฅเธฐเธเธฑเธเธ—เธถเธเธชเธ–เธฒเธเธฐเธฅเธเน€เธงเธฅเธฒเนเธฅเนเธง",
     });
   } catch (error) {
     console.error("Official duty review error:", error);
@@ -358,7 +411,7 @@ export async function POST(request: Request, context: Params) {
         message:
           error instanceof Error
             ? error.message
-            : "บันทึกผลการพิจารณาไม่สำเร็จ",
+            : "เธเธฑเธเธ—เธถเธเธเธฅเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธกเนเธชเธณเน€เธฃเนเธ",
       },
       { status: 500 }
     );

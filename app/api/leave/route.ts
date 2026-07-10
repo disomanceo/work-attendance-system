@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { notifyLeaveSubmitted } from "@/lib/line/notifications";
+import { notifyLeaveSubmittedTelegram } from "@/lib/telegram/leave-workflow-notifications";
 import {
   issueDocumentNumber,
   markDocumentNumberIssue,
@@ -72,12 +73,12 @@ function config() {
 
 function parseDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error("รูปแบบวันที่ไม่ถูกต้อง");
+    throw new Error("เธฃเธนเธเนเธเธเธงเธฑเธเธ—เธตเนเนเธกเนเธ–เธนเธเธ•เนเธญเธ");
   }
 
   const date = new Date(`${value}T00:00:00+07:00`);
   if (Number.isNaN(date.getTime())) {
-    throw new Error("วันที่ไม่ถูกต้อง");
+    throw new Error("เธงเธฑเธเธ—เธตเนเนเธกเนเธ–เธนเธเธ•เนเธญเธ");
   }
   return date;
 }
@@ -111,7 +112,7 @@ async function loadFiscalYearSettings(admin: SupabaseClient) {
     !data.fiscal_year_end_date
   ) {
     throw new Error(
-      "ยังไม่ได้กำหนดปีงบประมาณ กรุณาให้ผู้อำนวยการตั้งค่าก่อน"
+      "เธขเธฑเธเนเธกเนเนเธ”เนเธเธณเธซเธเธ”เธเธตเธเธเธเธฃเธฐเธกเธฒเธ“ เธเธฃเธธเธ“เธฒเนเธซเนเธเธนเนเธญเธณเธเธงเธขเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเธเนเธญเธ"
     );
   }
 
@@ -122,7 +123,7 @@ async function loadFiscalYearSettings(admin: SupabaseClient) {
     activeFiscalYear < 2500 ||
     activeFiscalYear > 2700
   ) {
-    throw new Error("ค่าปีงบประมาณไม่ถูกต้อง");
+    throw new Error("เธเนเธฒเธเธตเธเธเธเธฃเธฐเธกเธฒเธ“เนเธกเนเธ–เธนเธเธ•เนเธญเธ");
   }
 
   return {
@@ -150,14 +151,14 @@ async function holidaySet(
     .gte("holiday_date", startDate)
     .lte("holiday_date", endDate);
 
-  if (error) throw new Error("โหลดวันหยุดไม่สำเร็จ");
+  if (error) throw new Error("เนเธซเธฅเธ”เธงเธฑเธเธซเธขเธธเธ”เนเธกเนเธชเธณเน€เธฃเนเธ");
   return new Set((data ?? []).map((item) => item.holiday_date as string));
 }
 
 function isWorkDay(date: Date, holidays: Set<string>) {
-  // โรงเรียนอาจเปิดเรียนหรือปฏิบัติงานชดเชยในวันเสาร์–อาทิตย์
-  // จึงนับวันเสาร์และวันอาทิตย์เป็นวันที่ยื่นลาได้ตามปกติ
-  // ยกเว้นวันที่ผู้ดูแลกำหนดไว้ในตาราง leave_holidays เท่านั้น
+  // เนเธฃเธเน€เธฃเธตเธขเธเธญเธฒเธเน€เธเธดเธ”เน€เธฃเธตเธขเธเธซเธฃเธทเธญเธเธเธดเธเธฑเธ•เธดเธเธฒเธเธเธ”เน€เธเธขเนเธเธงเธฑเธเน€เธชเธฒเธฃเนโ€“เธญเธฒเธ—เธดเธ•เธขเน
+  // เธเธถเธเธเธฑเธเธงเธฑเธเน€เธชเธฒเธฃเนเนเธฅเธฐเธงเธฑเธเธญเธฒเธ—เธดเธ•เธขเนเน€เธเนเธเธงเธฑเธเธ—เธตเนเธขเธทเนเธเธฅเธฒเนเธ”เนเธ•เธฒเธกเธเธเธ•เธด
+  // เธขเธเน€เธงเนเธเธงเธฑเธเธ—เธตเนเธเธนเนเธ”เธนเนเธฅเธเธณเธซเธเธ”เนเธงเนเนเธเธ•เธฒเธฃเธฒเธ leave_holidays เน€เธ—เนเธฒเธเธฑเนเธ
   return !holidays.has(dateKey(date));
 }
 
@@ -219,7 +220,7 @@ async function callGas(
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error(
-        "Google Apps Script ตอบกลับช้าเกิน 50 วินาที กรุณาตรวจสอบ Deployment และสิทธิ์การเข้าถึง"
+        "Google Apps Script เธ•เธญเธเธเธฅเธฑเธเธเนเธฒเน€เธเธดเธ 50 เธงเธดเธเธฒเธ—เธต เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธ Deployment เนเธฅเธฐเธชเธดเธ—เธเธดเนเธเธฒเธฃเน€เธเนเธฒเธ–เธถเธ"
       );
     }
     throw error;
@@ -234,7 +235,7 @@ async function callGas(
     result = JSON.parse(text) as Record<string, unknown>;
   } catch {
     throw new Error(
-      "Google Apps Script ไม่ได้ตอบกลับเป็น JSON กรุณา Deploy เวอร์ชันล่าสุด"
+      "Google Apps Script เนเธกเนเนเธ”เนเธ•เธญเธเธเธฅเธฑเธเน€เธเนเธ JSON เธเธฃเธธเธ“เธฒ Deploy เน€เธงเธญเธฃเนเธเธฑเธเธฅเนเธฒเธชเธธเธ”"
     );
   }
 
@@ -242,7 +243,7 @@ async function callGas(
     throw new Error(
       typeof result.message === "string"
         ? result.message
-        : "Google Apps Script ทำงานไม่สำเร็จ"
+        : "Google Apps Script เธ—เธณเธเธฒเธเนเธกเนเธชเธณเน€เธฃเนเธ"
     );
   }
 
@@ -261,7 +262,7 @@ async function getSignatureAsset(
   })) as GasAssetResponse;
 
   if (!result.base64) {
-    throw new Error("ไม่พบข้อมูลลายเซ็น กรุณาอัปโหลดลายเซ็นใหม่");
+    throw new Error("เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธฅเธฒเธขเน€เธเนเธ เธเธฃเธธเธ“เธฒเธญเธฑเธเนเธซเธฅเธ”เธฅเธฒเธขเน€เธเนเธเนเธซเธกเน");
   }
 
   return {
@@ -274,14 +275,14 @@ async function authorize(request: Request) {
   const cfg = config();
   if (!cfg) {
     throw new Error(
-      "Environment Variables ของ Supabase หรือ Google Apps Script ยังไม่ครบ"
+      "Environment Variables เธเธญเธ Supabase เธซเธฃเธทเธญ Google Apps Script เธขเธฑเธเนเธกเนเธเธฃเธ"
     );
   }
 
   const header = request.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
   if (!token) {
-    return { ok: false as const, status: 401, message: "กรุณาเข้าสู่ระบบ" };
+    return { ok: false as const, status: 401, message: "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ" };
   }
 
   const auth = createClient(cfg.url, cfg.publishable, {
@@ -294,7 +295,7 @@ async function authorize(request: Request) {
   } = await auth.auth.getUser(token);
 
   if (error || !user) {
-    return { ok: false as const, status: 401, message: "Session หมดอายุ" };
+    return { ok: false as const, status: 401, message: "Session เธซเธกเธ”เธญเธฒเธขเธธ" };
   }
 
   const admin = createClient(cfg.url, cfg.service, {
@@ -313,7 +314,7 @@ async function authorize(request: Request) {
     return {
       ok: false as const,
       status: 403,
-      message: "บัญชียังไม่พร้อมใช้งาน",
+      message: "เธเธฑเธเธเธตเธขเธฑเธเนเธกเนเธเธฃเนเธญเธกเนเธเนเธเธฒเธ",
     };
   }
 
@@ -344,7 +345,7 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (error) throw new Error("โหลดประวัติการลาไม่สำเร็จ");
+    if (error) throw new Error("เนเธซเธฅเธ”เธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธฅเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
 
     const countedStatuses = new Set([
       "pending",
@@ -393,7 +394,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+        message: error instanceof Error ? error.message : "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”",
       },
       { status: 500 }
     );
@@ -437,14 +438,14 @@ try {
 
     if (!["personal", "sick"].includes(leaveType)) {
       return NextResponse.json(
-        { ok: false, message: "กรุณาเลือกประเภทการลา" },
+        { ok: false, message: "เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธเธฃเธฐเน€เธ เธ—เธเธฒเธฃเธฅเธฒ" },
         { status: 400 }
       );
     }
 
     if (reason.length < 5) {
       return NextResponse.json(
-        { ok: false, message: "กรุณาระบุเหตุผลอย่างน้อย 5 ตัวอักษร" },
+        { ok: false, message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเน€เธซเธ•เธธเธเธฅเธญเธขเนเธฒเธเธเนเธญเธข 5 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ" },
         { status: 400 }
       );
     }
@@ -453,7 +454,7 @@ try {
       return NextResponse.json(
         {
           ok: false,
-          message: "กรุณาอัปโหลดลายเซ็นในหน้าข้อมูลส่วนตัวก่อนยื่นใบลา",
+          message: "เธเธฃเธธเธ“เธฒเธญเธฑเธเนเธซเธฅเธ”เธฅเธฒเธขเน€เธเนเธเนเธเธซเธเนเธฒเธเนเธญเธกเธนเธฅเธชเนเธงเธเธ•เธฑเธงเธเนเธญเธเธขเธทเนเธเนเธเธฅเธฒ",
         },
         { status: 400 }
       );
@@ -464,7 +465,7 @@ try {
 
     if (endDate < startDate) {
       return NextResponse.json(
-        { ok: false, message: "วันสิ้นสุดต้องไม่ก่อนวันเริ่มลา" },
+        { ok: false, message: "เธงเธฑเธเธชเธดเนเธเธชเธธเธ”เธ•เนเธญเธเนเธกเนเธเนเธญเธเธงเธฑเธเน€เธฃเธดเนเธกเธฅเธฒ" },
         { status: 400 }
       );
     }
@@ -483,7 +484,7 @@ try {
 
     if (totalWorkDays < 1) {
       return NextResponse.json(
-        { ok: false, message: "ช่วงวันที่เลือกไม่มีวันทำการ" },
+        { ok: false, message: "เธเนเธงเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธเนเธกเนเธกเธตเธงเธฑเธเธ—เธณเธเธฒเธฃ" },
         { status: 400 }
       );
     }
@@ -515,7 +516,7 @@ try {
         {
           ok: false,
           message:
-            "ใบลาย้อนหลังเกิน 3 วันทำการ ต้องระบุเหตุผลอย่างน้อย 5 ตัวอักษร",
+            "เนเธเธฅเธฒเธขเนเธญเธเธซเธฅเธฑเธเน€เธเธดเธ 3 เธงเธฑเธเธ—เธณเธเธฒเธฃ เธ•เนเธญเธเธฃเธฐเธเธธเน€เธซเธ•เธธเธเธฅเธญเธขเนเธฒเธเธเนเธญเธข 5 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ",
         },
         { status: 400 }
       );
@@ -528,7 +529,7 @@ try {
       return NextResponse.json(
         {
           ok: false,
-          message: "ลาป่วยตั้งแต่ 3 วันทำการขึ้นไป ต้องแนบใบรับรองแพทย์",
+          message: "เธฅเธฒเธเนเธงเธขเธ•เธฑเนเธเนเธ•เน 3 เธงเธฑเธเธ—เธณเธเธฒเธฃเธเธถเนเธเนเธ เธ•เนเธญเธเนเธเธเนเธเธฃเธฑเธเธฃเธญเธเนเธเธ—เธขเน",
         },
         { status: 400 }
       );
@@ -536,7 +537,7 @@ try {
     if (attachment) {
       if (attachment.size > MAX_FILE_SIZE) {
         return NextResponse.json(
-          { ok: false, message: "ไฟล์แนบต้องมีขนาดไม่เกิน 5 MB" },
+          { ok: false, message: "เนเธเธฅเนเนเธเธเธ•เนเธญเธเธกเธตเธเธเธฒเธ”เนเธกเนเน€เธเธดเธ 5 MB" },
           { status: 400 }
         );
       }
@@ -546,7 +547,7 @@ try {
           {
             ok: false,
             message:
-              "รุ่นนี้รองรับหลักฐานเฉพาะ JPG และ PNG เพื่อรวมไว้ใน PDF ฉบับเดียว",
+              "เธฃเธธเนเธเธเธตเนเธฃเธญเธเธฃเธฑเธเธซเธฅเธฑเธเธเธฒเธเน€เธเธเธฒเธฐ JPG เนเธฅเธฐ PNG เน€เธเธทเนเธญเธฃเธงเธกเนเธงเนเนเธ PDF เธเธเธฑเธเน€เธ”เธตเธขเธง",
           },
           { status: 400 }
         );
@@ -562,7 +563,7 @@ try {
       return NextResponse.json(
         {
           ok: false,
-          message: `วันที่ลาอยู่นอกช่วงปีงบประมาณ ${fiscalSettings.activeFiscalYear}`,
+          message: `เธงเธฑเธเธ—เธตเนเธฅเธฒเธญเธขเธนเนเธเธญเธเธเนเธงเธเธเธตเธเธเธเธฃเธฐเธกเธฒเธ“ ${fiscalSettings.activeFiscalYear}`,
         },
         { status: 400 }
       );
@@ -578,7 +579,7 @@ try {
       .eq("fiscal_year", fiscalYear)
       .eq("status", "approved");
 
-    if (countError) throw new Error("คำนวณครั้งที่ลาไม่สำเร็จ");
+    if (countError) throw new Error("เธเธณเธเธงเธ“เธเธฃเธฑเนเธเธ—เธตเนเธฅเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
 
     const { data: overlaps, error: overlapError } = await admin
       .from("leave_requests")
@@ -589,16 +590,16 @@ try {
       .gte("end_date", startDateValue)
       .limit(1);
 
-    if (overlapError) throw new Error("ตรวจสอบช่วงวันลาซ้อนไม่สำเร็จ");
+    if (overlapError) throw new Error("เธ•เธฃเธงเธเธชเธญเธเธเนเธงเธเธงเธฑเธเธฅเธฒเธเนเธญเธเนเธกเนเธชเธณเน€เธฃเนเธ");
 
     if ((overlaps ?? []).length > 0) {
       return NextResponse.json(
-        { ok: false, message: "ช่วงวันที่เลือกมีใบลาอยู่แล้ว" },
+        { ok: false, message: "เธเนเธงเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธเธกเธตเนเธเธฅเธฒเธญเธขเธนเนเนเธฅเนเธง" },
         { status: 409 }
       );
     }
 
-    // ตรวจสอบการลงเวลาและไปราชการก่อนสร้างเอกสารใบลา
+    // เธ•เธฃเธงเธเธชเธญเธเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒเนเธฅเธฐเนเธเธฃเธฒเธเธเธฒเธฃเธเนเธญเธเธชเธฃเนเธฒเธเน€เธญเธเธชเธฒเธฃเนเธเธฅเธฒ
     const [{ data: attendanceConflict }, { data: dutyConflict }] =
       await Promise.all([
         admin
@@ -628,7 +629,7 @@ try {
       return NextResponse.json(
         {
           ok: false,
-          message: `วันที่ ${attendanceConflict.work_date} ได้ลงเวลาปฏิบัติงานแล้ว จึงไม่สามารถยื่นลาครอบคลุมวันดังกล่าวได้`,
+          message: `เธงเธฑเธเธ—เธตเน ${attendanceConflict.work_date} เนเธ”เนเธฅเธเน€เธงเธฅเธฒเธเธเธดเธเธฑเธ•เธดเธเธฒเธเนเธฅเนเธง เธเธถเธเนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธขเธทเนเธเธฅเธฒเธเธฃเธญเธเธเธฅเธธเธกเธงเธฑเธเธ”เธฑเธเธเธฅเนเธฒเธงเนเธ”เน`,
         },
         { status: 409 }
       );
@@ -638,7 +639,7 @@ try {
       return NextResponse.json(
         {
           ok: false,
-          message: `วันที่ ${dutyConflict.duty_date} มีคำขอไปราชการหรือได้รับอนุญาตแล้ว จึงไม่สามารถยื่นลาซ้ำได้`,
+          message: `เธงเธฑเธเธ—เธตเน ${dutyConflict.duty_date} เธกเธตเธเธณเธเธญเนเธเธฃเธฒเธเธเธฒเธฃเธซเธฃเธทเธญเนเธ”เนเธฃเธฑเธเธญเธเธธเธเธฒเธ•เนเธฅเนเธง เธเธถเธเนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธขเธทเนเธเธฅเธฒเธเนเธณเนเธ”เน`,
         },
         { status: 409 }
       );
@@ -714,7 +715,7 @@ try {
       !gasResult.workingDocumentId ||
       !gasResult.requestFolderId
     ) {
-      throw new Error("GAS ไม่คืนข้อมูลเอกสารใบลาที่จำเป็น");
+      throw new Error("GAS เนเธกเนเธเธทเธเธเนเธญเธกเธนเธฅเน€เธญเธเธชเธฒเธฃเนเธเธฅเธฒเธ—เธตเนเธเธณเน€เธเนเธ");
     }
     const { data, error } = await admin
       .from("leave_requests")
@@ -747,7 +748,7 @@ try {
         attachment_mime_type: evidence?.mimeType || null,
         attachment_size_bytes: evidence?.size || null,
 
-        // ยกเลิกการใช้ Supabase Storage สำหรับหลักฐานใหม่
+        // เธขเธเน€เธฅเธดเธเธเธฒเธฃเนเธเน Supabase Storage เธชเธณเธซเธฃเธฑเธเธซเธฅเธฑเธเธเธฒเธเนเธซเธกเน
         attachment_bucket: null,
         attachment_path: null,
       })
@@ -763,7 +764,7 @@ try {
         requestFolderId: gasResult.requestFolderId,
       }).catch(() => undefined);
 
-      throw new Error("บันทึกใบลาไม่สำเร็จ");
+      throw new Error("เธเธฑเธเธ—เธถเธเนเธเธฅเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
     }
 
     await markDocumentNumberIssue(admin, {
@@ -772,26 +773,48 @@ try {
       status: "COMPLETED",
     });
 
-    await notifyLeaveSubmitted({
-      requestId: data.id,
-      fullName: profile.full_name,
-      position: profile.position || profile.role,
-      leaveType,
-      startDate: startDateValue,
-      endDate: endDateValue,
-      totalDays: totalWorkDays,
-      reason,
-      leaveNumber: issuedNumber.formattedNumber,
-      submittedAt,
-    }).catch((lineError) => {
-      console.error("LINE leave submitted notification error:", lineError);
+    await Promise.allSettled([
+      notifyLeaveSubmitted({
+        requestId: data.id,
+        fullName: profile.full_name,
+        position: profile.position || profile.role,
+        leaveType,
+        startDate: startDateValue,
+        endDate: endDateValue,
+        totalDays: totalWorkDays,
+        reason,
+        leaveNumber: issuedNumber.formattedNumber,
+        submittedAt,
+      }),
+      notifyLeaveSubmittedTelegram({
+        requestId: data.id,
+        applicantProfileId: profile.id,
+        applicantName: profile.full_name,
+        leaveNumber: issuedNumber.formattedNumber,
+        leaveType,
+        startDate: startDateValue,
+        endDate: endDateValue,
+        totalDays: totalWorkDays,
+        reason,
+      }),
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(
+            index === 0
+              ? "LINE leave submitted notification error:"
+              : "Telegram leave submitted notification error:",
+            result.reason
+          );
+        }
+      });
     });
 
     return NextResponse.json({
       ok: true,
       request: data,
       previewSequence: Number(approvedCount ?? 0) + 1,
-      message: `ส่งใบลาเลขที่ ${issuedNumber.formattedNumber} เพื่อรอการพิจารณาเรียบร้อยแล้ว`,
+      message: `เธชเนเธเนเธเธฅเธฒเน€เธฅเธเธ—เธตเน ${issuedNumber.formattedNumber} เน€เธเธทเนเธญเธฃเธญเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง`,
     });
   } catch (error) {
     if (reservedAdmin && reservedRequestId) {
@@ -805,7 +828,7 @@ try {
     return NextResponse.json(
       {
         ok: false,
-        message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+        message: error instanceof Error ? error.message : "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”",
       },
       { status: 500 }
     );
@@ -837,7 +860,7 @@ export async function DELETE(request: Request) {
 
     if (!requestId) {
       return NextResponse.json(
-        { ok: false, message: "ไม่พบรหัสใบลาที่ต้องการลบ" },
+        { ok: false, message: "เนเธกเนเธเธเธฃเธซเธฑเธชเนเธเธฅเธฒเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฅเธ" },
         { status: 400 }
       );
     }
@@ -859,14 +882,14 @@ export async function DELETE(request: Request) {
       .maybeSingle();
 
     if (loadError) {
-      throw new Error("ตรวจสอบข้อมูลใบลาไม่สำเร็จ");
+      throw new Error("เธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเนเธเธฅเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
     }
 
     if (!leaveRequest) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ไม่พบใบลา หรือคุณไม่มีสิทธิ์ลบใบลารายการนี้",
+          message: "เนเธกเนเธเธเนเธเธฅเธฒ เธซเธฃเธทเธญเธเธธเธ“เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธฅเธเนเธเธฅเธฒเธฃเธฒเธขเธเธฒเธฃเธเธตเน",
         },
         { status: 404 }
       );
@@ -895,12 +918,12 @@ export async function DELETE(request: Request) {
       .eq("user_id", user.id);
 
     if (deleteError) {
-      throw new Error("ลบข้อมูลใบลาไม่สำเร็จ");
+      throw new Error("เธฅเธเธเนเธญเธกเธนเธฅเนเธเธฅเธฒเนเธกเนเธชเธณเน€เธฃเนเธ");
     }
 
     return NextResponse.json({
       ok: true,
-      message: "ลบใบลาเรียบร้อยแล้ว",
+      message: "เธฅเธเนเธเธฅเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง",
       requestId,
     });
   } catch (error) {
@@ -908,7 +931,7 @@ export async function DELETE(request: Request) {
       {
         ok: false,
         message:
-          error instanceof Error ? error.message : "ลบใบลาไม่สำเร็จ",
+          error instanceof Error ? error.message : "เธฅเธเนเธเธฅเธฒเนเธกเนเธชเธณเน€เธฃเนเธ",
       },
       { status: 500 }
     );

@@ -5,6 +5,7 @@ import {
   officialDutyConfig,
 } from "@/lib/official-duty-auth";
 import { notifyOfficialDutySubmitted } from "@/lib/line/official-duty-notifications";
+import { notifyOfficialDutySubmittedTelegram } from "@/lib/telegram/official-duty-workflow-notifications";
 import {
   issueDocumentNumber,
   markDocumentNumberIssue,
@@ -29,7 +30,7 @@ const ALLOWED_TYPES = new Set([
 
 function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error("วันที่ไปราชการไม่ถูกต้อง");
+    throw new Error("เน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโ€“เน€เธเธเน€เธยเน€เธโ€ขเน€เธยเน€เธเธเน€เธย");
   }
   return value;
 }
@@ -83,14 +84,14 @@ export async function GET(request: Request) {
       .eq("user_id", auth.user.id)
       .order("created_at", { ascending: false });
 
-    if (error) throw new Error("โหลดประวัติการขอไปราชการไม่สำเร็จ");
+    if (error) throw new Error("เน€เธยเน€เธเธเน€เธเธ…เน€เธโ€เน€เธยเน€เธเธเน€เธเธเน€เธเธเน€เธเธ‘เน€เธโ€ขเน€เธเธ”เน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ“เน€เธโฌเน€เธเธเน€เธยเน€เธย");
 
     return NextResponse.json({ ok: true, requests: data ?? [] });
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
-        message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+        message: error instanceof Error ? error.message : "เน€เธโฌเน€เธยเน€เธเธ”เน€เธโ€เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธ”เน€เธโ€เน€เธยเน€เธเธ…เน€เธเธ’เน€เธโ€",
       },
       { status: 500 }
     );
@@ -134,26 +135,26 @@ export async function POST(request: Request) {
 
     if (dutyEndDate < dutyDate) {
       return NextResponse.json(
-        { ok: false, message: "วันที่กลับต้องไม่ก่อนวันที่ไป" },
+        { ok: false, message: "เน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธเธ…เน€เธเธ‘เน€เธยเน€เธโ€ขเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธย" },
         { status: 400 }
       );
     }
 
     if (subject.length < 3) {
       return NextResponse.json(
-        { ok: false, message: "กรุณาระบุเรื่องไปราชการอย่างน้อย 3 ตัวอักษร" },
+        { ok: false, message: "เน€เธยเน€เธเธเน€เธเธเน€เธโ€เน€เธเธ’เน€เธเธเน€เธเธเน€เธยเน€เธเธเน€เธโฌเน€เธเธเน€เธเธ—เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธเธเน€เธเธเน€เธยเน€เธเธ’เน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธ 3 เน€เธโ€ขเน€เธเธ‘เน€เธเธเน€เธเธเน€เธเธ‘เน€เธยเน€เธเธเน€เธเธ" },
         { status: 400 }
       );
     }
 
     if (location.length < 2) {
       return NextResponse.json(
-        { ok: false, message: "กรุณาระบุสถานที่ไปราชการ" },
+        { ok: false, message: "เน€เธยเน€เธเธเน€เธเธเน€เธโ€เน€เธเธ’เน€เธเธเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธโ€“เน€เธเธ’เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธ" },
         { status: 400 }
       );
     }
 
-    // ตรวจสอบข้อมูลลงเวลาเดิมก่อนสร้างคำขอ
+    // เน€เธโ€ขเน€เธเธเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธเน€เธเธเน€เธเธ…เน€เธเธ…เน€เธยเน€เธโฌเน€เธเธเน€เธเธ…เน€เธเธ’เน€เธโฌเน€เธโ€เน€เธเธ”เน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธยเน€เธเธ’เน€เธยเน€เธยเน€เธเธ“เน€เธยเน€เธเธ
     const [
       { data: checkedIn },
       { data: activeLeave },
@@ -189,7 +190,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           ok: false,
-          message: "ช่วงวันที่เลือกมีวันที่ลงเวลาปฏิบัติงานแล้ว จึงไม่สามารถขอไปราชการได้",
+          message: "เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ—เน€เธเธเน€เธยเน€เธเธเน€เธเธ•เน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธเธ…เน€เธยเน€เธโฌเน€เธเธเน€เธเธ…เน€เธเธ’เน€เธยเน€เธยเน€เธเธ”เน€เธยเน€เธเธ‘เน€เธโ€ขเน€เธเธ”เน€เธยเน€เธเธ’เน€เธยเน€เธยเน€เธเธ…เน€เธยเน€เธเธ เน€เธยเน€เธเธ–เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ’เน€เธเธเน€เธเธ’เน€เธเธเน€เธโ€“เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธโ€เน€เธย",
         },
         { status: 409 }
       );
@@ -200,7 +201,7 @@ export async function POST(request: Request) {
         {
           ok: false,
           message:
-            "ช่วงวันที่เลือกมีคำขอลาหรือการลาที่อนุมัติแล้ว จึงไม่สามารถขอไปราชการซ้ำได้",
+            "เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธโฌเน€เธเธ…เน€เธเธ—เน€เธเธเน€เธยเน€เธเธเน€เธเธ•เน€เธยเน€เธเธ“เน€เธยเน€เธเธเน€เธเธ…เน€เธเธ’เน€เธเธเน€เธเธเน€เธเธ—เน€เธเธเน€เธยเน€เธเธ’เน€เธเธเน€เธเธ…เน€เธเธ’เน€เธโ€”เน€เธเธ•เน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธเธ‘เน€เธโ€ขเน€เธเธ”เน€เธยเน€เธเธ…เน€เธยเน€เธเธ เน€เธยเน€เธเธ–เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ’เน€เธเธเน€เธเธ’เน€เธเธเน€เธโ€“เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธยเน€เธเธ“เน€เธยเน€เธโ€เน€เธย",
         },
         { status: 409 }
       );
@@ -216,7 +217,7 @@ export async function POST(request: Request) {
 
     if (duplicate) {
       return NextResponse.json(
-        { ok: false, message: "มีคำขอไปราชการในช่วงวันที่นี้อยู่แล้ว" },
+        { ok: false, message: "เน€เธเธเน€เธเธ•เน€เธยเน€เธเธ“เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธเธ•เน€เธยเน€เธเธเน€เธเธเน€เธเธเน€เธยเน€เธยเน€เธเธ…เน€เธยเน€เธเธ" },
         { status: 409 }
       );
     }
@@ -239,14 +240,14 @@ export async function POST(request: Request) {
     if (attachment instanceof File && attachment.size > 0) {
       if (attachment.size > MAX_FILE_SIZE) {
         return NextResponse.json(
-          { ok: false, message: "ไฟล์แนบต้องไม่เกิน 5 MB" },
+          { ok: false, message: "เน€เธยเน€เธยเน€เธเธ…เน€เธยเน€เธยเน€เธยเน€เธยเน€เธโ€ขเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธโฌเน€เธยเน€เธเธ”เน€เธย 5 MB" },
           { status: 400 }
         );
       }
 
       if (!ALLOWED_TYPES.has(attachment.type)) {
         return NextResponse.json(
-          { ok: false, message: "รองรับเฉพาะ JPG, PNG และ PDF" },
+          { ok: false, message: "เน€เธเธเน€เธเธเน€เธยเน€เธเธเน€เธเธ‘เน€เธยเน€เธโฌเน€เธยเน€เธยเน€เธเธ’เน€เธเธ JPG, PNG เน€เธยเน€เธเธ…เน€เธเธ PDF" },
           { status: 400 }
         );
       }
@@ -275,7 +276,7 @@ export async function POST(request: Request) {
           {
             ok: false,
             message:
-              "กรุณาอัปโหลดลายเซ็นในข้อมูลส่วนตัวก่อนส่งคำขอไปราชการ",
+              "เน€เธยเน€เธเธเน€เธเธเน€เธโ€เน€เธเธ’เน€เธเธเน€เธเธ‘เน€เธยเน€เธยเน€เธเธเน€เธเธ…เน€เธโ€เน€เธเธ…เน€เธเธ’เน€เธเธเน€เธโฌเน€เธยเน€เธยเน€เธยเน€เธยเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธเน€เธเธเน€เธเธ…เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธโ€ขเน€เธเธ‘เน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธยเน€เธยเน€เธเธ“เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธ",
           },
           { status: 400 }
         );
@@ -315,7 +316,7 @@ export async function POST(request: Request) {
         documentConfig.profileGasUrl,
         documentConfig.profileGasSecret,
         auth.profile.signature_file_id,
-        "ลายเซ็นผู้ยื่นคำขอไปราชการ"
+        "เน€เธเธ…เน€เธเธ’เน€เธเธเน€เธโฌเน€เธยเน€เธยเน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ—เน€เธยเน€เธยเน€เธยเน€เธเธ“เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธ"
       );
 
       const gasResult = (await callOfficialDutyDocumentGas(
@@ -348,7 +349,7 @@ export async function POST(request: Request) {
       )) as OfficialDutyPendingResponse;
 
       if (!gasResult.workingDocumentId || !gasResult.requestFolderId) {
-        throw new Error("GAS ไม่คืนข้อมูลเอกสารไปราชการที่จำเป็น");
+        throw new Error("GAS เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธ—เน€เธยเน€เธยเน€เธยเน€เธเธเน€เธเธเน€เธเธเน€เธเธ…เน€เธโฌเน€เธเธเน€เธยเน€เธเธเน€เธเธ’เน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธโ€”เน€เธเธ•เน€เธยเน€เธยเน€เธเธ“เน€เธโฌเน€เธยเน€เธยเน€เธย");
       }
 
       pendingDocumentId = gasResult.workingDocumentId;
@@ -399,7 +400,7 @@ export async function POST(request: Request) {
       .select("*")
       .single();
 
-    if (error || !data) throw new Error("บันทึกคำขอไปราชการไม่สำเร็จ");
+    if (error || !data) throw new Error("เน€เธยเน€เธเธ‘เน€เธยเน€เธโ€”เน€เธเธ–เน€เธยเน€เธยเน€เธเธ“เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธ“เน€เธโฌเน€เธเธเน€เธยเน€เธย");
 
     pendingDocumentId = null;
     pendingRequestFolderId = null;
@@ -413,20 +414,45 @@ export async function POST(request: Request) {
       });
     }
 
-    await notifyOfficialDutySubmitted({
-      requestId: data.id,
-      fullName: data.full_name,
-      position: data.position || "",
-      dutyDate: data.duty_date,
-      reason: data.reason,
-      hasAttachment: Boolean(data.attachment_file_id),
-      submittedAt,
-    }).catch(console.error);
+    await Promise.allSettled([
+      notifyOfficialDutySubmitted({
+        requestId: data.id,
+        fullName: data.full_name,
+        position: data.position || "",
+        dutyDate: data.duty_date,
+        reason: data.reason,
+        hasAttachment: Boolean(data.attachment_file_id),
+        submittedAt,
+      }),
+      notifyOfficialDutySubmittedTelegram({
+        requestId: data.id,
+        applicantProfileId: auth.profile.id,
+        applicantName: data.full_name,
+        officialDutyNumber: data.official_duty_number,
+        dutyDate: data.duty_date,
+        dutyEndDate: data.duty_end_date || data.duty_date,
+        totalDays: Number(data.total_days || 1),
+        subject: data.subject || data.reason,
+        location: data.location || "-",
+        note: data.note || "",
+      }),
+    ]).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(
+            index === 0
+              ? "LINE official duty submitted notification error:"
+              : "Telegram official duty submitted notification error:",
+            result.reason
+          );
+        }
+      });
+    });
 
     return NextResponse.json({
       ok: true,
       request: data,
-      message: "ส่งคำขอไปราชการเรียบร้อยแล้ว",
+      message: "เน€เธเธเน€เธยเน€เธยเน€เธยเน€เธเธ“เน€เธยเน€เธเธเน€เธยเน€เธยเน€เธเธเน€เธเธ’เน€เธยเน€เธยเน€เธเธ’เน€เธเธเน€เธโฌเน€เธเธเน€เธเธ•เน€เธเธเน€เธยเน€เธเธเน€เธยเน€เธเธเน€เธเธเน€เธยเน€เธเธ…เน€เธยเน€เธเธ",
     });
   } catch (error) {
     if (pendingGasUrl && pendingGasSecret && pendingDocumentId) {
@@ -453,14 +479,14 @@ export async function POST(request: Request) {
         referenceId: issuedReferenceId,
         status: "FAILED",
         failureReason:
-          error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+          error instanceof Error ? error.message : "เน€เธโฌเน€เธยเน€เธเธ”เน€เธโ€เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธ”เน€เธโ€เน€เธยเน€เธเธ…เน€เธเธ’เน€เธโ€",
       });
     }
 
     return NextResponse.json(
       {
         ok: false,
-        message: error instanceof Error ? error.message : "เกิดข้อผิดพลาด",
+        message: error instanceof Error ? error.message : "เน€เธโฌเน€เธยเน€เธเธ”เน€เธโ€เน€เธยเน€เธยเน€เธเธเน€เธยเน€เธเธ”เน€เธโ€เน€เธยเน€เธเธ…เน€เธเธ’เน€เธโ€",
       },
       { status: 500 }
     );

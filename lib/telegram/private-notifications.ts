@@ -14,12 +14,21 @@ type NotificationEvent =
   | "official_trip.submitted"
   | "official_trip.approved"
   | "official_trip.rejected"
+  | "official_duty.submitted"
+  | "official_duty.approved"
+  | "official_duty.rejected"
   | "memo.submitted"
   | "memo.approved"
+  | "memo.acknowledged"
   | "memo.rejected"
+  | "memo.revision"
   | "memo.revision_requested"
   | "order.assigned"
-  | "order.acknowledged";
+  | "order.acknowledged"
+  | "order.submitted"
+  | "order.resubmitted"
+  | "order.approved"
+  | "order.revision";
 
 type NotifyProfilesInput = {
   event: NotificationEvent;

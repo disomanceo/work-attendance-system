@@ -1,5 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { issueDocumentNumber } from "@/lib/document-numbers";
+import { notifyOrderSubmittedTelegram } from "@/lib/telegram/order-workflow-notifications";
 import {
   authorizeOrderRequest,
   isOrderManager,
@@ -498,6 +499,20 @@ export async function POST(request: Request) {
     });
 
     const hasOrderFile = Boolean(docxMeta.fileId || pdfMeta.fileId);
+
+    await notifyOrderSubmittedTelegram({
+      orderId: saved.id,
+      applicantProfileId: auth.profile.id,
+      applicantName: auth.profile.full_name,
+      responsibleProfileId: responsible.id,
+      responsibleName: responsible.full_name,
+      orderNumber: saved.order_number,
+      subject: saved.subject,
+      orderDate: saved.order_date,
+      revisionCount: Number(saved.revision_count || 0),
+    }).catch((telegramError) => {
+      console.error("Telegram order submitted notification error:", telegramError);
+    });
 
     return NextResponse.json({
       ok: true,
