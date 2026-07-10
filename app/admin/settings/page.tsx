@@ -8,6 +8,7 @@ import AcademicYearSettingsField from "./AcademicYearSettingsField";
 import PositionWorkPolicySection from "./PositionWorkPolicySection";
 import DocumentNumberSection from "./DocumentNumberSection";
 import WorkCalendarSection from "./WorkCalendarSection";
+import NotificationSettingsTab from "./NotificationSettingsTab";
 
 type RoleKey = "director" | "teacher" | "staff" | "janitor";
 
@@ -183,6 +184,8 @@ export default function DirectorSettingsPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
+  const [activeSettingsTab, setActiveSettingsTab] =
+    useState<"system" | "notifications">("system");
   const [settings, setSettings] =
     useState<AttendanceSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -614,7 +617,72 @@ export default function DirectorSettingsPage() {
         </div>
       )}
 
-      <div className={styles.settingsWorkspace}>
+      <div
+        aria-label="หมวดการตั้งค่า"
+        style={{
+          display: "flex",
+          gap: 8,
+          marginBottom: 18,
+          padding: 6,
+          border: "1px solid #e2e8f0",
+          borderRadius: 16,
+          background: "#ffffff",
+          width: "fit-content",
+          maxWidth: "100%",
+          overflowX: "auto",
+        }}
+      >
+        <button
+          type="button"
+          aria-pressed={activeSettingsTab === "system"}
+          onClick={() => setActiveSettingsTab("system")}
+          style={{
+            minHeight: 42,
+            border: 0,
+            borderRadius: 11,
+            padding: "0 18px",
+            background:
+              activeSettingsTab === "system" ? "#0f766e" : "transparent",
+            color:
+              activeSettingsTab === "system" ? "#ffffff" : "#334155",
+            fontWeight: 750,
+            whiteSpace: "nowrap",
+            cursor: "pointer",
+          }}
+        >
+          ตั้งค่าระบบ
+        </button>
+
+        <button
+          type="button"
+          aria-pressed={activeSettingsTab === "notifications"}
+          onClick={() => setActiveSettingsTab("notifications")}
+          style={{
+            minHeight: 42,
+            border: 0,
+            borderRadius: 11,
+            padding: "0 18px",
+            background:
+              activeSettingsTab === "notifications"
+                ? "#0f766e"
+                : "transparent",
+            color:
+              activeSettingsTab === "notifications"
+                ? "#ffffff"
+                : "#334155",
+            fontWeight: 750,
+            whiteSpace: "nowrap",
+            cursor: "pointer",
+          }}
+        >
+          ตั้งค่าการแจ้งเตือน
+        </button>
+      </div>
+
+      {activeSettingsTab === "notifications" && (
+        <NotificationSettingsTab />
+      )}
+      <div hidden={activeSettingsTab !== "system"} className={styles.settingsWorkspace}>
         <div className={styles.primaryColumn}>
           <form className={styles.settingsGrid} onSubmit={saveSettings}>
             <section className={`${styles.card} ${styles.gpsCard}`}>
