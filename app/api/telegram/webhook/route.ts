@@ -10,6 +10,7 @@ import {
   type TelegramRegistryUpdate,
 } from "@/lib/telegram/registry";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
+import { handleTelegramLinkCommand } from "@/lib/telegram/linking";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -149,17 +150,17 @@ export async function POST(request: Request) {
         chatId,
         isPrivateChat
           ? [
-              "⛔ ยังไม่สามารถยืนยันว่าเป็นสมาชิกกลุ่มโรงเรียนได้",
+              "โ” เธขเธฑเธเนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธขเธทเธเธขเธฑเธเธงเนเธฒเน€เธเนเธเธชเธกเธฒเธเธดเธเธเธฅเธธเนเธกเนเธฃเธเน€เธฃเธตเธขเธเนเธ”เน",
               "",
-              "กรุณาเข้าร่วมกลุ่ม Telegram ของโรงเรียนก่อน",
-              "จากนั้นกลับมาพิมพ์ /start อีกครั้ง",
+              "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธฃเนเธงเธกเธเธฅเธธเนเธก Telegram เธเธญเธเนเธฃเธเน€เธฃเธตเธขเธเธเนเธญเธ",
+              "เธเธฒเธเธเธฑเนเธเธเธฅเธฑเธเธกเธฒเธเธดเธกเธเน /start เธญเธตเธเธเธฃเธฑเนเธ",
               "",
-              "หมายเหตุ: Bot ต้องเป็นผู้ดูแลกลุ่มเพื่อยืนยันสมาชิกอัตโนมัติ",
+              "เธซเธกเธฒเธขเน€เธซเธ•เธธ: Bot เธ•เนเธญเธเน€เธเนเธเธเธนเนเธ”เธนเนเธฅเธเธฅเธธเนเธกเน€เธเธทเนเธญเธขเธทเธเธขเธฑเธเธชเธกเธฒเธเธดเธเธญเธฑเธ•เนเธเธกเธฑเธ•เธด",
             ].join("\n")
           : [
-              "⛔ ห้องแชตนี้ยังไม่ได้รับอนุญาตให้ใช้คำสั่ง",
+              "โ” เธซเนเธญเธเนเธเธ•เธเธตเนเธขเธฑเธเนเธกเนเนเธ”เนเธฃเธฑเธเธญเธเธธเธเธฒเธ•เนเธซเนเนเธเนเธเธณเธชเธฑเนเธ",
               "",
-              "ระบบบันทึกข้อมูล Telegram สำหรับรอผู้ดูแลอนุมัติแล้ว",
+              "เธฃเธฐเธเธเธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅ Telegram เธชเธณเธซเธฃเธฑเธเธฃเธญเธเธนเนเธ”เธนเนเธฅเธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง",
             ].join("\n"),
       ).catch((error) => {
         console.error("Telegram access-denied reply failed:", error);
@@ -172,12 +173,28 @@ export async function POST(request: Request) {
       });
     }
 
+    const linkReply = await handleTelegramLinkCommand({
+      text,
+      telegramUserId,
+      chatId,
+      chatType,
+    });
+
+    if (linkReply) {
+      await sendTelegramMessage(chatId, linkReply);
+
+      return NextResponse.json({
+        ok: true,
+        registryProcessed: true,
+        accountLinkProcessed: true,
+      });
+    }
     const command = normalizeTelegramCommand(text);
     let reply: string;
 
     if (command === "help") {
       reply = [
-        "✅ ยืนยันสมาชิกกลุ่มโรงเรียนอัตโนมัติแล้ว",
+        "โ… เธขเธทเธเธขเธฑเธเธชเธกเธฒเธเธดเธเธเธฅเธธเนเธกเนเธฃเธเน€เธฃเธตเธขเธเธญเธฑเธ•เนเธเธกเธฑเธ•เธดเนเธฅเนเธง",
         "",
         buildHelpMessage(),
       ].join("\n");
@@ -190,16 +207,16 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error("Telegram summary command failed:", error);
         reply = [
-          "⚠️ <b>ไม่สามารถสร้างสรุปได้ในขณะนี้</b>",
+          "โ ๏ธ <b>เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธชเธฃเนเธฒเธเธชเธฃเธธเธเนเธ”เนเนเธเธเธ“เธฐเธเธตเน</b>",
           "",
-          "กรุณาตรวจสอบ API รายงานประจำวันและตัวแปร DAILY_REPORT_SECRET",
+          "เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธ API เธฃเธฒเธขเธเธฒเธเธเธฃเธฐเธเธณเธงเธฑเธเนเธฅเธฐเธ•เธฑเธงเนเธเธฃ DAILY_REPORT_SECRET",
         ].join("\n");
       }
     } else {
       reply = [
-        "ไม่รู้จักคำสั่งนี้",
+        "เนเธกเนเธฃเธนเนเธเธฑเธเธเธณเธชเธฑเนเธเธเธตเน",
         "",
-        "พิมพ์ <b>ช่วยเหลือ</b> เพื่อดูรายการคำสั่ง",
+        "เธเธดเธกเธเน <b>เธเนเธงเธขเน€เธซเธฅเธทเธญ</b> เน€เธเธทเนเธญเธ”เธนเธฃเธฒเธขเธเธฒเธฃเธเธณเธชเธฑเนเธ",
       ].join("\n");
     }
 

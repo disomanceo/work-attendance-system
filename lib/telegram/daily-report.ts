@@ -5,15 +5,23 @@ import { buildSummaryMessage } from "@/lib/telegram/commands";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
 
 function getTelegramChatIds() {
-  const configured =
-    process.env.TELEGRAM_ALLOWED_CHAT_IDS?.trim() ||
-    process.env.TELEGRAM_CHAT_ID?.trim() ||
-    "";
+  const attendanceChatId =
+    process.env.TELEGRAM_ATTENDANCE_CHAT_ID?.trim();
 
-  return configured
+  if (attendanceChatId) {
+    return attendanceChatId.startsWith("-")
+      ? [attendanceChatId]
+      : [];
+  }
+
+  const groupChatId = (
+    process.env.TELEGRAM_ALLOWED_CHAT_IDS?.trim() || ""
+  )
     .split(",")
     .map((value) => value.trim())
-    .filter(Boolean);
+    .find((value) => value.startsWith("-"));
+
+  return groupChatId ? [groupChatId] : [];
 }
 
 async function wasSent(key: string) {
