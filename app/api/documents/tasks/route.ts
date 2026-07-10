@@ -1,6 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
-import { notifySmartAreaTaskDone } from "@/lib/telegram/smart-area-notifications";
+import { notifySmartAreaTaskStatusTelegram } from "@/lib/telegram/smart-area-workflow-notifications";
 
 type UpdateTaskBody = {
   taskId?: unknown;
@@ -69,12 +69,14 @@ export async function POST(request: Request) {
   const result = Array.isArray(data) ? data[0] : null;
 
   try {
-    await notifySmartAreaTaskDone({
+    await notifySmartAreaTaskStatusTelegram({
       taskId,
       nextStatus,
+      actorProfileId: auth.profile.id,
+      actorName: auth.profile.full_name || "ผู้ดำเนินการ",
     });
   } catch (notifyError) {
-    console.error("Smart Area done Telegram notification error:", notifyError);
+    console.error("Smart Area Telegram status notification error:", notifyError);
   }
 
   return NextResponse.json({

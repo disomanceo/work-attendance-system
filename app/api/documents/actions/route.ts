@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
 import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
+import { notifySmartAreaAssignmentsTelegram } from "@/lib/telegram/smart-area-workflow-notifications";
 
 type ActionBody = {
   action?: unknown;
@@ -102,14 +103,28 @@ export async function POST(request: Request) {
 
     const result = Array.isArray(data) ? data[0] : null;
 
-    try {
-      await notifySmartAreaAssignments({
+    const notifications = await Promise.allSettled([
+      notifySmartAreaAssignments({
         bookId,
         assignedByName: auth.profile.full_name || "ผู้อำนวยการ",
-      });
-    } catch (notifyError) {
-      console.error("Smart Area assignment LINE notification error:", notifyError);
-    }
+      }),
+      notifySmartAreaAssignmentsTelegram({
+        bookId,
+        actorProfileId: auth.profile.id,
+        assignedByName: auth.profile.full_name || "ผู้อำนวยการ",
+      }),
+    ]);
+
+    notifications.forEach((notification, index) => {
+      if (notification.status === "rejected") {
+        console.error(
+          index === 0
+            ? "Smart Area assignment LINE notification error:"
+            : "Smart Area assignment Telegram notification error:",
+          notification.reason,
+        );
+      }
+    });
 
     return NextResponse.json({
       ok: true,
