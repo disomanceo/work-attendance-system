@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import {
   buildHelpMessage,
   buildSummaryMessage,
@@ -57,6 +58,40 @@ function commandMessage(update: TelegramUpdate) {
 function isActiveTelegramMemberStatus(status: unknown) {
   return ["creator", "administrator", "member", "restricted"].includes(
     String(status ?? ""),
+  );
+}
+
+async function isLinkedTelegramUser(
+  telegramUserId: number,
+  privateChatId: number,
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!supabaseUrl || !serviceRoleKey) return false;
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+
+  const { data, error } = await supabase
+    .from("telegram_users")
+    .select("profile_id, last_private_chat_id, is_active")
+    .eq("telegram_user_id", String(telegramUserId))
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Telegram linked-user verification failed:", error);
+    return false;
+  }
+
+  return Boolean(
+    data?.profile_id &&
+      String(data.last_private_chat_id ?? "") === String(privateChatId),
   );
 }
 
@@ -156,10 +191,14 @@ export async function POST(request: Request) {
     let isAuthorized = allowedChatIds.has(String(chatId));
 
     if (!isAuthorized && isPrivateChat && telegramUserId) {
-      isAuthorized = await isMemberOfAllowedGroup(
-        telegramUserId,
-        allowedChatIds,
-      );
+      isAuthorized = await isLinkedTelegramUser(telegramUserId, chatId);
+
+      if (!isAuthorized) {
+        isAuthorized = await isMemberOfAllowedGroup(
+          telegramUserId,
+          allowedChatIds,
+        );
+      }
     }
 
     if (!isAuthorized) {
@@ -169,10 +208,10 @@ export async function POST(request: Request) {
           ? [
               "⛔ ยังไม่สามารถยืนยันว่าเป็นสมาชิกกลุ่มโรงเรียนได้",
               "",
-              "กรุณาเข้าร่วมกลุ่ม Telegram ของโรงเรียนก่อน",
-              "จากนั้นกลับมาพิมพ์ /start อีกครั้ง",
+              "กรุณาเชื่อมบัญชีจากหน้าโปรไฟล์ในระบบด้วยคำสั่ง /link CODE",
+              "หรือเข้าร่วมกลุ่ม Telegram ของโรงเรียนแล้วพิมพ์ /start อีกครั้ง",
               "",
-              "หมายเหตุ: Bot ต้องเป็นผู้ดูแลกลุ่มเพื่อยืนยันสมาชิกอัตโนมัติ",
+              "หมายเหตุ: Bot ต้องเป็นผู้ดูแลกลุ่มเพื่อตรวจสอบสมาชิกอัตโนมัติ",
             ].join("\n")
           : [
               "⛔ ห้องแชตนี้ยังไม่ได้รับอนุญาตให้ใช้คำสั่ง",

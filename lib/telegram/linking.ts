@@ -107,13 +107,19 @@ export async function handleTelegramLinkCommand(input: LinkCommandInput) {
 
   const { error: updateError } = await supabase
     .from("telegram_users")
-    .update({
-      profile_id: token.profile_id,
-      last_private_chat_id: privateChatId,
-      is_active: true,
-      updated_at: now,
-    })
-    .eq("telegram_user_id", telegramUserId);
+    .upsert(
+      {
+        telegram_user_id: telegramUserId,
+        profile_id: token.profile_id,
+        last_private_chat_id: privateChatId,
+        is_active: true,
+        last_seen_at: now,
+        updated_at: now,
+      },
+      {
+        onConflict: "telegram_user_id",
+      },
+    );
 
   if (updateError) {
     throw new Error(`Cannot link Telegram account: ${updateError.message}`);
