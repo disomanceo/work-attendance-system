@@ -177,30 +177,30 @@ async function readPayload(request: Request): Promise<ImportPayload> {
 }
 
 const THAI_MONTHS: Record<string, number> = {
-  "ม.ค.": 1,
-  "มกราคม": 1,
-  "ก.พ.": 2,
-  "กุมภาพันธ์": 2,
-  "มี.ค.": 3,
-  "มีนาคม": 3,
-  "เม.ย.": 4,
-  "เมษายน": 4,
-  "พ.ค.": 5,
-  "พฤษภาคม": 5,
-  "มิ.ย.": 6,
-  "มิถุนายน": 6,
-  "ก.ค.": 7,
-  "กรกฎาคม": 7,
-  "ส.ค.": 8,
-  "สิงหาคม": 8,
-  "ก.ย.": 9,
-  "กันยายน": 9,
-  "ต.ค.": 10,
-  "ตุลาคม": 10,
-  "พ.ย.": 11,
-  "พฤศจิกายน": 11,
-  "ธ.ค.": 12,
-  "ธันวาคม": 12,
+  "à¸¡.à¸„.": 1,
+  "à¸¡à¸à¸£à¸²à¸„à¸¡": 1,
+  "à¸.à¸ž.": 2,
+  "à¸à¸¸à¸¡à¸ à¸²à¸žà¸±à¸™à¸˜à¹Œ": 2,
+  "à¸¡à¸µ.à¸„.": 3,
+  "à¸¡à¸µà¸™à¸²à¸„à¸¡": 3,
+  "à¹€à¸¡.à¸¢.": 4,
+  "à¹€à¸¡à¸©à¸²à¸¢à¸™": 4,
+  "à¸ž.à¸„.": 5,
+  "à¸žà¸¤à¸©à¸ à¸²à¸„à¸¡": 5,
+  "à¸¡à¸´.à¸¢.": 6,
+  "à¸¡à¸´à¸–à¸¸à¸™à¸²à¸¢à¸™": 6,
+  "à¸.à¸„.": 7,
+  "à¸à¸£à¸à¸Žà¸²à¸„à¸¡": 7,
+  "à¸ª.à¸„.": 8,
+  "à¸ªà¸´à¸‡à¸«à¸²à¸„à¸¡": 8,
+  "à¸.à¸¢.": 9,
+  "à¸à¸±à¸™à¸¢à¸²à¸¢à¸™": 9,
+  "à¸•.à¸„.": 10,
+  "à¸•à¸¸à¸¥à¸²à¸„à¸¡": 10,
+  "à¸ž.à¸¢.": 11,
+  "à¸žà¸¤à¸¨à¸ˆà¸´à¸à¸²à¸¢à¸™": 11,
+  "à¸˜.à¸„.": 12,
+  "à¸˜à¸±à¸™à¸§à¸²à¸„à¸¡": 12,
 };
 
 function thaiMonthNumber(value: string) {
@@ -242,7 +242,7 @@ function isoDate(value: unknown) {
     return `${year}-${slash[2].padStart(2, "0")}-${slash[1].padStart(2, "0")}`;
   }
 
-  const thai = raw.match(/(\d{1,2})\s*([ก-๙.]+)\s*(\d{4})/);
+  const thai = raw.match(/(\d{1,2})\s*([à¸-à¹™.]+)\s*(\d{4})/);
   if (thai) {
     let year = Number(thai[3]);
     if (year > 2400) year -= 543;
@@ -282,9 +282,9 @@ function extension(payload: ImportPayload) {
       "issueDate",
       "dateOfDocument",
       "dateDocument",
-      "วันที่หนังสือ",
-      "หนังสือลงวันที่",
-      "ลงวันที่",
+      "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸«à¸™à¸±à¸‡à¸ªà¸·à¸­",
+      "à¸«à¸™à¸±à¸‡à¸ªà¸·à¸­à¸¥à¸‡à¸§à¸±à¸™à¸—à¸µà¹ˆ",
+      "à¸¥à¸‡à¸§à¸±à¸™à¸—à¸µà¹ˆ",
     ]) ||
       firstTextByKey(payload, [
         "documentDate",
@@ -294,14 +294,14 @@ function extension(payload: ImportPayload) {
         "issuedDate",
         "issueDate",
         "dateOfDocument",
-        "วันที่หนังสือ",
-        "หนังสือลงวันที่",
-        "ลงวันที่",
+        "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸«à¸™à¸±à¸‡à¸ªà¸·à¸­",
+        "à¸«à¸™à¸±à¸‡à¸ªà¸·à¸­à¸¥à¸‡à¸§à¸±à¸™à¸—à¸µà¹ˆ",
+        "à¸¥à¸‡à¸§à¸±à¸™à¸—à¸µà¹ˆ",
       ]) ||
       firstTextAfterLabel(payload, [
-        "หนังสือลงวันที่",
-        "วันที่หนังสือ",
-        "ลงวันที่",
+        "à¸«à¸™à¸±à¸‡à¸ªà¸·à¸­à¸¥à¸‡à¸§à¸±à¸™à¸—à¸µà¹ˆ",
+        "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸«à¸™à¸±à¸‡à¸ªà¸·à¸­",
+        "à¸¥à¸‡à¸§à¸±à¸™à¸—à¸µà¹ˆ",
       ]),
   );
   const receivedDate =
@@ -318,11 +318,11 @@ function extension(payload: ImportPayload) {
         "sentDate",
         "submittedAt",
         "dateReceived",
-        "วันที่รับ",
-        "วันรับ",
-        "วันเวลาที่ส่ง",
-        "วันที่ส่ง",
-        "ลงทะเบียนรับแล้วเมื่อ",
+        "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸£à¸±à¸š",
+        "à¸§à¸±à¸™à¸£à¸±à¸š",
+        "à¸§à¸±à¸™à¹€à¸§à¸¥à¸²à¸—à¸µà¹ˆà¸ªà¹ˆà¸‡",
+        "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸ªà¹ˆà¸‡",
+        "à¸¥à¸‡à¸—à¸°à¹€à¸šà¸µà¸¢à¸™à¸£à¸±à¸šà¹à¸¥à¹‰à¸§à¹€à¸¡à¸·à¹ˆà¸­",
       ]) ||
         firstTextByKey(payload, [
           "receivedDate",
@@ -332,17 +332,17 @@ function extension(payload: ImportPayload) {
           "receivedOn",
           "receiveOn",
           "dateReceived",
-          "วันที่รับ",
-          "วันรับ",
-          "วันเวลาที่ส่ง",
-          "วันที่ส่ง",
-          "ลงทะเบียนรับแล้วเมื่อ",
+          "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸£à¸±à¸š",
+          "à¸§à¸±à¸™à¸£à¸±à¸š",
+          "à¸§à¸±à¸™à¹€à¸§à¸¥à¸²à¸—à¸µà¹ˆà¸ªà¹ˆà¸‡",
+          "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸ªà¹ˆà¸‡",
+          "à¸¥à¸‡à¸—à¸°à¹€à¸šà¸µà¸¢à¸™à¸£à¸±à¸šà¹à¸¥à¹‰à¸§à¹€à¸¡à¸·à¹ˆà¸­",
         ]) ||
         firstTextAfterLabel(payload, [
-          "วันเวลาที่ส่ง",
-          "วันที่รับ",
-          "วันรับ",
-          "ลงทะเบียนรับแล้วเมื่อ",
+          "à¸§à¸±à¸™à¹€à¸§à¸¥à¸²à¸—à¸µà¹ˆà¸ªà¹ˆà¸‡",
+          "à¸§à¸±à¸™à¸—à¸µà¹ˆà¸£à¸±à¸š",
+          "à¸§à¸±à¸™à¸£à¸±à¸š",
+          "à¸¥à¸‡à¸—à¸°à¹€à¸šà¸µà¸¢à¸™à¸£à¸±à¸šà¹à¸¥à¹‰à¸§à¹€à¸¡à¸·à¹ˆà¸­",
         ]),
     ) || documentDate;
 
@@ -350,35 +350,35 @@ function extension(payload: ImportPayload) {
     smartAreaId: text(payload.smartAreaId) || (match ? match[1] : ""),
     sourceUrl: url,
     subject:
-      firstText(payload, ["subject", "เรื่อง"]) ||
-      firstTextByKey(payload, ["subject", "เรื่อง"]),
+      firstText(payload, ["subject", "à¹€à¸£à¸·à¹ˆà¸­à¸‡"]) ||
+      firstTextByKey(payload, ["subject", "à¹€à¸£à¸·à¹ˆà¸­à¸‡"]),
     receiveNo:
       firstText(payload, [
         "receiveNo",
         "registrationNumber",
-        "เลขทะเบียนหนังสือรับ",
-        "เลขทะเบียนรับ",
+        "à¹€à¸¥à¸‚à¸—à¸°à¹€à¸šà¸µà¸¢à¸™à¸«à¸™à¸±à¸‡à¸ªà¸·à¸­à¸£à¸±à¸š",
+        "à¹€à¸¥à¸‚à¸—à¸°à¹€à¸šà¸µà¸¢à¸™à¸£à¸±à¸š",
       ]) ||
       firstTextByKey(payload, [
         "receiveNo",
         "registrationNumber",
-        "เลขทะเบียนหนังสือรับ",
-        "เลขทะเบียนรับ",
+        "à¹€à¸¥à¸‚à¸—à¸°à¹€à¸šà¸µà¸¢à¸™à¸«à¸™à¸±à¸‡à¸ªà¸·à¸­à¸£à¸±à¸š",
+        "à¹€à¸¥à¸‚à¸—à¸°à¹€à¸šà¸µà¸¢à¸™à¸£à¸±à¸š",
       ]),
     documentNo:
-      firstText(payload, ["documentNo", "documentNumber", "เลขที่หนังสือ"]) ||
-      firstTextByKey(payload, ["documentNo", "documentNumber", "เลขที่หนังสือ"]),
+      firstText(payload, ["documentNo", "documentNumber", "à¹€à¸¥à¸‚à¸—à¸µà¹ˆà¸«à¸™à¸±à¸‡à¸ªà¸·à¸­"]) ||
+      firstTextByKey(payload, ["documentNo", "documentNumber", "à¹€à¸¥à¸‚à¸—à¸µà¹ˆà¸«à¸™à¸±à¸‡à¸ªà¸·à¸­"]),
     documentDate,
     receivedDate,
     sender:
-      firstText(payload, ["sender", "sourceAgency", "ส่งโดย", "จาก"]) ||
-      firstTextByKey(payload, ["sender", "sourceAgency", "ส่งโดย", "จาก"]),
+      firstText(payload, ["sender", "sourceAgency", "à¸ªà¹ˆà¸‡à¹‚à¸”à¸¢", "à¸ˆà¸²à¸"]) ||
+      firstTextByKey(payload, ["sender", "sourceAgency", "à¸ªà¹ˆà¸‡à¹‚à¸”à¸¢", "à¸ˆà¸²à¸"]),
     priority:
-      firstText(payload, ["priority", "urgency", "ชั้นความเร็ว", "ปกติ"]) ||
-      firstTextByKey(payload, ["priority", "urgency", "ชั้นความเร็ว"]),
+      firstText(payload, ["priority", "urgency", "à¸Šà¸±à¹‰à¸™à¸„à¸§à¸²à¸¡à¹€à¸£à¹‡à¸§", "à¸›à¸à¸•à¸´"]) ||
+      firstTextByKey(payload, ["priority", "urgency", "à¸Šà¸±à¹‰à¸™à¸„à¸§à¸²à¸¡à¹€à¸£à¹‡à¸§"]),
     summary:
-      firstText(payload, ["summary", "note", "เนื้อหาโดยสรุป"]) ||
-      firstTextByKey(payload, ["summary", "note", "เนื้อหาโดยสรุป"]),
+      firstText(payload, ["summary", "note", "à¹€à¸™à¸·à¹‰à¸­à¸«à¸²à¹‚à¸”à¸¢à¸ªà¸£à¸¸à¸›"]) ||
+      firstTextByKey(payload, ["summary", "note", "à¹€à¸™à¸·à¹‰à¸­à¸«à¸²à¹‚à¸”à¸¢à¸ªà¸£à¸¸à¸›"]),
     centralLatestPage: text(payload.centralLatestPage),
     smartAreaPage: text(payload.smartAreaPage),
     attachmentNames: parseNumberedLines(payload.attachmentText),
@@ -590,7 +590,7 @@ async function upsertDocument(payload: ImportPayload) {
 
   for (let index = 0; index < item.attachmentUrls.length; index += 1) {
     const url = item.attachmentUrls[index];
-    const fileName = item.attachmentNames[index] || `ไฟล์แนบ ${index + 1}`;
+    const fileName = item.attachmentNames[index] || `à¹„à¸Ÿà¸¥à¹Œà¹à¸™à¸š ${index + 1}`;
     const current = currentByUrl.get(url);
 
     if (!current) {
@@ -746,7 +746,7 @@ async function handle(request: Request) {
       version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.32",
       downloadUrl:
         process.env.SMART_AREA_EXTENSION_DOWNLOAD_URL?.trim() ||
-        `${appUrl}/downloads/import-area-pms-1.8.32-installer.zip`,
+        "https://drive.google.com/file/d/1Iwbi7jQNxGNHlvsrh-UjKxDoCO-zwIzf/view?usp=drive_link",
     });
   }
 
@@ -772,3 +772,5 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request);
 }
+
+
