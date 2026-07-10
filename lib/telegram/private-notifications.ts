@@ -91,7 +91,7 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
       ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`
       : `${baseUrl}/documents`;
 
-    return [[{ text: "เน€เธเธดเธ”เธเธฒเธ", url }]];
+    return [[{ text: "เปิดงาน", url }]];
   }
 
   if (
@@ -102,11 +102,11 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
       ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`
       : `${baseUrl}/documents`;
 
-    return [[{ text: "เน€เธเธดเธ”เธซเธเธฑเธเธชเธทเธญ", url }]];
+    return [[{ text: "เปิดหนังสือ", url }]];
   }
 
   if (input.event === "leave.submitted") {
-    return [[{ text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒ", url: `${baseUrl}/admin/leave` }]];
+    return [[{ text: "เปิดพิจารณา", url: `${baseUrl}/admin/leave` }]];
   }
 
   if (
@@ -114,13 +114,13 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
     input.event === "leave.rejected" ||
     input.event === "leave.revision_requested"
   ) {
-    return [[{ text: "เน€เธเธดเธ”เธฃเธฒเธขเธเธฒเธฃเธฅเธฒ", url: `${baseUrl}/leave` }]];
+    return [[{ text: "เปิดรายการลา", url: `${baseUrl}/leave` }]];
   }
 
   if (input.event === "official_duty.submitted") {
     return [[
       {
-        text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒ",
+        text: "เปิดพิจารณา",
         url: `${baseUrl}/admin/official-duty`,
       },
     ]];
@@ -132,14 +132,14 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
   ) {
     return [[
       {
-        text: "เน€เธเธดเธ”เธฃเธฒเธขเธเธฒเธฃเนเธเธฃเธฒเธเธเธฒเธฃ",
+        text: "เปิดรายการไปราชการ",
         url: `${baseUrl}/official-duty`,
       },
     ]];
   }
 
   if (input.event === "memo.submitted") {
-    return [[{ text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒ", url: `${baseUrl}/admin/memo` }]];
+    return [[{ text: "เปิดพิจารณา", url: `${baseUrl}/admin/memo` }]];
   }
 
   if (
@@ -149,14 +149,14 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
     input.event === "memo.revision" ||
     input.event === "memo.revision_requested"
   ) {
-    return [[{ text: "เน€เธเธดเธ”เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก", url: `${baseUrl}/memo` }]];
+    return [[{ text: "เปิดบันทึกข้อความ", url: `${baseUrl}/memo` }]];
   }
 
   if (
     input.event === "order.submitted" ||
     input.event === "order.resubmitted"
   ) {
-    return [[{ text: "เน€เธเธดเธ”เธเธดเธเธฒเธฃเธ“เธฒเธเธณเธชเธฑเนเธ", url: `${baseUrl}/orders` }]];
+    return [[{ text: "เปิดพิจารณาคำสั่ง", url: `${baseUrl}/orders` }]];
   }
 
   if (
@@ -165,7 +165,7 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
     input.event === "order.assigned" ||
     input.event === "order.acknowledged"
   ) {
-    return [[{ text: "เน€เธเธดเธ”เธฃเธฒเธขเธเธฒเธฃเธเธณเธชเธฑเนเธ", url: `${baseUrl}/orders` }]];
+    return [[{ text: "เปิดรายการคำสั่ง", url: `${baseUrl}/orders` }]];
   }
 
   return undefined;
