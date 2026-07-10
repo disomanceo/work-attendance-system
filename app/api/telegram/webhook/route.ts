@@ -134,45 +134,6 @@ export async function POST(request: Request) {
       });
     }
 
-    const allowedChatIds = getAllowedChatIds();
-    const isPrivateChat = chatType === "private";
-    let isAuthorized = allowedChatIds.has(String(chatId));
-
-    if (!isAuthorized && isPrivateChat && telegramUserId) {
-      isAuthorized = await isMemberOfAllowedGroup(
-        telegramUserId,
-        allowedChatIds,
-      );
-    }
-
-    if (!isAuthorized) {
-      await sendTelegramMessage(
-        chatId,
-        isPrivateChat
-          ? [
-              "โ” เธขเธฑเธเนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธขเธทเธเธขเธฑเธเธงเนเธฒเน€เธเนเธเธชเธกเธฒเธเธดเธเธเธฅเธธเนเธกเนเธฃเธเน€เธฃเธตเธขเธเนเธ”เน",
-              "",
-              "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธฃเนเธงเธกเธเธฅเธธเนเธก Telegram เธเธญเธเนเธฃเธเน€เธฃเธตเธขเธเธเนเธญเธ",
-              "เธเธฒเธเธเธฑเนเธเธเธฅเธฑเธเธกเธฒเธเธดเธกเธเน /start เธญเธตเธเธเธฃเธฑเนเธ",
-              "",
-              "เธซเธกเธฒเธขเน€เธซเธ•เธธ: Bot เธ•เนเธญเธเน€เธเนเธเธเธนเนเธ”เธนเนเธฅเธเธฅเธธเนเธกเน€เธเธทเนเธญเธขเธทเธเธขเธฑเธเธชเธกเธฒเธเธดเธเธญเธฑเธ•เนเธเธกเธฑเธ•เธด",
-            ].join("\n")
-          : [
-              "โ” เธซเนเธญเธเนเธเธ•เธเธตเนเธขเธฑเธเนเธกเนเนเธ”เนเธฃเธฑเธเธญเธเธธเธเธฒเธ•เนเธซเนเนเธเนเธเธณเธชเธฑเนเธ",
-              "",
-              "เธฃเธฐเธเธเธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅ Telegram เธชเธณเธซเธฃเธฑเธเธฃเธญเธเธนเนเธ”เธนเนเธฅเธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง",
-            ].join("\n"),
-      ).catch((error) => {
-        console.error("Telegram access-denied reply failed:", error);
-      });
-
-      return NextResponse.json({
-        ok: true,
-        denied: true,
-        registryProcessed: true,
-      });
-    }
-
     const linkReply = await handleTelegramLinkCommand({
       text,
       telegramUserId,
@@ -189,12 +150,52 @@ export async function POST(request: Request) {
         accountLinkProcessed: true,
       });
     }
+
+    const allowedChatIds = getAllowedChatIds();
+    const isPrivateChat = chatType === "private";
+    let isAuthorized = allowedChatIds.has(String(chatId));
+
+    if (!isAuthorized && isPrivateChat && telegramUserId) {
+      isAuthorized = await isMemberOfAllowedGroup(
+        telegramUserId,
+        allowedChatIds,
+      );
+    }
+
+    if (!isAuthorized) {
+      await sendTelegramMessage(
+        chatId,
+        isPrivateChat
+          ? [
+              "⛔ ยังไม่สามารถยืนยันว่าเป็นสมาชิกกลุ่มโรงเรียนได้",
+              "",
+              "กรุณาเข้าร่วมกลุ่ม Telegram ของโรงเรียนก่อน",
+              "จากนั้นกลับมาพิมพ์ /start อีกครั้ง",
+              "",
+              "หมายเหตุ: Bot ต้องเป็นผู้ดูแลกลุ่มเพื่อยืนยันสมาชิกอัตโนมัติ",
+            ].join("\n")
+          : [
+              "⛔ ห้องแชตนี้ยังไม่ได้รับอนุญาตให้ใช้คำสั่ง",
+              "",
+              "ระบบบันทึกข้อมูล Telegram สำหรับรอผู้ดูแลอนุมัติแล้ว",
+            ].join("\n"),
+      ).catch((error) => {
+        console.error("Telegram access-denied reply failed:", error);
+      });
+
+      return NextResponse.json({
+        ok: true,
+        denied: true,
+        registryProcessed: true,
+      });
+    }
+
     const command = normalizeTelegramCommand(text);
     let reply: string;
 
     if (command === "help") {
       reply = [
-        "โ… เธขเธทเธเธขเธฑเธเธชเธกเธฒเธเธดเธเธเธฅเธธเนเธกเนเธฃเธเน€เธฃเธตเธขเธเธญเธฑเธ•เนเธเธกเธฑเธ•เธดเนเธฅเนเธง",
+        "✅ ยืนยันสมาชิกกลุ่มโรงเรียนอัตโนมัติแล้ว",
         "",
         buildHelpMessage(),
       ].join("\n");
@@ -207,16 +208,16 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error("Telegram summary command failed:", error);
         reply = [
-          "โ ๏ธ <b>เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธชเธฃเนเธฒเธเธชเธฃเธธเธเนเธ”เนเนเธเธเธ“เธฐเธเธตเน</b>",
+          "⚠️ <b>ไม่สามารถสร้างสรุปได้ในขณะนี้</b>",
           "",
-          "เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธ API เธฃเธฒเธขเธเธฒเธเธเธฃเธฐเธเธณเธงเธฑเธเนเธฅเธฐเธ•เธฑเธงเนเธเธฃ DAILY_REPORT_SECRET",
+          "กรุณาตรวจสอบ API รายงานประจำวันและตัวแปร DAILY_REPORT_SECRET",
         ].join("\n");
       }
     } else {
       reply = [
-        "เนเธกเนเธฃเธนเนเธเธฑเธเธเธณเธชเธฑเนเธเธเธตเน",
+        "ไม่รู้จักคำสั่งนี้",
         "",
-        "เธเธดเธกเธเน <b>เธเนเธงเธขเน€เธซเธฅเธทเธญ</b> เน€เธเธทเนเธญเธ”เธนเธฃเธฒเธขเธเธฒเธฃเธเธณเธชเธฑเนเธ",
+        "พิมพ์ <b>ช่วยเหลือ</b> เพื่อดูรายการคำสั่ง",
       ].join("\n");
     }
 
@@ -239,5 +240,6 @@ export async function GET() {
     service: "telegram-webhook",
     registry: true,
     privateAutoAuthorization: true,
+    accountLinkBeforeAuthorization: true,
   });
 }
