@@ -8,7 +8,6 @@ import AcademicYearSettingsField from "./AcademicYearSettingsField";
 import PositionWorkPolicySection from "./PositionWorkPolicySection";
 import DocumentNumberSection from "./DocumentNumberSection";
 import WorkCalendarSection from "./WorkCalendarSection";
-import NotificationSettingsTab from "./NotificationSettingsTab";
 
 type RoleKey = "director" | "teacher" | "staff" | "janitor";
 
@@ -69,23 +68,23 @@ const ROLE_ROWS: Array<{
 }> = [
   {
     key: "director",
-    title: "เธเธนเนเธเธฃเธดเธซเธฒเธฃ",
-    description: "เธเธณเธซเธเธ”เน€เธงเธฅเธฒเธเธเธดเธเธฑเธ•เธดเธเธฒเธเธเธญเธเธเธนเนเธเธฃเธดเธซเธฒเธฃ",
+    title: "ผู้บริหาร",
+    description: "กำหนดเวลาปฏิบัติงานของผู้บริหาร",
   },
   {
     key: "teacher",
-    title: "เธเธฃเธน",
-    description: "เธเธณเธซเธเธ”เน€เธงเธฅเธฒเธเธเธดเธเธฑเธ•เธดเธเธฒเธเธเธญเธเธเธฃเธน",
+    title: "ครู",
+    description: "กำหนดเวลาปฏิบัติงานของครู",
   },
   {
     key: "staff",
-    title: "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเน",
-    description: "เธเธณเธซเธเธ”เน€เธงเธฅเธฒเธเธเธดเธเธฑเธ•เธดเธเธฒเธเธเธญเธเน€เธเนเธฒเธซเธเนเธฒเธ—เธตเน",
+    title: "เจ้าหน้าที่",
+    description: "กำหนดเวลาปฏิบัติงานของเจ้าหน้าที่",
   },
   {
     key: "janitor",
-    title: "เธ เธฒเธฃเนเธฃเธ",
-    description: "เธเธณเธซเธเธ”เน€เธงเธฅเธฒเธเธเธดเธเธฑเธ•เธดเธเธฒเธเธเธญเธเธ เธฒเธฃเนเธฃเธ",
+    title: "ภารโรง",
+    description: "กำหนดเวลาปฏิบัติงานของภารโรง",
   },
 ];
 
@@ -114,28 +113,28 @@ const RESET_MODE_OPTIONS: Array<{
 }> = [
   {
     value: "attendance_only",
-    title: "เธฃเธตเน€เธเนเธ•เน€เธเธเธฒเธฐเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒ",
-    description: "เธฅเธเน€เธเธเธฒเธฐเธฃเธฒเธขเธเธฒเธฃเน€เธเนเธเธญเธดเธ/เน€เธเนเธเน€เธญเธฒเธ—เนเธเธญเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ",
+    title: "รีเซ็ตเฉพาะการลงเวลา",
+    description: "ลบเฉพาะรายการเช็คอิน/เช็คเอาท์ของวันที่เลือก",
   },
   {
     value: "leave_only",
-    title: "เธฃเธตเน€เธเนเธ•เธเธฒเธฃเธฅเธฒ",
-    description: "เธฅเธเนเธเธฅเธฒเธ—เธตเนเธเธฃเธญเธเธเธฅเธธเธกเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ เธเธฃเนเธญเธกเน€เธเธฅเธตเธขเธฃเนเน€เธฅเธเน€เธญเธเธชเธฒเธฃ",
+    title: "รีเซ็ตการลา",
+    description: "ลบใบลาที่ครอบคลุมวันที่เลือก พร้อมเคลียร์เลขเอกสาร",
   },
   {
     value: "official_duty_only",
-    title: "เธฃเธตเน€เธเนเธ•เธเธฒเธฃเนเธเธฃเธฒเธเธเธฒเธฃ",
-    description: "เธฅเธเนเธเนเธเธฃเธฒเธเธเธฒเธฃเธ—เธตเนเธเธฃเธญเธเธเธฅเธธเธกเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธเนเธฅเธฐเธฃเธฒเธขเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒเนเธเธฃเธฒเธเธเธฒเธฃ",
+    title: "รีเซ็ตการไปราชการ",
+    description: "ลบใบไปราชการที่ครอบคลุมวันที่เลือกและรายการลงเวลาไปราชการ",
   },
   {
     value: "memo_only",
-    title: "เธฃเธตเน€เธเนเธ•เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก",
-    description: "เธฅเธเธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธกเธ—เธตเนเธขเธทเนเธเนเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ เธเธฃเนเธญเธกเนเธเธฅเนเนเธเธเนเธเธฃเธฐเธเธ",
+    title: "รีเซ็ตบันทึกข้อความ",
+    description: "ลบบันทึกข้อความที่ยื่นในวันที่เลือก พร้อมไฟล์แนบในระบบ",
   },
   {
     value: "full_day",
-    title: "เธฃเธตเน€เธเนเธ•เธ—เธฑเนเธเธงเธฑเธ",
-    description: "เธฅเธเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒ เนเธเธฅเธฒ เนเธเธฃเธฒเธเธเธฒเธฃ เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก เนเธฅเธฐเธเนเธญเธกเธนเธฅเธ—เธตเนเน€เธเธตเนเธขเธงเธเนเธญเธ",
+    title: "รีเซ็ตทั้งวัน",
+    description: "ลบการลงเวลา ใบลา ไปราชการ บันทึกข้อความ และข้อมูลที่เกี่ยวข้อง",
   },
 ];
 
@@ -161,7 +160,7 @@ function getResetTotal(summary: ResetSummary | null, mode: ResetMode) {
 function getResetModeTitle(mode: ResetMode) {
   return (
     RESET_MODE_OPTIONS.find((option) => option.value === mode)?.title ||
-    "เธฃเธตเน€เธเนเธ•เธเนเธญเธกเธนเธฅ"
+    "รีเซ็ตข้อมูล"
   );
 }
 
@@ -184,8 +183,6 @@ export default function DirectorSettingsPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
-  const [activeSettingsTab, setActiveSettingsTab] =
-    useState<"system" | "notifications">("system");
   const [settings, setSettings] =
     useState<AttendanceSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -250,7 +247,7 @@ export default function DirectorSettingsPage() {
           }
 
           throw new Error(
-            result.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เนเธซเธฅเธ”เธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเนเธ”เน"
+            result.message || "ไม่สามารถโหลดการตั้งค่าได้"
           );
         }
 
@@ -286,7 +283,7 @@ export default function DirectorSettingsPage() {
         setMessage(
           error instanceof Error
             ? error.message
-            : "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เนเธซเธฅเธ”เธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเนเธ”เน"
+            : "ไม่สามารถโหลดการตั้งค่าได้"
         );
       } finally {
         setLoading(false);
@@ -314,7 +311,7 @@ export default function DirectorSettingsPage() {
 
     if (!navigator.geolocation) {
       setMessageType("error");
-      setMessage("เธญเธธเธเธเธฃเธ“เนเธเธตเนเนเธกเนเธฃเธญเธเธฃเธฑเธเธเธฒเธฃเธฃเธฐเธเธธเธ•เธณเนเธซเธเนเธ");
+      setMessage("อุปกรณ์นี้ไม่รองรับการระบุตำแหน่ง");
       return;
     }
 
@@ -329,20 +326,20 @@ export default function DirectorSettingsPage() {
         }));
 
         setMessageType("success");
-        setMessage("เธเธณเธเธดเธเธฑเธ”เธเธฑเธเธเธธเธเธฑเธเธกเธฒเนเธชเนเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง");
+        setMessage("นำพิกัดปัจจุบันมาใส่เรียบร้อยแล้ว");
         setLocating(false);
       },
       (error) => {
         const messages: Record<number, string> = {
-          1: "เธเธฃเธธเธ“เธฒเธญเธเธธเธเธฒเธ•เนเธซเนเน€เธงเนเธเนเธเธ•เนเน€เธเนเธฒเธ–เธถเธเธ•เธณเนเธซเธเนเธ",
-          2: "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธ•เธฃเธงเธเธซเธฒเธ•เธณเนเธซเธเนเธเธเธฑเธเธเธธเธเธฑเธเนเธ”เน",
-          3: "เธ•เธฃเธงเธเธซเธฒเธ•เธณเนเธซเธเนเธเธเธฒเธเน€เธเธดเธเนเธ เธเธฃเธธเธ“เธฒเธฅเธญเธเนเธซเธกเน",
+          1: "กรุณาอนุญาตให้เว็บไซต์เข้าถึงตำแหน่ง",
+          2: "ไม่สามารถตรวจหาตำแหน่งปัจจุบันได้",
+          3: "ตรวจหาตำแหน่งนานเกินไป กรุณาลองใหม่",
         };
 
         setMessageType("error");
         setMessage(
           messages[error.code] ||
-            "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธ•เธฃเธงเธเธซเธฒเธ•เธณเนเธซเธเนเธเธเธฑเธเธเธธเธเธฑเธเนเธ”เน"
+            "ไม่สามารถตรวจหาตำแหน่งปัจจุบันได้"
         );
         setLocating(false);
       },
@@ -357,7 +354,7 @@ export default function DirectorSettingsPage() {
   async function checkResetDate() {
     if (!resetDate) {
       setMessageType("error");
-      setMessage("เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธงเธฑเธเธ—เธตเนเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฃเธตเน€เธเนเธ•");
+      setMessage("กรุณาเลือกวันที่ที่ต้องการรีเซ็ต");
       return;
     }
 
@@ -401,7 +398,7 @@ export default function DirectorSettingsPage() {
 
       if (!response.ok || !result.ok) {
         throw new Error(
-          result.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเนเธ”เน"
+          result.message || "ไม่สามารถตรวจสอบข้อมูลได้"
         );
       }
 
@@ -418,7 +415,7 @@ export default function DirectorSettingsPage() {
 
       if (total === 0) {
         setMessageType("error");
-        setMessage("เนเธกเนเธเธเธเนเธญเธกเธนเธฅเธ—เธตเนเธ•เนเธญเธเธฃเธตเน€เธเนเธ•เนเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ");
+        setMessage("ไม่พบข้อมูลที่ต้องรีเซ็ตในวันที่เลือก");
         return;
       }
 
@@ -429,7 +426,7 @@ export default function DirectorSettingsPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธ•เธฃเธงเธเธชเธญเธเธเนเธญเธกเธนเธฅเนเธ”เน"
+          : "ไม่สามารถตรวจสอบข้อมูลได้"
       );
     } finally {
       setCheckingReset(false);
@@ -437,9 +434,9 @@ export default function DirectorSettingsPage() {
   }
 
   async function confirmResetHistory() {
-    if (resetConfirmation.trim() !== "เธขเธทเธเธขเธฑเธ") {
+    if (resetConfirmation.trim() !== "ยืนยัน") {
       setMessageType("error");
-      setMessage('เธเธฃเธธเธ“เธฒเธเธดเธกเธเนเธเธณเธงเนเธฒ "เธขเธทเธเธขเธฑเธ" เนเธซเนเธ•เธฃเธ');
+      setMessage('กรุณาพิมพ์คำว่า "ยืนยัน" ให้ตรง');
       return;
     }
 
@@ -481,14 +478,14 @@ export default function DirectorSettingsPage() {
       if (!response.ok || !result.ok) {
         throw new Error(
           result.message ||
-            "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธฃเธตเน€เธเนเธ•เธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒเนเธ”เน"
+            "ไม่สามารถรีเซ็ตประวัติการลงเวลาได้"
         );
       }
 
       setMessageType("success");
       setMessage(
         result.message ||
-          "เธฃเธตเน€เธเนเธ•เธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง"
+          "รีเซ็ตประวัติการลงเวลาเรียบร้อยแล้ว"
       );
       setResetSummary(null);
       setResetConfirmation("");
@@ -498,7 +495,7 @@ export default function DirectorSettingsPage() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธฃเธตเน€เธเนเธ•เธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒเนเธ”เน"
+          : "ไม่สามารถรีเซ็ตประวัติการลงเวลาได้"
       );
     } finally {
       setResetting(false);
@@ -536,20 +533,20 @@ export default function DirectorSettingsPage() {
 
       if (!response.ok || !result.ok) {
         throw new Error(
-          result.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเนเธ”เน"
+          result.message || "ไม่สามารถบันทึกการตั้งค่าได้"
         );
       }
 
       setMessageType("success");
       setMessage(
-        result.message || "เธเธฑเธเธ—เธถเธเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง"
+        result.message || "บันทึกการตั้งค่าเรียบร้อยแล้ว"
       );
     } catch (error) {
       setMessageType("error");
       setMessage(
         error instanceof Error
           ? error.message
-          : "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธเธฑเธเธ—เธถเธเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเนเธ”เน"
+          : "ไม่สามารถบันทึกการตั้งค่าได้"
       );
     } finally {
       setSaving(false);
@@ -559,25 +556,25 @@ export default function DirectorSettingsPage() {
   if (loading) {
     return (
       <main className={styles.loading}>
-        เธเธณเธฅเธฑเธเนเธซเธฅเธ”เธเธฒเธฃเธ•เธฑเนเธเธเนเธฒ...
+        กำลังโหลดการตั้งค่า...
       </main>
     );
   }
 
   const gpsSummary = settings.gps_enabled
-    ? `เน€เธเธดเธ”เนเธเนเธเธฒเธ / ${settings.allowed_radius_meters} เน€เธกเธ•เธฃ`
-    : "เธเธดเธ”เนเธเนเธเธฒเธ";
+    ? `เปิดใช้งาน / ${settings.allowed_radius_meters} เมตร`
+    : "ปิดใช้งาน";
   const coordinateSummary =
     settings.latitude !== null && settings.longitude !== null
       ? `${settings.latitude}, ${settings.longitude}`
-      : "เธขเธฑเธเนเธกเนเนเธ”เนเธเธณเธซเธเธ”เธเธดเธเธฑเธ”";
+      : "ยังไม่ได้กำหนดพิกัด";
   const fiscalSummary = settings.active_fiscal_year
-    ? `เธ.เธจ. ${settings.active_fiscal_year}`
-    : "เธขเธฑเธเนเธกเนเนเธ”เนเธเธณเธซเธเธ”";
+    ? `พ.ศ. ${settings.active_fiscal_year}`
+    : "ยังไม่ได้กำหนด";
   const fiscalRangeSummary =
     settings.fiscal_year_start_date && settings.fiscal_year_end_date
       ? `${settings.fiscal_year_start_date} - ${settings.fiscal_year_end_date}`
-      : "เธขเธฑเธเนเธกเนเนเธ”เนเธเธณเธซเธเธ”เธเนเธงเธเธงเธฑเธเธ—เธตเน";
+      : "ยังไม่ได้กำหนดช่วงวันที่";
   const resetTotal = getResetTotal(resetSummary, resetMode);
   const resetPreviewItems = getPreviewItems(resetSummary, resetMode);
 
@@ -586,10 +583,10 @@ export default function DirectorSettingsPage() {
       <header className={styles.header}>
         <div>
           <span>SYSTEM SETTINGS</span>
-          <h1>เธ•เธฑเนเธเธเนเธฒเธฃเธฐเธเธ</h1>
+          <h1>ตั้งค่าระบบ</h1>
           <p>
-            เธเธฑเธ”เธเธฅเธธเนเธกเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเธ—เธตเนเธเธณเน€เธเนเธเธเธญเธเธฃเธฐเธเธเธฅเธเน€เธงเธฅเธฒ
-            เธชเธดเธ—เธเธดเนเธเธฒเธฃเธฅเธฒ เน€เธฅเธเน€เธญเธเธชเธฒเธฃ เนเธฅเธฐเธเนเธญเธกเธนเธฅเธ—เธตเนเธกเธตเธเธฅเธเธฑเธเธฃเธฒเธขเธเธฒเธ
+            จัดกลุ่มการตั้งค่าที่จำเป็นของระบบลงเวลา
+            สิทธิ์การลา เลขเอกสาร และข้อมูลที่มีผลกับรายงาน
           </p>
         </div>
 
@@ -597,7 +594,7 @@ export default function DirectorSettingsPage() {
           type="button"
           onClick={() => router.push("/attendance")}
         >
-          เธเธฅเธฑเธเธซเธเนเธฒเธฅเธเน€เธงเธฅเธฒ
+          กลับหน้าลงเวลา
         </button>
       </header>
 
@@ -611,87 +608,22 @@ export default function DirectorSettingsPage() {
           }
         >
           <strong>
-            {messageType === "success" ? "เธ”เธณเน€เธเธดเธเธเธฒเธฃเธชเธณเน€เธฃเนเธ" : "เนเธกเนเธชเธณเน€เธฃเนเธ"}
+            {messageType === "success" ? "ดำเนินการสำเร็จ" : "ไม่สำเร็จ"}
           </strong>
           {message}
         </div>
       )}
 
-      <div
-        aria-label="หมวดการตั้งค่า"
-        style={{
-          display: "flex",
-          gap: 8,
-          marginBottom: 18,
-          padding: 6,
-          border: "1px solid #e2e8f0",
-          borderRadius: 16,
-          background: "#ffffff",
-          width: "fit-content",
-          maxWidth: "100%",
-          overflowX: "auto",
-        }}
-      >
-        <button
-          type="button"
-          aria-pressed={activeSettingsTab === "system"}
-          onClick={() => setActiveSettingsTab("system")}
-          style={{
-            minHeight: 42,
-            border: 0,
-            borderRadius: 11,
-            padding: "0 18px",
-            background:
-              activeSettingsTab === "system" ? "#0f766e" : "transparent",
-            color:
-              activeSettingsTab === "system" ? "#ffffff" : "#334155",
-            fontWeight: 750,
-            whiteSpace: "nowrap",
-            cursor: "pointer",
-          }}
-        >
-          ตั้งค่าระบบ
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={activeSettingsTab === "notifications"}
-          onClick={() => setActiveSettingsTab("notifications")}
-          style={{
-            minHeight: 42,
-            border: 0,
-            borderRadius: 11,
-            padding: "0 18px",
-            background:
-              activeSettingsTab === "notifications"
-                ? "#0f766e"
-                : "transparent",
-            color:
-              activeSettingsTab === "notifications"
-                ? "#ffffff"
-                : "#334155",
-            fontWeight: 750,
-            whiteSpace: "nowrap",
-            cursor: "pointer",
-          }}
-        >
-          ตั้งค่าการแจ้งเตือน
-        </button>
-      </div>
-
-      {activeSettingsTab === "notifications" && (
-        <NotificationSettingsTab />
-      )}
-      <div hidden={activeSettingsTab !== "system"} className={styles.settingsWorkspace}>
+      <div className={styles.settingsWorkspace}>
         <div className={styles.primaryColumn}>
           <form className={styles.settingsGrid} onSubmit={saveSettings}>
             <section className={`${styles.card} ${styles.gpsCard}`}>
               <div className={styles.cardHeading}>
                 <div>
-                  <span className={styles.cardIcon}>โ–</span>
-                  <h2>เธ•เธณเนเธซเธเนเธเนเธฅเธฐ GPS</h2>
+                  <span className={styles.cardIcon}>⌖</span>
+                  <h2>ตำแหน่งและ GPS</h2>
                   <p>
-                    เน€เธเธดเธ”เน€เธเธทเนเธญเธ•เธฃเธงเธเธฃเธฐเธขเธฐเธซเนเธฒเธเธเธฒเธเธเธดเธเธฑเธ”เนเธฃเธเน€เธฃเธตเธขเธเธเนเธญเธเธเธฑเธเธ—เธถเธเน€เธงเธฅเธฒ
+                    เปิดเพื่อตรวจระยะห่างจากพิกัดโรงเรียนก่อนบันทึกเวลา
                   </p>
                 </div>
 
@@ -717,9 +649,9 @@ export default function DirectorSettingsPage() {
               >
                 <div className={styles.locationHeading}>
                   <div>
-                    <h3>เธเธดเธเธฑเธ”เธชเธ–เธฒเธเธ—เธตเนเธฅเธเน€เธงเธฅเธฒ</h3>
+                    <h3>พิกัดสถานที่ลงเวลา</h3>
                     <p>
-                      เธชเธฒเธกเธฒเธฃเธ–เธเธดเธกเธเนเธเธดเธเธฑเธ”เน€เธญเธเธซเธฃเธทเธญเนเธเนเธ•เธณเนเธซเธเนเธเธเธฑเธเธเธธเธเธฑเธเธเธญเธเธญเธธเธเธเธฃเธ“เน
+                      สามารถพิมพ์พิกัดเองหรือใช้ตำแหน่งปัจจุบันของอุปกรณ์
                     </p>
                   </div>
 
@@ -730,14 +662,14 @@ export default function DirectorSettingsPage() {
                     onClick={useCurrentLocation}
                   >
                     {locating
-                      ? "เธเธณเธฅเธฑเธเธเนเธเธซเธฒเธเธดเธเธฑเธ”..."
-                      : "เนเธเนเธ•เธณเนเธซเธเนเธเธเธฑเธเธเธธเธเธฑเธ"}
+                      ? "กำลังค้นหาพิกัด..."
+                      : "ใช้ตำแหน่งปัจจุบัน"}
                   </button>
                 </div>
 
                 <div className={styles.coordinateGrid}>
                   <label>
-                    <span>เธฅเธฐเธ•เธดเธเธนเธ”</span>
+                    <span>ละติจูด</span>
                     <input
                       type="number"
                       step="0.0000001"
@@ -745,7 +677,7 @@ export default function DirectorSettingsPage() {
                       max="90"
                       disabled={!settings.gps_enabled}
                       value={settings.latitude ?? ""}
-                      placeholder="เน€เธเนเธ 14.3971234"
+                      placeholder="เช่น 14.3971234"
                       onChange={(event) =>
                         setSettings((current) => ({
                           ...current,
@@ -759,7 +691,7 @@ export default function DirectorSettingsPage() {
                   </label>
 
                   <label>
-                    <span>เธฅเธญเธเธเธดเธเธนเธ”</span>
+                    <span>ลองจิจูด</span>
                     <input
                       type="number"
                       step="0.0000001"
@@ -767,7 +699,7 @@ export default function DirectorSettingsPage() {
                       max="180"
                       disabled={!settings.gps_enabled}
                       value={settings.longitude ?? ""}
-                      placeholder="เน€เธเนเธ 100.1612345"
+                      placeholder="เช่น 100.1612345"
                       onChange={(event) =>
                         setSettings((current) => ({
                           ...current,
@@ -781,7 +713,7 @@ export default function DirectorSettingsPage() {
                   </label>
 
                   <label>
-                    <span>เธฃเธฐเธขเธฐเธ—เธตเนเธญเธเธธเธเธฒเธ•</span>
+                    <span>ระยะที่อนุญาต</span>
                     <div className={styles.radiusInput}>
                       <input
                         type="number"
@@ -798,7 +730,7 @@ export default function DirectorSettingsPage() {
                           }))
                         }
                       />
-                      <b>เน€เธกเธ•เธฃ</b>
+                      <b>เมตร</b>
                     </div>
                   </label>
                 </div>
@@ -828,24 +760,24 @@ export default function DirectorSettingsPage() {
 
         <section className={`${styles.card} ${styles.fiscalCard}`} id="fiscal-year-settings">
           <div className={styles.sectionHeading}>
-            <span className={styles.cardIcon}>โ—ท</span>
-            <h2>เธเธตเธเธเธเธฃเธฐเธกเธฒเธ“เธญเนเธฒเธเธญเธดเธ</h2>
+            <span className={styles.cardIcon}>◷</span>
+            <h2>ปีงบประมาณอ้างอิง</h2>
             <p>
-              เธเธณเธซเธเธ”เธเธตเธเธเธเธฃเธฐเธกเธฒเธ“เธ—เธตเนเนเธเนเธเธฑเธเธฃเธฐเธเธเธฅเธฒ เธเธณเธเธงเธเธเธฃเธฑเนเธเธฅเธฒ
-              เธฃเธฒเธขเธเธฒเธ เนเธฅเธฐเธเนเธญเธกเธนเธฅเน€เธเธทเนเธญเธเธฒเธฃเธเธฃเธฐเน€เธกเธดเธ
+              กำหนดปีงบประมาณที่ใช้กับระบบลา จำนวนครั้งลา
+              รายงาน และข้อมูลเพื่อการประเมิน
             </p>
           </div>
 
           <div className={styles.timeGrid}>
             <label>
-              <span>เธเธตเธเธเธเธฃเธฐเธกเธฒเธ“ (เธ.เธจ.)</span>
+              <span>ปีงบประมาณ (พ.ศ.)</span>
               <input
                 type="number"
                 min="2500"
                 max="2700"
                 required
                 value={settings.active_fiscal_year ?? ""}
-                placeholder="เน€เธเนเธ 2570"
+                placeholder="เช่น 2570"
                 onChange={(event) =>
                   setSettings((current) => ({
                     ...current,
@@ -859,7 +791,7 @@ export default function DirectorSettingsPage() {
             </label>
 
             <label>
-              <span>เธงเธฑเธเธ—เธตเนเน€เธฃเธดเนเธกเธเธตเธเธเธเธฃเธฐเธกเธฒเธ“</span>
+              <span>วันที่เริ่มปีงบประมาณ</span>
               <input
                 type="date"
                 required
@@ -875,7 +807,7 @@ export default function DirectorSettingsPage() {
             </label>
 
             <label>
-              <span>เธงเธฑเธเธ—เธตเนเธชเธดเนเธเธชเธธเธ”เธเธตเธเธเธเธฃเธฐเธกเธฒเธ“</span>
+              <span>วันที่สิ้นสุดปีงบประมาณ</span>
               <input
                 type="date"
                 required
@@ -895,8 +827,8 @@ export default function DirectorSettingsPage() {
           <AcademicYearSettingsField />
 
           <p>
-            เธฃเธฐเธเธเน€เธเนเธเธเธตเธเธเธเธฃเธฐเธกเธฒเธ“เน€เธเนเธ เธ.เธจ. เนเธ”เธขเธ•เธฃเธ
-            เธเธถเธเนเธกเนเธเธงเธ 543 เธเนเธณเธญเธตเธ
+            ระบบเก็บปีงบประมาณเป็น พ.ศ. โดยตรง
+            จึงไม่บวก 543 ซ้ำอีก
           </p>
         </section>
 
@@ -905,10 +837,10 @@ export default function DirectorSettingsPage() {
             <span className={styles.dangerEyebrow}>
               DANGER ZONE
             </span>
-            <h2>เธฃเธตเน€เธเนเธ•เธเธฃเธฐเธงเธฑเธ•เธดเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒ</h2>
+            <h2>รีเซ็ตประวัติการลงเวลา</h2>
             <p>
-              เนเธเนเน€เธกเธทเนเธญเธ•เนเธญเธเธเธฒเธฃเธฅเนเธฒเธเธเนเธญเธกเธนเธฅเธเธญเธเธงเธฑเธเธ—เธตเนเน€เธฅเธทเธญเธ
-              เน€เธฅเธทเธญเธเนเธ”เนเธงเนเธฒเธเธฐเธฃเธตเน€เธเนเธ•เน€เธเธเธฒเธฐเธฅเธเน€เธงเธฅเธฒ เธซเธฃเธทเธญเน€เธเธฅเธตเธขเธฃเนเธ—เธฑเนเธเธงเธฑเธเธเธฃเนเธญเธกเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเน€เธเธตเนเธขเธงเธเนเธญเธ
+              ใช้เมื่อต้องการล้างข้อมูลของวันที่เลือก
+              เลือกได้ว่าจะรีเซ็ตเฉพาะลงเวลา หรือเคลียร์ทั้งวันพร้อมรายการที่เกี่ยวข้อง
             </p>
           </div>
 
@@ -943,7 +875,7 @@ export default function DirectorSettingsPage() {
 
           <div className={styles.resetRow}>
             <label>
-              <span>เธงเธฑเธเธ—เธตเนเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธฃเธตเน€เธเนเธ•</span>
+              <span>วันที่ที่ต้องการรีเซ็ต</span>
               <input
                 type="date"
                 value={resetDate}
@@ -962,18 +894,18 @@ export default function DirectorSettingsPage() {
               onClick={() => void checkResetDate()}
             >
               {checkingReset
-                ? "เธเธณเธฅเธฑเธเธ•เธฃเธงเธเธชเธญเธ..."
-                : "เธ•เธฃเธงเธเธชเธญเธเนเธฅเธฐเธฃเธตเน€เธเนเธ•"}
+                ? "กำลังตรวจสอบ..."
+                : "ตรวจสอบและรีเซ็ต"}
             </button>
           </div>
 
           {resetSummary !== null && (
             <div className={styles.resetSummary}>
-              <strong>เธเธเธเนเธญเธกเธนเธฅเธ—เธตเนเธเธฐเธฃเธตเน€เธเนเธ• {resetTotal} เธฃเธฒเธขเธเธฒเธฃ</strong>
-              <span>เธฅเธเน€เธงเธฅเธฒ {resetSummary.attendanceCount} เธฃเธฒเธขเธเธฒเธฃ</span>
-              <span>เนเธเธฅเธฒ {resetSummary.leaveCount} เธฃเธฒเธขเธเธฒเธฃ</span>
-              <span>เนเธเธฃเธฒเธเธเธฒเธฃ {resetSummary.officialDutyCount} เธฃเธฒเธขเธเธฒเธฃ</span>
-              <span>เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก {resetSummary.memoCount} เธฃเธฒเธขเธเธฒเธฃ</span>
+              <strong>พบข้อมูลที่จะรีเซ็ต {resetTotal} รายการ</strong>
+              <span>ลงเวลา {resetSummary.attendanceCount} รายการ</span>
+              <span>ใบลา {resetSummary.leaveCount} รายการ</span>
+              <span>ไปราชการ {resetSummary.officialDutyCount} รายการ</span>
+              <span>บันทึกข้อความ {resetSummary.memoCount} รายการ</span>
               {resetPreviewItems.length > 0 && (
                 <div className={styles.resetPreviewList}>
                   {resetPreviewItems.slice(0, 8).map((item) => (
@@ -982,7 +914,7 @@ export default function DirectorSettingsPage() {
                     </span>
                   ))}
                   {resetPreviewItems.length > 8 && (
-                    <span>เนเธฅเธฐเธญเธตเธ {resetPreviewItems.length - 8} เธฃเธฒเธขเธเธฒเธฃ</span>
+                    <span>และอีก {resetPreviewItems.length - 8} รายการ</span>
                   )}
                 </div>
               )}
@@ -999,46 +931,46 @@ export default function DirectorSettingsPage() {
             >
               <span className={styles.warningIcon}>!</span>
 
-              <h2>เธขเธทเธเธขเธฑเธเธเธฒเธฃเธฃเธตเน€เธเนเธ•เธเนเธญเธกเธนเธฅ</h2>
+              <h2>ยืนยันการรีเซ็ตข้อมูล</h2>
 
               <p>
-                เธฃเธฐเธเธเธเธฐเธฃเธตเน€เธเนเธ•เธเนเธญเธกเธนเธฅเธงเธฑเธเธ—เธตเน <strong>{resetDate}</strong>{" "}
-                เนเธเธ{" "}
+                ระบบจะรีเซ็ตข้อมูลวันที่ <strong>{resetDate}</strong>{" "}
+                แบบ{" "}
                 <strong>
                   {getResetModeTitle(resetMode)}
                 </strong>{" "}
-                เธเธณเธเธงเธ <strong>{resetTotal}</strong> เธฃเธฒเธขเธเธฒเธฃ
+                จำนวน <strong>{resetTotal}</strong> รายการ
               </p>
 
               {resetSummary && (
                 <div className={styles.confirmSummary}>
-                  <span>เธฅเธเน€เธงเธฅเธฒ {resetSummary.attendanceCount} เธฃเธฒเธขเธเธฒเธฃ</span>
-                  <span>เนเธเธฅเธฒ {resetSummary.leaveCount} เธฃเธฒเธขเธเธฒเธฃ</span>
-                  <span>เนเธเธฃเธฒเธเธเธฒเธฃ {resetSummary.officialDutyCount} เธฃเธฒเธขเธเธฒเธฃ</span>
-                  <span>เธเธฑเธเธ—เธถเธเธเนเธญเธเธงเธฒเธก {resetSummary.memoCount} เธฃเธฒเธขเธเธฒเธฃ</span>
+                  <span>ลงเวลา {resetSummary.attendanceCount} รายการ</span>
+                  <span>ใบลา {resetSummary.leaveCount} รายการ</span>
+                  <span>ไปราชการ {resetSummary.officialDutyCount} รายการ</span>
+                  <span>บันทึกข้อความ {resetSummary.memoCount} รายการ</span>
                   {resetPreviewItems.slice(0, 8).map((item) => (
                     <span key={item.id}>
                       {item.label}: {item.detail}
                     </span>
                   ))}
                   {resetPreviewItems.length > 8 && (
-                    <span>เนเธฅเธฐเธญเธตเธ {resetPreviewItems.length - 8} เธฃเธฒเธขเธเธฒเธฃ</span>
+                    <span>และอีก {resetPreviewItems.length - 8} รายการ</span>
                   )}
                 </div>
               )}
 
               <p className={styles.warningText}>
-                เธเธฒเธฃเธ”เธณเน€เธเธดเธเธเธฒเธฃเธเธตเนเนเธกเนเธชเธฒเธกเธฒเธฃเธ–เธขเนเธญเธเธเธฅเธฑเธเนเธ”เน
+                การดำเนินการนี้ไม่สามารถย้อนกลับได้
               </p>
 
               <label>
                 <span>
-                  เธเธดเธกเธเนเธเธณเธงเนเธฒ <b>เธขเธทเธเธขเธฑเธ</b> เน€เธเธทเนเธญเธขเธทเธเธขเธฑเธ
+                  พิมพ์คำว่า <b>ยืนยัน</b> เพื่อยืนยัน
                 </span>
                 <input
                   type="text"
                   value={resetConfirmation}
-                  placeholder="เธขเธทเธเธขเธฑเธ"
+                  placeholder="ยืนยัน"
                   onChange={(event) =>
                     setResetConfirmation(event.target.value)
                   }
@@ -1055,7 +987,7 @@ export default function DirectorSettingsPage() {
                     setResetConfirmation("");
                   }}
                 >
-                  เธขเธเน€เธฅเธดเธ
+                  ยกเลิก
                 </button>
 
                 <button
@@ -1063,15 +995,15 @@ export default function DirectorSettingsPage() {
                   className={styles.confirmResetButton}
                   disabled={
                     resetting ||
-                    resetConfirmation.trim() !== "เธขเธทเธเธขเธฑเธ"
+                    resetConfirmation.trim() !== "ยืนยัน"
                   }
                   onClick={() =>
                     void confirmResetHistory()
                   }
                 >
                   {resetting
-                    ? "เธเธณเธฅเธฑเธเธฃเธตเน€เธเนเธ•..."
-                    : "เธขเธทเธเธขเธฑเธเธฃเธตเน€เธเนเธ•เธเนเธญเธกเธนเธฅ"}
+                    ? "กำลังรีเซ็ต..."
+                    : "ยืนยันรีเซ็ตข้อมูล"}
                 </button>
               </div>
             </section>
@@ -1080,15 +1012,15 @@ export default function DirectorSettingsPage() {
 
         <div className={styles.saveBar}>
           <div>
-            <strong>เธเธฑเธเธ—เธถเธเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเธฃเธงเธก</strong>
+            <strong>บันทึกการตั้งค่ารวม</strong>
             <p>
-              เนเธเนเธเธฑเธเธ•เธณเนเธซเธเนเธ GPS เน€เธงเธฅเธฒเธ—เธณเธเธฒเธ เนเธฅเธฐเธเธตเธเธเธเธฃเธฐเธกเธฒเธ“
-              เธชเนเธงเธเธชเธดเธ—เธเธดเนเธ•เธฒเธกเธ•เธณเนเธซเธเนเธเธเธฑเธเน€เธฅเธเน€เธญเธเธชเธฒเธฃเธกเธตเธเธธเนเธกเธเธฑเธเธ—เธถเธเนเธขเธ
+              ใช้กับตำแหน่ง GPS เวลาทำงาน และปีงบประมาณ
+              ส่วนสิทธิ์ตามตำแหน่งกับเลขเอกสารมีปุ่มบันทึกแยก
             </p>
           </div>
 
           <button type="submit" disabled={saving}>
-            {saving ? "เธเธณเธฅเธฑเธเธเธฑเธเธ—เธถเธ..." : "เธเธฑเธเธ—เธถเธเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒเธฃเธงเธก"}
+            {saving ? "กำลังบันทึก..." : "บันทึกการตั้งค่ารวม"}
           </button>
         </div>
           </form>
@@ -1098,8 +1030,8 @@ export default function DirectorSettingsPage() {
 
         <aside className={styles.overviewPanel}>
           <div className={styles.overviewHeader}>
-            <span>เธ เธฒเธเธฃเธงเธก</span>
-            <h2>เธชเธ–เธฒเธเธฐเธเธฒเธฃเธ•เธฑเนเธเธเนเธฒ</h2>
+            <span>ภาพรวม</span>
+            <h2>สถานะการตั้งค่า</h2>
           </div>
 
           <div className={styles.overviewList}>
@@ -1110,31 +1042,31 @@ export default function DirectorSettingsPage() {
             </div>
 
             <div>
-              <span>เน€เธงเธฅเธฒเธเธฃเธน</span>
+              <span>เวลาครู</span>
               <strong>
                 {settings.teacher_start_time} - {settings.teacher_end_time}
               </strong>
-              <small>เนเธเนเธ•เธฃเธงเธเธเธฒเธฃเธกเธฒเธชเธฒเธขเนเธฅเธฐเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒ</small>
+              <small>ใช้ตรวจการมาสายและการลงเวลา</small>
             </div>
 
             <div>
-              <span>เน€เธงเธฅเธฒเธ เธฒเธฃเนเธฃเธ</span>
+              <span>เวลาภารโรง</span>
               <strong>
                 {settings.janitor_start_time} - {settings.janitor_end_time}
               </strong>
-              <small>เธเธณเธซเธเธ”เนเธขเธเธเธฒเธเธเธฃเธนเนเธฅเธฐเน€เธเนเธฒเธซเธเนเธฒเธ—เธตเน</small>
+              <small>กำหนดแยกจากครูและเจ้าหน้าที่</small>
             </div>
 
             <div>
-              <span>เธเธตเธเธเธเธฃเธฐเธกเธฒเธ“</span>
+              <span>ปีงบประมาณ</span>
               <strong>{fiscalSummary}</strong>
               <small>{fiscalRangeSummary}</small>
             </div>
 
             <div>
-              <span>เธเธฒเธฃเธเธฑเธเธ—เธถเธเนเธขเธ</span>
-              <strong>เธชเธดเธ—เธเธดเนเธ•เธฒเธกเธ•เธณเนเธซเธเนเธ / เน€เธฅเธเน€เธญเธเธชเธฒเธฃ</strong>
-              <small>เธกเธตเธเธธเนเธกเธเธฑเธเธ—เธถเธเธเธญเธเนเธ•เนเธฅเธฐเธซเธกเธงเธ”</small>
+              <span>การบันทึกแยก</span>
+              <strong>สิทธิ์ตามตำแหน่ง / เลขเอกสาร</strong>
+              <small>มีปุ่มบันทึกของแต่ละหมวด</small>
             </div>
           </div>
         </aside>
