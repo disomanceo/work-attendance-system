@@ -30,6 +30,16 @@ type Profile = {
 
 type AssetType = "profile" | "signature";
 
+type TelegramStatus = {
+  connected: boolean;
+  telegram: {
+    userId: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  } | null;
+};
+
 type CropState = {
   sourceUrl: string;
   naturalWidth: number;
@@ -128,6 +138,9 @@ export default function ProfilePage() {
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [crop, setCrop] = useState<CropState | null>(null);
   const [cropping, setCropping] = useState(false);
+  const [telegramStatus, setTelegramStatus] =
+    useState<TelegramStatus | null>(null);
+  const [telegramProcessing, setTelegramProcessing] = useState(false);
 
   const dragRef = useRef({
     active: false,
@@ -184,7 +197,113 @@ export default function ProfilePage() {
     }
 
     void load();
+    void loadTelegramStatus();
   }, [router, supabase]);
+
+  async function telegramRequest(
+    method: "GET" | "POST" | "DELETE",
+    body?: Record<string, unknown>,
+  ) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const token = session?.access_token;
+    if (!token) throw new Error("กรุณาเข้าสู่ระบบใหม่");
+
+    const response = await fetch("/api/account/telegram", {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "ดำเนินการ Telegram ไม่สำเร็จ");
+    }
+
+    return result;
+  }
+
+  async function loadTelegramStatus() {
+    try {
+      const result = await telegramRequest("GET");
+      setTelegramStatus({
+        connected: result.connected === true,
+        telegram: result.telegram ?? null,
+      });
+    } catch (error) {
+      console.error("Load Telegram status failed:", error);
+      setTelegramStatus({ connected: false, telegram: null });
+    }
+  }
+
+  async function connectTelegram() {
+    setTelegramProcessing(true);
+    setMessage("");
+
+    try {
+      const result = await telegramRequest("POST", { action: "connect" });
+      if (!result.url) throw new Error("ไม่พบลิงก์ Telegram Bot");
+      window.location.href = result.url;
+    } catch (error) {
+      setMessageType("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "สร้างลิงก์เชื่อม Telegram ไม่สำเร็จ",
+      );
+      setTelegramProcessing(false);
+    }
+  }
+
+  async function testTelegram() {
+    setTelegramProcessing(true);
+    setMessage("");
+
+    try {
+      const result = await telegramRequest("POST", { action: "test" });
+      setMessageType("success");
+      setMessage(result.message || "ส่งข้อความทดสอบแล้ว");
+    } catch (error) {
+      setMessageType("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "ส่งข้อความทดสอบไม่สำเร็จ",
+      );
+    } finally {
+      setTelegramProcessing(false);
+    }
+  }
+
+  async function disconnectTelegram() {
+    if (!window.confirm("ยืนยันยกเลิกการเชื่อม Telegram?")) return;
+
+    setTelegramProcessing(true);
+    setMessage("");
+
+    try {
+      const result = await telegramRequest("DELETE");
+      setTelegramStatus({ connected: false, telegram: null });
+      setMessageType("success");
+      setMessage(result.message || "ยกเลิกการเชื่อม Telegram แล้ว");
+    } catch (error) {
+      setMessageType("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "ยกเลิกการเชื่อม Telegram ไม่สำเร็จ",
+      );
+    } finally {
+      setTelegramProcessing(false);
+    }
+  }
 
   async function uploadFile(file: File, type: AssetType) {
     setUploading(type);
@@ -404,10 +523,61 @@ export default function ProfilePage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <button type="button" onClick={() => router.push("/attendance")} aria-label="กลับหน้าลงเวลา">←</button>
-        <div>
+        <button
+          type="button"
+          onClick={() => router.push("/attendance")}
+          aria-label="กลับหน้าลงเวลา"
+        >
+          ←
+        </button>
+
+        <div className={styles.headerTitle}>
           <span>MY PROFILE</span>
           <h1>ข้อมูลส่วนตัว</h1>
+        </div>
+
+        <div className={styles.telegramActions}>
+          <span
+            className={
+              telegramStatus?.connected
+                ? styles.telegramConnected
+                : styles.telegramDisconnected
+            }
+            title={
+              telegramStatus?.connected
+                ? "เชื่อม Telegram แล้ว"
+                : "ยังไม่เชื่อม Telegram"
+            }
+          >
+            {telegramStatus?.connected ? "●" : "○"}
+          </span>
+
+          <button
+            type="button"
+            className={styles.telegramConnectButton}
+            onClick={() => void connectTelegram()}
+            disabled={telegramProcessing}
+          >
+            {telegramStatus?.connected ? "เชื่อมใหม่" : "เชื่อม"}
+          </button>
+
+          <button
+            type="button"
+            className={styles.telegramSmallButton}
+            onClick={() => void testTelegram()}
+            disabled={telegramProcessing || !telegramStatus?.connected}
+          >
+            ทดสอบ
+          </button>
+
+          <button
+            type="button"
+            className={styles.telegramDangerButton}
+            onClick={() => void disconnectTelegram()}
+            disabled={telegramProcessing || !telegramStatus?.connected}
+          >
+            ยกเลิก
+          </button>
         </div>
       </header>
 

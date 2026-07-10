@@ -35,8 +35,15 @@ function hashLinkCode(value: string) {
 }
 
 function parseLinkCode(text: string) {
-  const match = text.trim().match(/^\/?(?:link|เชื่อม)\s+([A-Za-z0-9-]+)$/i);
-  return match ? normalizeLinkCode(match[1]) : "";
+  const normalized = text.trim();
+  const linkMatch = normalized.match(
+    /^\/?(?:link|เชื่อม)\s+([A-Za-z0-9-]+)$/i,
+  );
+  const startMatch = normalized.match(
+    /^\/start(?:@\w+)?\s+([A-Za-z0-9-]+)$/i,
+  );
+  const value = linkMatch?.[1] || startMatch?.[1] || "";
+  return value ? normalizeLinkCode(value) : "";
 }
 
 export async function handleTelegramLinkCommand(input: LinkCommandInput) {
