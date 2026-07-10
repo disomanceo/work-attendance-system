@@ -53,6 +53,18 @@ type CropState = {
 const CROP_SIZE = 320;
 const OUTPUT_SIZE = 800;
 
+function getTelegramDisplayName(status: TelegramStatus | null) {
+  const telegram = status?.telegram;
+  if (!telegram) return "";
+
+  if (telegram.username) return `@${telegram.username}`;
+
+  return [telegram.firstName, telegram.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
 function getRoleLabel(role: string) {
   const labels: Record<string, string> = {
     admin: "ผู้ดูแลระบบ",
@@ -243,6 +255,36 @@ export default function ProfilePage() {
     }
   }
 
+  async function waitForTelegramConnection(
+    attempts = 8,
+    delayMs = 1500,
+  ) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const result = await telegramRequest("GET");
+
+      const nextStatus: TelegramStatus = {
+        connected: result.connected === true,
+        telegram: result.telegram ?? null,
+      };
+
+      setTelegramStatus(nextStatus);
+
+      if (nextStatus.connected) {
+        setMessageType("success");
+        setMessage("เชื่อม Telegram สำเร็จแล้ว");
+        return true;
+      }
+
+      if (attempt < attempts - 1) {
+        await new Promise((resolve) =>
+          window.setTimeout(resolve, delayMs),
+        );
+      }
+    }
+
+    return false;
+  }
+
   async function connectTelegram() {
     setTelegramProcessing(true);
     setMessage("");
@@ -250,6 +292,8 @@ export default function ProfilePage() {
     try {
       const result = await telegramRequest("POST", { action: "connect" });
       if (!result.url) throw new Error("ไม่พบลิงก์ Telegram Bot");
+      sessionStorage.setItem("telegram-link-pending", "1");
+
       window.location.href = result.url;
     } catch (error) {
       setMessageType("error");
@@ -304,6 +348,75 @@ export default function ProfilePage() {
       setTelegramProcessing(false);
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshPendingTelegramConnection() {
+      if (cancelled) return;
+
+      const pending =
+        sessionStorage.getItem("telegram-link-pending") === "1";
+
+      if (!pending) {
+        await loadTelegramStatus();
+        return;
+      }
+
+      setTelegramProcessing(true);
+
+      try {
+        const connected = await waitForTelegramConnection();
+
+        if (connected) {
+          sessionStorage.removeItem("telegram-link-pending");
+        } else {
+          setMessageType("error");
+          setMessage(
+            "ยังไม่พบการเชื่อม Telegram กรุณากด Start ในแชต Bot แล้วกลับมาหน้านี้",
+          );
+        }
+      } catch (error) {
+        setMessageType("error");
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "ตรวจสอบสถานะ Telegram ไม่สำเร็จ",
+        );
+      } finally {
+        if (!cancelled) setTelegramProcessing(false);
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void refreshPendingTelegramConnection();
+      }
+    }
+
+    void refreshPendingTelegramConnection();
+
+    window.addEventListener(
+      "focus",
+      refreshPendingTelegramConnection,
+    );
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        "focus",
+        refreshPendingTelegramConnection,
+      );
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+    };
+  }, []);
 
   async function uploadFile(file: File, type: AssetType) {
     setUploading(type);
@@ -554,11 +667,24 @@ export default function ProfilePage() {
 
           <button
             type="button"
-            className={styles.telegramConnectButton}
+            className={
+              telegramStatus?.connected
+                ? styles.telegramConnectedButton
+                : styles.telegramConnectButton
+            }
             onClick={() => void connectTelegram()}
-            disabled={telegramProcessing}
+            disabled={telegramProcessing || telegramStatus?.connected}
+            title={
+              telegramStatus?.connected
+                ? `เชื่อมแล้ว ${getTelegramDisplayName(telegramStatus)}`
+                : "เชื่อมบัญชี Telegram"
+            }
           >
-            {telegramStatus?.connected ? "เชื่อมใหม่" : "เชื่อม"}
+            {telegramProcessing
+              ? "กำลังตรวจสอบ..."
+              : telegramStatus?.connected
+                ? "✓ เชื่อมแล้ว"
+                : "เชื่อม"}
           </button>
 
           <button
@@ -580,6 +706,15 @@ export default function ProfilePage() {
           </button>
         </div>
       </header>
+
+      {telegramStatus?.connected && (
+        <div className={styles.telegramIdentity}>
+          <span>✓ Telegram เชื่อมแล้ว</span>
+          {getTelegramDisplayName(telegramStatus) && (
+            <strong>{getTelegramDisplayName(telegramStatus)}</strong>
+          )}
+        </div>
+      )}
 
       {message && (
         <div className={messageType === "success" ? styles.successMessage : styles.errorMessage}>
