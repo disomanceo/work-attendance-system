@@ -68,6 +68,108 @@ function uniqueProfileIds(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
+function notificationAppUrl() {
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+
+  if (explicit) {
+    return explicit;
+  }
+
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  return production ? `https://${production}` : "http://localhost:3000";
+}
+
+function buildNotificationButtons(input: NotifyProfilesInput) {
+  const baseUrl = notificationAppUrl();
+  const metadata = input.metadata ?? {};
+  const bookId =
+    typeof metadata.bookId === "string" ? metadata.bookId : "";
+
+  if (input.event === "document.assigned") {
+    const url = bookId
+      ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`
+      : `${baseUrl}/documents`;
+
+    return [[{ text: "เปิดงาน", url }]];
+  }
+
+  if (
+    input.event === "document.started" ||
+    input.event === "document.completed"
+  ) {
+    const url = bookId
+      ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`
+      : `${baseUrl}/documents`;
+
+    return [[{ text: "เปิดหนังสือ", url }]];
+  }
+
+  if (input.event === "leave.submitted") {
+    return [[{ text: "เปิดพิจารณา", url: `${baseUrl}/admin/leave` }]];
+  }
+
+  if (
+    input.event === "leave.approved" ||
+    input.event === "leave.rejected" ||
+    input.event === "leave.revision_requested"
+  ) {
+    return [[{ text: "เปิดรายการลา", url: `${baseUrl}/leave` }]];
+  }
+
+  if (input.event === "official_duty.submitted") {
+    return [[
+      {
+        text: "เปิดพิจารณา",
+        url: `${baseUrl}/admin/official-duty`,
+      },
+    ]];
+  }
+
+  if (
+    input.event === "official_duty.approved" ||
+    input.event === "official_duty.rejected"
+  ) {
+    return [[
+      {
+        text: "เปิดรายการไปราชการ",
+        url: `${baseUrl}/official-duty`,
+      },
+    ]];
+  }
+
+  if (input.event === "memo.submitted") {
+    return [[{ text: "เปิดพิจารณา", url: `${baseUrl}/admin/memo` }]];
+  }
+
+  if (
+    input.event === "memo.approved" ||
+    input.event === "memo.acknowledged" ||
+    input.event === "memo.rejected" ||
+    input.event === "memo.revision" ||
+    input.event === "memo.revision_requested"
+  ) {
+    return [[{ text: "เปิดบันทึกข้อความ", url: `${baseUrl}/memo` }]];
+  }
+
+  if (
+    input.event === "order.submitted" ||
+    input.event === "order.resubmitted"
+  ) {
+    return [[{ text: "เปิดพิจารณาคำสั่ง", url: `${baseUrl}/orders` }]];
+  }
+
+  if (
+    input.event === "order.approved" ||
+    input.event === "order.revision" ||
+    input.event === "order.assigned" ||
+    input.event === "order.acknowledged"
+  ) {
+    return [[{ text: "เปิดรายการคำสั่ง", url: `${baseUrl}/orders` }]];
+  }
+
+  return undefined;
+}
+
 async function writeLog(input: {
   event: NotificationEvent;
   profileId: string;
@@ -149,7 +251,11 @@ export async function notifyTelegramProfiles(input: NotifyProfilesInput) {
     }
 
     try {
-      await sendTelegramMessage(recipient.last_private_chat_id, input.text);
+      await sendTelegramMessage(
+        recipient.last_private_chat_id,
+        input.text,
+        { buttons: buildNotificationButtons(input) }
+      );
       sent += 1;
 
       await writeLog({

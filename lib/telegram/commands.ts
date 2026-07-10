@@ -15,6 +15,11 @@ type TelegramAttendancePerson = {
   status: string;
 };
 
+type TelegramAttendanceNote = {
+  fullName: string;
+  note: string;
+};
+
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -80,22 +85,27 @@ function findPeople(value: unknown): TelegramAttendancePerson[] {
           ? person.status.trim()
           : "",
     }))
-    .filter(
-      (person) =>
-        Boolean(person.fullName) &&
-        Boolean(person.checkInTime)
-    )
-    .sort((a, b) => {
-      const timeCompare = a.checkInTime.localeCompare(
-        b.checkInTime
-      );
+    .filter((person) => Boolean(person.fullName));
+}
 
-      if (timeCompare !== 0) {
-        return timeCompare;
-      }
+function findNotes(value: unknown): TelegramAttendanceNote[] {
+  if (!isRecord(value) || !Array.isArray(value.notes)) {
+    return [];
+  }
 
-      return a.fullName.localeCompare(b.fullName, "th");
-    });
+  return value.notes
+    .filter(isRecord)
+    .map((item) => ({
+      fullName:
+        typeof item.fullName === "string"
+          ? item.fullName.trim()
+          : "",
+      note:
+        typeof item.note === "string"
+          ? item.note.trim()
+          : "",
+    }))
+    .filter((item) => Boolean(item.fullName) && Boolean(item.note));
 }
 
 function escapeHtml(value: string) {
@@ -133,13 +143,13 @@ export function normalizeTelegramCommand(text: string) {
 
   if (
     [
-      "สรุป",
-      "สรุปวันนี้",
-      "รายงาน",
-      "รายงานวันนี้",
-      "รายงานลงเวลา",
-      "สรุปการลงเวลา",
-      "ลงเวลาวันนี้",
+      "เธชเธฃเธธเธ",
+      "เธชเธฃเธธเธเธงเธฑเธเธเธตเน",
+      "เธฃเธฒเธขเธเธฒเธ",
+      "เธฃเธฒเธขเธเธฒเธเธงเธฑเธเธเธตเน",
+      "เธฃเธฒเธขเธเธฒเธเธฅเธเน€เธงเธฅเธฒ",
+      "เธชเธฃเธธเธเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒ",
+      "เธฅเธเน€เธงเธฅเธฒเธงเธฑเธเธเธตเน",
     ].includes(command)
   ) {
     return "summary";
@@ -147,9 +157,9 @@ export function normalizeTelegramCommand(text: string) {
 
   if (
     [
-      "ช่วยเหลือ",
-      "คำสั่ง",
-      "เมนู",
+      "เธเนเธงเธขเน€เธซเธฅเธทเธญ",
+      "เธเธณเธชเธฑเนเธ",
+      "เน€เธกเธเธน",
       "help",
       "start",
     ].includes(command)
@@ -166,14 +176,14 @@ export function getTelegramCommandDate(text: string) {
 
 export function buildHelpMessage() {
   return [
-    "คำสั่ง Telegram Bot",
+    "เธเธณเธชเธฑเนเธ Telegram Bot",
     "",
-    "สรุป — รายงานการลงเวลาวันนี้",
-    "สรุป 09-07-2569 — รายงานการลงเวลาของวันที่ระบุ",
-    "ช่วยเหลือ — แสดงรายการคำสั่ง",
+    "เธชเธฃเธธเธ โ€” เธฃเธฒเธขเธเธฒเธเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒเธงเธฑเธเธเธตเน",
+    "เธชเธฃเธธเธ 09-07-2569 โ€” เธฃเธฒเธขเธเธฒเธเธเธฒเธฃเธฅเธเน€เธงเธฅเธฒเธเธญเธเธงเธฑเธเธ—เธตเนเธฃเธฐเธเธธ",
+    "เธเนเธงเธขเน€เธซเธฅเธทเธญ โ€” เนเธชเธ”เธเธฃเธฒเธขเธเธฒเธฃเธเธณเธชเธฑเนเธ",
     "",
-    "คำที่รองรับ:",
-    "สรุปวันนี้, รายงาน, รายงานวันนี้, ลงเวลาวันนี้, สรุป 09-07-2569",
+    "เธเธณเธ—เธตเนเธฃเธญเธเธฃเธฑเธ:",
+    "เธชเธฃเธธเธเธงเธฑเธเธเธตเน, เธฃเธฒเธขเธเธฒเธ, เธฃเธฒเธขเธเธฒเธเธงเธฑเธเธเธตเน, เธฅเธเน€เธงเธฅเธฒเธงเธฑเธเธเธตเน, เธชเธฃเธธเธ 09-07-2569",
   ].join("\n");
 }
 
@@ -286,47 +296,72 @@ async function fetchDailyAttendance(
     );
   }
 
-  const profiles =
-    (profilesResult.data ?? []) as DailyProfile[];
+  const profiles = (profilesResult.data ?? []) as DailyProfile[];
   const attendanceRecords =
     (attendanceResult.data ?? []) as DailyAttendanceRecord[];
-  const leaves =
-    (leavesResult.data ?? []) as DailyLeaveRequest[];
+  const leaves = (leavesResult.data ?? []) as DailyLeaveRequest[];
   const officialDuties =
     (officialDutyResult.data ?? []) as DailyOfficialDutyRequest[];
 
-  const profileMap = new Map(
-    profiles.map((profile) => [profile.id, profile])
+  const attendanceByUser = new Map(
+    attendanceRecords.map((record) => [record.user_id, record])
   );
+  const leaveByUser = new Map(
+    leaves.map((leave) => [leave.user_id, leave.leave_type])
+  );
+  const officialDutyUserIds = new Set(
+    officialDuties.map((duty) => duty.user_id)
+  );
+
+  const sortedProfiles = [...profiles].sort((a, b) =>
+    a.full_name.localeCompare(b.full_name, "th")
+  );
+
+  const people = sortedProfiles.map((profile) => {
+    const record = attendanceByUser.get(profile.id);
+
+    return {
+      fullName: profile.full_name,
+      checkInTime: formatBangkokCheckInTime(record?.check_in_at ?? null),
+      status:
+        record?.check_in_at
+          ? record.check_in_status === "late"
+            ? "late"
+            : "normal"
+          : "",
+    };
+  });
+
+  const notes = sortedProfiles.flatMap((profile) => {
+    const leaveType = leaveByUser.get(profile.id);
+
+    if (leaveType === "sick") {
+      return [{ fullName: profile.full_name, note: "ลาป่วย" }];
+    }
+
+    if (leaveType === "personal") {
+      return [{ fullName: profile.full_name, note: "ลากิจ" }];
+    }
+
+    if (officialDutyUserIds.has(profile.id)) {
+      return [{ fullName: profile.full_name, note: "ไปราชการ" }];
+    }
+
+    return [];
+  });
 
   const checkedInRecords = attendanceRecords.filter(
-    (record) => record.check_in_at && profileMap.has(record.user_id)
+    (record) =>
+      Boolean(record.check_in_at) &&
+      profiles.some((profile) => profile.id === record.user_id)
   );
-
-  const people = checkedInRecords
-    .map((record) => {
-      const profile = profileMap.get(record.user_id);
-
-      return {
-        fullName: profile?.full_name ?? "",
-        checkInTime: formatBangkokCheckInTime(record.check_in_at),
-        status:
-          record.check_in_status === "late" ? "late" : "normal",
-      };
-    })
-    .filter(
-      (person) => person.fullName && person.checkInTime
-    );
-
   const sick = leaves.filter(
     (leave) => leave.leave_type === "sick"
   ).length;
   const personal = leaves.filter(
     (leave) => leave.leave_type === "personal"
   ).length;
-  const officialDuty = new Set(
-    officialDuties.map((duty) => duty.user_id)
-  ).size;
+  const officialDuty = officialDutyUserIds.size;
   const present = checkedInRecords.length;
   const late = checkedInRecords.filter(
     (record) => record.check_in_status === "late"
@@ -346,6 +381,7 @@ async function fetchDailyAttendance(
     officialDuty,
     absent,
     people,
+    notes,
   };
 }
 
@@ -353,119 +389,68 @@ export async function buildSummaryMessage(
   requestOrigin: string,
   date = currentBangkokDateKey()
 ) {
-  const payload = await fetchDailyAttendance(
-    requestOrigin,
-    date
-  );
+  const payload = await fetchDailyAttendance(requestOrigin, date);
   const people = findPeople(payload);
+  const notes = findNotes(payload);
 
   const total =
-    findNumber(payload, [
-      "total",
-      "totalPersonnel",
-      "total_personnel",
-      "totalMembers",
-      "total_members",
-      "all",
-    ]) ?? 0;
-
+    findNumber(payload, ["total", "totalPersonnel", "total_personnel"]) ?? 0;
   const present =
-    findNumber(payload, [
-      "present",
-      "presentCount",
-      "present_count",
-      "working",
-      "onTime",
-      "on_time",
-    ]) ?? 0;
-
-  const late =
-    findNumber(payload, [
-      "late",
-      "lateCount",
-      "late_count",
-    ]) ?? 0;
-
+    findNumber(payload, ["present", "presentCount", "present_count"]) ?? 0;
   const sick =
-    findNumber(payload, [
-      "sickLeave",
-      "sick_leave",
-      "sick",
-      "sickCount",
-      "sick_count",
-    ]) ?? 0;
-
+    findNumber(payload, ["sick", "sickCount", "sick_count"]) ?? 0;
   const personal =
-    findNumber(payload, [
-      "personalLeave",
-      "personal_leave",
-      "personal",
-      "personalCount",
-      "personal_count",
-    ]) ?? 0;
-
+    findNumber(payload, ["personal", "personalCount", "personal_count"]) ?? 0;
   const officialDuty =
     findNumber(payload, [
       "officialDuty",
       "official_duty",
       "officialDutyCount",
       "official_duty_count",
-      "duty",
     ]) ?? 0;
-
   const absent =
-    findNumber(payload, [
-      "absent",
-      "absentCount",
-      "absent_count",
-      "missing",
-      "notPresent",
-      "not_present",
-    ]) ??
-    Math.max(
-      total -
-        present -
-        sick -
-        personal -
-        officialDuty,
-      0
-    );
-
-  const normal = Math.max(present - late, 0);
+    findNumber(payload, ["absent", "absentCount", "absent_count"]) ??
+    Math.max(total - present - sick - personal - officialDuty, 0);
 
   const personLines =
     people.length > 0
       ? people.map((person, index) => {
+          const time = person.checkInTime || "-";
           const status =
             person.status === "late"
-              ? " (มาสาย)"
-              : "";
+              ? "มาสาย"
+              : person.status === "normal"
+                ? "ปกติ"
+                : "-";
 
-          return `${index + 1}. ${escapeHtml(
-            person.checkInTime
-          )} น. ${escapeHtml(
-            person.fullName
-          )}${status}`;
+          return `${index + 1}. ${escapeHtml(person.fullName)} | ${escapeHtml(
+            time
+          )} | ${status}`;
         })
-      : ["ยังไม่มีผู้ลงเวลา"];
+      : ["ยังไม่มีรายชื่อบุคลากร"];
+
+  const noteLines =
+    notes.length > 0
+      ? [
+          "",
+          "หมายเหตุ",
+          ...notes.map(
+            (item) =>
+              `- ${escapeHtml(item.fullName)}: ${escapeHtml(item.note)}`
+          ),
+        ]
+      : [];
 
   return [
-    "รายงานการลงเวลาปฏิบัติงาน",
-    `${escapeHtml(formatThaiDate(date))} เวลา ${escapeHtml(
-      formatThaiTime()
-    )} น.`,
+    "📊 <b>สรุปการลงเวลา</b>",
+    `วันที่ ${escapeHtml(formatThaiDate(date))}`,
     "",
     ...personLines,
+    ...noteLines,
     "",
-    "สรุป",
-    `บุคลากรทั้งหมด ${total.toLocaleString("th-TH")} คน`,
-    `ลงเวลาแล้ว ${present.toLocaleString("th-TH")} คน`,
-    `มาปกติ ${normal.toLocaleString("th-TH")} คน`,
-    `มาสาย ${late.toLocaleString("th-TH")} คน`,
-    `ลาป่วย ${sick.toLocaleString("th-TH")} คน`,
-    `ลากิจ ${personal.toLocaleString("th-TH")} คน`,
+    `มาแล้ว ${present.toLocaleString("th-TH")} คน   ยังไม่ลงเวลา ${absent.toLocaleString("th-TH")} คน`,
+    `ลาป่วย ${sick.toLocaleString("th-TH")} คน   ลากิจ ${personal.toLocaleString("th-TH")} คน`,
     `ไปราชการ ${officialDuty.toLocaleString("th-TH")} คน`,
-    `ยังไม่ลงเวลา ${absent.toLocaleString("th-TH")} คน`,
   ].join("\n");
 }
 

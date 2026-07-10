@@ -1,5 +1,10 @@
 import "server-only";
 
+export type TelegramInlineButton = {
+  text: string;
+  url: string;
+};
+
 type TelegramApiResult = {
   ok?: boolean;
   description?: string;
@@ -7,7 +12,10 @@ type TelegramApiResult = {
 
 export async function sendTelegramMessage(
   chatId: string | number,
-  text: string
+  text: string,
+  options?: {
+    buttons?: TelegramInlineButton[][];
+  }
 ) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
 
@@ -31,6 +39,13 @@ export async function sendTelegramMessage(
           text,
           parse_mode: "HTML",
           disable_web_page_preview: true,
+          ...(options?.buttons?.length
+            ? {
+                reply_markup: {
+                  inline_keyboard: options.buttons,
+                },
+              }
+            : {}),
         }),
         signal: controller.signal,
         cache: "no-store",
