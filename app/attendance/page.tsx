@@ -870,7 +870,6 @@ schoolName: settings?.school_name ?? null,
     Boolean(settings) &&
     Boolean(record?.check_in_at) &&
     !record?.check_out_at &&
-    !todayLeave &&
     getBangkokTime() >= normalizeTime(roleEndTime);
 
   return (
@@ -936,7 +935,7 @@ schoolName: settings?.school_name ?? null,
               <small>เวลาปัจจุบัน</small>
             </div>
 
-            {todayLeave ? (
+            {!record?.check_in_at && todayLeave ? (
               <div className={styles.focusLeaveState}>
                 <span>{todayLeave.status === "approved" ? "✓" : "◷"}</span>
                 <h2>{getLeaveDisplayLabel(todayLeave)}</h2>
@@ -1083,7 +1082,7 @@ schoolName: settings?.school_name ?? null,
 
               <div>
                 <small>สถานะ</small>
-                {todayLeave ? (
+                {!record?.check_in_at && todayLeave ? (
                   <span className={styles.focusStatusLeave}>
                     {getLeaveDisplayLabel(todayLeave)}
                   </span>
