@@ -94,6 +94,21 @@ type MonthlySummary = {
   officialDuty: number;
 };
 
+type WorkCalendarDayResponse = {
+  ok: boolean;
+  date: string;
+  isWorkingDay: boolean;
+  dayType:
+    | "PUBLIC_HOLIDAY"
+    | "SCHOOL_HOLIDAY"
+    | "SPECIAL_WORKDAY"
+    | null;
+  title: string;
+  reportText?: string;
+  note?: string;
+  message?: string;
+};
+
 type MonthlySummaryResponse = {
   ok: boolean;
   message?: string;
@@ -265,6 +280,8 @@ export default function AttendancePage() {
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
   const [record, setRecord] = useState<AttendanceRecord | null>(null);
   const [todayLeave, setTodayLeave] = useState<TodayLeave | null>(null);
+  const [workCalendarDay, setWorkCalendarDay] =
+    useState<WorkCalendarDayResponse | null>(null);
   const [monthlySummary, setMonthlySummary] =
     useState<MonthlySummary | null>(null);
   const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(true);
@@ -286,6 +303,47 @@ export default function AttendancePage() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  async function loadWorkCalendarDay() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) return;
+
+    const response = await fetch(
+      `/api/work-calendar/day?date=${encodeURIComponent(
+        getBangkokDate(),
+      )}`,
+      {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      },
+    );
+
+    const result =
+      (await response.json()) as WorkCalendarDayResponse;
+
+    if (!response.ok || !result.ok) {
+      throw new Error(
+        result.message ||
+          "ตรวจสอบวันปฏิบัติงานไม่สำเร็จ",
+      );
+    }
+
+    setWorkCalendarDay(result);
+  }
+
+  useEffect(() => {
+    void loadWorkCalendarDay().catch((error) => {
+      console.error(
+        "Load work calendar day error:",
+        error,
+      );
+    });
   }, []);
 
   const loadTodayLeave = useCallback(
@@ -648,6 +706,11 @@ schoolName: settings?.school_name ?? null,
     setMessage("");
 
     try {
+      if (workCalendarDay?.isWorkingDay === false) {
+        throw new Error(
+          "วันนี้เป็นวันหยุด ไม่มีการลงเวลาปฏิบัติงาน",
+        );
+      }
       if (record?.check_in_at) {
         throw new Error("วันนี้คุณได้ลงเวลาแล้ว");
       }
@@ -919,8 +982,7 @@ schoolName: settings?.school_name ?? null,
             {message}
           </div>
         )}
-
-        <section className={styles.focusDashboard}>
+<section className={styles.focusDashboard}>
           <article className={styles.focusCheckInCard}>
             <p className={styles.focusDate}>{formatThaiDate(now)}</p>
 
@@ -953,8 +1015,15 @@ schoolName: settings?.school_name ?? null,
               <div className={styles.focusAction}>
                 <button
                   type="button"
-                  className={styles.focusFingerprintButton}
-                  disabled={processing}
+                  className={`${styles.focusFingerprintButton} ${
+                    workCalendarDay?.isWorkingDay === false
+                      ? styles.focusFingerprintHoliday
+                      : ""
+                  }`}
+                  disabled={
+                    processing ||
+                    workCalendarDay?.isWorkingDay === false
+                  }
                   onClick={() => void handleCheckIn()}
                   aria-label="ลงเวลาปฏิบัติงาน"
                 >
@@ -970,10 +1039,22 @@ schoolName: settings?.school_name ?? null,
                     </svg>
                   </span>
                   <strong>
-                    {processing ? "กำลังตรวจสอบ GPS..." : "ลงเวลาปฏิบัติงาน"}
+                    {processing
+                      ? "กำลังตรวจสอบ GPS..."
+                      : workCalendarDay?.isWorkingDay === false
+                        ? workCalendarDay?.title ||
+                          "วันนี้เป็นวันหยุด"
+                        : "ลงเวลาปฏิบัติงาน"}
                   </strong>
-                  {!processing && <small>แตะเพื่อเช็กอิน</small>}
+                  {!processing && (
+                    <small>
+                      {workCalendarDay?.isWorkingDay === false
+                        ? "ไม่มีการลงเวลาปฏิบัติงาน"
+                        : "แตะเพื่อเช็กอิน"}
+                    </small>
+                  )}
                 </button>
+                {workCalendarDay?.isWorkingDay !== false && (
                 <div
                   className={`${styles.focusGpsStatus} ${
                     processing
@@ -1028,7 +1109,7 @@ schoolName: settings?.school_name ?? null,
                     </small>
                   </div>
                 </div>
-              </div>
+                            )}</div>
             ) : (
               <div className={styles.focusCompletedState}>
                 <span>✓</span>

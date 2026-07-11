@@ -26,6 +26,20 @@ type AttendanceStudent = {
 type SettingsResponse = { profiles?: Profile[]; classSettings?: ClassSetting[]; message?: string; error?: string };
 type AttendanceResponse = { students?: AttendanceStudent[]; adviserNames?: string[]; message?: string; error?: string };
 type AttendanceRecord = { studentId: string; status: AttendanceStatus };
+type WorkCalendarDayResponse = {
+  ok: boolean;
+  date: string;
+  isWorkingDay: boolean;
+  dayType:
+    | "PUBLIC_HOLIDAY"
+    | "SCHOOL_HOLIDAY"
+    | "SPECIAL_WORKDAY"
+    | null;
+  title: string;
+  reportText?: string;
+  note?: string;
+  message?: string;
+};
 
 const CLASS_ROOMS = ["", "1", "2", "3"];
 const STATUS_OPTIONS: Array<{ key: AttendanceStatus; label: string; icon: string; active: string }> = [
@@ -106,6 +120,8 @@ export default function StudentAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [workCalendarDay, setWorkCalendarDay] =
+    useState<WorkCalendarDayResponse | null>(null);
 
   const selectedWeek = useMemo(() => weekDates(date), [date]);
 
@@ -223,6 +239,17 @@ export default function StudentAttendancePage() {
     return base;
   }, [records, students]);
 
+  const loadWorkCalendarDay = useCallback(async () => {
+    const data =
+      await fetchJson<WorkCalendarDayResponse>(
+        `/api/work-calendar/day?date=${encodeURIComponent(
+          date,
+        )}`,
+      );
+
+    setWorkCalendarDay(data);
+  }, [date, fetchJson]);
+
   const loadSettings = useCallback(async () => {
     const data = await fetchJson<SettingsResponse>("/api/students/settings");
     setProfiles(data.profiles ?? []);
@@ -246,7 +273,7 @@ export default function StudentAttendancePage() {
     let alive = true;
     setLoading(true);
     setMessage("");
-    Promise.all([loadSettings(), loadAttendance()])
+    Promise.all([loadSettings(), loadAttendance(), loadWorkCalendarDay()])
       .then(() => {
         if (alive) setLoading(false);
       })
@@ -258,7 +285,7 @@ export default function StudentAttendancePage() {
     return () => {
       alive = false;
     };
-  }, [loadAttendance, loadSettings]);
+  }, [loadAttendance, loadSettings, loadWorkCalendarDay]);
 
   function updateStatus(studentId: string, status: AttendanceStatus) {
     setRecords((current) => ({ ...current, [studentId]: { studentId, status } }));
@@ -268,6 +295,11 @@ export default function StudentAttendancePage() {
     setSaving(true);
     setMessage("");
     try {
+      if (workCalendarDay?.isWorkingDay === false) {
+        throw new Error(
+          "วันนี้เป็นวันหยุด ไม่มีการเช็กชื่อนักเรียน",
+        );
+      }
       await fetchJson("/api/students/attendance", {
         method: "POST",
         body: JSON.stringify({
@@ -330,12 +362,14 @@ export default function StudentAttendancePage() {
             <button
               type="button"
               onClick={saveAttendance}
-              disabled={saving || loading || students.length === 0}
+              disabled={saving || loading || students.length === 0 || workCalendarDay?.isWorkingDay === false}
               className="shrink-0 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-violet-500 px-4 py-2 text-[13px] font-semibold tracking-wide text-white shadow-[0_8px_22px_rgba(249,115,22,0.28)] transition active:scale-95 disabled:opacity-40"
               aria-label="บันทึก"
               title="บันทึก"
             >
-              บันทึก
+              {workCalendarDay?.isWorkingDay === false
+                ? workCalendarDay.title || "วันนี้เป็นวันหยุด"
+                : "บันทึก"}
             </button>
           </div>
         </header>
@@ -401,7 +435,15 @@ export default function StudentAttendancePage() {
                       {STATUS_OPTIONS.map((option) => {
                         const active = record.status === option.key;
                         return (
-                          <button key={option.key} type="button" onClick={() => updateStatus(student.id, option.key)} className={`h-7 rounded-full border px-0 text-[10.5px] font-medium shadow-sm ${active ? option.active : "border-slate-300 bg-white text-slate-600"}`}>
+                          <button key={option.key} type="button" onClick={() =>
+                                updateStatus(
+                                  student.id,
+                                  option.key,
+                                )
+                              }
+                              disabled={
+                                workCalendarDay?.isWorkingDay === false
+                              } className={`h-7 rounded-full border px-0 text-[10.5px] font-medium shadow-sm ${active ? option.active : "border-slate-300 bg-white text-slate-600"}`}>
                             {option.icon}
                           </button>
                         );

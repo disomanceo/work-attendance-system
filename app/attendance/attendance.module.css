@@ -2540,3 +2540,37 @@
 .topBar p {
   color: #ffffff !important;
 }
+
+
+.focusFingerprintHoliday,
+.focusFingerprintHoliday:disabled {
+  cursor: not-allowed;
+  border-color: #b8b8c2;
+  background:
+    radial-gradient(circle at 35% 28%, #d8d8df 0 18%, transparent 19%),
+    linear-gradient(145deg, #b9b9c3, #777782);
+  box-shadow:
+    0 0 0 8px rgba(148, 148, 160, 0.18),
+    0 18px 36px rgba(0, 0, 0, 0.22);
+  opacity: 1;
+}
+
+.focusFingerprintHoliday svg {
+  stroke: #f4f4f5;
+  opacity: 0.8;
+}
+
+.focusFingerprintHoliday strong {
+  max-width: 170px;
+  color: #b91c1c;
+  font-size: clamp(15px, 2.2vw, 19px);
+  line-height: 1.25;
+  text-align: center;
+}
+
+.focusFingerprintHoliday small {
+  max-width: 170px;
+  color: #991b1b;
+  line-height: 1.25;
+  text-align: center;
+}
