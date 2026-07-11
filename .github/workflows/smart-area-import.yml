@@ -1,0 +1,38 @@
+name: Smart Area Import
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Run outside working hours
+        required: false
+        default: "true"
+  schedule:
+    - cron: "0 * * * 1-5"
+
+concurrency:
+  group: smart-area-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SMART_AREA_BASE_URL: ${{ secrets.SMART_AREA_BASE_URL }}
+      SMART_AREA_USERNAME: ${{ secrets.SMART_AREA_USERNAME }}
+      SMART_AREA_PASSWORD: ${{ secrets.SMART_AREA_PASSWORD }}
+      WORK_ATTENDANCE_IMPORT_URL: ${{ secrets.WORK_ATTENDANCE_IMPORT_URL }}
+      WORK_ATTENDANCE_IMPORT_SECRET: ${{ secrets.WORK_ATTENDANCE_IMPORT_SECRET }}
+      WORK_ATTENDANCE_CALLBACK_URL: ${{ secrets.WORK_ATTENDANCE_CALLBACK_URL }}
+      FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+      GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.55.0 && npx playwright install --with-deps chromium
+      - name: Import Smart Area documents
+        run: node scripts/smart-area-import/index.mjs
