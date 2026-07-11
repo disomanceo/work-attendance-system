@@ -1226,19 +1226,23 @@ export default function DocumentsPage() {
         (task) => task.assigneeId === currentUserId,
       );
 
+      const ownTask = book.tasks.find(
+        (task) => task.assigneeId === currentUserId,
+      );
+
       const inSelectedView =
         viewMode === "clerk"
           ? book.status === "clerk_review" ||
             book.status === "director_review"
           : viewMode === "director"
-            ? hasOwnTask
+            ? Boolean(ownTask && ownTask.status !== "done")
             : viewMode === "mine"
-              ? hasOwnTask
+              ? Boolean(ownTask && ownTask.status !== "done")
               : viewMode === "all"
-                ? true
-                : workspaceMode === "member"
-                  ? hasOwnTask && book.status === "done"
-                  : book.status === "done";
+                ? book.status !== "done"
+                : workspaceMode === "manager"
+                  ? book.status === "done"
+                  : Boolean(ownTask && ownTask.status === "done");
 
       if (!inSelectedView) return false;
       if (
@@ -1313,6 +1317,97 @@ export default function DocumentsPage() {
     workspaceMode,
   ]);
 
+  const workspaceCounts = useMemo(() => {
+    const ownActiveBooks = books.filter((book) =>
+      book.tasks.some(
+        (task) =>
+          task.assigneeId === currentUserId &&
+          task.status !== "done",
+      ),
+    );
+
+    const ownNewBooks = ownActiveBooks.filter((book) =>
+      book.tasks.some(
+        (task) =>
+          task.assigneeId === currentUserId &&
+          task.status === "assigned" &&
+          !task.assignmentOpenedAt &&
+          !task.assignmentAcknowledgedAt,
+      ),
+    );
+
+    const clerkActiveBooks = books.filter(
+      (book) =>
+        book.status === "clerk_review" ||
+        book.status === "director_review",
+    );
+
+    const directorActiveBooks = ownActiveBooks;
+    const allActiveBooks = books.filter((book) => book.status !== "done");
+
+    const archiveBooks =
+      workspaceMode === "manager"
+        ? books.filter((book) => book.status === "done")
+        : books.filter((book) =>
+            book.tasks.some(
+              (task) =>
+                task.assigneeId === currentUserId &&
+                task.status === "done",
+            ),
+          );
+
+    return {
+      own: {
+        total: ownActiveBooks.length,
+        newCount: ownNewBooks.length,
+        pendingCount: Math.max(0, ownActiveBooks.length - ownNewBooks.length),
+      },
+      clerk: {
+        total: clerkActiveBooks.length,
+        newCount: clerkActiveBooks.filter((book) => !book.isRead).length,
+        pendingCount: clerkActiveBooks.filter((book) => book.isRead).length,
+      },
+      director: {
+        total: directorActiveBooks.length,
+        newCount: ownNewBooks.length,
+        pendingCount: Math.max(
+          0,
+          directorActiveBooks.length - ownNewBooks.length,
+        ),
+      },
+      allActive: allActiveBooks.length,
+      archive: archiveBooks.length,
+    };
+  }, [books, currentUserId, workspaceMode]);
+
+  function WorkCountBadges({
+    newCount,
+    pendingCount,
+  }: {
+    newCount: number;
+    pendingCount: number;
+  }) {
+    return (
+      <span className={styles.tabStatusBadges} aria-label={`ใหม่ ${newCount} ค้าง ${pendingCount}`}>
+        {newCount > 0 && (
+          <span
+            className={`${styles.tabMiniBadge} ${styles.tabMiniNew}`}
+            title={`งานใหม่ ${newCount}`}
+          >
+            {newCount > 99 ? "99+" : newCount}
+          </span>
+        )}
+        {pendingCount > 0 && (
+          <span
+            className={`${styles.tabMiniBadge} ${styles.tabMiniPending}`}
+            title={`งานค้าง ${pendingCount}`}
+          >
+            {pendingCount > 99 ? "99+" : pendingCount}
+          </span>
+        )}
+      </span>
+    );
+  }
   useEffect(() => {
     if (keepSelectedBookOnFilterChangeRef.current) {
       keepSelectedBookOnFilterChangeRef.current = false;
@@ -1461,47 +1556,44 @@ export default function DocumentsPage() {
                 className={viewMode === "clerk" ? styles.activeTab : ""}
                 onClick={() => activateWorkspaceView("clerk")}
               >
-                งานธุรการ
-                <span>
-                  {
-                    books.filter(
-                      (book) =>
-                        book.status === "clerk_review" ||
-                        book.status === "director_review",
-                    ).length
-                  }
+                งานทั้งหมด
+                <span className={styles.tabTotalCount}>
+                  {workspaceCounts.clerk.total}
                 </span>
+                <WorkCountBadges
+                  newCount={workspaceCounts.clerk.newCount}
+                  pendingCount={workspaceCounts.clerk.pendingCount}
+                />
               </button>
             )}
 
-            {workspaceMode !== "manager" && (
+            {workspaceMode === "member" && (
               <button
                 type="button"
                 className={viewMode === "mine" ? styles.activeTab : ""}
                 onClick={() => activateWorkspaceView("mine")}
               >
                 งานของฉัน
-                <span className={styles.mineCount}>
-                  {
-                    books.filter(
-                      (book) =>
-                        book.tasks.some(
-                          (task) => task.assigneeId === currentUserId,
-                        ),
-                    ).length
-                  }
+                <span className={styles.tabTotalCount}>
+                  {workspaceCounts.own.total}
                 </span>
+                <WorkCountBadges
+                  newCount={workspaceCounts.own.newCount}
+                  pendingCount={workspaceCounts.own.pendingCount}
+                />
               </button>
             )}
 
-            {workspaceMode !== "member" && (
+            {workspaceMode === "manager" && (
               <button
                 type="button"
                 className={viewMode === "all" ? styles.activeTab : ""}
                 onClick={() => activateWorkspaceView("all")}
               >
                 งานทั้งหมด
-                <span>{books.length}</span>
+                <span className={styles.tabTotalCount}>
+                  {workspaceCounts.allActive}
+                </span>
               </button>
             )}
 
@@ -1511,14 +1603,14 @@ export default function DocumentsPage() {
                 className={viewMode === "director" ? styles.activeTab : ""}
                 onClick={() => activateWorkspaceView("director")}
               >
-                {"\u0e07\u0e32\u0e19 \u0e1c\u0e2d."}
-                <span>
-                  {
-                    books.filter((book) =>
-                      book.tasks.some((task) => task.assigneeId === currentUserId),
-                    ).length
-                  }
+                งาน ผอ.
+                <span className={styles.tabTotalCount}>
+                  {workspaceCounts.director.total}
                 </span>
+                <WorkCountBadges
+                  newCount={workspaceCounts.director.newCount}
+                  pendingCount={workspaceCounts.director.pendingCount}
+                />
               </button>
             )}
 
@@ -1528,17 +1620,8 @@ export default function DocumentsPage() {
               onClick={() => activateWorkspaceView("archive")}
             >
               คลังเสร็จแล้ว
-              <span>
-                {
-                  books.filter(
-                    (book) =>
-                      book.status === "done" &&
-                      (workspaceMode !== "member" ||
-                        book.tasks.some(
-                          (task) => task.assigneeId === currentUserId,
-                        )),
-                  ).length
-                }
+              <span className={styles.tabTotalCount}>
+                {workspaceCounts.archive}
               </span>
             </button>
           </div>
