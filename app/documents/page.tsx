@@ -526,6 +526,10 @@ export default function DocumentsPage() {
   });
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
+  const isManagerWorkspace = capabilities.canAssign;
+  const isClerkWorkspace = canManageAll && !capabilities.canAssign;
+  const isMemberWorkspace = !canManageAll;
+
   function defaultDocumentViewMode(): ViewMode {
     return canManageAll ? "all" : "mine";
   }
@@ -1346,7 +1350,7 @@ export default function DocumentsPage() {
     const allActiveBooks = books.filter((book) => book.status !== "done");
 
     const archiveBooks =
-      workspaceMode === "manager"
+      isManagerWorkspace
         ? books.filter((book) => book.status === "done")
         : books.filter((book) =>
             book.tasks.some(
@@ -1378,7 +1382,7 @@ export default function DocumentsPage() {
       allActive: allActiveBooks.length,
       archive: archiveBooks.length,
     };
-  }, [books, currentUserId, workspaceMode]);
+  }, [books, currentUserId, isManagerWorkspace]);
 
   function WorkCountBadges({
     newCount,
@@ -1550,7 +1554,7 @@ export default function DocumentsPage() {
       >
         <div className={styles.mainPanel}>
           <div className={styles.viewTabs}>
-            {workspaceMode === "clerk" && (
+            {isClerkWorkspace && (
               <button
                 type="button"
                 className={viewMode === "clerk" ? styles.activeTab : ""}
@@ -1567,7 +1571,7 @@ export default function DocumentsPage() {
               </button>
             )}
 
-            {workspaceMode === "member" && (
+            {isMemberWorkspace && (
               <button
                 type="button"
                 className={viewMode === "mine" ? styles.activeTab : ""}
@@ -1584,7 +1588,7 @@ export default function DocumentsPage() {
               </button>
             )}
 
-            {workspaceMode === "manager" && (
+            {isManagerWorkspace && (
               <button
                 type="button"
                 className={viewMode === "all" ? styles.activeTab : ""}
@@ -1597,7 +1601,7 @@ export default function DocumentsPage() {
               </button>
             )}
 
-            {workspaceMode === "manager" && (
+            {isManagerWorkspace && (
               <button
                 type="button"
                 className={viewMode === "director" ? styles.activeTab : ""}
