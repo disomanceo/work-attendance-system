@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "rea
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./page.module.css";
+import SmartAreaImportButton from "./components/SmartAreaImportButton";
 
 type TaskItem = {
   id: string;
@@ -1396,6 +1397,7 @@ export default function DocumentsPage() {
 
   return (
     <main className={styles.page}>
+      <SmartAreaImportButton />
       <section className={styles.summaryGrid}>
         <button
           type="button"
