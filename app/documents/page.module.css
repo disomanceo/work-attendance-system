@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   min-height: 100vh;
   padding: 16px;
   background: #eef2f1;
@@ -4364,4 +4364,122 @@
 
 .documentListDate > span + span {
   margin-top: 1px;
+}
+/* DOCUMENTS_ASSIGNMENT_POPUP_FIX_V2 */
+.noteField {
+  display: grid !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  gap: 6px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.noteField > span {
+  display: block;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.noteField textarea {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 100px !important;
+  border: 1px solid #b7cbc6 !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  background: #ffffff !important;
+  color: #1f2933 !important;
+  line-height: 1.5 !important;
+  resize: vertical;
+  outline: none;
+  box-shadow: none;
+}
+
+.noteField textarea:focus {
+  border-color: #0a7c68 !important;
+  box-shadow: 0 0 0 3px rgba(10, 124, 104, 0.12) !important;
+}
+
+.assignmentModal {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, auto) auto auto;
+  gap: 14px;
+  width: min(680px, calc(100% - 32px));
+  max-height: calc(100dvh - 40px);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.modalHeader > button {
+  display: grid;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 24px;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .assignmentModal {
+    width: calc(100% - 20px) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  .noteField textarea {
+    min-height: 88px !important;
+  }
+}
+/* DOCUMENTS_ASSIGNMENT_POPUP_MOBILE_FIX_V3 */
+.modalBackdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 3000 !important;
+  display: grid !important;
+  place-items: center !important;
+  overflow-y: auto !important;
+  padding: 12px !important;
+  background: rgba(15, 23, 42, 0.58) !important;
+  overscroll-behavior: contain;
+}
+
+.assignmentModal {
+  position: relative !important;
+  z-index: 3001 !important;
+  width: min(680px, calc(100vw - 24px)) !important;
+  max-height: calc(100dvh - 24px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  margin: auto !important;
+}
+
+@media (max-width: 768px) {
+  .modalBackdrop {
+    align-items: start !important;
+    padding:
+      calc(10px + env(safe-area-inset-top))
+      10px
+      calc(10px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .assignmentModal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height:
+      calc(
+        100dvh -
+        20px -
+        env(safe-area-inset-top) -
+        env(safe-area-inset-bottom)
+      ) !important;
+  }
 }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -1155,20 +1155,45 @@ export default function DocumentsPage() {
   }
 
 
+  function openAssignmentModal(book: BookItem) {
+    setEditingBook(book);
+    setSelectedAssigneeIds(
+      book.tasks
+        .map((task) => task.assigneeId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    setActionNote(book.directorNote || "");
+    setMessage("");
+    setSuccessMessage("");
+  }
   async function saveAssignment() {
     if (!editingBook) return;
+
+    if (selectedAssigneeIds.length === 0) {
+      setMessage("\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e04\u0e23\u0e39\u0e2d\u0e22\u0e48\u0e32\u0e07\u0e19\u0e49\u0e2d\u0e22 1 \u0e04\u0e19");
+      return;
+    }
+
+    if (!actionNote.trim()) {
+      setMessage("\u0e01\u0e23\u0e38\u0e13\u0e32\u0e01\u0e23\u0e2d\u0e01\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e2a\u0e31\u0e48\u0e07\u0e01\u0e32\u0e23");
+      return;
+    }
 
     const ok = await postAction(
       {
         action: "assign",
         bookId: editingBook.id,
         assigneeIds: selectedAssigneeIds,
-        note: actionNote,
+        note: actionNote.trim(),
       },
       `assign:${editingBook.id}`,
     );
 
-    if (ok) setEditingBook(null);
+    if (ok) {
+      setEditingBook(null);
+      setSelectedAssigneeIds([]);
+      setActionNote("");
+    }
   }
 
   const summary = useMemo(() => {
@@ -2246,7 +2271,7 @@ export default function DocumentsPage() {
                               <button
                                 type="button"
                                 className={`${styles.assignDetailButton} ${styles.assignAction}`}
-                                onClick={() => router.push(`/documents/sign/${book.id}`)}
+                                onClick={() => openAssignmentModal(book)}
                               >
                                 {book.tasks.length > 0
                                   ? "แก้ไขผู้รับมอบหมาย"
@@ -2515,7 +2540,7 @@ export default function DocumentsPage() {
                                   <button
                                     type="button"
                                     className={`${styles.assignDetailButton} ${styles.assignAction}`}
-                                    onClick={() => router.push(`/documents/sign/${book.id}`)}
+                                    onClick={() => openAssignmentModal(book)}
                                   >
                                     {book.tasks.length > 0
                                       ? "แก้ไขผู้รับมอบหมาย"
@@ -2733,11 +2758,20 @@ export default function DocumentsPage() {
           <section className={styles.assignmentModal}>
             <div className={styles.modalHeader}>
               <div>
-                <p>มอบหมายงาน</p>
+                <p>
+                  {editingBook.tasks.length > 0
+                    ? "\u0e41\u0e01\u0e49\u0e44\u0e02\u0e1c\u0e39\u0e49\u0e23\u0e31\u0e1a\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22"
+                    : "\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22\u0e42\u0e14\u0e22\u0e44\u0e21\u0e48\u0e25\u0e07\u0e19\u0e32\u0e21"}
+                </p>
                 <h2>{editingBook.subject}</h2>
               </div>
-              <button type="button" onClick={() => setEditingBook(null)}>
-                ปิด
+              <button
+                type="button"
+                onClick={() => setEditingBook(null)}
+                aria-label={"\u0e1b\u0e34\u0e14\u0e2b\u0e19\u0e49\u0e32\u0e15\u0e48\u0e32\u0e07\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22"}
+                title={"\u0e1b\u0e34\u0e14"}
+              >
+                {"\u00d7"}
               </button>
             </div>
 
@@ -2788,7 +2822,9 @@ export default function DocumentsPage() {
                   savingKey.startsWith("assign:")
                 }
               >
-                บันทึกการมอบหมาย
+                {savingKey.startsWith("assign:")
+                  ? "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e2a\u0e48\u0e07..."
+                  : "\u0e2a\u0e48\u0e07"}
               </button>
             </div>
           </section>
