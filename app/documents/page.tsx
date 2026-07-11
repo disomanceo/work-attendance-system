@@ -105,6 +105,7 @@ type ExtensionInfo = {
 
 type SortMode = "newest" | "oldest" | "registration";
 type ViewMode = "clerk" | "director" | "mine" | "all" | "archive";
+type WorkAttentionFilter = "all" | "new" | "pending";
 type WorkspaceMode = "manager" | "clerk" | "member";
 
 const statusLabels: Record<string, string> = {
@@ -493,6 +494,8 @@ export default function DocumentsPage() {
   const [urgencyFilter, setUrgencyFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [workAttentionFilter, setWorkAttentionFilter] =
+    useState<WorkAttentionFilter>("all");
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("member");
   const [accessMode, setAccessMode] = useState<"all" | "assigned">("assigned");
   const [canManageAll, setCanManageAll] = useState(false);
@@ -535,6 +538,7 @@ export default function DocumentsPage() {
   }
 
   function clearCrossFilters() {
+    setWorkAttentionFilter("all");
     setStatusFilter("all");
     setUrgencyFilter("all");
     setAssigneeFilter("all");
@@ -559,6 +563,19 @@ export default function DocumentsPage() {
   function activateWorkspaceView(nextViewMode: ViewMode) {
     setViewMode(nextViewMode);
     clearCrossFilters();
+  }
+
+  function activateWorkAttention(
+    nextViewMode: ViewMode,
+    nextFilter: WorkAttentionFilter,
+  ) {
+    setViewMode(nextViewMode);
+    setWorkAttentionFilter(nextFilter);
+    setStatusFilter("all");
+    setUrgencyFilter("all");
+    setAssigneeFilter("all");
+    setSelectedSmartAreaPage(null);
+    setQuery("");
   }
 
   function activateSmartAreaPage(pageNumber: number) {
@@ -1249,6 +1266,31 @@ export default function DocumentsPage() {
                   : Boolean(ownTask && ownTask.status === "done");
 
       if (!inSelectedView) return false;
+
+      if (
+        workAttentionFilter !== "all" &&
+        (viewMode === "mine" ||
+          viewMode === "director" ||
+          viewMode === "clerk")
+      ) {
+        const ownTask = book.tasks.find(
+          (task) => task.assigneeId === currentUserId,
+        );
+
+        const isNew =
+          viewMode === "clerk"
+            ? !book.isRead
+            : Boolean(
+                ownTask &&
+                  ownTask.status === "assigned" &&
+                  !ownTask.assignmentOpenedAt &&
+                  !ownTask.assignmentAcknowledgedAt,
+              );
+
+        if (workAttentionFilter === "new" && !isNew) return false;
+        if (workAttentionFilter === "pending" && isNew) return false;
+      }
+
       if (
         selectedSmartAreaPage !== null &&
         Number(book.smartAreaPage || 0) !== selectedSmartAreaPage
@@ -1318,6 +1360,7 @@ export default function DocumentsPage() {
     statusFilter,
     urgencyFilter,
     viewMode,
+    workAttentionFilter,
     workspaceMode,
   ]);
 
@@ -1384,31 +1427,55 @@ export default function DocumentsPage() {
     };
   }, [books, currentUserId, isManagerWorkspace]);
 
-  function WorkCountBadges({
+  function WorkFilterSwitch({
+    view,
     newCount,
     pendingCount,
   }: {
+    view: ViewMode;
     newCount: number;
     pendingCount: number;
   }) {
+    const activeFilter =
+      viewMode === view ? workAttentionFilter : "all";
+
     return (
-      <span className={styles.tabStatusBadges} aria-label={`ใหม่ ${newCount} ค้าง ${pendingCount}`}>
-        {newCount > 0 && (
-          <span
-            className={`${styles.tabMiniBadge} ${styles.tabMiniNew}`}
-            title={`งานใหม่ ${newCount}`}
-          >
-            {newCount > 99 ? "99+" : newCount}
-          </span>
-        )}
-        {pendingCount > 0 && (
-          <span
-            className={`${styles.tabMiniBadge} ${styles.tabMiniPending}`}
-            title={`งานค้าง ${pendingCount}`}
-          >
-            {pendingCount > 99 ? "99+" : pendingCount}
-          </span>
-        )}
+      <span
+        className={styles.workFilterSwitch}
+        aria-label={`งานใหม่ ${newCount} งานค้าง ${pendingCount}`}
+      >
+        <button
+          type="button"
+          className={[
+            styles.workFilterHalf,
+            styles.workFilterNew,
+            activeFilter === "new" ? styles.workFilterHalfActive : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          onClick={() => activateWorkAttention(view, "new")}
+          aria-pressed={activeFilter === "new"}
+          title={`แสดงงานใหม่ ${newCount}`}
+        >
+          <span>ใหม่</span>
+          <strong>{newCount > 99 ? "99+" : newCount}</strong>
+        </button>
+        <button
+          type="button"
+          className={[
+            styles.workFilterHalf,
+            styles.workFilterPending,
+            activeFilter === "pending" ? styles.workFilterHalfActive : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          onClick={() => activateWorkAttention(view, "pending")}
+          aria-pressed={activeFilter === "pending"}
+          title={`แสดงงานค้าง ${pendingCount}`}
+        >
+          <span>ค้าง</span>
+          <strong>{pendingCount > 99 ? "99+" : pendingCount}</strong>
+        </button>
       </span>
     );
   }
@@ -1426,6 +1493,7 @@ export default function DocumentsPage() {
     statusFilter,
     urgencyFilter,
     viewMode,
+    workAttentionFilter,
   ]);
 
   useEffect(() => {
@@ -1555,37 +1623,53 @@ export default function DocumentsPage() {
         <div className={styles.mainPanel}>
           <div className={styles.viewTabs}>
             {isClerkWorkspace && (
-              <button
-                type="button"
-                className={viewMode === "clerk" ? styles.activeTab : ""}
-                onClick={() => activateWorkspaceView("clerk")}
-              >
-                งานทั้งหมด
-                <span className={styles.tabTotalCount}>
-                  {workspaceCounts.clerk.total}
-                </span>
-                <WorkCountBadges
+              <div className={styles.workTabGroup}>
+                <button
+                  type="button"
+                  className={[
+                    styles.workTabMain,
+                    viewMode === "clerk" ? styles.activeTab : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => activateWorkspaceView("clerk")}
+                >
+                  งานทั้งหมด
+                  <span className={styles.tabTotalCount}>
+                    {workspaceCounts.clerk.total}
+                  </span>
+                </button>
+                <WorkFilterSwitch
+                  view="clerk"
                   newCount={workspaceCounts.clerk.newCount}
                   pendingCount={workspaceCounts.clerk.pendingCount}
                 />
-              </button>
+              </div>
             )}
 
             {isMemberWorkspace && (
-              <button
-                type="button"
-                className={viewMode === "mine" ? styles.activeTab : ""}
-                onClick={() => activateWorkspaceView("mine")}
-              >
-                งานของฉัน
-                <span className={styles.tabTotalCount}>
-                  {workspaceCounts.own.total}
-                </span>
-                <WorkCountBadges
+              <div className={styles.workTabGroup}>
+                <button
+                  type="button"
+                  className={[
+                    styles.workTabMain,
+                    viewMode === "mine" ? styles.activeTab : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => activateWorkspaceView("mine")}
+                >
+                  งานของฉัน
+                  <span className={styles.tabTotalCount}>
+                    {workspaceCounts.own.total}
+                  </span>
+                </button>
+                <WorkFilterSwitch
+                  view="mine"
                   newCount={workspaceCounts.own.newCount}
                   pendingCount={workspaceCounts.own.pendingCount}
                 />
-              </button>
+              </div>
             )}
 
             {isManagerWorkspace && (
@@ -1602,22 +1686,29 @@ export default function DocumentsPage() {
             )}
 
             {isManagerWorkspace && (
-              <button
-                type="button"
-                className={viewMode === "director" ? styles.activeTab : ""}
-                onClick={() => activateWorkspaceView("director")}
-              >
-                งาน ผอ.
-                <span className={styles.tabTotalCount}>
-                  {workspaceCounts.director.total}
-                </span>
-                <WorkCountBadges
+              <div className={styles.workTabGroup}>
+                <button
+                  type="button"
+                  className={[
+                    styles.workTabMain,
+                    viewMode === "director" ? styles.activeTab : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => activateWorkspaceView("director")}
+                >
+                  งาน ผอ.
+                  <span className={styles.tabTotalCount}>
+                    {workspaceCounts.director.total}
+                  </span>
+                </button>
+                <WorkFilterSwitch
+                  view="director"
                   newCount={workspaceCounts.director.newCount}
                   pendingCount={workspaceCounts.director.pendingCount}
                 />
-              </button>
+              </div>
             )}
-
             <button
               type="button"
               className={viewMode === "archive" ? styles.activeTab : ""}
