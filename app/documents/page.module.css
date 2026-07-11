@@ -427,32 +427,32 @@
 
 .bookTable th:nth-child(1),
 .bookTable td:nth-child(1) {
-  width: 150px;
+  width: 11%;
 }
 
 .bookTable th:nth-child(2),
 .bookTable td:nth-child(2) {
-  width: 44%;
+  width: 40%;
 }
 
 .bookTable th:nth-child(3),
 .bookTable td:nth-child(3) {
-  width: 16%;
+  width: 14%;
 }
 
 .bookTable th:nth-child(4),
 .bookTable td:nth-child(4) {
-  width: 120px;
+  width: 10%;
 }
 
 .bookTable th:nth-child(5),
 .bookTable td:nth-child(5) {
-  width: 15%;
+  width: 13%;
 }
 
 .bookTable th:nth-child(6),
 .bookTable td:nth-child(6) {
-  width: 110px;
+  width: 12%;
 }
 
 .registrationCell,
@@ -3102,32 +3102,41 @@
 
 /* Detail-only workflow and assignee status chips */
 .assigneeStatusList {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  align-items: start;
+  justify-content: start;
+  gap: 5px 14px;
+  width: 100%;
 }
 
 .assigneeStatusItem {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 16px max-content;
   align-items: center;
-  gap: 4px;
+  column-gap: 4px;
   min-width: 0;
   color: #163832;
-  font-weight: 800;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .assigneeStatusIcon {
   display: inline-grid;
-  width: 17px;
-  height: 17px;
-  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
   place-items: center;
+  align-self: center;
+  margin: 0;
   border: 1.5px solid #94a3b8;
   border-radius: 999px;
   background: #f8fafc;
   color: #64748b;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   line-height: 1;
 }
@@ -3688,240 +3697,671 @@
   }
 }
 
-/* DONE_COMPACT_DOCUMENT_ROWS_V1 */
-.doneCompactUpdated,
-.doneCompactMobileMeta {
-  display: none;
+/* DOCUMENT WORK FILTER UI V10 - SINGLE OVERRIDE BLOCK */
+.viewTabs {
+  display: flex !important;
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  padding: 5px 7px !important;
+  overflow: visible !important;
+  flex-wrap: nowrap !important;
+  background: #003d34 !important;
 }
 
-.doneCompactRow td {
-  padding-top: 7px !important;
-  padding-bottom: 7px !important;
-  background: #fffdf1 !important;
-  line-height: 1.25 !important;
-  vertical-align: middle !important;
+.viewTabs > .scopeTab {
+  position: relative !important;
+  display: inline-flex !important;
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 36px !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  padding: 4px 7px !important;
+  background: transparent !important;
+  color: #d9f5ee !important;
+  white-space: nowrap !important;
 }
 
-.doneCompactRow:hover td {
-  background: #eef8f2 !important;
+.viewTabs > .scopeTab:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
-.doneCompactRow .registrationCell {
-  gap: 1px;
-  border-left-color: #7fcf9a;
+.viewTabs > .scopeTab.activeTab {
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  background: #0a6b5b !important;
+  color: #ffffff !important;
 }
 
-.doneCompactRow .registrationCell strong {
-  font-size: 14px;
-  line-height: 1.1;
+.viewTabs > .scopeTab > span {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
 }
 
-.doneCompactRow .doneCompactUpdated {
-  display: block;
-  color: #6b7b74;
-  font-size: 10.5px;
-  font-weight: 700;
-  line-height: 1.15;
+.viewTabs > .scopeTab > strong {
+  display: inline-grid !important;
+  min-width: 23px !important;
+  min-height: 23px !important;
+  place-items: center !important;
+  border-radius: 999px !important;
+  padding: 0 5px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
 }
 
-.doneCompactRow .registrationCell .documentNumber,
-.doneCompactRow .registrationCell small:not(.doneCompactUpdated),
-.doneCompactRow .subjectTopline,
-.doneCompactRow .fileLinks,
-.doneCompactRow .actionCell {
-  display: none !important;
+.viewTabs > .doneScopeTab > strong {
+  background: rgba(34, 197, 94, 0.26) !important;
 }
 
-.doneCompactRow .subjectCell,
-.doneCompactRow .sourceCell,
-.doneCompactRow .assigneeCell {
-  gap: 1px;
+.newWorkBadge {
+  position: absolute !important;
+  top: -4px !important;
+  right: -4px !important;
+  display: grid !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  place-items: center !important;
+  border: 1px solid #0d5142 !important;
+  border-radius: 999px !important;
+  padding: 0 4px !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  z-index: 5 !important;
+  animation: documentNewBadgePulseV10 1.15s ease-in-out infinite !important;
 }
 
-.doneCompactRow .subjectButton {
-  border-radius: 6px;
-  padding: 2px 0;
-  color: #17392e;
-  font-size: 14px;
-  line-height: 1.2;
+@keyframes documentNewBadgePulseV10 {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.48);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0);
+  }
 }
 
-.doneCompactRow .sourceName,
-.doneCompactRow .sourceGroup,
-.doneCompactRow .assigneeCell,
-.doneCompactRow .statusBadge {
+.documentPager {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  gap: 7px;
+  padding: 14px 8px 8px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.documentPagerSummary {
+  color: #64748b;
   font-size: 12px;
-  line-height: 1.15;
+  font-weight: 700;
 }
 
-.doneCompactRow td:nth-child(6) {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .doneCompactMobileCard {
-    gap: 5px !important;
-    border-color: #cfe9d8 !important;
-    background: #fbfffc !important;
-    padding: 8px 9px !important;
-  }
-
-  .doneCompactMobileCard .mobileCardTopline,
-  .doneCompactMobileCard .mobileMetaGrid,
-  .doneCompactMobileCard .mobileFiles,
-  .doneCompactMobileCard .mobilePrimaryActions {
-    display: none !important;
-  }
-
-  .doneCompactMobileCard .mobileSubjectButton {
-    display: block;
-    border-radius: 8px;
-    padding: 5px 7px;
-    background: transparent;
-    color: #17392e;
-    font-size: 13px;
-    line-height: 1.2;
-  }
-
-  .doneCompactMobileNumber {
-    color: #075e50;
-    font-weight: 900;
-  }
-
-  .doneCompactMobileMeta {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 2px 8px;
-    align-items: center;
-    padding: 0 7px 2px;
-  }
-
-  .doneCompactMobileMeta span,
-  .doneCompactMobileMeta small {
-    min-width: 0;
-    overflow: hidden;
-    color: #667a72;
-    font-size: 10.5px;
-    line-height: 1.15;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .doneCompactMobileMeta small {
-    grid-column: 1;
-    color: #7a8984;
-  }
-
-  .doneCompactMobileMeta .statusBadge,
-  .doneCompactMobileMeta strong {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    justify-self: end;
-    align-self: center;
-    font-size: 10px;
-    white-space: nowrap;
-  }
-}
-
-/* DOCUMENT WORK FILTER SWITCH V3 */
-.workTabGroup {
+.documentPagerControls {
   display: inline-flex;
-  min-height: 34px;
-  align-items: stretch;
-  gap: 4px;
-}
-
-.viewTabs .workTabMain {
-  min-height: 34px;
-}
-
-.workFilterSwitch {
-  display: inline-flex;
-  align-items: stretch;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.68);
-  border-radius: 999px;
-  background: rgba(0,0,0,0.14);
-}
-
-.viewTabs .workFilterHalf {
-  display: inline-flex;
-  min-width: 48px;
-  min-height: 28px;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  border: 0;
-  border-radius: 0;
-  padding: 3px 7px;
-  color: #ffffff;
-  font-size: 10px;
+  gap: 10px;
+}
+
+.documentPagerArrow {
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 20px;
   font-weight: 900;
-  line-height: 1;
+  cursor: pointer;
 }
 
-.viewTabs .workFilterHalf + .workFilterHalf {
-  border-left: 1px solid rgba(255,255,255,0.62);
+.documentPagerArrow:hover:not(:disabled) {
+  border-color: #0f766e;
+  background: #f0fdfa;
+  color: #0f766e;
 }
 
-.viewTabs .workFilterHalf span,
-.viewTabs .workFilterHalf strong {
-  margin: 0;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  font-size: inherit;
-  line-height: 1;
+.documentPagerArrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
-.viewTabs .workFilterNew {
-  background: #b91c1c;
+.documentPagerLabel {
+  min-width: 92px;
+  text-align: center;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.viewTabs .workFilterPending {
-  background: #b45309;
-}
-
-.viewTabs .workFilterNew:not(.workFilterHalfActive) {
-  animation: documentSwitchPulse 1.35s ease-in-out infinite;
-}
-
-.viewTabs .workFilterHalfActive {
-  box-shadow:
-    inset 0 0 0 2px #ffffff,
-    0 2px 6px rgba(0,0,0,0.28);
-  filter: brightness(1.18);
-}
-
-@keyframes documentSwitchPulse {
-  0%,
-  100% {
-    filter: brightness(1);
+@media (max-width: 760px) {
+  .viewTabs {
+    display: flex !important;
+    width: auto !important;
+    max-width: 100% !important;
+    grid-template-columns: none !important;
+    gap: 1px !important;
+    padding: 4px !important;
+    overflow: visible !important;
   }
 
-  50% {
-    filter: brightness(1.35);
+  .viewTabs > .scopeTab {
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 34px !important;
+    flex: 0 0 auto !important;
+    gap: 2px !important;
+    padding: 4px 5px !important;
+  }
+
+  .viewTabs > .scopeTab > span {
+    font-size: 9px !important;
+  }
+
+  .viewTabs > .scopeTab > strong {
+    min-width: 20px !important;
+    min-height: 20px !important;
+    padding: 0 3px !important;
+    font-size: 8px !important;
+  }
+
+  .newWorkBadge {
+    top: -4px !important;
+    right: -3px !important;
+    min-width: 16px !important;
+    height: 16px !important;
+    padding: 0 3px !important;
+    font-size: 8px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .viewTabs > .scopeTab {
+    padding-right: 4px !important;
+    padding-left: 4px !important;
+  }
+
+  .viewTabs > .scopeTab > span {
+    font-size: 8.5px !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .viewTabs .workFilterNew:not(.workFilterHalfActive) {
-    animation: none;
+  .newWorkBadge {
+    animation: none !important;
   }
 }
 
+
+/* DOCUMENT WORK FILTER UI V11 */
+.resultBar {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto minmax(140px, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.resultSummary {
+  display: grid;
+  gap: 2px;
+  justify-self: start;
+}
+
+.documentPagerTop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  justify-self: center;
+}
+
+.resultBar > .pagination {
+  justify-self: end;
+}
+
+.documentPagerArrow {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #9fcfc1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #075e50;
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.documentPagerArrow:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.documentPagerLabel {
+  min-width: 88px;
+  text-align: center;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sourceGroupOnly {
+  color: #596963;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.directorInstruction {
+  border-color: #bfdbfe !important;
+  background: #ffffff !important;
+}
+
+.directorInstruction > span,
+.directorInstruction span {
+  color: #1d4ed8 !important;
+}
+
+.directorInstruction > p,
+.directorInstruction p {
+  color: #1d4ed8 !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  line-height: 1.55 !important;
+}
+
+.mobileDetailGrid section,
+.mobileDetailFiles,
+.mobileDetailText,
+.mobileDetailSubject {
+  background: #ffffff !important;
+}
+
+@media (max-width: 760px) {
+  .resultBar {
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+
+  .documentPagerTop {
+    justify-self: end;
+  }
+
+  .resultBar > .pagination {
+    grid-column: 1 / -1;
+    justify-self: center;
+  }
+
+  .documentPagerArrow {
+    width: 36px;
+    height: 36px;
+  }
+
+  .documentPagerLabel {
+    min-width: 78px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .resultBar {
+    grid-template-columns: 1fr;
+  }
+
+  .resultSummary,
+  .documentPagerTop,
+  .resultBar > .pagination {
+    justify-self: center;
+  }
+}
+
+
+/* DOCUMENT LIST META V11.4 */
+.documentListDate {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.registrationCell > .documentListDate {
+  margin-top: 2px;
+}
+
+.mobileDocumentCard > .documentListDate {
+  margin: 2px 0 7px;
+  padding: 0 2px;
+}
+
+.mobileMetaGrid > div:has(> span:first-child:last-child) {
+  background: inherit;
+}
+
+.sourceGroupOnly {
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .documentListDate {
+    font-size: 10.5px;
+  }
+}
+
+
+/* DOCUMENT REGISTRATION COLUMN V11.5 */
+.registrationCell {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  border-left: 4px solid #dda919;
+  padding-left: 8px;
+}
+
+.registrationLabel {
+  display: block;
+  margin: 0;
+  color: #52615c;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.registrationCell > strong {
+  display: block;
+  margin: 0;
+  color: #16372d;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.registrationCell > .documentNumber {
+  display: block !important;
+  margin: 1px 0 0;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #53656d;
+  font-size: 10.5px;
+  font-weight: 400;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.registrationCell > .documentListDate {
+  display: block !important;
+  margin: 1px 0 0;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: normal;
+}
+
 @media (max-width: 768px) {
-  .viewTabs {
-    flex-wrap: wrap;
+  .registrationLabel {
+    font-size: 10px;
   }
 
-  .workTabGroup {
-    max-width: 100%;
+  .registrationCell > strong {
+    font-size: 13px;
   }
 
-  .viewTabs .workFilterHalf {
-    min-width: 44px;
-    padding-inline: 6px;
+  .registrationCell > .documentNumber,
+  .registrationCell > .documentListDate {
+    font-size: 10px;
   }
+}
+
+
+/* DOCUMENT ASSIGNEE GRID V11.6 */
+.assigneeStatusItem > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .assigneeStatusList {
+    gap: 4px 8px;
+  }
+
+  .assigneeStatusItem {
+    grid-template-columns: 15px minmax(0, 1fr);
+    column-gap: 4px;
+    font-size: 10.5px;
+  }
+
+  .assigneeStatusIcon {
+    width: 15px;
+    height: 15px;
+    font-size: 9px;
+  }
+}
+
+
+/* DOCUMENT CLERK ARCHIVE ASSIGNEES V11.7.1 */
+.assigneeStatusItem > span:last-child {
+  min-width: max-content;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+@media (max-width: 640px) {
+  .assigneeStatusList {
+    grid-template-columns: repeat(2, max-content);
+    gap: 4px 8px;
+  }
+
+  .assigneeStatusItem {
+    grid-template-columns: 14px max-content;
+    column-gap: 3px;
+    font-size: 9.5px;
+  }
+
+  .assigneeStatusIcon {
+    width: 14px;
+    height: 14px;
+    font-size: 8px;
+  }
+}
+
+
+
+
+/* DOCUMENT FINAL COMPACT ROWS V11.10.1 */
+.tableWrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.bookTable {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+.bookTable th,
+.bookTable td {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.actionCell {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  align-items: flex-start;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.clerkQuickActions {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.clerkDoneCompact,
+.clerkSubmitCompact {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  margin: 0;
+  border-radius: 6px;
+  padding: 3px 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.clerkDoneCompact {
+  border: 1px solid #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.clerkSubmitCompact {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.hiddenListAttachments {
+  display: none !important;
+}
+
+.completedCompactRow td {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+.completedCompactRow .registrationCell {
+  gap: 1px;
+  padding-left: 6px;
+}
+
+.completedCompactRow .registrationCell > strong {
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.completedCompactRow .documentNumber,
+.completedCompactRow .documentListDate {
+  margin-top: 0 !important;
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+}
+
+.completedCompactRow .subjectTopline {
+  margin-bottom: 1px;
+}
+
+.completedCompactRow .subjectButton {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.completedCompactRow .sourceGroupOnly,
+.completedCompactRow .statusBadge,
+.completedCompactRow .assigneeStatusItem {
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+}
+
+.completedCompactRow .fileLinks {
+  display: none !important;
+}
+
+@media (max-width: 1100px) {
+  .bookTable th:nth-child(1),
+  .bookTable td:nth-child(1) {
+    width: 12%;
+  }
+
+  .bookTable th:nth-child(2),
+  .bookTable td:nth-child(2) {
+    width: 37%;
+  }
+
+  .bookTable th:nth-child(3),
+  .bookTable td:nth-child(3) {
+    width: 13%;
+  }
+
+  .bookTable th:nth-child(4),
+  .bookTable td:nth-child(4) {
+    width: 10%;
+  }
+
+  .bookTable th:nth-child(5),
+  .bookTable td:nth-child(5) {
+    width: 14%;
+  }
+
+  .bookTable th:nth-child(6),
+  .bookTable td:nth-child(6) {
+    width: 14%;
+  }
+
+  .clerkDoneCompact,
+  .clerkSubmitCompact {
+    padding: 3px 4px;
+    font-size: 9px;
+  }
+}
+
+
+/* DOCUMENT LIST DATE V11.10.2 */
+.documentListDate > span {
+  display: block;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.documentListDate > span + span {
+  margin-top: 1px;
 }

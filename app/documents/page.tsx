@@ -144,6 +144,15 @@ function getStatusLabel(status: string) {
   return statusLabels[status] || status || "-";
 }
 
+function DocumentListDate({ book }: { book: BookItem }) {
+  return (
+    <small className={styles.documentListDate}>
+      <span>ลงวันที่ {formatDate(book.documentDate)}</span>
+      <span>{formatUpdatedAt(book.updatedAt)}</span>
+    </small>
+  );
+}
+
 function registrationValue(value: string) {
   const match = String(value || "").match(/\d+/);
   return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
@@ -223,6 +232,19 @@ function sourceDisplayParts(value: string) {
     .map((match) => String(match[1] || "").trim())
     .filter(Boolean);
 
+  const withoutPeople = raw.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
+  const withoutUrgency = withoutPeople
+    .replace(/^(ปกติ|ด่วนที่สุด|ด่วนมาก|ด่วน)\s*/u, "")
+    .trim();
+
+  const groupMatch = withoutUrgency.match(
+    /((?:กลุ่ม|ฝ่าย|งาน)\s*[^\[\]\n\r]+?)(?=\s+(?:สำนักงาน|สพป\.|สพม\.|โดย|จาก|ผู้ส่ง|ผู้รับ)|$)/u,
+  );
+
+  const group = String(groupMatch?.[1] || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
   const lines = raw
     .split(/\r?\n|\s{2,}/)
     .map((line) => line.trim())
@@ -232,17 +254,12 @@ function sourceDisplayParts(value: string) {
     bracketValues.at(-1) ||
     lines.find(
       (line) =>
-        !/^(กลุ่ม|ฝ่าย|งาน|สำนักงาน|สพป\.|สพม\.|รายละเอียด|เรื่อง|เลขที่|วันที่)/.test(
+        !/^(ปกติ|ด่วน|ด่วนมาก|ด่วนที่สุด|กลุ่ม|ฝ่าย|งาน|สำนักงาน|สพป\.|สพม\.|รายละเอียด|เรื่อง|เลขที่|วันที่)/.test(
           line,
         ),
     ) ||
-    lines[0] ||
+    withoutUrgency ||
     raw;
-
-  const group =
-    lines.find((line) => /^(กลุ่ม|ฝ่าย|งาน)/.test(line)) ||
-    bracketValues.find((line) => /^(กลุ่ม|ฝ่าย|งาน)/.test(line)) ||
-    "";
 
   return { name, group };
 }
@@ -494,6 +511,7 @@ export default function DocumentsPage() {
   const [urgencyFilter, setUrgencyFilter] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [currentPage, setCurrentPage] = useState(1); // DOCUMENTS_PAGINATION_V10
   const [workAttentionFilter, setWorkAttentionFilter] =
     useState<WorkAttentionFilter>("all");
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("member");
@@ -1130,7 +1148,7 @@ export default function DocumentsPage() {
       {
         action: "close",
         bookId: book.id,
-        note: "ผอ. ปิดเรื่องเป็นเสร็จสิ้น",
+        note: "ปิดเรื่องเป็นเสร็จสิ้น",
       },
       `close:${book.id}`,
     );
@@ -1253,15 +1271,14 @@ export default function DocumentsPage() {
 
       const inSelectedView =
         viewMode === "clerk"
-          ? book.status === "clerk_review" ||
-            book.status === "director_review"
+          ? Boolean(ownTask)
           : viewMode === "director"
-            ? Boolean(ownTask && ownTask.status !== "done")
+            ? Boolean(ownTask)
             : viewMode === "mine"
-              ? Boolean(ownTask && ownTask.status !== "done")
+              ? Boolean(ownTask)
               : viewMode === "all"
-                ? book.status !== "done"
-                : workspaceMode === "manager"
+                ? true
+                : canManageAll
                   ? book.status === "done"
                   : Boolean(ownTask && ownTask.status === "done");
 
@@ -1347,8 +1364,6 @@ export default function DocumentsPage() {
       );
     });
 
-    if (selectedSmartAreaPage === null) return sorted.slice(0, 20);
-
     return sorted;
   }, [
     books,
@@ -1364,16 +1379,58 @@ export default function DocumentsPage() {
     workspaceMode,
   ]);
 
+  const pageSize = 20;
+  const totalFilteredBooks = filteredBooks.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredBooks / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
+  const pageEndIndex = Math.min(pageStartIndex + pageSize, totalFilteredBooks);
+  const pagedBooks = filteredBooks.slice(pageStartIndex, pageEndIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    assigneeFilter,
+    query,
+    selectedSmartAreaPage,
+    sortMode,
+    statusFilter,
+    urgencyFilter,
+    viewMode,
+    workAttentionFilter,
+  ]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  function changeDocumentPage(nextPage: number) {
+    const boundedPage = Math.min(Math.max(nextPage, 1), totalPages);
+    setCurrentPage(boundedPage);
+
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector('[data-documents-list-start="true"]')
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   const workspaceCounts = useMemo(() => {
-    const ownActiveBooks = books.filter((book) =>
+    const ownBooks = books.filter((book) =>
+      book.tasks.some((task) => task.assigneeId === currentUserId),
+    );
+
+    const ownDoneBooks = ownBooks.filter((book) =>
       book.tasks.some(
         (task) =>
           task.assigneeId === currentUserId &&
-          task.status !== "done",
+          task.status === "done",
       ),
     );
 
-    const ownNewBooks = ownActiveBooks.filter((book) =>
+    const ownNewBooks = ownBooks.filter((book) =>
       book.tasks.some(
         (task) =>
           task.assigneeId === currentUserId &&
@@ -1383,102 +1440,35 @@ export default function DocumentsPage() {
       ),
     );
 
-    const clerkActiveBooks = books.filter(
-      (book) =>
-        book.status === "clerk_review" ||
-        book.status === "director_review",
+    const globalDoneBooks = books.filter(
+      (book) => book.status === "done",
     );
-
-    const directorActiveBooks = ownActiveBooks;
-    const allActiveBooks = books.filter((book) => book.status !== "done");
-
-    const archiveBooks =
-      isManagerWorkspace
-        ? books.filter((book) => book.status === "done")
-        : books.filter((book) =>
-            book.tasks.some(
-              (task) =>
-                task.assigneeId === currentUserId &&
-                task.status === "done",
-            ),
-          );
 
     return {
-      own: {
-        total: ownActiveBooks.length,
-        newCount: ownNewBooks.length,
-        pendingCount: Math.max(0, ownActiveBooks.length - ownNewBooks.length),
-      },
-      clerk: {
-        total: clerkActiveBooks.length,
-        newCount: clerkActiveBooks.filter((book) => !book.isRead).length,
-        pendingCount: clerkActiveBooks.filter((book) => book.isRead).length,
-      },
-      director: {
-        total: directorActiveBooks.length,
-        newCount: ownNewBooks.length,
-        pendingCount: Math.max(
-          0,
-          directorActiveBooks.length - ownNewBooks.length,
-        ),
-      },
-      allActive: allActiveBooks.length,
-      archive: archiveBooks.length,
+      all: books.length,
+      own: ownBooks.length,
+      ownNew: ownNewBooks.length,
+      ownDone: ownDoneBooks.length,
+      archive: isMemberWorkspace
+        ? ownDoneBooks.length
+        : globalDoneBooks.length,
     };
-  }, [books, currentUserId, isManagerWorkspace]);
+  }, [books, currentUserId, isMemberWorkspace]);
 
-  function WorkFilterSwitch({
-    view,
-    newCount,
-    pendingCount,
-  }: {
-    view: ViewMode;
-    newCount: number;
-    pendingCount: number;
-  }) {
-    const activeFilter =
-      viewMode === view ? workAttentionFilter : "all";
+  function NewWorkBadge({ count }: { count: number }) {
+    if (count <= 0) return null;
 
     return (
-      <span
-        className={styles.workFilterSwitch}
-        aria-label={`งานใหม่ ${newCount} งานค้าง ${pendingCount}`}
+      <sup
+        className={styles.newWorkBadge}
+        aria-label={`งานใหม่ ${count} งาน`}
+        title={`งานใหม่ ${count} งาน`}
       >
-        <button
-          type="button"
-          className={[
-            styles.workFilterHalf,
-            styles.workFilterNew,
-            activeFilter === "new" ? styles.workFilterHalfActive : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          onClick={() => activateWorkAttention(view, "new")}
-          aria-pressed={activeFilter === "new"}
-          title={`แสดงงานใหม่ ${newCount}`}
-        >
-          <span>ใหม่</span>
-          <strong>{newCount > 99 ? "99+" : newCount}</strong>
-        </button>
-        <button
-          type="button"
-          className={[
-            styles.workFilterHalf,
-            styles.workFilterPending,
-            activeFilter === "pending" ? styles.workFilterHalfActive : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          onClick={() => activateWorkAttention(view, "pending")}
-          aria-pressed={activeFilter === "pending"}
-          title={`แสดงงานค้าง ${pendingCount}`}
-        >
-          <span>ค้าง</span>
-          <strong>{pendingCount > 99 ? "99+" : pendingCount}</strong>
-        </button>
-      </span>
+        {count}
+      </sup>
     );
   }
+
   useEffect(() => {
     if (keepSelectedBookOnFilterChangeRef.current) {
       keepSelectedBookOnFilterChangeRef.current = false;
@@ -1620,104 +1610,66 @@ export default function DocumentsPage() {
           workloadCollapsed ? styles.workspaceCollapsed : ""
         }`}
       >
-        <div className={styles.mainPanel}>
+        <div className={styles.mainPanel} data-documents-list-start="true">
           <div className={styles.viewTabs}>
-            {isClerkWorkspace && (
-              <div className={styles.workTabGroup}>
-                <button
-                  type="button"
-                  className={[
-                    styles.workTabMain,
-                    viewMode === "clerk" ? styles.activeTab : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => activateWorkspaceView("clerk")}
-                >
-                  งานทั้งหมด
-                  <span className={styles.tabTotalCount}>
-                    {workspaceCounts.clerk.total}
-                  </span>
-                </button>
-                <WorkFilterSwitch
-                  view="clerk"
-                  newCount={workspaceCounts.clerk.newCount}
-                  pendingCount={workspaceCounts.clerk.pendingCount}
-                />
-              </div>
-            )}
-
-            {isMemberWorkspace && (
-              <div className={styles.workTabGroup}>
-                <button
-                  type="button"
-                  className={[
-                    styles.workTabMain,
-                    viewMode === "mine" ? styles.activeTab : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => activateWorkspaceView("mine")}
-                >
-                  งานของฉัน
-                  <span className={styles.tabTotalCount}>
-                    {workspaceCounts.own.total}
-                  </span>
-                </button>
-                <WorkFilterSwitch
-                  view="mine"
-                  newCount={workspaceCounts.own.newCount}
-                  pendingCount={workspaceCounts.own.pendingCount}
-                />
-              </div>
-            )}
-
-            {isManagerWorkspace && (
+            {!isMemberWorkspace && (
               <button
                 type="button"
-                className={viewMode === "all" ? styles.activeTab : ""}
+                className={[
+                  styles.scopeTab,
+                  viewMode === "all" ? styles.activeTab : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 onClick={() => activateWorkspaceView("all")}
+                aria-pressed={viewMode === "all"}
               >
-                งานทั้งหมด
-                <span className={styles.tabTotalCount}>
-                  {workspaceCounts.allActive}
-                </span>
+                <span>งานทั้งหมด</span>
+                <strong>{workspaceCounts.all}</strong>
               </button>
             )}
 
-            {isManagerWorkspace && (
-              <div className={styles.workTabGroup}>
-                <button
-                  type="button"
-                  className={[
-                    styles.workTabMain,
-                    viewMode === "director" ? styles.activeTab : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => activateWorkspaceView("director")}
-                >
-                  งาน ผอ.
-                  <span className={styles.tabTotalCount}>
-                    {workspaceCounts.director.total}
-                  </span>
-                </button>
-                <WorkFilterSwitch
-                  view="director"
-                  newCount={workspaceCounts.director.newCount}
-                  pendingCount={workspaceCounts.director.pendingCount}
-                />
-              </div>
-            )}
             <button
               type="button"
-              className={viewMode === "archive" ? styles.activeTab : ""}
-              onClick={() => activateWorkspaceView("archive")}
+              className={[
+                styles.scopeTab,
+                styles.personalScopeTab,
+                viewMode === (isManagerWorkspace ? "director" : "mine")
+                  ? styles.activeTab
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() =>
+                activateWorkspaceView(
+                  isManagerWorkspace ? "director" : "mine",
+                )
+              }
+              aria-pressed={
+                viewMode === (isManagerWorkspace ? "director" : "mine")
+              }
             >
-              คลังเสร็จแล้ว
-              <span className={styles.tabTotalCount}>
-                {workspaceCounts.archive}
+              <span>
+                {isManagerWorkspace ? "งาน ผอ." : "งานของฉัน"}
               </span>
+              <strong>{workspaceCounts.own}</strong>
+              <NewWorkBadge count={workspaceCounts.ownNew} />
+            </button>
+
+            <button
+              type="button"
+              className={[
+                styles.scopeTab,
+                styles.doneScopeTab,
+                viewMode === "archive" ? styles.activeTab : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onClick={() => activateWorkspaceView("archive")}
+              aria-pressed={viewMode === "archive"}
+            >
+              <span>งานที่เสร็จแล้ว</span>
+              <strong>{workspaceCounts.archive}</strong>
             </button>
           </div>
 
@@ -1795,94 +1747,112 @@ export default function DocumentsPage() {
           )}
 
           <div className={styles.resultBar}>
-            <div>
+            <div className={styles.resultSummary}>
               <strong>
                 {viewMode === "clerk"
-                  ? "\u0e07\u0e32\u0e19\u0e18\u0e38\u0e23\u0e01\u0e32\u0e23"
+                  ? "งานธุรการ"
                   : viewMode === "director"
-                    ? "\u0e07\u0e32\u0e19 \u0e1c\u0e2d."
+                    ? "งาน ผอ."
                     : viewMode === "mine"
-                      ? "\u0e07\u0e32\u0e19\u0e02\u0e2d\u0e07\u0e09\u0e31\u0e19"
+                      ? "งานของฉัน"
                       : viewMode === "all"
-                        ? "\u0e07\u0e32\u0e19\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14"
-                        : "\u0e04\u0e25\u0e31\u0e07\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e41\u0e25\u0e49\u0e27"}
+                        ? "งานทั้งหมด"
+                        : "งานที่เสร็จแล้ว"}
               </strong>
               <span>
-                {selectedSmartAreaPage
-                  ? `หน้า ${selectedSmartAreaPage} · ${filteredBooks.length} รายการ`
-                  : `${filteredBooks.length} หนังสือล่าสุด`}
+                {pageStartIndex + 1}–{pageEndIndex} จาก {totalFilteredBooks} รายการ
               </span>
             </div>
 
-            <div className={styles.pagination}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedPageIndex > 0) {
-                    activateSmartAreaPage(
-                      availableSmartAreaPages[selectedPageIndex - 1],
-                    );
-                  }
-                }}
-                disabled={selectedPageIndex <= 0}
-                aria-label="หน้าก่อนหน้า"
-              >
-                ‹
-              </button>
-
-              {visibleSmartAreaPages.map((pageNumber) => (
+            {totalFilteredBooks > 0 && (
+              <nav className={styles.documentPagerTop} aria-label="เปลี่ยนหน้ารายการหนังสือ">
                 <button
-                  key={pageNumber}
                   type="button"
-                  className={
-                    pageNumber === selectedSmartAreaPage
-                      ? styles.activeSourcePage
-                      : ""
-                  }
-                  onClick={() => activateSmartAreaPage(pageNumber)}
+                  className={styles.documentPagerArrow}
+                  onClick={() => changeDocumentPage(safeCurrentPage - 1)}
+                  disabled={safeCurrentPage <= 1}
+                  aria-label="หน้าก่อนหน้า"
                 >
-                  {pageNumber}
+                  &lt;
                 </button>
-              ))}
+                <span className={styles.documentPagerLabel}>
+                  หน้า {safeCurrentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className={styles.documentPagerArrow}
+                  onClick={() => changeDocumentPage(safeCurrentPage + 1)}
+                  disabled={safeCurrentPage >= totalPages}
+                  aria-label="หน้าถัดไป"
+                >
+                  &gt;
+                </button>
+              </nav>
+            )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    selectedPageIndex >= 0 &&
-                    selectedPageIndex < availableSmartAreaPages.length - 1
-                  ) {
-                    activateSmartAreaPage(
-                      availableSmartAreaPages[selectedPageIndex + 1],
-                    );
+            {!isMemberWorkspace && (
+              <div className={styles.pagination}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedPageIndex > 0) {
+                      activateSmartAreaPage(availableSmartAreaPages[selectedPageIndex - 1]);
+                    }
+                  }}
+                  disabled={selectedPageIndex <= 0}
+                  aria-label="หน้าระบบกลางก่อนหน้า"
+                >
+                  ‹
+                </button>
+
+                {visibleSmartAreaPages.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    className={pageNumber === selectedSmartAreaPage ? styles.activeSourcePage : ""}
+                    onClick={() => activateSmartAreaPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (
+                      selectedPageIndex >= 0 &&
+                      selectedPageIndex < availableSmartAreaPages.length - 1
+                    ) {
+                      activateSmartAreaPage(availableSmartAreaPages[selectedPageIndex + 1]);
+                    }
+                  }}
+                  disabled={
+                    selectedPageIndex < 0 ||
+                    selectedPageIndex >= availableSmartAreaPages.length - 1
                   }
-                }}
-                disabled={
-                  selectedPageIndex < 0 ||
-                  selectedPageIndex >= availableSmartAreaPages.length - 1
-                }
-                aria-label="หน้าถัดไป"
-              >
-                ›
-              </button>
+                  aria-label="หน้าระบบกลางถัดไป"
+                >
+                  ›
+                </button>
 
-              <button
-                type="button"
-                className={`${styles.latestSourcePage} ${
-                  selectedSmartAreaPage === null ? styles.activeSourcePage : ""
-                }`}
-                onClick={activateLatestView}
-                disabled={latestSmartAreaPage === null && books.length === 0}
-              >
-                ล่าสุด
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className={`${styles.latestSourcePage} ${
+                    selectedSmartAreaPage === null ? styles.activeSourcePage : ""
+                  }`}
+                  onClick={activateLatestView}
+                  disabled={latestSmartAreaPage === null && books.length === 0}
+                >
+                  ล่าสุด
+                </button>
+              </div>
+            )}
           </div>
 
 
           {/* SMART AREA MOBILE V5.3 START */}
           <div className={styles.mobileDocumentList}>
-            {filteredBooks.map((book) => {
+            {pagedBooks.map((book) => {
               const source = sourceDisplayParts(book.sourceAgency);
               const isSelected = selectedBook?.id === book.id;
               const ownAssignedTask = book.tasks.find(
@@ -1900,9 +1870,7 @@ export default function DocumentsPage() {
                 <article
                   key={`mobile-${book.id}`}
                   id={`mobile-book-${book.id}`}
-                  className={`${styles.mobileDocumentCard} ${
-                    book.status === "done" ? styles.doneCompactMobileCard : ""
-                  }`}
+                  className={styles.mobileDocumentCard}
                 >
                   <div className={styles.mobileCardTopline}>
                     <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
@@ -1939,29 +1907,9 @@ export default function DocumentsPage() {
                       setSelectedBook(book);
                     }}
                   >
-                    {book.status === "done" && (
-                      <span className={styles.doneCompactMobileNumber}>
-                        {book.registrationNumber || "-"} /
-                      </span>
-                    )}
                     {book.subject}
                   </button>
-                  {book.status === "done" && (
-                    <div className={styles.doneCompactMobileMeta}>
-                      <span>
-                        {source.name}
-                        {source.group ? ` / ${source.group}` : ""}
-                      </span>
-                      <small>{formatUpdatedAt(book.updatedAt)}</small>
-                      <strong
-                        className={`${styles.statusBadge} ${
-                          styles.status_done || ""
-                        }`}
-                      >
-                        {getStatusLabel(book.status)}
-                      </strong>
-                    </div>
-                  )}
+                  <DocumentListDate book={book} />
 
                   <div className={styles.mobileMetaGrid}>
                     <div>
@@ -1982,8 +1930,7 @@ export default function DocumentsPage() {
                     </div>
                     <div>
                       <span>จาก</span>
-                      <strong>{source.name}</strong>
-                      {source.group && <small>{source.group}</small>}
+                      <strong>{source.group || source.name}</strong>
                     </div>
                     <div>
                       <span>ผู้รับผิดชอบ</span>
@@ -1991,7 +1938,7 @@ export default function DocumentsPage() {
                     </div>
                   </div>
 
-                  <div className={styles.mobileFiles}>
+                  <div className={`${styles.mobileFiles} ${book.status === "done" ? styles.hiddenListAttachments : ""}`}>
                     <span className={styles.mobileSectionLabel}>ไฟล์แนบ</span>
                     {book.attachments.length === 0 ? (
                       <span className={styles.noFile}>ไม่มีไฟล์แนบ</span>
@@ -2062,22 +2009,36 @@ export default function DocumentsPage() {
                         </button>
                       )}
 
-                    {workspaceMode !== "manager" &&
-                      capabilities.canSubmit &&
+                    {workspaceMode === "clerk" &&
                       book.status === "clerk_review" && (
-                        <button
-                          type="button"
-                          className={`${styles.primaryAction} ${styles.mobileSubmitButton}`}
-                          onClick={() =>
-                            void postAction(
-                              { action: "submit", bookId: book.id },
-                              `submit:${book.id}`,
-                            )
-                          }
-                          disabled={savingKey === `submit:${book.id}`}
-                        >
-                          เสนอ ผอ.
-                        </button>
+                        <div className={styles.clerkQuickActions}>
+                          {capabilities.canClose && book.tasks.length === 0 && (
+                            <button
+                              type="button"
+                              className={styles.clerkDoneCompact}
+                              onClick={() => closeBookAsDone(book)}
+                              disabled={savingKey === `close:${book.id}`}
+                            >
+                              เสร็จสิ้น
+                            </button>
+                          )}
+
+                          {capabilities.canSubmit && (
+                            <button
+                              type="button"
+                              className={styles.clerkSubmitCompact}
+                              onClick={() =>
+                                void postAction(
+                                  { action: "submit", bookId: book.id },
+                                  `submit:${book.id}`,
+                                )
+                              }
+                              disabled={savingKey === `submit:${book.id}`}
+                            >
+                              เสนอ ผอ.
+                            </button>
+                          )}
+                        </div>
                       )}
 
                     {ownAssignedTask && (
@@ -2258,7 +2219,7 @@ export default function DocumentsPage() {
                             <p>{book.note || "-"}</p>
                           </section>
 
-                          <section className={styles.mobileDetailText}>
+                          <section className={`${styles.mobileDetailText} ${styles.directorInstruction}`}>
                             <span>ข้อความสั่งการ</span>
                             <p>{book.directorNote || "-"}</p>
                           </section>
@@ -2313,7 +2274,7 @@ export default function DocumentsPage() {
                                     {
                                       action: "close",
                                       bookId: book.id,
-                                      note: "ผอ. ปิดเรื่องเป็นเสร็จสิ้น",
+                                      note: "ปิดเรื่องเป็นเสร็จสิ้น",
                                     },
                                     `close:${book.id}`,
                                   );
@@ -2348,40 +2309,21 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredBooks.map((book) => (
+                {pagedBooks.map((book) => (
                   <Fragment key={book.id}>
                   <tr
                     id={`book-${book.id}`}
-                    className={`${
-                      selectedBook?.id === book.id ? styles.selectedRow : ""
-                    } ${book.status === "done" ? styles.doneCompactRow : ""}`}
+                    className={`${selectedBook?.id === book.id ? styles.selectedRow : ""} ${
+                      book.status === "done" ? styles.completedCompactRow : ""
+                    }`}
                   >
                     <td data-label="ลำดับ">
                       <div className={styles.registrationCell}>
-                        <strong>{book.registrationNumber || "-"}</strong>
-                        <small className={styles.doneCompactUpdated}>{formatUpdatedAt(book.updatedAt)}</small>
-                        {book.documentNumber && (
-                          <small className={styles.documentNumber}>
-                            {book.documentNumber}
-                          </small>
-                        )}
-                        <small>
-                          หน้า {book.smartAreaPage || "-"} · ID {book.legacySmartAreaId || "-"}
+<strong>{book.registrationNumber || "-"}</strong>
+                        <small className={styles.documentNumber}>
+                          {book.documentNumber || "-"}
                         </small>
-                        <small>
-                          เลขรับ {book.registrationNumber || "-"} · รับ{" "}
-                          {formatDate(book.receivedDate)} · ลงวันที่{" "}
-                          {formatDate(book.documentDate)} · อัปเดต{" "}
-                          {book.updatedAt
-                            ? new Intl.DateTimeFormat("th-TH", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }).format(new Date(book.updatedAt))
-                            : "-"}
-                        </small>
+                        <DocumentListDate book={book} />
                       </div>
                     </td>
 
@@ -2426,7 +2368,7 @@ export default function DocumentsPage() {
                         >
                           {book.subject}
                         </button>
-                        <div className={styles.fileLinks}>
+                        <div className={`${styles.fileLinks} ${book.status === "done" ? styles.hiddenListAttachments : ""}`}>
                           {book.attachments.length === 0 && (
                             <span className={styles.noFile}>ไม่มีไฟล์แนบ</span>
                           )}
@@ -2477,14 +2419,9 @@ export default function DocumentsPage() {
 
                         return (
                           <div className={styles.sourceCell}>
-                            <span className={styles.sourceName}>
-                              {source.name}
+                            <span className={styles.sourceGroupOnly}>
+                              {source.group || source.name}
                             </span>
-                            {source.group && (
-                              <span className={styles.sourceGroup}>
-                                {source.group}
-                              </span>
-                            )}
                           </div>
                         );
                       })()}
@@ -2508,110 +2445,37 @@ export default function DocumentsPage() {
 
                     <td data-label="จัดการ">
                       <div className={styles.actionCell}>
-                        {workspaceMode !== "manager" &&
-                      capabilities.canSubmit &&
+                        {workspaceMode === "clerk" &&
                           book.status === "clerk_review" && (
-                            <button
-                              type="button"
-                              className={`${styles.primaryAction} ${styles.mobileSubmitButton}`}
-                              onClick={() =>
-                                void postAction(
-                                  { action: "submit", bookId: book.id },
-                                  `submit:${book.id}`,
-                                )
-                              }
-                              disabled={savingKey === `submit:${book.id}`}
-                            >
-                              เสนอ ผอ.
-                            </button>
-                          )}
+                            <div className={styles.clerkQuickActions}>
+                              {capabilities.canClose &&
+                                book.tasks.length === 0 && (
+                                  <button
+                                    type="button"
+                                    className={styles.clerkDoneCompact}
+                                    onClick={() => closeBookAsDone(book)}
+                                    disabled={savingKey === `close:${book.id}`}
+                                  >
+                                    เสร็จสิ้น
+                                  </button>
+                                )}
 
-                        {book.tasks.some(
-                          (task) =>
-                            task.assigneeId === currentUserId &&
-                            task.status === "assigned",
-                        ) && (
-                          <button
-                            type="button"
-                            className={styles.primaryAction}
-                            onClick={() => {
-                              const task = book.tasks.find(
-                                (item) =>
-                                  item.assigneeId === currentUserId &&
-                                  item.status === "assigned",
-                              );
-                              if (task) {
-                                void updateTaskStatus(task.id, "in_progress");
-                              }
-                            }}
-                            disabled={book.tasks.some(
-                              (task) =>
-                                task.assigneeId === currentUserId &&
-                                savingKey === task.id,
-                            )}
-                          >
-                            เริ่ม
-                          </button>
-                        )}
-
-                        {book.tasks.some(
-                          (task) =>
-                            task.assigneeId === currentUserId &&
-                            task.status === "in_progress",
-                        ) && (
-                          <button
-                            type="button"
-                            className={styles.doneAction}
-                            onClick={() => {
-                              const task = book.tasks.find(
-                                (item) =>
-                                  item.assigneeId === currentUserId &&
-                                  item.status === "in_progress",
-                              );
-                              if (task) {
-                                void updateTaskStatus(task.id, "done");
-                              }
-                            }}
-                            disabled={book.tasks.some(
-                              (task) =>
-                                task.assigneeId === currentUserId &&
-                                savingKey === task.id,
-                            )}
-                          >
-                            เสร็จสิ้น
-                          </button>
-                        )}
-
-                        {workspaceMode === "manager" &&
-                      capabilities.canClose &&
-                      book.status !== "done" &&
-                      book.tasks.length === 0 && (
-                            <button
-                              type="button"
-                              className={styles.doneAction}
-                              onClick={() => {
-                                const hasIncompleteAssignments = book.tasks.some(
-                                  (task) => task.status !== "done",
-                                );
-                                const confirmed = window.confirm(
-                                  hasIncompleteAssignments
-                                    ? "เรื่องนี้ยังมีผู้รับมอบหมายที่ทำงานไม่เสร็จ ยืนยันปิดเรื่องเป็นเสร็จสิ้นหรือไม่"
-                                    : "ยืนยันปิดเรื่องนี้เป็นเสร็จสิ้นหรือไม่",
-                                );
-                                if (!confirmed) return;
-                                void postAction(
-                                  {
-                                    action: "close",
-                                    bookId: book.id,
-                                    note: "ผอ. ปิดเรื่องเป็นเสร็จสิ้น",
-                                  },
-                                  `close:${book.id}`,
-                                );
-                              }}
-                              disabled={savingKey === `close:${book.id}`}
-                            >
-                              เสร็จสิ้น
-                            </button>
+                              {capabilities.canSubmit && (
+                                <button
+                                  type="button"
+                                  className={styles.clerkSubmitCompact}
+                                  onClick={() =>
+                                    void postAction(
+                                      { action: "submit", bookId: book.id },
+                                      `submit:${book.id}`,
+                                    )
+                                  }
+                                  disabled={savingKey === `submit:${book.id}`}
+                                >
+                                  เสนอ ผอ.
+                                </button>
+                              )}
+                            </div>
                           )}
                       </div>
                     </td>
@@ -2707,7 +2571,7 @@ export default function DocumentsPage() {
                               <span>หมายเหตุ</span>
                               <p>{book.note || "-"}</p>
                             </div>
-                            <div>
+                            <div className={styles.directorInstruction}>
                               <span>ข้อความสั่งการ</span>
                               <p>{book.directorNote || "-"}</p>
                             </div>
@@ -2788,7 +2652,7 @@ export default function DocumentsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+</div>
 
         <aside
           className={`${styles.workloadPanel} ${

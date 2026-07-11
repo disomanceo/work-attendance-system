@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import styles from "./SmartAreaImportButton.module.css";
 
 type ImportRun = {
   status?: string | null;
@@ -11,6 +12,21 @@ type ImportRun = {
   failed?: number | null;
   finished_at?: string | null;
 };
+
+function formatFinishedAt(value?: string | null) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    day: "numeric",
+    month: "numeric",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
 
 export default function SmartAreaImportButton() {
   const [run, setRun] = useState<ImportRun | null>(null);
@@ -31,12 +47,18 @@ export default function SmartAreaImportButton() {
   }
 
   async function load() {
-    const response = await authFetch("/api/documents/smart-area-import/status");
+    const response = await authFetch(
+      "/api/documents/smart-area-import/status",
+    );
     const body = await response.json();
 
     if (body.ok) {
       setRun(body.run);
-      if (body.run && !["queued", "running"].includes(body.run.status)) {
+
+      if (
+        body.run &&
+        !["queued", "running"].includes(body.run.status)
+      ) {
         setMessage("");
       }
     }
@@ -44,6 +66,7 @@ export default function SmartAreaImportButton() {
 
   useEffect(() => {
     void load();
+
     const id = window.setInterval(() => {
       void load();
     }, 10000);
@@ -74,45 +97,38 @@ export default function SmartAreaImportButton() {
     }
   }
 
-  const active = busy || ["queued", "running"].includes(run?.status || "");
-  const summary = run
-    ? `เพิ่มใหม่ ${run.added ?? 0} · อัปเดต ${run.updated ?? 0} · ซ้ำ ${run.duplicate ?? 0} · ผิดพลาด ${run.failed ?? 0}`
-    : "";
-  const finished = run?.finished_at
-    ? new Date(run.finished_at).toLocaleString("th-TH")
-    : "";
+  const active =
+    busy || ["queued", "running"].includes(run?.status || "");
+  const finished = formatFinishedAt(run?.finished_at);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 8,
-        alignItems: "center",
-        flexWrap: "wrap",
-        marginBottom: 12,
-      }}
-    >
+    <div className={styles.importDock}>
       <button
         type="button"
         onClick={start}
         disabled={active}
-        style={{
-          border: 0,
-          borderRadius: 10,
-          padding: "10px 14px",
-          fontWeight: 700,
-          background: active ? "#9ca3af" : "#15803d",
-          color: "white",
-          cursor: active ? "not-allowed" : "pointer",
-        }}
+        className={styles.importButton}
       >
-        {active ? "กำลังดึงหนังสือ..." : "ดึงหนังสือล่าสุด"}
+        {active ? "กำลังดึง..." : "↻ ดึงล่าสุด"}
       </button>
 
-      <span style={{ fontSize: 13 }}>
-        {message || summary}
-        {finished && !active ? ` · เสร็จ ${finished}` : ""}
-      </span>
+      <div className={styles.importMeta} aria-live="polite">
+        {message ? (
+          <span>{message}</span>
+        ) : (
+          <>
+            <span>
+              เพิ่ม {run?.added ?? 0} · อัปเดต{" "}
+              {run?.updated ?? 0} · ซ้ำ{" "}
+              {run?.duplicate ?? 0}
+            </span>
+            <span>
+              ผิดพลาด {run?.failed ?? 0}
+              {finished ? ` · ${finished}` : ""}
+            </span>
+          </>
+        )}
+      </div>
     </div>
   );
 }
