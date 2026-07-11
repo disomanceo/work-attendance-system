@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+﻿import { chromium } from "playwright";
 
 const required = ["SMART_AREA_BASE_URL","SMART_AREA_USERNAME","SMART_AREA_PASSWORD","WORK_ATTENDANCE_IMPORT_URL","WORK_ATTENDANCE_IMPORT_SECRET"];
 for (const key of required) if (!process.env[key]) throw new Error(`Missing ${key}`);
@@ -47,8 +47,17 @@ try {
   }
   if (await page.locator('input[type="password"]').count()) throw new Error("Login failed");
 
+  const pageNumbers = await page.locator('a[href*="page="]').evaluateAll((links) => links
+    .map((link) => {
+      try { return Number(new URL(link.href).searchParams.get("page")); }
+      catch { return 0; }
+    })
+    .filter((value) => Number.isInteger(value) && value > 0));
+  const latestPage = Math.max(1, ...pageNumbers);
+  const firstPage = Math.max(1, latestPage - 2);
+
   const items = new Map();
-  for (let p = 1; p <= 3; p++) {
+  for (let p = firstPage; p <= latestPage; p++) {
     const url = new URL(receiveUrl); url.searchParams.set("page", String(p));
     await page.goto(url.href, { waitUntil: "domcontentloaded", timeout: 30000 });
     const rows = await page.locator("tr").evaluateAll((trs) => trs.map((tr) => {
@@ -77,13 +86,13 @@ try {
         };
         const links = [...document.querySelectorAll("a[href]")].map(a => ({ text: text(a.textContent), url: a.href })).filter(x => /\.(pdf|docx?|xlsx?|pptx?|jpe?g|png|zip|rar)(\?|$)|upload_files/i.test(x.url));
         return {
-          documentNo: pick(["เลขที่หนังสือ","เลขหนังสือ"]),
-          subject: pick(["เรื่อง"]),
-          priority: pick(["ชั้นความเร็ว","ความเร็ว"]),
-          receiveNo: pick(["เลขทะเบียนหนังสือรับ","เลขทะเบียนรับ"]),
-          documentDate: pick(["วันที่หนังสือ","หนังสือลงวันที่"]),
-          sender: pick(["ส่งโดย","จาก"]),
-          summary: pick(["เนื้อหาโดยสรุป","หมายเหตุ"]),
+          documentNo: pick(["เน€เธฅเธเธ—เธตเนเธซเธเธฑเธเธชเธทเธญ","เน€เธฅเธเธซเธเธฑเธเธชเธทเธญ"]),
+          subject: pick(["เน€เธฃเธทเนเธญเธ"]),
+          priority: pick(["เธเธฑเนเธเธเธงเธฒเธกเน€เธฃเนเธง","เธเธงเธฒเธกเน€เธฃเนเธง"]),
+          receiveNo: pick(["เน€เธฅเธเธ—เธฐเน€เธเธตเธขเธเธซเธเธฑเธเธชเธทเธญเธฃเธฑเธ","เน€เธฅเธเธ—เธฐเน€เธเธตเธขเธเธฃเธฑเธ"]),
+          documentDate: pick(["เธงเธฑเธเธ—เธตเนเธซเธเธฑเธเธชเธทเธญ","เธซเธเธฑเธเธชเธทเธญเธฅเธเธงเธฑเธเธ—เธตเน"]),
+          sender: pick(["เธชเนเธเนเธ”เธข","เธเธฒเธ"]),
+          summary: pick(["เน€เธเธทเนเธญเธซเธฒเนเธ”เธขเธชเธฃเธธเธ","เธซเธกเธฒเธขเน€เธซเธ•เธธ"]),
           attachments: links
         };
       });
