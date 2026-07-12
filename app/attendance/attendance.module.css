@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   --sidebar-width: 292px;
   min-height: 100svh;
   color: #f8f5ff;
@@ -2722,5 +2722,1352 @@
 
   .focusCheckInCard {
     padding-bottom: 6px !important;
+  }
+}
+/* ATTENDANCE HOME DASHBOARD V1 */
+.homeRecentCard,
+.homeShortcutCard {
+  padding: 22px;
+  border: 1px solid rgba(216, 180, 254, 0.15);
+  border-radius: 24px;
+  background: linear-gradient(
+    145deg,
+    rgba(31, 17, 48, 0.95),
+    rgba(17, 9, 29, 0.97)
+  );
+  box-shadow: 0 22px 55px rgba(4, 1, 10, 0.28);
+}
+
+.homeSectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.homeSectionHeading small {
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.homeSectionHeading h2 {
+  margin: 4px 0 0;
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.homeSectionHeading button {
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid rgba(192, 132, 252, 0.24);
+  border-radius: 12px;
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.08);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.homeRecentList {
+  display: grid;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.homeRecentItem {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 72px;
+  padding: 11px 12px;
+  border: 1px solid rgba(216, 180, 254, 0.11);
+  border-radius: 16px;
+  color: #f8f5ff;
+  background: rgba(255, 255, 255, 0.035);
+  text-align: left;
+  cursor: pointer;
+}
+
+.homeRecentItem:hover {
+  border-color: rgba(192, 132, 252, 0.3);
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.homeDocumentIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  color: #f5d0fe;
+  background: linear-gradient(135deg, #7c3aed, #c026d3);
+  font-size: 20px;
+}
+
+.homeDocumentBody {
+  min-width: 0;
+}
+
+.homeDocumentBody strong,
+.homeDocumentBody small {
+  display: block;
+}
+
+.homeDocumentBody strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.homeDocumentBody small {
+  margin-top: 5px;
+  overflow: hidden;
+  color: #aa98bf;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.homeUrgencyBadge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.homeUrgencyNew {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.homeUrgencyWarning {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.homeUrgencyCritical {
+  color: #fecdd3;
+  background: rgba(244, 63, 94, 0.16);
+}
+
+.homeRecentArrow {
+  color: #c4b5fd;
+  font-size: 24px;
+}
+
+.homeEmptyState {
+  margin: 0;
+  padding: 22px 14px;
+  border: 1px dashed rgba(216, 180, 254, 0.16);
+  border-radius: 16px;
+  color: #a997c0;
+  text-align: center;
+  font-size: 13px;
+}
+
+.homeShortcutGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.homeShortcutGrid button {
+  display: grid;
+  min-height: 96px;
+  align-content: center;
+  justify-items: center;
+  gap: 9px;
+  padding: 12px 8px;
+  border: 1px solid rgba(216, 180, 254, 0.12);
+  border-radius: 16px;
+  color: #f8f5ff;
+  background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+}
+
+.homeShortcutGrid span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  color: #f5d0fe;
+  background: rgba(168, 85, 247, 0.16);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.homeShortcutGrid strong {
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .focusStatusGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .focusStatusGrid > div:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .homeRecentCard,
+  .homeShortcutCard {
+    padding: 17px;
+    border-radius: 20px;
+  }
+
+  .homeShortcutGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .homeShortcutGrid button {
+    min-height: 84px;
+  }
+}
+
+@media (max-width: 420px) {
+  .homeRecentItem {
+    grid-template-columns: 38px minmax(0, 1fr) 16px;
+    gap: 9px;
+  }
+
+  .homeDocumentIcon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .homeUrgencyBadge {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .homeRecentArrow {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+/* ATTENDANCE COMPACT MOBILE V3 */
+@media (max-width: 760px) {
+  .content {
+    padding:
+      calc(76px + env(safe-area-inset-top))
+      10px
+      calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .mobileTopBar {
+    min-height: 66px;
+    padding: 8px 12px;
+  }
+
+  .mobileAvatar {
+    width: 44px;
+    height: 44px;
+  }
+
+  .mobileProfile strong {
+    font-size: 13px;
+  }
+
+  .focusDashboard {
+    gap: 8px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  .focusCheckInCard {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    grid-template-areas:
+      "date date"
+      "clock clock"
+      "action status";
+    align-items: center;
+    justify-items: stretch;
+    gap: 8px 10px;
+    padding: 11px;
+    border-radius: 18px;
+    text-align: left;
+  }
+
+  .focusDate {
+    grid-area: date;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .focusClock {
+    grid-area: clock;
+    margin-top: 0;
+    font-size: 34px;
+    text-align: center;
+  }
+
+  .focusClock small {
+    margin-top: 3px;
+    font-size: 9px;
+  }
+
+  .focusAction,
+  .focusLeaveState,
+  .focusCompletedState {
+    grid-area: action;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .focusAction {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+  }
+
+  .focusFingerprintButton {
+    width: 124px;
+    height: 124px;
+    min-height: 124px;
+    border-width: 6px;
+    box-shadow:
+      0 0 0 7px rgba(168, 85, 247, 0.08),
+      0 12px 24px rgba(4, 1, 10, 0.25);
+  }
+
+  .focusFingerprintIcon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .focusFingerprintButton strong {
+    max-width: 108px;
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  .focusFingerprintButton small {
+    font-size: 8px;
+  }
+
+  .focusGpsStatus {
+    display: none;
+  }
+
+  .focusLeaveState,
+  .focusCompletedState {
+    min-height: 124px;
+    align-content: center;
+    padding: 10px;
+    border-radius: 16px;
+    text-align: center;
+  }
+
+  .focusLeaveState h2,
+  .focusCompletedState h2 {
+    margin: 4px 0;
+    font-size: 15px;
+  }
+
+  .focusLeaveState p,
+  .focusCompletedState p,
+  .focusCompletedState strong {
+    margin: 2px 0;
+    font-size: 10px;
+  }
+
+  .focusCheckOutButton {
+    min-height: 34px;
+    margin-top: 5px;
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .focusStatusCard {
+    grid-area: status;
+    width: 100%;
+    min-width: 0;
+    padding: 10px;
+    border-radius: 16px;
+    text-align: left;
+  }
+
+  .focusSectionHeading small {
+    font-size: 9px;
+  }
+
+  .focusSectionHeading h2 {
+    margin-top: 2px;
+    font-size: 14px;
+  }
+
+  .focusStatusGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 8px;
+    border-radius: 12px;
+  }
+
+  .focusStatusGrid > div,
+  .focusStatusGrid > div:nth-child(3) {
+    grid-column: auto;
+    min-width: 0;
+    padding: 8px;
+  }
+
+  .focusStatusGrid > div:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .focusStatusGrid small {
+    font-size: 8px;
+  }
+
+  .focusStatusGrid strong,
+  .focusStatusGrid span {
+    margin-top: 3px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .focusStatusGrid > div:nth-child(4),
+  .focusStatusGrid > div:nth-child(5) {
+    min-height: 46px;
+  }
+
+  .focusMonthlyCard,
+  .homeRecentCard,
+  .homeShortcutCard {
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .focusMonthlyCard .focusSectionHeading {
+    margin-bottom: 7px;
+  }
+
+  .focusMonthlyCard .focusSectionHeading small {
+    display: none;
+  }
+
+  .focusMonthlyCard .focusSectionHeading h2 {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .focusChart {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 0;
+  }
+
+  .focusChartRow {
+    display: grid;
+    min-width: 0;
+    justify-items: center;
+    gap: 2px;
+    padding: 7px 3px;
+    border: 1px solid rgba(216, 180, 254, 0.1);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.03);
+    text-align: center;
+  }
+
+  .focusChartRow > span {
+    order: 2;
+    color: #a997c0;
+    font-size: 8px;
+  }
+
+  .focusChartRow > strong {
+    order: 1;
+    font-size: 13px;
+  }
+
+  .focusChartTrack {
+    display: none;
+  }
+
+  .focusSummaryNote {
+    margin: 5px 0 0;
+    font-size: 8px;
+  }
+
+  .homeSectionHeading small {
+    display: none;
+  }
+
+  .homeSectionHeading h2 {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .homeSectionHeading button {
+    min-height: 28px;
+    padding: 4px 8px;
+    border-radius: 9px;
+    font-size: 9px;
+  }
+
+  .homeRecentList {
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .homeRecentItem {
+    grid-template-columns: 30px minmax(0, 1fr) auto 12px;
+    gap: 7px;
+    min-height: 43px;
+    padding: 5px 7px;
+    border-radius: 10px;
+  }
+
+  .homeDocumentIcon {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    font-size: 14px;
+  }
+
+  .homeDocumentBody strong {
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -webkit-line-clamp: 1;
+  }
+
+  .homeDocumentBody small {
+    margin-top: 2px;
+    font-size: 8px;
+  }
+
+  .homeUrgencyBadge {
+    padding: 3px 5px;
+    font-size: 7px;
+  }
+
+  .homeRecentArrow {
+    font-size: 16px;
+  }
+
+  .homeShortcutGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 6px;
+  }
+
+  .homeShortcutGrid button {
+    min-height: 54px;
+    gap: 3px;
+    padding: 5px 2px;
+    border-radius: 11px;
+  }
+
+  .homeShortcutGrid span {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .homeShortcutGrid strong {
+    font-size: 8px;
+    line-height: 1.15;
+  }
+}
+
+@media (max-width: 390px) {
+  .focusCheckInCard {
+    grid-template-columns: 116px minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .focusFingerprintButton {
+    width: 108px;
+    height: 108px;
+    min-height: 108px;
+  }
+
+  .focusFingerprintIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .focusStatusGrid > div {
+    padding: 6px;
+  }
+
+  .homeRecentItem {
+    grid-template-columns: 28px minmax(0, 1fr) 10px;
+  }
+
+  .homeUrgencyBadge {
+    display: none;
+  }
+}
+/* ATTENDANCE HOME POLISH V4 */
+.focusDayState {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 100%;
+  margin-top: 5px;
+  text-align: center;
+}
+
+.focusDayState strong,
+.focusDayState small {
+  display: block;
+}
+
+.focusDayState strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.focusDayState small {
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.focusDayStateOpen strong {
+  color: #86efac;
+}
+
+.focusDayStateOpen small {
+  color: #bbf7d0;
+}
+
+.focusDayStateHoliday strong {
+  color: #fda4af;
+}
+
+.focusDayStateHoliday small {
+  color: #fecdd3;
+}
+
+.homeDocumentTime {
+  color: #c4b5fd;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.focusChartRow::before {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  order: 0;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.focusChartRow:nth-child(1)::before {
+  content: "✓";
+  color: #052e16;
+  background: linear-gradient(135deg, #4ade80, #16a34a);
+  box-shadow: 0 6px 14px rgba(34, 197, 94, 0.22);
+}
+
+.focusChartRow:nth-child(2)::before {
+  content: "◷";
+  color: #451a03;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.22);
+}
+
+.focusChartRow:nth-child(3)::before {
+  content: "✚";
+  color: #4c0519;
+  background: linear-gradient(135deg, #f472b6, #ec4899);
+  box-shadow: 0 6px 14px rgba(236, 72, 153, 0.22);
+}
+
+.focusChartRow:nth-child(4)::before {
+  content: "✈";
+  color: #082f49;
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+  box-shadow: 0 6px 14px rgba(14, 165, 233, 0.22);
+}
+
+.homeShortcutGrid button:nth-child(1) span {
+  color: #dcfce7;
+  background: linear-gradient(135deg, #22c55e, #15803d);
+}
+
+.homeShortcutGrid button:nth-child(2) span {
+  color: #fce7f3;
+  background: linear-gradient(135deg, #ec4899, #be185d);
+}
+
+.homeShortcutGrid button:nth-child(3) span {
+  color: #dbeafe;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.homeShortcutGrid button:nth-child(4) span {
+  color: #f3e8ff;
+  background: linear-gradient(135deg, #a855f7, #7e22ce);
+}
+
+@media (max-width: 760px) {
+  .focusDayState {
+    margin-top: 4px;
+  }
+
+  .focusDayState strong {
+    font-size: 10px;
+  }
+
+  .focusDayState small {
+    font-size: 8px;
+  }
+
+  .focusChartRow {
+    min-height: 67px;
+    align-content: center;
+  }
+
+  .focusChartRow::before {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .focusChartRow > strong {
+    font-size: 12px;
+  }
+
+  .focusChartRow > span {
+    width: 100%;
+    overflow: visible;
+    font-size: 7px;
+    line-height: 1.1;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .homeRecentItem {
+    grid-template-columns: 30px minmax(0, 1fr) auto 12px;
+  }
+
+  .homeDocumentBody strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .homeDocumentTime {
+    max-width: 74px;
+    overflow: hidden;
+    font-size: 8px;
+    text-overflow: ellipsis;
+  }
+
+  .homeShortcutGrid span {
+    font-family:
+      "Segoe UI Emoji",
+      "Apple Color Emoji",
+      sans-serif;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 390px) {
+  .homeRecentItem {
+    grid-template-columns: 28px minmax(0, 1fr) 62px 10px;
+  }
+
+  .homeDocumentTime {
+    max-width: 62px;
+    font-size: 7px;
+  }
+
+  .focusChartRow > span {
+    font-size: 6.5px;
+  }
+}
+/* ATTENDANCE MOBILE OVERFLOW FIX V5 */
+@media (max-width: 760px) {
+  .page {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .content,
+  .focusDashboard,
+  .focusCheckInCard,
+  .focusStatusCard,
+  .focusMonthlyCard,
+  .homeRecentCard,
+  .homeShortcutCard,
+  .homeRecentList,
+  .homeShortcutGrid {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .focusCheckInCard > *,
+  .focusStatusGrid > *,
+  .focusChartRow,
+  .homeRecentItem > *,
+  .homeShortcutGrid > * {
+    min-width: 0;
+  }
+
+  .focusStatusGrid strong,
+  .focusStatusGrid span,
+  .focusStatusGrid small,
+  .focusChartRow span,
+  .focusChartRow strong,
+  .homeShortcutGrid strong {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .focusFingerprintButton {
+    overflow: hidden;
+  }
+
+  .focusFingerprintButton strong {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.15;
+    text-align: center;
+    text-overflow: ellipsis;
+  }
+
+  .focusFingerprintButton small {
+    display: none !important;
+  }
+
+  .homeRecentItem {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    grid-template-columns:
+      30px
+      minmax(0, 1fr)
+      clamp(82px, 30vw, 112px)
+      12px;
+  }
+
+  .homeDocumentBody {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .homeDocumentBody strong {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .homeDocumentTime {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 112px;
+    overflow: hidden;
+    color: #c4b5fd;
+    font-size: 8px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    line-height: 1.15;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .homeRecentArrow {
+    width: 12px;
+    min-width: 12px;
+    overflow: hidden;
+    text-align: right;
+  }
+
+  .homeShortcutGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .homeShortcutGrid button {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .homeShortcutGrid strong {
+    width: 100%;
+    max-width: 100%;
+    font-size: 7.5px;
+    line-height: 1.1;
+    text-align: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .content {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .homeRecentItem {
+    grid-template-columns:
+      28px
+      minmax(0, 1fr)
+      clamp(76px, 29vw, 96px)
+      10px;
+    gap: 6px;
+  }
+
+  .homeDocumentTime {
+    max-width: 96px;
+    font-size: 7px;
+  }
+
+  .homeShortcutGrid {
+    gap: 4px;
+  }
+
+  .homeShortcutGrid button {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .homeShortcutGrid strong {
+    font-size: 7px;
+  }
+}
+
+@media (max-width: 360px) {
+  .focusCheckInCard {
+    grid-template-columns: 104px minmax(0, 1fr);
+  }
+
+  .focusFingerprintButton {
+    width: 98px;
+    height: 98px;
+    min-height: 98px;
+  }
+
+  .focusFingerprintButton strong {
+    font-size: 10px;
+  }
+
+  .homeRecentItem {
+    grid-template-columns: 26px minmax(0, 1fr) 72px 9px;
+  }
+
+  .homeDocumentTime {
+    max-width: 72px;
+    font-size: 6.5px;
+  }
+
+  .homeShortcutGrid strong {
+    font-size: 6.5px;
+  }
+}
+/* ATTENDANCE HOME LAYOUT V6 */
+.focusChartDaySuffix {
+  font-style: normal;
+  font-size: 0.78em;
+  font-weight: 700;
+}
+
+@media (min-width: 761px) {
+  .focusChart {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .focusChartRow {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr) 72px;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .focusChartRow > span {
+    white-space: nowrap;
+  }
+
+  .focusChartRow > strong {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .homeRecentItem {
+    grid-template-columns: 42px minmax(0, 1fr) minmax(220px, 42%);
+  }
+
+  .homeDocumentBody strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .homeDocumentTime {
+    max-width: none;
+    overflow: visible;
+    text-align: right;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .homeRecentList {
+    gap: 2px;
+    margin-top: 5px;
+  }
+
+  .homeRecentItem {
+    grid-template-columns:
+      30px
+      minmax(0, 1fr)
+      minmax(122px, 46%);
+    gap: 6px;
+    min-height: 38px;
+    padding: 4px 6px;
+    border-radius: 9px;
+  }
+
+  .homeDocumentIcon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .homeDocumentBody {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .homeDocumentBody strong {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .homeDocumentTime {
+    width: 100%;
+    max-width: none;
+    overflow: visible;
+    font-size: 7.5px;
+    line-height: 1.1;
+    text-align: right;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .homeRecentArrow {
+    display: none !important;
+  }
+
+  .focusChartDaySuffix {
+    display: none;
+  }
+
+  .focusChartRow > strong {
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  .focusChartRow > span {
+    font-size: 7px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .homeRecentItem {
+    grid-template-columns:
+      28px
+      minmax(0, 1fr)
+      minmax(112px, 47%);
+    gap: 5px;
+  }
+
+  .homeDocumentBody strong {
+    font-size: 8.5px;
+  }
+
+  .homeDocumentTime {
+    font-size: 7px;
+  }
+}
+
+@media (max-width: 360px) {
+  .homeRecentItem {
+    grid-template-columns:
+      26px
+      minmax(0, 1fr)
+      minmax(104px, 48%);
+  }
+
+  .homeDocumentBody strong {
+    font-size: 8px;
+  }
+
+  .homeDocumentTime {
+    font-size: 6.5px;
+  }
+}
+/* ATTENDANCE SCROLL AND DESKTOP SUMMARY V7 */
+:global(html),
+:global(body) {
+  width: 100%;
+  min-height: 100%;
+  height: auto !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto;
+}
+
+.page {
+  height: auto !important;
+  min-height: 100svh;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+  touch-action: pan-y;
+}
+
+.content {
+  height: auto !important;
+  min-height: 100svh;
+  overflow: visible !important;
+  touch-action: pan-y;
+}
+
+@media (min-width: 761px) {
+  .focusChart {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .focusChartRow {
+    display: grid;
+    grid-template-columns: 36px 96px minmax(180px, 1fr) 82px;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(216, 180, 254, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .focusChartRow::before {
+    grid-column: 1;
+    grid-row: 1;
+    width: 30px;
+    height: 30px;
+  }
+
+  .focusChartRow > span {
+    grid-column: 2;
+    grid-row: 1;
+    overflow: hidden;
+    color: #d8c7ec;
+    font-size: 13px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .focusChartTrack {
+    grid-column: 3;
+    grid-row: 1;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .focusChartTrack i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  .focusChartRow > strong {
+    grid-column: 4;
+    grid-row: 1;
+    color: #ffffff;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .focusChartDaySuffix {
+    display: inline;
+    font-size: 0.82em;
+  }
+}
+
+@media (max-width: 760px) {
+  .page,
+  .content,
+  .focusDashboard,
+  .focusCheckInCard,
+  .focusStatusCard,
+  .focusMonthlyCard,
+  .homeRecentCard,
+  .homeShortcutCard,
+  .homeRecentList,
+  .homeShortcutGrid {
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
+  .page {
+    overflow-x: clip !important;
+  }
+
+  .focusDashboard {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .focusMonthlyCard,
+  .homeRecentCard,
+  .homeShortcutCard {
+    flex: 0 0 auto;
+  }
+}
+/* ATTENDANCE HOME REFINE V8 */
+@media (max-width: 760px) {
+  .focusChartRow {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-content: center;
+    gap: 2px;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .focusChartRow::before {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0 auto;
+  }
+
+  .focusChartRow > span {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 7px;
+    line-height: 1.05;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .focusChartRow > strong {
+    grid-column: 1;
+    grid-row: 3;
+    width: 100%;
+    font-size: 12px;
+    line-height: 1;
+    text-align: center;
+  }
+
+  .focusChartTrack {
+    display: none !important;
+  }
+
+  .focusFingerprintButton strong,
+  .focusFingerprintButton small {
+    display: none !important;
+  }
+
+  .focusFingerprintButton {
+    align-content: center;
+    justify-items: center;
+    gap: 0;
+  }
+
+  .focusFingerprintIcon {
+    margin: 0;
+  }
+}
+
+@media (min-width: 761px) {
+  .homeRecentItem {
+    grid-template-columns: 42px minmax(0, 1fr) minmax(220px, 34%);
+    align-items: center;
+  }
+
+  .homeDocumentBody {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .homeDocumentBody strong {
+    display: block;
+    overflow: visible;
+    font-size: 14px;
+    line-height: 1.4;
+    text-overflow: clip;
+    white-space: normal;
+    -webkit-line-clamp: unset;
+  }
+
+  .homeDocumentTime {
+    align-self: center;
+    max-width: none;
+    overflow: visible;
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: right;
+    text-overflow: clip;
+    white-space: nowrap;
   }
 }

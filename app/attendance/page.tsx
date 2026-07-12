@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -94,6 +94,22 @@ type MonthlySummary = {
   officialDuty: number;
 };
 
+type RecentDocument = {
+  id: string;
+  subject: string;
+  sourceAgency: string;
+  documentNumber: string;
+  urgency: string;
+  receivedDate: string;
+  updatedAt: string;
+};
+
+type RecentDocumentsResponse = {
+  ok: boolean;
+  books?: RecentDocument[];
+  message?: string;
+};
+
 type WorkCalendarDayResponse = {
   ok: boolean;
   date: string;
@@ -152,6 +168,44 @@ function formatThaiTime(value: string | null) {
 
 function normalizeTime(value: string) {
   return value.slice(0, 8);
+}
+
+function formatRecentDocumentDate(value: string) {
+  if (!value) return "ล่าสุด";
+
+  const parsed = new Date(
+    value.length <= 10 ? `${value}T00:00:00+07:00` : value,
+  );
+
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  const datePart = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+  }).format(parsed);
+
+  if (value.length <= 10) return datePart;
+
+  const timePart = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(parsed)
+    .replace(":", ".");
+
+  return `${datePart} เวลา ${timePart} น.`;
+}
+
+function recentDocumentUrgencyLabel(value: string) {
+  const normalized = String(value || "").replace(/\s+/g, "");
+
+  if (normalized.includes("ด่วนที่สุด")) return "ด่วนที่สุด";
+  if (normalized.includes("ด่วน")) return "ด่วน";
+  return "ใหม่";
 }
 
 function getRoleStartTime(role: string, settings: AttendanceSettings) {
@@ -285,6 +339,8 @@ export default function AttendancePage() {
   const [monthlySummary, setMonthlySummary] =
     useState<MonthlySummary | null>(null);
   const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(true);
+  const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
+  const [recentDocumentsLoading, setRecentDocumentsLoading] = useState(true);
   const [now, setNow] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -440,6 +496,34 @@ export default function AttendancePage() {
       setMonthlySummaryLoading(false);
     }
   }
+  async function loadRecentDocuments(accessToken: string) {
+    setRecentDocumentsLoading(true);
+
+    try {
+      const response = await fetch("/api/documents", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
+      });
+
+      const result = (await response.json()) as RecentDocumentsResponse;
+
+      if (!response.ok || !result.ok) {
+        throw new Error(
+          result.message || "โหลดหนังสือราชการล่าสุดไม่สำเร็จ",
+        );
+      }
+
+      setRecentDocuments((result.books ?? []).slice(0, 3));
+    } catch (error) {
+      console.error("Load recent documents error:", error);
+      setRecentDocuments([]);
+    } finally {
+      setRecentDocumentsLoading(false);
+    }
+  }
+
   const loadAttendance = useCallback(async () => {
     setLoading(true);
     setMessage("");
@@ -510,6 +594,7 @@ export default function AttendancePage() {
 
       await loadTodayLeave(session.access_token);
       await loadMonthlySummary(session.access_token);
+      await loadRecentDocuments(session.access_token);
     } catch (error) {
       console.error("Load attendance error:", error);
       setMessageType("error");
@@ -1038,22 +1123,28 @@ schoolName: settings?.school_name ?? null,
                       <path d="M48 17c7 6 9 13 9 21" />
                     </svg>
                   </span>
-                  <strong>
-                    {processing
-                      ? "กำลังตรวจสอบ GPS..."
-                      : workCalendarDay?.isWorkingDay === false
-                        ? workCalendarDay?.title ||
-                          "วันนี้เป็นวันหยุด"
-                        : "ลงเวลาปฏิบัติงาน"}
-                  </strong>
-                  {!processing && (
-                    <small>
-                      {workCalendarDay?.isWorkingDay === false
-                        ? "ไม่มีการลงเวลาปฏิบัติงาน"
-                        : "แตะเพื่อเช็กอิน"}
-                    </small>
-                  )}
+                  
                 </button>
+
+                <div
+                  className={`${styles.focusDayState} ${
+                    workCalendarDay?.isWorkingDay === false
+                      ? styles.focusDayStateHoliday
+                      : styles.focusDayStateOpen
+                  }`}
+                >
+                  <strong>
+                    {workCalendarDay?.isWorkingDay === false
+                      ? workCalendarDay?.title || "วันหยุดประจำสัปดาห์"
+                      : "วันเปิดเรียน"}
+                  </strong>
+                  <small>
+                    {workCalendarDay?.isWorkingDay === false
+                      ? "ไม่มีการลงเวลาปฏิบัติงาน"
+                      : "เปิดให้ลงเวลาปฏิบัติงานตามปกติ"}
+                  </small>
+                </div>
+
                 {workCalendarDay?.isWorkingDay !== false && (
                 <div
                   className={`${styles.focusGpsStatus} ${
@@ -1201,7 +1292,7 @@ schoolName: settings?.school_name ?? null,
 
           <article className={styles.focusMonthlyCard}>
             <div className={styles.focusSectionHeading}>
-              <small>สรุปการลงเวลา</small>
+              <small>สรุปการลงเวลาของฉัน</small>
               <h2>
                 {monthlySummary
                   ? `เดือน${new Intl.DateTimeFormat("th-TH", {
@@ -1269,7 +1360,10 @@ schoolName: settings?.school_name ?? null,
                       />
                     </div>
 
-                    <strong>{item.value} วัน</strong>
+                    <strong>
+                      {item.value}
+                      <em className={styles.focusChartDaySuffix}> วัน</em>
+                    </strong>
                   </div>
                 );
               })}
@@ -1280,6 +1374,109 @@ schoolName: settings?.school_name ?? null,
                 กำลังโหลดข้อมูลสรุปรายเดือน...
               </p>
             )}
+          </article>
+
+          <article className={styles.homeRecentCard}>
+            <div className={styles.homeSectionHeading}>
+              <div>
+                <small>อัปเดตจากระบบกลาง</small>
+                <h2>หนังสือเข้าใหม่</h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push("/documents")}
+              >
+                ดูทั้งหมด
+              </button>
+            </div>
+
+            <div className={styles.homeRecentList}>
+              {recentDocumentsLoading ? (
+                <p className={styles.homeEmptyState}>
+                  กำลังโหลดหนังสือราชการล่าสุด...
+                </p>
+              ) : recentDocuments.length === 0 ? (
+                <p className={styles.homeEmptyState}>
+                  ยังไม่มีหนังสือราชการรายการใหม่
+                </p>
+              ) : (
+                recentDocuments.map((book) => (
+                  <button
+                    type="button"
+                    className={styles.homeRecentItem}
+                    key={book.id}
+                    onClick={() =>
+                      router.push(
+                        `/documents?book=${encodeURIComponent(book.id)}`,
+                      )
+                    }
+                  >
+                    <span className={styles.homeDocumentIcon} aria-hidden="true">
+                      ✉
+                    </span>
+
+                    <span className={styles.homeDocumentBody}>
+                      <strong>{book.subject || "ไม่ระบุเรื่อง"}</strong>
+                    </span>
+
+                    <time
+                      className={styles.homeDocumentTime}
+                      dateTime={book.updatedAt || book.receivedDate}
+                    >
+                      {formatRecentDocumentDate(
+                        book.updatedAt || book.receivedDate,
+                      )}
+                    </time>
+
+
+                  </button>
+                ))
+              )}
+            </div>
+          </article>
+
+          <article className={styles.homeShortcutCard}>
+            <div className={styles.homeSectionHeading}>
+              <div>
+                <small>เข้าถึงเมนูที่ใช้บ่อย</small>
+                <h2>ทางลัด</h2>
+              </div>
+            </div>
+
+            <div className={styles.homeShortcutGrid}>
+              {[
+                {
+                  label: "หนังสือราชการ",
+                  icon: "📁",
+                  href: "/documents",
+                },
+                {
+                  label: "ยื่นลา",
+                  icon: "📝",
+                  href: "/leave",
+                },
+                {
+                  label: "ไปราชการ",
+                  icon: "✈",
+                  href: "/official-duty",
+                },
+                {
+                  label: "เช็กชื่อนักเรียน",
+                  icon: "👥",
+                  href: "/students/attendance",
+                },
+              ].map((shortcut) => (
+                <button
+                  type="button"
+                  key={shortcut.href}
+                  onClick={() => router.push(shortcut.href)}
+                >
+                  <span aria-hidden="true">{shortcut.icon}</span>
+                  <strong>{shortcut.label}</strong>
+                </button>
+              ))}
+            </div>
           </article>
         </section>
       </section>

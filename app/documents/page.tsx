@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -534,6 +534,7 @@ export default function DocumentsPage() {
   const [selectedSmartAreaPage, setSelectedSmartAreaPage] = useState<number | null>(null);
   const [selectedSmartAreaMode, setSelectedSmartAreaMode] = useState<"page" | "latest" | null>(null);
   const returnBookHandledRef = useRef(false);
+  const deepLinkedBookHandledRef = useRef("");
   const keepSelectedBookOnFilterChangeRef = useRef(false);
   const mobileScrollYRef = useRef(0);
   const documentVersionRef = useRef(0);
@@ -715,6 +716,27 @@ export default function DocumentsPage() {
       setLoading(false);
     }
   }, [sessionToken]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || books.length === 0) return;
+
+    const requestedBookId = new URLSearchParams(window.location.search).get(
+      "book",
+    );
+
+    if (
+      !requestedBookId ||
+      deepLinkedBookHandledRef.current === requestedBookId
+    ) {
+      return;
+    }
+
+    const requestedBook = books.find((book) => book.id === requestedBookId);
+    if (!requestedBook) return;
+
+    deepLinkedBookHandledRef.current = requestedBookId;
+    setSelectedBook(requestedBook);
+  }, [books]);
 
   const loadExtensionInfo = useCallback(async () => {
     try {
