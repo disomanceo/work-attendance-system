@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   STUDENT_CLASS_LEVELS,
@@ -61,6 +61,13 @@ function displayName(profile?: Profile) {
   if (!profile) return "-";
   return profile.full_name || profile.phone || profile.id;
 }
+function teacherChipName(profile?: Profile) {
+  const name = displayName(profile).trim();
+  if (!name || name === "-") return "-";
+  const cleanName = name.replace(/^(นาย|นางสาว|นาง|ครู)\s*/u, "").trim();
+  const firstName = cleanName.split(/\s+/)[0] || cleanName;
+  return `ครู${firstName}`;
+}
 function emptyClassSettings(): ClassSetting[] {
   return STUDENT_CLASS_LEVELS.map((level) => ({ class_level: level, class_room: "", adviser_profile_id: null, adviser_profile_ids: [] }));
 }
@@ -106,6 +113,8 @@ export default function StudentClassroomSettingsPage() {
   const [selectedType, setSelectedType] = useState<CalendarDayType>("SCHOOL_HOLIDAY");
   const [selectedTitle, setSelectedTitle] = useState("");
   const [selectedReportText, setSelectedReportText] = useState("");
+  const [draggedProfileId, setDraggedProfileId] = useState("");
+  const [draggedFromLevel, setDraggedFromLevel] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
   const [message, setMessage] = useState("");
@@ -216,6 +225,70 @@ export default function StudentClassroomSettingsPage() {
     setClassSettings((current) => current.map((item) => item.class_level === level ? { ...item, adviser_profile_id: uniqueIds[0] || null, adviser_profile_ids: uniqueIds } : item));
   }
 
+  function addClassAdviser(level: string, profileId: string) {
+    if (!profileId) return;
+    setClassSettings((current) => current.map((item) => {
+      const currentIds = Array.isArray(item.adviser_profile_ids)
+        ? item.adviser_profile_ids
+        : item.adviser_profile_id
+          ? [item.adviser_profile_id]
+          : [];
+      const withoutMovedProfile = currentIds.filter((id) => id !== profileId);
+      const nextIds = item.class_level === level
+        ? Array.from(new Set([...withoutMovedProfile, profileId]))
+        : withoutMovedProfile;
+
+      return {
+        ...item,
+        adviser_profile_id: nextIds[0] || null,
+        adviser_profile_ids: nextIds,
+      };
+    }));
+  }
+
+  function removeClassAdviser(level: string, profileId: string) {
+    const setting = classSettings.find((item) => item.class_level === level);
+    const currentIds = Array.isArray(setting?.adviser_profile_ids)
+      ? setting.adviser_profile_ids
+      : setting?.adviser_profile_id
+        ? [setting.adviser_profile_id]
+      : [];
+    updateClassAdvisers(level, currentIds.filter((id) => id !== profileId));
+  }
+
+  function beginTeacherDrag(event: DragEvent<HTMLElement>, profileId: string, sourceLevel = "") {
+    setDraggedProfileId(profileId);
+    setDraggedFromLevel(sourceLevel);
+    event.dataTransfer.setData("text/plain", profileId);
+    event.dataTransfer.setData("application/x-profile-id", profileId);
+    event.dataTransfer.setData("application/x-source-level", sourceLevel);
+    event.dataTransfer.effectAllowed = sourceLevel ? "move" : "copyMove";
+  }
+
+  function droppedTeacherId(event: DragEvent<HTMLElement>) {
+    return event.dataTransfer.getData("application/x-profile-id") || event.dataTransfer.getData("text/plain") || draggedProfileId;
+  }
+
+  function droppedSourceLevel(event: DragEvent<HTMLElement>) {
+    return event.dataTransfer.getData("application/x-source-level") || draggedFromLevel;
+  }
+
+  function clearTeacherDrag() {
+    setDraggedProfileId("");
+    setDraggedFromLevel("");
+  }
+
+  function selectTeacher(profileId: string) {
+    setDraggedProfileId((current) => current === profileId ? "" : profileId);
+    setDraggedFromLevel("");
+  }
+
+  function selectTeacherByKeyboard(event: KeyboardEvent<HTMLElement>, profileId: string) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    selectTeacher(profileId);
+  }
+
   function selectedPermission(permissionKey: string) {
     return selectedPermissions.find((item) => item.permission_key === permissionKey);
   }
@@ -281,8 +354,12 @@ export default function StudentClassroomSettingsPage() {
     <main className="min-h-screen bg-[#fbf7ef] px-2 py-2 sm:px-4 sm:py-4 lg:px-6 xl:px-8">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2 xl:max-w-7xl">
         <header className="rounded-[24px] border border-orange-100 bg-white/85 px-3 py-3 shadow-sm">
-          <h1 className="text-[19px] font-semibold leading-tight text-orange-800">ตั้งค่าห้องเรียน</h1>
-          <p className="mt-1 text-[12px] text-slate-600">ครูเวร ครูประจำชั้น ปฏิทิน และสิทธิ์งานนักเรียน</p>
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-[19px] font-semibold leading-tight text-orange-800">ตั้งค่าห้องเรียน</h1>
+            {activeTab === "advisers" ? (
+              <button type="button" onClick={() => void saveClassSettings()} disabled={saving === "class"} className="h-8 shrink-0 rounded-xl bg-orange-500 px-3 text-[12px] font-medium text-white disabled:opacity-50">บันทึก</button>
+            ) : null}
+          </div>
         </header>
 
         <section className="grid grid-cols-4 gap-1.5 rounded-[22px] border border-orange-100 bg-white/85 p-1.5 shadow-sm">
@@ -331,33 +408,70 @@ export default function StudentClassroomSettingsPage() {
 
         {!loading && activeTab === "advisers" ? (
           <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <div>
-                <h2 className="text-[15px] font-semibold text-slate-800">ครูประจำชั้น</h2>
-                <p className="text-[11px] text-slate-500">เลือกได้หลายคนต่อชั้น</p>
-              </div>
-              <button type="button" onClick={() => void saveClassSettings()} disabled={saving === "class"} className="h-8 rounded-xl bg-orange-500 px-3 text-[12px] text-white">บันทึก</button>
+            <div className="mb-2">
+              <h2 className="text-[14px] font-semibold text-slate-800">ครูประจำชั้น</h2>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-0.5">
               {classSettings.map((setting) => {
                 const selectedIds = Array.isArray(setting.adviser_profile_ids) ? setting.adviser_profile_ids : setting.adviser_profile_id ? [setting.adviser_profile_id] : [];
+                const selectedProfiles = selectedIds.map((id) => profileMap.get(id)).filter((profile): profile is Profile => Boolean(profile));
                 return (
-                  <div key={setting.class_level} className="rounded-2xl border border-slate-200 p-2">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[14px] font-semibold text-slate-900">{setting.class_level}</span>
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">{selectedIds.length} คน</span>
+                  <div
+                    key={setting.class_level}
+                    className="grid grid-cols-[64px_1fr] items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 [&>span:last-child]:hidden"
+                  >
+                    <span className="text-[11px] font-semibold leading-tight text-slate-900 sm:text-[12px]">{setting.class_level}</span>
+                    <select
+                      value={selectedIds[0] || ""}
+                      onChange={(event) => updateClassAdvisers(setting.class_level, event.target.value ? [event.target.value] : [])}
+                      className="h-8 min-w-0 rounded-lg border border-slate-200 bg-white px-2 text-[11px] text-slate-800 outline-none focus:border-orange-300 focus:ring-2 focus:ring-orange-100 sm:text-[12px]"
+                    >
+                      <option value="">ไม่เลือกครู</option>
+                      {profiles.map((profile) => (
+                        <option key={profile.id} value={profile.id}>{displayName(profile)}</option>
+                      ))}
+                    </select>
+                    <div className="hidden">
+                      {selectedProfiles.length === 0 ? (
+                        <span className="text-[7px] leading-none text-slate-400 sm:text-[8px]">ยังไม่มีครู</span>
+                      ) : null}
+                      {selectedProfiles.map((profile) => (
+                        <span
+                          key={profile.id}
+                          role="button"
+                          tabIndex={0}
+                          draggable
+                          onMouseDown={() => {
+                            setDraggedProfileId(profile.id);
+                            setDraggedFromLevel(setting.class_level);
+                          }}
+                          onTouchStart={() => {
+                            setDraggedProfileId(profile.id);
+                            setDraggedFromLevel(setting.class_level);
+                          }}
+                          onDragStart={(event) => {
+                            event.stopPropagation();
+                            beginTeacherDrag(event, profile.id, setting.class_level);
+                          }}
+                          onDragEnd={clearTeacherDrag}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            removeClassAdviser(setting.class_level, profile.id);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== " ") return;
+                            event.preventDefault();
+                            removeClassAdviser(setting.class_level, profile.id);
+                          }}
+                          className="inline-flex h-4 min-h-0 max-w-full cursor-grab select-none items-center overflow-hidden rounded bg-orange-100 px-0.5 py-0 text-[6px] font-medium leading-none text-orange-800 sm:h-4 sm:text-[8px]"
+                          style={{ fontSize: "6px", lineHeight: 0.95, touchAction: "none" }}
+                          title="คลิกเพื่อนำออก"
+                        >
+                          <span className="line-clamp-2 break-words leading-none">{teacherChipName(profile)}</span>
+                        </span>
+                      ))}
                     </div>
-                    <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                      {profiles.map((profile) => {
-                        const checked = selectedIds.includes(profile.id);
-                        return (
-                          <label key={profile.id} className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 text-[12px] ${checked ? "border-orange-300 bg-orange-50" : "border-slate-200 bg-white"}`}>
-                            <input type="checkbox" checked={checked} onChange={(event) => updateClassAdvisers(setting.class_level, event.target.checked ? [...selectedIds, profile.id] : selectedIds.filter((id) => id !== profile.id))} />
-                            <span className="min-w-0 truncate text-slate-800">{displayName(profile)}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <span className="justify-self-end rounded bg-blue-50 px-0.5 py-px text-[7px] font-medium leading-none text-blue-700 sm:text-[8.5px]">{selectedIds.length} คน</span>
                   </div>
                 );
               })}

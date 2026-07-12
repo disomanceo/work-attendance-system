@@ -326,51 +326,62 @@ export default function StudentAttendancePage() {
   return (
     <main className="min-h-screen bg-[#fbf7ef] px-2 py-2 sm:px-4 sm:py-4 lg:px-6 xl:px-8">
       <div className="mx-auto flex w-full max-w-none flex-col gap-2 xl:max-w-7xl">
-        <header className="relative rounded-[24px] border border-orange-100 bg-white/85 px-3 py-3 shadow-sm">
+        <header className="relative rounded-[24px] border border-orange-100 bg-white/85 px-3 py-2.5 shadow-sm">
           {message ? (
             <div className="absolute left-1/2 top-2 -translate-x-1/2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 shadow-sm ring-1 ring-emerald-100">
               ● {message}
             </div>
           ) : null}
-          <div className="flex items-start justify-between gap-2 pt-4">
+          <div className="flex flex-col gap-1 pt-3">
+            <div className="flex items-center justify-between gap-2">
+              <h1 className="min-w-0 text-[19px] font-semibold leading-tight text-orange-800">เช็คชื่อนักเรียน</h1>
+              <button
+                type="button"
+                onClick={saveAttendance}
+                disabled={saving || loading || students.length === 0 || workCalendarDay?.isWorkingDay === false}
+                className="max-w-[150px] shrink-0 truncate rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white shadow-[0_5px_14px_rgba(249,115,22,0.2)] transition active:scale-95 disabled:opacity-75 sm:max-w-none sm:px-3 sm:py-1.5 sm:text-[11px]"
+                aria-label="บันทึก"
+                title="บันทึก"
+              >
+                {workCalendarDay?.isWorkingDay === false
+                  ? "วันหยุด"
+                  : "บันทึก"}
+              </button>
+            </div>
             <div className="min-w-0">
-              <h1 className="text-[19px] font-semibold leading-tight text-orange-800">เช็คชื่อนักเรียน</h1>
-              <p className="mt-1 text-[13px] leading-snug text-slate-700">{classLevel} / {classRoom || "-"}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] leading-snug text-slate-600">
-                <span>ครูประจำชั้น:</span>
+              <div className="mt-1 flex flex-col gap-1.5 text-slate-700">
                 {adviserProfiles.length > 0 ? adviserProfiles.map((profile) => {
                   const name = getProfileName(profile);
                   const fileId = profile.profile_image_file_id || "";
                   const cachedImage = fileId ? profileImageCache[fileId] : "";
                   return (
-                    <span key={profile.id} className="inline-flex max-w-full items-center gap-1 rounded-full bg-orange-50 px-1.5 py-0.5 text-slate-700 ring-1 ring-orange-100">
+                    <div key={profile.id} className="flex min-w-0 items-center gap-2.5">
                       {cachedImage ? (
-                        <img src={cachedImage} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                        <img src={cachedImage} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm sm:h-11 sm:w-11" />
                       ) : (
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-orange-200 text-[11px] font-medium text-orange-800 ring-2 ring-white shadow-sm">
+                        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-orange-200 text-[13px] font-medium text-orange-800 ring-2 ring-white shadow-sm sm:h-11 sm:w-11">
                           {initials(name)}
                         </span>
                       )}
-                      <span className="max-w-[220px] truncate">{name}</span>
-                    </span>
+                      <div className="min-w-0">
+                        <strong className="block break-words text-[14px] font-semibold leading-tight text-slate-900">{name}</strong>
+                        <span className="mt-0.5 block text-[12px] leading-tight text-slate-600">ครูประจำชั้น {classLevel}{classRoom ? `/${classRoom}` : ""}</span>
+                      </div>
+                    </div>
                   );
                 }) : (
-                  <span>{visibleAdviserNames.join(", ") || "ยังไม่ได้กำหนด"}</span>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-orange-200 text-[13px] font-medium text-orange-800 ring-2 ring-white shadow-sm sm:h-11 sm:w-11">
+                      {initials(visibleAdviserNames[0] || "")}
+                    </span>
+                    <div className="min-w-0">
+                      <strong className="block break-words text-[14px] font-semibold leading-tight text-slate-900">{visibleAdviserNames.join(", ") || "ยังไม่ได้กำหนด"}</strong>
+                      <span className="mt-0.5 block text-[12px] leading-tight text-slate-600">ครูประจำชั้น {classLevel}{classRoom ? `/${classRoom}` : ""}</span>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={saveAttendance}
-              disabled={saving || loading || students.length === 0 || workCalendarDay?.isWorkingDay === false}
-              className="shrink-0 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-violet-500 px-4 py-2 text-[13px] font-semibold tracking-wide text-white shadow-[0_8px_22px_rgba(249,115,22,0.28)] transition active:scale-95 disabled:opacity-40"
-              aria-label="บันทึก"
-              title="บันทึก"
-            >
-              {workCalendarDay?.isWorkingDay === false
-                ? workCalendarDay.title || "วันนี้เป็นวันหยุด"
-                : "บันทึก"}
-            </button>
           </div>
         </header>
 
@@ -401,13 +412,13 @@ export default function StudentAttendancePage() {
         </section>
 
         <section className="rounded-[22px] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-2 shadow-sm">
-          <div className="flex flex-wrap items-center gap-1.5 text-[12px]">
-            <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-700 ring-1 ring-slate-200">ทั้งหมด {students.length}</span>
-            <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-700">มา {summary.present}</span>
-            <span className="rounded-full bg-rose-100 px-2.5 py-1 font-medium text-rose-700">ขาด {summary.absent}</span>
-            <span className="rounded-full bg-sky-100 px-2.5 py-1 font-medium text-sky-700">ป่วย {summary.sick}</span>
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-700">กิจ {summary.personal}</span>
-            <span className="rounded-full bg-violet-100 px-2.5 py-1 font-medium text-violet-700">สาย {summary.late}</span>
+          <div className="grid grid-cols-6 gap-1 text-center text-[9.5px] leading-tight sm:flex sm:flex-wrap sm:items-center sm:gap-1.5 sm:text-[12px]">
+            <span className="rounded-full bg-white px-1 py-1 font-medium text-slate-700 ring-1 ring-slate-200 sm:px-2.5">ทั้งหมด {students.length}</span>
+            <span className="rounded-full bg-emerald-100 px-1 py-1 font-medium text-emerald-700 sm:px-2.5">มา {summary.present}</span>
+            <span className="rounded-full bg-rose-100 px-1 py-1 font-medium text-rose-700 sm:px-2.5">ขาด {summary.absent}</span>
+            <span className="rounded-full bg-sky-100 px-1 py-1 font-medium text-sky-700 sm:px-2.5">ป่วย {summary.sick}</span>
+            <span className="rounded-full bg-amber-100 px-1 py-1 font-medium text-amber-700 sm:px-2.5">กิจ {summary.personal}</span>
+            <span className="rounded-full bg-violet-100 px-1 py-1 font-medium text-violet-700 sm:px-2.5">สาย {summary.late}</span>
           </div>
         </section>
 

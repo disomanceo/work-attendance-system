@@ -1843,7 +1843,6 @@
   border-radius: 50%;
   color: #fff;
   background:
-    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2), transparent 24%),
     linear-gradient(145deg, #22c55e, #15803d);
   box-shadow:
     0 0 0 10px rgba(34, 197, 94, 0.1),
@@ -2039,7 +2038,6 @@
   border-radius: 50%;
   color: #fff;
   background:
-    radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.2), transparent 24%),
     linear-gradient(145deg, #22c55e, #15803d);
   box-shadow:
     0 0 0 10px rgba(34, 197, 94, 0.1),
@@ -2065,8 +2063,8 @@
 
 .focusFingerprintIcon {
   display: grid;
-  width: 82px;
-  height: 82px;
+  width: 118px;
+  height: 118px;
   place-items: center;
 }
 
@@ -2384,8 +2382,8 @@
   }
 
   .focusFingerprintIcon {
-    width: 70px;
-    height: 70px;
+    width: 96px;
+    height: 96px;
   }
 
   .focusChartRow {
@@ -2547,7 +2545,6 @@
   cursor: not-allowed;
   border-color: #b8b8c2;
   background:
-    radial-gradient(circle at 35% 28%, #d8d8df 0 18%, transparent 19%),
     linear-gradient(145deg, #b9b9c3, #777782);
   box-shadow:
     0 0 0 8px rgba(148, 148, 160, 0.18),
@@ -3043,8 +3040,8 @@
   }
 
   .focusFingerprintIcon {
-    width: 48px;
-    height: 48px;
+    width: 72px;
+    height: 72px;
   }
 
   .focusFingerprintButton strong {
@@ -3299,8 +3296,8 @@
   }
 
   .focusFingerprintIcon {
-    width: 42px;
-    height: 42px;
+    width: 64px;
+    height: 64px;
   }
 
   .focusStatusGrid > div {
@@ -4036,6 +4033,101 @@
 
   .focusFingerprintIcon {
     margin: 0;
+  }
+}
+
+/* Larger animated fingerprint scan */
+.focusFingerprintIcon {
+  width: 168px;
+  height: 168px;
+  place-items: center;
+}
+
+.focusFingerprintIcon svg {
+  overflow: visible;
+  stroke-width: 2.7;
+  transform: translate(-11px, -1px);
+  transform-origin: center;
+}
+
+.focusFingerprintIcon svg path {
+  stroke-dasharray: 72;
+  stroke-dashoffset: 144;
+  animation: fingerprintLineScan 3.8s ease-in-out infinite;
+}
+
+.focusFingerprintIcon svg path:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.focusFingerprintIcon svg path:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.focusFingerprintIcon svg path:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+.focusFingerprintIcon svg path:nth-child(5) {
+  animation-delay: 0.8s;
+}
+
+.focusFingerprintIcon svg path:nth-child(6) {
+  animation-delay: 1s;
+}
+
+.focusFingerprintIcon svg path:nth-child(7) {
+  animation-delay: 1.2s;
+}
+
+@keyframes fingerprintLineScan {
+  0% {
+    opacity: 0.42;
+    stroke-dashoffset: 144;
+  }
+
+  46%,
+  62% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    opacity: 0.5;
+    stroke-dashoffset: -144;
+  }
+}
+
+@media (max-width: 700px) {
+  .focusFingerprintIcon {
+    width: 104px;
+    height: 104px;
+  }
+
+  .focusFingerprintIcon svg {
+    transform: translate(-17px, -1px);
+  }
+}
+
+@media (max-width: 390px) {
+  .focusFingerprintIcon {
+    width: 92px;
+    height: 92px;
+  }
+}
+
+@media (max-width: 360px) {
+  .focusFingerprintIcon {
+    width: 82px;
+    height: 82px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focusFingerprintIcon svg path {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
   }
 }
 
