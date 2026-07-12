@@ -51,8 +51,13 @@ function inWorkingHours() {
 
   const weekday = parts.find((part) => part.type === "weekday")?.value;
   const hour = Number(parts.find((part) => part.type === "hour")?.value || 0);
+  const isWeekend = ["Sat", "Sun"].includes(weekday);
 
-  return !["Sat", "Sun"].includes(weekday) && hour >= 6 && hour <= 18;
+  if (isWeekend) {
+    return hour === 12;
+  }
+
+  return [8, 9, 11, 14, 15, 19].includes(hour);
 }
 
 function absoluteUrl(base, href) {

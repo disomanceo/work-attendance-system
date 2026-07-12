@@ -1,4 +1,4 @@
-import {
+﻿import {
   smartAreaPayloadDocumentDate,
   smartAreaPayloadReceivedDate,
 } from "@/lib/smart-area/document-date";
@@ -27,6 +27,7 @@ export const SMART_AREA_DOCUMENT_SELECT = `
     status,
     assignment_opened_at,
     assignment_acknowledged_at,
+    created_at,
     is_active
   ),
   smart_area_attachments (
@@ -126,6 +127,7 @@ export function serializeSmartAreaBook(
         status: task.status,
         assignmentOpenedAt: task.assignment_opened_at || "",
         assignmentAcknowledgedAt: task.assignment_acknowledged_at || "",
+        assignedAt: task.created_at || "",
       })),
     attachments: (book.smart_area_attachments ?? [])
       .filter((attachment: any) => attachment.is_active)

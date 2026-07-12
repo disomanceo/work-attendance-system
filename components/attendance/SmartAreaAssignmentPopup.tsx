@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ type TaskItem = {
   assigneeId: string | null;
   status: string;
   assignmentOpenedAt: string;
+  assignedAt: string;
 };
 
 type BookItem = {
@@ -17,6 +18,7 @@ type BookItem = {
   subject: string;
   urgency: string;
   receivedDate: string;
+  directorNote: string;
   tasks: TaskItem[];
 };
 
@@ -81,6 +83,23 @@ function compareBooks(left: BookItem, right: BookItem) {
   return rightDate - leftDate;
 }
 
+function formatAssignmentDate(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+  }).format(date);
+}
+
+function instructionSizeClass(value: string) {
+  const length = value.trim().length;
+  if (length > 240) return styles.instructionSmall;
+  if (length > 120) return styles.instructionMedium;
+  return styles.instructionLarge;
+}
 export default function SmartAreaAssignmentPopup() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -171,6 +190,13 @@ export default function SmartAreaAssignmentPopup() {
     .replace(/\s+/g, "")
     .includes("ด่วนที่สุด");
 
+  const ownAssignment =
+    book.tasks.find((task) => task.status === "assigned") ?? book.tasks[0];
+  const instruction =
+    book.directorNote?.trim() ||
+    "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e2a\u0e31\u0e48\u0e07\u0e01\u0e32\u0e23\u0e40\u0e1e\u0e34\u0e48\u0e21\u0e40\u0e15\u0e34\u0e21";
+  const assignmentDate = formatAssignmentDate(ownAssignment?.assignedAt || "");
+
   const hasPrevious = currentIndex > 0;
   const hasNext = currentIndex < count - 1;
 
@@ -263,23 +289,25 @@ export default function SmartAreaAssignmentPopup() {
             aria-modal="true"
             aria-labelledby="smart-area-assignment-title"
           >
-            <div className={styles.topBar}>
-              <strong className={styles.position}>
-                งานที่ {(currentIndex + 1).toLocaleString("th-TH")}/
-                {count.toLocaleString("th-TH")}
-              </strong>
-
-              <button
-                type="button"
-                className={styles.closeButton}
-                onClick={dismiss}
-                aria-label="ปิดการแจ้งเตือน"
-                data-dismiss-count={currentDismissCount}
-              >
-                ×
-              </button>
-            </div>
-
+            <div className={styles.topBar}>
+              <div className={styles.topBarSummary}>
+                <strong className={styles.position}>
+                  {"\u0e07\u0e32\u0e19\u0e17\u0e35\u0e48"} {(currentIndex + 1).toLocaleString("th-TH")}/
+                  {count.toLocaleString("th-TH")}
+                </strong>
+                <strong className={styles.assignmentTitle}>
+                  {isMostUrgent
+                    ? "\u0e07\u0e32\u0e19\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14"
+                    : "\u0e07\u0e32\u0e19\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22\u0e43\u0e2b\u0e21\u0e48"}
+                </strong>
+              </div>
+              <button type="button" className={styles.closeButton} onClick={dismiss}
+                aria-label={"\u0e1b\u0e34\u0e14\u0e01\u0e32\u0e23\u0e41\u0e08\u0e49\u0e07\u0e40\u0e15\u0e37\u0e2d\u0e19"}
+                data-dismiss-count={currentDismissCount}>
+                {"\u00d7"}
+              </button>
+            </div>
+
             <div className={styles.navigation}>
               <button
                 type="button"
@@ -302,26 +330,19 @@ export default function SmartAreaAssignmentPopup() {
               </button>
             </div>
 
-            <div className={styles.iconRow}>
-              <div className={styles.icon} aria-hidden="true">✉</div>
-              <div className={styles.heading}>
-                <span>{isMostUrgent ? "งานด่วนที่สุด" : "งานมอบหมายใหม่"}</span>
-                <h2 id="smart-area-assignment-title">
-                  คุณมีงานใหม่ {count.toLocaleString("th-TH")} งาน
-                </h2>
-              </div>
-            </div>
-
             <div className={styles.subject}>
               <small>เรื่อง</small>
               <strong title={book.subject}>{book.subject}</strong>
-            </div>
-
-            <p>
-              กรุณาเปิดดูรายละเอียดและรับทราบงานที่ได้รับมอบหมาย
-            </p>
-
-            <div className={styles.actions}>
+            </div>
+            <div className={styles.instructionBox}>
+              <small className={styles.instructionLabel}>
+                {"\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e2a\u0e31\u0e48\u0e07\u0e01\u0e32\u0e23"}
+              </small>
+              <p className={`${styles.instructionText} ${instructionSizeClass(instruction)}`}>
+                {instruction}
+              </p>
+              {assignmentDate && <time className={styles.instructionDate}>{assignmentDate}</time>}
+            </div><div className={styles.actions}>
               <button type="button" className={styles.secondary} onClick={dismiss}>
                 ไว้ภายหลัง
               </button>
