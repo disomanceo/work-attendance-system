@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   PointerEvent as ReactPointerEvent,
@@ -53,6 +53,22 @@ type Position = {
   x: number;
   y: number;
 };
+function formatStampedAssignmentDate(value: Date) {
+
+  return new Intl.DateTimeFormat("th-TH", {
+
+    day: "numeric",
+
+    month: "short",
+
+    year: "2-digit",
+
+  }).format(value);
+
+}
+
+
+
 function compactThaiName(value: string) {
   const normalized = String(value || "").trim().replace(/\s+/g, " ");
   if (!normalized) return "-";
@@ -574,25 +590,38 @@ if (result.signer?.signatureFileId) {
     context2d.clearRect(0, 0, overlay.width, overlay.height);
 
     if (showInstructionText && instructionText.trim()) {
-      context2d.font = `400 ${fontSize}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
-      context2d.fillStyle = "#111827";
+
+      context2d.font = `700 ${fontSize}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
+
+      context2d.fillStyle = "#1d4ed8";
+
       context2d.textBaseline = "top";
 
-      const lines = wrapText(
-        context2d,
-        instructionText.trim(),
-        Math.max(120, overlay.width - textPosition.x - 30),
-      );
+      const lines = wrapText(context2d, instructionText.trim(), Math.max(120, overlay.width - textPosition.x - 30));
+
       const lineHeight = fontSize * 1.45;
 
       lines.forEach((line, index) => {
-        context2d.fillText(
-          line,
-          textPosition.x,
-          textPosition.y + index * lineHeight,
-        );
+
+        context2d.fillText(line, textPosition.x, textPosition.y + index * lineHeight);
+
       });
+
+      const dateText = formatStampedAssignmentDate(new Date());
+
+      const dateFontSize = Math.max(10, Math.round(fontSize * 0.72));
+
+      const dateY = textPosition.y + lines.length * lineHeight;
+
+      context2d.font = `700 ${dateFontSize}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
+
+      context2d.fillStyle = "#2563eb";
+
+      context2d.fillText(dateText, textPosition.x, dateY);
+
     }
+
+
 
     if (showSignature && signatureUrl) {
       const signatureImage = new Image();
@@ -774,13 +803,8 @@ const response = await fetch("/api/documents/signing/save", {
               </button>
             </div>
           </div>
-
-          <div
-            className={`${styles.topToolbar} ${
-              mobileToolsCollapsed ? styles.mobileToolbarCollapsed : ""
-            }`}
-          >
-            <div className={styles.toolbarActions}>
+          <div className={styles.topToolbar}>
+            <div className={styles.signingFileToolbar}>
               {/* SIGNING_MANUAL_FILE_CONTROLS_START */}
               <button
                 type="button"
@@ -793,7 +817,7 @@ const response = await fetch("/api/documents/signing/save", {
                 }}
                 disabled={!context.sourceAttachment?.openUrl}
               >
-                ดูไฟล์ต้นฉบับ
+                ไฟล์ต้นฉบับ
               </button>
 
               <button
@@ -801,7 +825,7 @@ const response = await fetch("/api/documents/signing/save", {
                 className={styles.attachFileButton}
                 onClick={() => fileInputRef.current?.click()}
               >
-                แนบไฟล์เพื่อลงนาม
+                แนบไฟล์ลงนาม
               </button>
 
               <input
@@ -812,47 +836,9 @@ const response = await fetch("/api/documents/signing/save", {
                 onChange={handleSigningFileChange}
               />
               {/* SIGNING_MANUAL_FILE_CONTROLS_END */}
-
-              <button
-                type="button"
-                className={styles.addToolButton}
-                onClick={() => {
-                  setShowInstructionText((value) => !value);
-                  setIsDirty(true);
-                }}
-              >
-                {showInstructionText ? "ซ่อนข้อความ" : "เพิ่มข้อความ"}
-              </button>
-
-              <button
-                type="button"
-                className={styles.addToolButton}
-                onClick={() => {
-                  setShowSignature((value) => !value);
-                  setIsDirty(true);
-                }}
-                disabled={!hasPreview || !signatureUrl}
-              >
-                {showSignature ? "ซ่อนลายเซ็น" : "เพิ่มลายเซ็น"}
-              </button>
-
-              <button
-                type="button"
-                className={styles.topSaveButton}
-                onClick={() => void saveSignedDocument()}
-                disabled={
-                  saving ||
-                  !hasPreview ||
-                  !selectedFileBase64 ||
-                  !signatureUrl ||
-                  !showSignature ||
-                  selectedAssigneeIds.length === 0
-                }
-              >
-                {saving ? "กำลังบันทึก..." : "บันทึก"}
-              </button>
             </div>
           </div>
+
 
           <div
             className={styles.mobilePageControls}
@@ -945,15 +931,56 @@ const response = await fetch("/api/documents/signing/save", {
               )}
             </div>
           </div>
+          <div className={styles.previewToolRow}>
+            <button
+              type="button"
+              className={styles.addToolButton}
+              onClick={() => {
+                setShowSignature((value) => !value);
+                setIsDirty(true);
+              }}
+              disabled={!hasPreview || !signatureUrl}
+            >
+              {showSignature ? "ซ่อนลายเซ็น" : "เพิ่มลายเซ็น"}
+            </button>
 
-          <button
-            type="button"
-            className={styles.mobileToolsToggle}
-            onClick={() => setMobileToolsCollapsed((value) => !value)}
-            aria-pressed={mobileToolsCollapsed}
-          >
-            {mobileToolsCollapsed ? "\u0e41\u0e2a\u0e14\u0e07\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e21\u0e37\u0e2d" : "\u0e0b\u0e48\u0e2d\u0e19\u0e40\u0e04\u0e23\u0e37\u0e48\u0e2d\u0e07\u0e21\u0e37\u0e2d"}
-          </button>
+            <button
+              type="button"
+              className={styles.addToolButton}
+              onClick={() => {
+                setShowInstructionText((value) => !value);
+                setIsDirty(true);
+              }}
+            >
+              {showInstructionText ? "ซ่อนข้อความ" : "เพิ่มข้อความ"}
+            </button>
+
+            <button
+              type="button"
+              className={styles.topSaveButton}
+              onClick={() => void saveSignedDocument()}
+              disabled={
+                saving ||
+                !hasPreview ||
+                !selectedFileBase64 ||
+                !signatureUrl ||
+                !showSignature ||
+                selectedAssigneeIds.length === 0
+              }
+            >
+              {saving ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+
+            <button
+              type="button"
+              className={styles.mobileToolsToggle}
+              onClick={() => setMobileToolsCollapsed((value) => !value)}
+              aria-pressed={mobileToolsCollapsed}
+            >
+              {mobileToolsCollapsed ? "แสดงเครื่องมือ" : "ซ่อนเครื่องมือ"}
+            </button>
+          </div>
+
         </div>
 
         <aside
