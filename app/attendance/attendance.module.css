@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   --sidebar-width: 292px;
   min-height: 100svh;
   color: #f8f5ff;
@@ -4161,5 +4161,68 @@
     text-align: right;
     text-overflow: clip;
     white-space: nowrap;
+  }
+}
+/* Check-in feedback: static fingerprint and visible processing state */
+.focusFingerprintIcon svg path {
+  animation: none !important;
+  opacity: 1;
+  stroke-dashoffset: 0;
+}
+
+.focusFingerprintButton {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.focusFingerprintLabel {
+  display: block;
+  max-width: 9rem;
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.focusFingerprintProcessing {
+  cursor: wait;
+  filter: saturate(0.88);
+  transform: scale(0.98);
+}
+
+.focusFingerprintProcessing .focusFingerprintIcon {
+  opacity: 0.72;
+}
+
+.focusFingerprintProcessing .focusFingerprintLabel {
+  animation: checkInStatusPulse 1s ease-in-out infinite;
+}
+
+@keyframes checkInStatusPulse {
+  0%,
+  100% {
+    opacity: 0.62;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 390px) {
+  .focusFingerprintLabel {
+    max-width: 7.5rem;
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focusFingerprintProcessing .focusFingerprintLabel {
+    animation: none;
   }
 }

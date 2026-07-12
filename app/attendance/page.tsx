@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -1176,7 +1176,7 @@ schoolName: settings?.school_name ?? null,
                     workCalendarDay?.isWorkingDay === false
                       ? styles.focusFingerprintHoliday
                       : ""
-                  }`}
+                  } ${processing ? styles.focusFingerprintProcessing : ""}`}
                   disabled={
                     processing ||
                     workCalendarDay?.isWorkingDay === false
@@ -1195,7 +1195,9 @@ schoolName: settings?.school_name ?? null,
                       <path d="M48 17c7 6 9 13 9 21" />
                     </svg>
                   </span>
-                  
+                  <span className={styles.focusFingerprintLabel} aria-live="polite">
+                    {processing ? "กำลังตรวจสอบ..." : "แตะเพื่อลงเวลา"}
+                  </span>
                 </button>
 
                 <div
