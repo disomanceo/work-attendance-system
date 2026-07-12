@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   min-height: 100vh;
   padding: 16px;
   background: #eef2f1;
@@ -4438,48 +4438,381 @@
   .noteField textarea {
     min-height: 88px !important;
   }
-}
-/* DOCUMENTS_ASSIGNMENT_POPUP_MOBILE_FIX_V3 */
-.modalBackdrop {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 3000 !important;
-  display: grid !important;
-  place-items: center !important;
-  overflow-y: auto !important;
-  padding: 12px !important;
-  background: rgba(15, 23, 42, 0.58) !important;
-  overscroll-behavior: contain;
-}
-
-.assignmentModal {
-  position: relative !important;
-  z-index: 3001 !important;
-  width: min(680px, calc(100vw - 24px)) !important;
-  max-height: calc(100dvh - 24px) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  margin: auto !important;
-}
-
-@media (max-width: 768px) {
-  .modalBackdrop {
-    align-items: start !important;
-    padding:
-      calc(10px + env(safe-area-inset-top))
-      10px
-      calc(10px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .assignmentModal {
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height:
-      calc(
-        100dvh -
-        20px -
-        env(safe-area-inset-top) -
-        env(safe-area-inset-bottom)
-      ) !important;
-  }
+}
+
+/* DOCUMENTS_ASSIGNMENT_POPUP_MOBILE_FIX_V3 */
+
+.modalBackdrop {
+
+  position: fixed !important;
+
+  inset: 0 !important;
+
+  z-index: 3000 !important;
+
+  display: grid !important;
+
+  place-items: center !important;
+
+  overflow-y: auto !important;
+
+  padding: 12px !important;
+
+  background: rgba(15, 23, 42, 0.58) !important;
+
+  overscroll-behavior: contain;
+
+}
+
+
+
+.assignmentModal {
+
+  position: relative !important;
+
+  z-index: 3001 !important;
+
+  width: min(680px, calc(100vw - 24px)) !important;
+
+  max-height: calc(100dvh - 24px) !important;
+
+  overflow-x: hidden !important;
+
+  overflow-y: auto !important;
+
+  margin: auto !important;
+
+}
+
+
+
+@media (max-width: 768px) {
+
+  .modalBackdrop {
+
+    align-items: start !important;
+
+    padding:
+
+      calc(10px + env(safe-area-inset-top))
+
+      10px
+
+      calc(10px + env(safe-area-inset-bottom)) !important;
+
+  }
+
+
+
+  .assignmentModal {
+
+    width: 100% !important;
+
+    max-width: 100% !important;
+
+    max-height:
+
+      calc(
+
+        100dvh -
+
+        20px -
+
+        env(safe-area-inset-top) -
+
+        env(safe-area-inset-bottom)
+
+      ) !important;
+
+  }
+
+}
+
+/* DOCUMENTS_CANONICAL_MOBILE_NAV_FILTER_V1_8 */
+@media (max-width: 768px) {
+  .documentsMobileScopeV1 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+    padding: 4px !important;
+  }
+
+  .documentsMobileScopeV1 > button {
+    position: relative !important;
+    display: flex !important;
+    min-width: 0 !important;
+    min-height: 32px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    padding: 4px 5px !important;
+    font-size: 10.5px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  .documentsMobileScopeV1 > button > strong {
+    font-size: 11px !important;
+  }
+
+  .page .toolbar.documentsMobileFiltersV1 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: stretch !important;
+    gap: 3px 4px !important;
+    width: 100% !important;
+    padding: 4px !important;
+  }
+
+  .page .toolbar.documentsMobileFiltersV1 > .searchField,
+  .page .toolbar.documentsMobileFiltersV1 > .selectField {
+    display: grid !important;
+    grid-template-rows: 12px 30px !important;
+    grid-column: auto !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    gap: 1px !important;
+    margin: 0 !important;
+  }
+
+  .page .toolbar.documentsMobileFiltersV1 > label > span:first-child {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    color: #53656d !important;
+    font-size: 8.5px !important;
+    font-weight: 700 !important;
+    line-height: 12px !important;
+  }
+
+  .page .toolbar.documentsMobileFiltersV1 input,
+  .page .toolbar.documentsMobileFiltersV1 select {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    border-radius: 6px !important;
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+  }
+
+  .page .toolbar.documentsMobileFiltersV1 .searchField input {
+    padding-right: 25px !important;
+  }
+
+  .page .toolbar.documentsMobileFiltersV1 .searchIcon {
+    position: absolute !important;
+    top: auto !important;
+    right: 8px !important;
+    bottom: 7px !important;
+    width: auto !important;
+    height: auto !important;
+    color: #60716b !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    transform: none !important;
+  }
+
+  .resultBar.documentsMobilePagerV1 {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "summary document-page"
+      "summary source-page" !important;
+    align-items: center !important;
+    gap: 3px 8px !important;
+    width: 100% !important;
+    min-height: 52px !important;
+    padding: 5px 7px !important;
+  }
+
+  .documentsMobileSummaryV1 {
+    grid-area: summary !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    justify-self: start !important;
+  }
+
+  .documentsMobileSummaryV1 > strong,
+  .documentsMobileSummaryV1 > span {
+    font-size: 9.5px !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+  }
+
+  .documentsMobileDocumentPagerV1 {
+    grid-area: document-page !important;
+    justify-self: end !important;
+    margin: 0 !important;
+  }
+
+  .documentsMobileDocumentPagerV1 button {
+    width: 24px !important;
+    min-width: 24px !important;
+    height: 23px !important;
+    min-height: 23px !important;
+    padding: 0 !important;
+  }
+
+  .documentsMobileDocumentPagerV1 .documentPagerLabel {
+    color: #d7e5e1 !important;
+    font-size: 9px !important;
+    white-space: nowrap !important;
+  }
+
+  .pagination.documentsMobileSourcePagesV1 {
+    grid-area: source-page !important;
+    display: flex !important;
+    width: max-content !important;
+    max-width: 100% !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    justify-self: end !important;
+    gap: 4px !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .pagination.documentsMobileSourcePagesV1 > button {
+    display: inline-flex !important;
+    width: 29px !important;
+    min-width: 29px !important;
+    height: 25px !important;
+    min-height: 25px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+    padding: 0 4px !important;
+    font-size: 9.5px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    transform: none !important;
+  }
+
+  .pagination.documentsMobileSourcePagesV1 > .latestSourcePage {
+    width: 48px !important;
+    min-width: 48px !important;
+  }
+
+  .pagination.documentsMobileSourcePagesV1 > .activeSourcePage {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .documentsMobileScopeV1 > button {
+    font-size: 10px !important;
+  }
+
+  .pagination.documentsMobileSourcePagesV1 {
+    gap: 3px !important;
+  }
+
+  .pagination.documentsMobileSourcePagesV1 > button {
+    width: 27px !important;
+    min-width: 27px !important;
+    font-size: 9px !important;
+  }
+
+  .pagination.documentsMobileSourcePagesV1 > .latestSourcePage {
+    width: 44px !important;
+    min-width: 44px !important;
+  }
+}
+
+/* DOCUMENTS_FIXED_RESULT_BAR_LAYOUT_V1_9 */
+.resultBar.documentsMobilePagerV1 {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto !important;
+  grid-template-areas: "summary document-page source-page" !important;
+  align-items: center !important;
+  width: 100% !important;
+  gap: 8px 12px !important;
+}
+
+.resultBar.documentsMobilePagerV1 > .documentsMobileSummaryV1 {
+  grid-area: summary !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  justify-self: start !important;
+}
+
+.resultBar.documentsMobilePagerV1 > .documentsMobileDocumentPagerV1 {
+  grid-area: document-page !important;
+  margin: 0 !important;
+  justify-self: end !important;
+}
+
+.resultBar.documentsMobilePagerV1 > .documentsMobileSourcePagesV1 {
+  grid-area: source-page !important;
+  display: flex !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  justify-self: end !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.resultBar.documentsMobilePagerV1
+  > .documentsMobileSourcePagesV1
+  > button {
+  flex: 0 0 auto !important;
+  transform: none !important;
+}
+
+.resultBar.documentsMobilePagerV1
+  > .documentsMobileSourcePagesV1
+  > .activeSourcePage {
+  transform: none !important;
+}
+
+@media (max-width: 1100px) {
+  .resultBar.documentsMobilePagerV1 {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "summary document-page"
+      "summary source-page" !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .resultBar.documentsMobilePagerV1 {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "summary document-page"
+      "summary source-page" !important;
+    gap: 3px 8px !important;
+  }
+
+  .resultBar.documentsMobilePagerV1
+    > .documentsMobileSourcePagesV1 {
+    overflow: visible !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .resultBar.documentsMobilePagerV1 {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas:
+      "summary document-page"
+      "summary source-page" !important;
+  }
+
+  .resultBar.documentsMobilePagerV1
+    > .documentsMobileSummaryV1 {
+    justify-self: start !important;
+  }
+
+  .resultBar.documentsMobilePagerV1
+    > .documentsMobileDocumentPagerV1,
+  .resultBar.documentsMobilePagerV1
+    > .documentsMobileSourcePagesV1 {
+    justify-self: end !important;
+  }
 }

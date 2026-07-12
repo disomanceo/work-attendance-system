@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -532,6 +532,7 @@ export default function DocumentsPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [workloadCollapsed, setWorkloadCollapsed] = useState(false);
   const [selectedSmartAreaPage, setSelectedSmartAreaPage] = useState<number | null>(null);
+  const [selectedSmartAreaMode, setSelectedSmartAreaMode] = useState<"page" | "latest" | null>(null);
   const returnBookHandledRef = useRef(false);
   const keepSelectedBookOnFilterChangeRef = useRef(false);
   const mobileScrollYRef = useRef(0);
@@ -561,6 +562,7 @@ export default function DocumentsPage() {
     setUrgencyFilter("all");
     setAssigneeFilter("all");
     setSelectedSmartAreaPage(null);
+    setSelectedSmartAreaMode(null);
     setQuery("");
   }
 
@@ -575,6 +577,7 @@ export default function DocumentsPage() {
     setUrgencyFilter("all");
     setAssigneeFilter("all");
     setSelectedSmartAreaPage(null);
+    setSelectedSmartAreaMode(null);
     setQuery("");
   }
 
@@ -593,15 +596,21 @@ export default function DocumentsPage() {
     setUrgencyFilter("all");
     setAssigneeFilter("all");
     setSelectedSmartAreaPage(null);
+    setSelectedSmartAreaMode(null);
     setQuery("");
   }
 
-  function activateSmartAreaPage(pageNumber: number) {
-    setViewMode(defaultDocumentViewMode());
+  function activateSmartAreaPage(
+    pageNumber: number,
+    mode: "page" | "latest" = "page",
+  ) {
+    setViewMode("all");
+    setWorkAttentionFilter("all");
     setStatusFilter("all");
     setUrgencyFilter("all");
     setAssigneeFilter("all");
     setSelectedSmartAreaPage(pageNumber);
+    setSelectedSmartAreaMode(mode);
     setQuery("");
   }
 
@@ -611,6 +620,7 @@ export default function DocumentsPage() {
     setUrgencyFilter("all");
     setAssigneeFilter("all");
     setSelectedSmartAreaPage(null);
+    setSelectedSmartAreaMode(null);
     setQuery(nextQuery);
   }
 
@@ -619,6 +629,7 @@ export default function DocumentsPage() {
     setStatusFilter("all");
     setUrgencyFilter("all");
     setSelectedSmartAreaPage(null);
+    setSelectedSmartAreaMode(null);
     setQuery("");
     setAssigneeFilter(nextAssigneeId);
   }
@@ -628,6 +639,7 @@ export default function DocumentsPage() {
     setStatusFilter("all");
     setAssigneeFilter("all");
     setSelectedSmartAreaPage(null);
+    setSelectedSmartAreaMode(null);
     setQuery("");
     setUrgencyFilter(nextUrgency);
   }
@@ -1247,90 +1259,77 @@ export default function DocumentsPage() {
     0,
   );
 
-  const availableSmartAreaPages = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          books
-            .map((book) => Number(book.smartAreaPage || 0))
-            .filter((value) => value > 0),
-        ),
-      ).sort((left, right) => left - right),
-    [books],
-  );
-
-  const latestSmartAreaPage =
-    availableSmartAreaPages[availableSmartAreaPages.length - 1] ?? null;
-
-  const selectedPageIndex =
-    selectedSmartAreaPage === null
-      ? -1
-      : availableSmartAreaPages.indexOf(selectedSmartAreaPage);
-
-  const visibleSmartAreaPages = useMemo(() => {
-    if (availableSmartAreaPages.length <= 5) return availableSmartAreaPages;
-
-    const activeIndex =
-      selectedPageIndex >= 0
-        ? selectedPageIndex
-        : availableSmartAreaPages.length - 1;
-    const start = Math.min(
-      Math.max(activeIndex - 2, 0),
-      availableSmartAreaPages.length - 5,
-    );
-
-    return availableSmartAreaPages.slice(start, start + 5);
-  }, [availableSmartAreaPages, selectedPageIndex]);
-
+  // DOCUMENTS_SCOPE_FILTER_PAGINATION_V1_5
   const filteredBooks = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("th");
+    const normalizedQuery = query.trim().toLocaleLowerCase("th");
 
     const result = books.filter((book) => {
-      const hasOwnTask = book.tasks.some(
-        (task) => task.assigneeId === currentUserId,
-      );
-
       const ownTask = book.tasks.find(
         (task) => task.assigneeId === currentUserId,
       );
+      const hasOwnTask = Boolean(ownTask);
+      const isOwnDone = ownTask?.status === "done";
+      const isArchivedBook = book.status === "done";
 
       const inSelectedView =
-        viewMode === "clerk"
-          ? Boolean(ownTask)
-          : viewMode === "director"
-            ? Boolean(ownTask)
-            : viewMode === "mine"
-              ? Boolean(ownTask)
-              : viewMode === "all"
-                ? true
-                : canManageAll
-                  ? book.status === "done"
-                  : Boolean(ownTask && ownTask.status === "done");
+        selectedSmartAreaPage !== null
+          ? true
+          : viewMode === "all"
+            ? true
+            : viewMode === "archive"
+              ? isMemberWorkspace
+                ? Boolean(isOwnDone)
+                : isArchivedBook
+              : viewMode === "clerk" ||
+                  viewMode === "director" ||
+                  viewMode === "mine"
+                ? hasOwnTask
+                : true;
 
       if (!inSelectedView) return false;
 
       if (
-        workAttentionFilter !== "all" &&
-        (viewMode === "mine" ||
-          viewMode === "director" ||
-          viewMode === "clerk")
+        workAttentionFilter === "new" &&
+        !(
+          ownTask?.status === "assigned" &&
+          !ownTask.assignmentOpenedAt &&
+          !ownTask.assignmentAcknowledgedAt
+        )
       ) {
-        const ownTask = book.tasks.find(
-          (task) => task.assigneeId === currentUserId,
-        );
+        return false;
+      }
 
-        const isNew =
-          viewMode === "clerk"
-            ? !book.isRead
-            : Boolean(
-                ownTask &&
-                  ownTask.status === "assigned" &&
-                  !ownTask.assignmentOpenedAt &&
-                  !ownTask.assignmentAcknowledgedAt,
-              );
+      if (
+        workAttentionFilter === "pending" &&
+        (!ownTask || ownTask.status === "done")
+      ) {
+        return false;
+      }
 
-        if (workAttentionFilter === "new" && !isNew) return false;
-        if (workAttentionFilter === "pending" && isNew) return false;
+      if (statusFilter === "new" && !isDirectorNewBook(book)) {
+        return false;
+      }
+
+      if (
+        statusFilter !== "all" &&
+        statusFilter !== "new" &&
+        book.status !== statusFilter
+      ) {
+        return false;
+      }
+
+      if (
+        urgencyFilter !== "all" &&
+        urgencyFilterKey(book.urgency) !== urgencyFilter
+      ) {
+        return false;
+      }
+
+      if (
+        assigneeFilter !== "all" &&
+        !book.tasks.some((task) => task.assigneeId === assigneeFilter)
+      ) {
+        return false;
       }
 
       if (
@@ -1339,79 +1338,95 @@ export default function DocumentsPage() {
       ) {
         return false;
       }
-      if (statusFilter === "new") {
-        if (!isDirectorNewBook(book)) return false;
-      } else if (statusFilter !== "all" && book.status !== statusFilter) {
-        return false;
-      }
-      if (urgencyFilter !== "all" && urgencyFilterKey(book.urgency) !== urgencyFilter) {
-        return false;
-      }
-      if (
-        assigneeFilter !== "all" &&
-        !book.tasks.some((task) => task.assigneeId === assigneeFilter)
-      ) {
-        return false;
-      }
 
-      if (!normalized) return true;
+      if (!normalizedQuery) return true;
 
-      return [
+      const searchableText = [
+        book.registrationNumber,
         book.subject,
         book.sourceAgency,
-        book.registrationNumber,
         book.documentNumber,
         book.documentType,
-        book.smartAreaPage ? `หน้า ${book.smartAreaPage}` : "",
-        book.tasks.map((task) => task.assigneeName).join(" "),
-      ].some((value) => value.toLocaleLowerCase("th").includes(normalized));
+        book.urgency,
+        book.note,
+        book.directorNote,
+        ...book.tasks.map((task) => task.assigneeName),
+      ]
+        .join(" ")
+        .toLocaleLowerCase("th");
+
+      return searchableText.includes(normalizedQuery);
     });
 
-    const sorted = [...result].sort((left, right) => {
-      if (selectedSmartAreaPage === null || sortMode === "newest") {
-        const latestDifference = bookLatestValue(right) - bookLatestValue(left);
-        if (latestDifference !== 0) return latestDifference;
+    return [...result].sort((left, right) => {
+      if (sortMode === "oldest") {
+        return bookLatestValue(left) - bookLatestValue(right);
       }
 
-      const pageDifference =
-        Number(left.smartAreaPage || 0) - Number(right.smartAreaPage || 0);
+      if (sortMode === "registration") {
+        return (
+          registrationValue(left.registrationNumber) -
+            registrationValue(right.registrationNumber) ||
+          bookLatestValue(right) - bookLatestValue(left)
+        );
+      }
 
-      if (pageDifference !== 0) return pageDifference;
-
-      const orderDifference =
-        Number(right.smartAreaOrder || 0) - Number(left.smartAreaOrder || 0);
-
-      if (orderDifference !== 0) return orderDifference;
-
-      return (
-        registrationValue(right.registrationNumber) -
-        registrationValue(left.registrationNumber)
-      );
+      return bookLatestValue(right) - bookLatestValue(left);
     });
-
-    return sorted;
   }, [
-    books,
     assigneeFilter,
+    books,
     currentUserId,
+    isMemberWorkspace,
     query,
+    selectedSmartAreaMode,
     selectedSmartAreaPage,
     sortMode,
     statusFilter,
     urgencyFilter,
     viewMode,
     workAttentionFilter,
-    workspaceMode,
   ]);
 
-  const pageSize = 20;
+  const DOCUMENTS_PER_PAGE = 20;
   const totalFilteredBooks = filteredBooks.length;
-  const totalPages = Math.max(1, Math.ceil(totalFilteredBooks / pageSize));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const pageStartIndex = (safeCurrentPage - 1) * pageSize;
-  const pageEndIndex = Math.min(pageStartIndex + pageSize, totalFilteredBooks);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(totalFilteredBooks / DOCUMENTS_PER_PAGE),
+  );
+  const safeCurrentPage = Math.min(
+    Math.max(currentPage, 1),
+    totalPages,
+  );
+  const pageStartIndex = (safeCurrentPage - 1) * DOCUMENTS_PER_PAGE;
+  const pageEndIndex = Math.min(
+    pageStartIndex + DOCUMENTS_PER_PAGE,
+    totalFilteredBooks,
+  );
   const pagedBooks = filteredBooks.slice(pageStartIndex, pageEndIndex);
 
+  // DOCUMENTS_RESOLVED_SOURCE_PAGES_V1_8
+  const availableSmartAreaPages = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          books
+            .map((book) => Number(book.smartAreaPage || 0))
+            .filter((value) => Number.isInteger(value) && value > 0),
+        ),
+      ).sort((left, right) => left - right),
+    [books],
+  );
+
+  const latestSmartAreaPage =
+    availableSmartAreaPages[availableSmartAreaPages.length - 1] ?? null;
+
+  const visibleSmartAreaPages = useMemo(() => {
+    if (latestSmartAreaPage === null) return [];
+
+    return [latestSmartAreaPage - 2, latestSmartAreaPage - 1, latestSmartAreaPage]
+      .filter((pageNumber) => pageNumber > 0);
+  }, [latestSmartAreaPage]);
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -1504,6 +1519,7 @@ export default function DocumentsPage() {
   }, [
     assigneeFilter,
     query,
+    selectedSmartAreaMode,
     selectedSmartAreaPage,
     statusFilter,
     urgencyFilter,
@@ -1511,17 +1527,6 @@ export default function DocumentsPage() {
     workAttentionFilter,
   ]);
 
-  useEffect(() => {
-    if (
-      selectedSmartAreaPage !== null &&
-      availableSmartAreaPages.length > 0 &&
-      !availableSmartAreaPages.includes(selectedSmartAreaPage)
-    ) {
-      setSelectedSmartAreaPage(
-        availableSmartAreaPages[availableSmartAreaPages.length - 1],
-      );
-    }
-  }, [availableSmartAreaPages, selectedSmartAreaPage]);
 
   useEffect(() => {
     if (
@@ -1560,6 +1565,7 @@ export default function DocumentsPage() {
 
     if (requestedBook.smartAreaPage) {
       setSelectedSmartAreaPage(Number(requestedBook.smartAreaPage));
+      setSelectedSmartAreaMode("page");
     }
 
     setSelectedBook(requestedBook);
@@ -1636,18 +1642,20 @@ export default function DocumentsPage() {
         }`}
       >
         <div className={styles.mainPanel} data-documents-list-start="true">
-          <div className={styles.viewTabs}>
+          <div className={`${styles.viewTabs} ${styles.documentsMobileScopeV1}`}>
             {!isMemberWorkspace && (
               <button
                 type="button"
                 className={[
                   styles.scopeTab,
-                  viewMode === "all" ? styles.activeTab : "",
+                  selectedSmartAreaMode === null && viewMode === "all"
+                    ? styles.activeTab
+                    : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}
                 onClick={() => activateWorkspaceView("all")}
-                aria-pressed={viewMode === "all"}
+                aria-pressed={selectedSmartAreaMode === null && viewMode === "all"}
               >
                 <span>งานทั้งหมด</span>
                 <strong>{workspaceCounts.all}</strong>
@@ -1659,6 +1667,7 @@ export default function DocumentsPage() {
               className={[
                 styles.scopeTab,
                 styles.personalScopeTab,
+                selectedSmartAreaMode === null &&
                 viewMode === (isManagerWorkspace ? "director" : "mine")
                   ? styles.activeTab
                   : "",
@@ -1671,6 +1680,7 @@ export default function DocumentsPage() {
                 )
               }
               aria-pressed={
+                selectedSmartAreaMode === null &&
                 viewMode === (isManagerWorkspace ? "director" : "mine")
               }
             >
@@ -1686,21 +1696,23 @@ export default function DocumentsPage() {
               className={[
                 styles.scopeTab,
                 styles.doneScopeTab,
-                viewMode === "archive" ? styles.activeTab : "",
+                selectedSmartAreaMode === null && viewMode === "archive"
+                  ? styles.activeTab
+                  : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               onClick={() => activateWorkspaceView("archive")}
-              aria-pressed={viewMode === "archive"}
+              aria-pressed={selectedSmartAreaMode === null && viewMode === "archive"}
             >
               <span>งานที่เสร็จแล้ว</span>
               <strong>{workspaceCounts.archive}</strong>
             </button>
           </div>
 
-          <div className={styles.toolbar}>
+          <div className={`${styles.toolbar} ${styles.documentsMobileFiltersV1}`}>
             <label className={styles.searchField}>
-              <span className={styles.visuallyHidden}>ค้นหา</span>
+              <span>ค้นหา</span>
               <span className={styles.searchIcon} aria-hidden="true">⌕</span>
               <input
                 value={query}
@@ -1754,16 +1766,6 @@ export default function DocumentsPage() {
               ))}
             </select>
           </label>
-
-            <button
-              type="button"
-              className={styles.filterRefreshButton}
-              onClick={() => void loadBooks()}
-              disabled={loading}
-            >
-              <span aria-hidden="true">{"\u21bb"}</span>
-              {loading ? "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14..." : "\u0e42\u0e2b\u0e25\u0e14\u0e43\u0e2b\u0e21\u0e48"}
-            </button>
           </div>
 
           {message && <div className={styles.errorBox}>{message}</div>}
@@ -1771,26 +1773,28 @@ export default function DocumentsPage() {
             <div className={styles.successBox}>{successMessage}</div>
           )}
 
-          <div className={styles.resultBar}>
-            <div className={styles.resultSummary}>
+          <div className={`${styles.resultBar} ${styles.documentsMobilePagerV1}`}>
+            <div className={`${styles.resultSummary} ${styles.documentsMobileSummaryV1}`}>
               <strong>
-                {viewMode === "clerk"
-                  ? "งานธุรการ"
-                  : viewMode === "director"
-                    ? "งาน ผอ."
-                    : viewMode === "mine"
-                      ? "งานของฉัน"
-                      : viewMode === "all"
-                        ? "งานทั้งหมด"
-                        : "งานที่เสร็จแล้ว"}
+                {selectedSmartAreaMode !== null && selectedSmartAreaPage !== null
+                  ? `หน้าระบบกลาง ${selectedSmartAreaPage}`
+                  : viewMode === "clerk"
+                    ? "งานธุรการ"
+                    : viewMode === "director"
+                      ? "งาน ผอ."
+                      : viewMode === "mine"
+                        ? "งานของฉัน"
+                        : viewMode === "all"
+                          ? "งานทั้งหมด"
+                          : "งานที่เสร็จแล้ว"}
               </strong>
               <span>
-                {pageStartIndex + 1}–{pageEndIndex} จาก {totalFilteredBooks} รายการ
+                {totalFilteredBooks === 0 ? 0 : pageStartIndex + 1}–{pageEndIndex} จาก {totalFilteredBooks} รายการ
               </span>
             </div>
 
             {totalFilteredBooks > 0 && (
-              <nav className={styles.documentPagerTop} aria-label="เปลี่ยนหน้ารายการหนังสือ">
+              <nav className={`${styles.documentPagerTop} ${styles.documentsMobileDocumentPagerV1}`} aria-label="เปลี่ยนหน้ารายการหนังสือ">
                 <button
                   type="button"
                   className={styles.documentPagerArrow}
@@ -1816,56 +1820,37 @@ export default function DocumentsPage() {
             )}
 
             {!isMemberWorkspace && (
-              <div className={styles.pagination}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedPageIndex > 0) {
-                      activateSmartAreaPage(availableSmartAreaPages[selectedPageIndex - 1]);
-                    }
-                  }}
-                  disabled={selectedPageIndex <= 0}
-                  aria-label="หน้าระบบกลางก่อนหน้า"
-                >
-                  ‹
-                </button>
+              <div className={`${styles.pagination} ${styles.documentsMobileSourcePagesV1}`}>
 
                 {visibleSmartAreaPages.map((pageNumber) => (
                   <button
                     key={pageNumber}
                     type="button"
-                    className={pageNumber === selectedSmartAreaPage ? styles.activeSourcePage : ""}
+                    className={
+                      selectedSmartAreaMode === "page" &&
+                      pageNumber === selectedSmartAreaPage
+                        ? styles.activeSourcePage
+                        : ""
+                    }
                     onClick={() => activateSmartAreaPage(pageNumber)}
                   >
                     {pageNumber}
                   </button>
                 ))}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (
-                      selectedPageIndex >= 0 &&
-                      selectedPageIndex < availableSmartAreaPages.length - 1
-                    ) {
-                      activateSmartAreaPage(availableSmartAreaPages[selectedPageIndex + 1]);
-                    }
-                  }}
-                  disabled={
-                    selectedPageIndex < 0 ||
-                    selectedPageIndex >= availableSmartAreaPages.length - 1
-                  }
-                  aria-label="หน้าระบบกลางถัดไป"
-                >
-                  ›
-                </button>
 
                 <button
                   type="button"
                   className={`${styles.latestSourcePage} ${
-                    selectedSmartAreaPage === null ? styles.activeSourcePage : ""
+                    selectedSmartAreaMode === "latest" ? styles.activeSourcePage : ""
                   }`}
-                  onClick={activateLatestView}
+                  onClick={() => {
+                    if (latestSmartAreaPage !== null) {
+                      activateSmartAreaPage(latestSmartAreaPage, "latest");
+                    } else {
+                      activateLatestView();
+                    }
+                  }}
                   disabled={latestSmartAreaPage === null && books.length === 0}
                 >
                   ล่าสุด
