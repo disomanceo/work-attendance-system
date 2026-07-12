@@ -1907,8 +1907,7 @@ export default function DocumentsPage() {
                   <div className={styles.mobileCardTopline}>
                     <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
 
-                    {!book.isRead ? (
-                      <span className={styles.mobileNewBadge}>
+                    {book.status === "done" ? null : !book.isRead ? (<span className={styles.mobileNewBadge}>
                         <span className={styles.mobileUnreadDot} />
                         ใหม่
                       </span>
@@ -2143,8 +2142,7 @@ export default function DocumentsPage() {
                           <div className={styles.mobileDetailStatusRow}>
                             <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
 
-                            {!book.isRead ? (
-                              <span className={styles.mobileNewBadge}>
+                            {book.status === "done" ? null : !book.isRead ? (<span className={styles.mobileNewBadge}>
                                 <span className={styles.mobileUnreadDot} />
                                 ใหม่
                               </span>
@@ -2364,8 +2362,7 @@ export default function DocumentsPage() {
                         <div className={styles.subjectTopline}>
                           <MailStateIcon isRead={book.isRead} urgency={book.urgency} />
 
-                          {!book.isRead ? (
-                            <span className={styles.desktopNewBadge}>
+                          {book.status === "done" ? null : !book.isRead ? (<span className={styles.desktopNewBadge}>
                               <span className={styles.desktopUnreadDot} />
                               ใหม่
                             </span>

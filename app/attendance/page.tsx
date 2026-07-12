@@ -102,6 +102,8 @@ type RecentDocument = {
   urgency: string;
   receivedDate: string;
   updatedAt: string;
+  status: string;
+  isRead: boolean;
 };
 
 type RecentDocumentsResponse = {
@@ -496,31 +498,70 @@ export default function AttendancePage() {
       setMonthlySummaryLoading(false);
     }
   }
-  async function loadRecentDocuments(accessToken: string) {
-    setRecentDocumentsLoading(true);
+  const loadRecentDocuments = useCallback(
+    async (accessToken: string) => {
+      setRecentDocumentsLoading(true);
+
+      try {
+        const response = await fetch("/api/documents", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          cache: "no-store",
+        });
+
+        const result = (await response.json()) as RecentDocumentsResponse;
+
+        if (!response.ok || !result.ok) {
+          throw new Error(
+            result.message || "โหลดหนังสือราชการล่าสุดไม่สำเร็จ",
+          );
+        }
+
+        const unreadActiveBooks = (result.books ?? [])
+          .filter((book) => !book.isRead)
+          .filter((book) => book.status !== "done")
+          .slice(0, 3);
+
+        setRecentDocuments(unreadActiveBooks);
+      } catch (error) {
+        console.error("Load recent documents error:", error);
+        setRecentDocuments([]);
+      } finally {
+        setRecentDocumentsLoading(false);
+      }
+    },
+    [],
+  );
+
+  async function openRecentDocument(book: RecentDocument) {
+    setRecentDocuments((current) =>
+      current.filter((item) => item.id !== book.id),
+    );
 
     try {
-      const response = await fetch("/api/documents", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      const result = (await response.json()) as RecentDocumentsResponse;
+      if (session?.access_token) {
+        const response = await fetch("/api/documents/read", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ bookId: book.id }),
+        });
 
-      if (!response.ok || !result.ok) {
-        throw new Error(
-          result.message || "โหลดหนังสือราชการล่าสุดไม่สำเร็จ",
-        );
+        if (!response.ok) {
+          console.error("Mark recent document as read failed");
+        }
       }
-
-      setRecentDocuments((result.books ?? []).slice(0, 3));
     } catch (error) {
-      console.error("Load recent documents error:", error);
-      setRecentDocuments([]);
+      console.error("Mark recent document as read error:", error);
     } finally {
-      setRecentDocumentsLoading(false);
+      router.push(`/documents?book=${encodeURIComponent(book.id)}`);
     }
   }
 
@@ -606,7 +647,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [loadTodayLeave, router, supabase]);
+  }, [loadRecentDocuments, loadTodayLeave, router, supabase]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -615,6 +656,37 @@ export default function AttendancePage() {
 
     return () => window.clearTimeout(timer);
   }, [loadAttendance]);
+
+  useEffect(() => {
+    async function refreshRecentDocuments() {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState !== "visible"
+      ) {
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        await loadRecentDocuments(session.access_token);
+      }
+    }
+
+    const handleFocus = () => {
+      void refreshRecentDocuments();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [loadRecentDocuments, supabase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1398,7 +1470,7 @@ schoolName: settings?.school_name ?? null,
                 </p>
               ) : recentDocuments.length === 0 ? (
                 <p className={styles.homeEmptyState}>
-                  ยังไม่มีหนังสือราชการรายการใหม่
+                  ไม่มีหนังสือเข้าใหม่ในขณะนี้
                 </p>
               ) : (
                 recentDocuments.map((book) => (
@@ -1406,11 +1478,7 @@ schoolName: settings?.school_name ?? null,
                     type="button"
                     className={styles.homeRecentItem}
                     key={book.id}
-                    onClick={() =>
-                      router.push(
-                        `/documents?book=${encodeURIComponent(book.id)}`,
-                      )
-                    }
+                    onClick={() => void openRecentDocument(book)}
                   >
                     <span className={styles.homeDocumentIcon} aria-hidden="true">
                       ✉
