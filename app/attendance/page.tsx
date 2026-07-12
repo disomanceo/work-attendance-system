@@ -1184,38 +1184,55 @@ schoolName: settings?.school_name ?? null,
                   onClick={() => void handleCheckIn()}
                   aria-label="ลงเวลาปฏิบัติงาน"
                 >
-                  <span className={styles.focusFingerprintIcon} aria-hidden="true">
-                    <svg viewBox="0 0 64 64">
-                      <path d="M32 7C20 7 10 17 10 29c0 7 2 11 2 18" />
-                      <path d="M32 14c-9 0-16 7-16 16 0 8 3 13 3 22" />
-                      <path d="M32 21c-5 0-9 4-9 9 0 9 4 15 4 26" />
-                      <path d="M32 28c-2 0-4 2-4 4 0 10 5 15 5 25" />
-                      <path d="M38 57c0-8-4-14-4-25 0-2 2-4 4-4 4 0 6 4 6 8 0 8 2 12 4 17" />
-                      <path d="M41 22c6 3 9 8 9 15 0 7 2 11 5 15" />
-                      <path d="M48 17c7 6 9 13 9 21" />
-                    </svg>
-                  </span>
-                  <span className={styles.focusFingerprintLabel} aria-live="polite">
-                    {processing ? "กำลังตรวจสอบ..." : "แตะเพื่อลงเวลา"}
-                  </span>
+                  {processing ? (
+                    <span className={styles.focusCheckingText} aria-live="polite">
+                      กำลังตรวจสอบ...
+                    </span>
+                  ) : (
+                    <span className={styles.focusFingerprintIcon} aria-hidden="true">
+                      <svg viewBox="0 0 64 64">
+                        <path d="M32 7C20 7 10 17 10 29c0 7 2 11 2 18" />
+                        <path d="M32 14c-9 0-16 7-16 16 0 8 3 13 3 22" />
+                        <path d="M32 21c-5 0-9 4-9 9 0 9 4 15 4 26" />
+                        <path d="M32 28c-2 0-4 2-4 4 0 10 5 15 5 25" />
+                        <path d="M38 57c0-8-4-14-4-25 0-2 2-4 4-4 4 0 6 4 6 8 0 8 2 12 4 17" />
+                        <path d="M41 22c6 3 9 8 9 15 0 7 2 11 5 15" />
+                        <path d="M48 17c7 6 9 13 9 21" />
+                      </svg>
+                    </span>
+                  )}
                 </button>
 
                 <div
                   className={`${styles.focusDayState} ${
-                    workCalendarDay?.isWorkingDay === false
-                      ? styles.focusDayStateHoliday
-                      : styles.focusDayStateOpen
+                    processing
+                      ? styles.focusDayStateChecking
+                      : messageType === "error" && message
+                        ? styles.focusDayStateError
+                        : workCalendarDay?.isWorkingDay === false
+                          ? styles.focusDayStateHoliday
+                          : styles.focusDayStateOpen
                   }`}
+                  role="status"
+                  aria-live="polite"
                 >
                   <strong>
-                    {workCalendarDay?.isWorkingDay === false
-                      ? workCalendarDay?.title || "วันหยุดประจำสัปดาห์"
-                      : "วันเปิดเรียน"}
+                    {processing
+                      ? "กำลังตรวจสอบ..."
+                      : messageType === "error" && message
+                        ? "ไม่สามารถลงเวลาได้"
+                        : workCalendarDay?.isWorkingDay === false
+                          ? workCalendarDay?.title || "วันหยุดประจำสัปดาห์"
+                          : "วันเปิดเรียน"}
                   </strong>
                   <small>
-                    {workCalendarDay?.isWorkingDay === false
-                      ? "ไม่มีการลงเวลาปฏิบัติงาน"
-                      : "เปิดให้ลงเวลาปฏิบัติงานตามปกติ"}
+                    {processing
+                      ? "กำลังตรวจสอบตำแหน่ง GPS กรุณารอสักครู่"
+                      : messageType === "error" && message
+                        ? message
+                        : workCalendarDay?.isWorkingDay === false
+                          ? "ไม่มีการลงเวลาปฏิบัติงาน"
+                          : "เปิดให้ลงเวลาปฏิบัติงานตามปกติ"}
                   </small>
                 </div>
 

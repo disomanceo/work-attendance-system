@@ -4163,66 +4163,74 @@
     white-space: nowrap;
   }
 }
-/* Check-in feedback: static fingerprint and visible processing state */
+
+/* Check-in feedback v2 */
 .focusFingerprintIcon svg path {
   animation: none !important;
   opacity: 1;
   stroke-dashoffset: 0;
 }
 
-.focusFingerprintButton {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-}
-
-.focusFingerprintLabel {
-  display: block;
-  max-width: 9rem;
-  color: #ffffff;
-  font-size: 0.86rem;
-  font-weight: 800;
-  line-height: 1.15;
-  text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
-}
-
 .focusFingerprintProcessing {
   cursor: wait;
-  filter: saturate(0.88);
-  transform: scale(0.98);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: linear-gradient(145deg, #f97316, #dc2626);
+  box-shadow:
+    0 0 0 10px rgba(249, 115, 22, 0.12),
+    0 26px 56px rgba(220, 38, 38, 0.34),
+    inset 0 -12px 24px rgba(127, 29, 29, 0.26);
+  opacity: 1 !important;
 }
 
-.focusFingerprintProcessing .focusFingerprintIcon {
-  opacity: 0.72;
+.focusCheckingText {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #ffffff;
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
 }
 
-.focusFingerprintProcessing .focusFingerprintLabel {
-  animation: checkInStatusPulse 1s ease-in-out infinite;
+.focusDayStateChecking {
+  border-color: rgba(251, 146, 60, 0.48);
+  background: rgba(154, 52, 18, 0.36);
 }
 
-@keyframes checkInStatusPulse {
-  0%,
-  100% {
-    opacity: 0.62;
-  }
+.focusDayStateChecking strong {
+  color: #ffedd5;
+}
 
-  50% {
-    opacity: 1;
+.focusDayStateChecking small {
+  color: #fed7aa;
+}
+
+.focusDayStateError {
+  border-color: rgba(248, 113, 113, 0.58);
+  background: rgba(127, 29, 29, 0.44);
+}
+
+.focusDayStateError strong {
+  color: #fee2e2;
+}
+
+.focusDayStateError small {
+  color: #fecaca;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .focusCheckingText {
+    font-size: 22px;
   }
 }
 
 @media (max-width: 390px) {
-  .focusFingerprintLabel {
-    max-width: 7.5rem;
-    font-size: 0.78rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .focusFingerprintProcessing .focusFingerprintLabel {
-    animation: none;
+  .focusCheckingText {
+    font-size: 19px;
   }
 }
