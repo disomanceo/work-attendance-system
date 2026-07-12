@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -1136,68 +1136,67 @@ schoolName: settings?.school_name ?? null,
                 )}
               </div>
             )}
-          </article>
-
-          <article className={styles.focusStatusCard}>
-            <div className={styles.focusSectionHeading}>
-              <small>สถานะวันนี้</small>
-              <h2>รายละเอียดการลงเวลา</h2>
-            </div>
-
-            <div className={styles.focusStatusGrid}>
-              <div>
-                <small>เวลาเข้า</small>
-                <strong>{formatThaiTime(record?.check_in_at ?? null)} น.</strong>
+            <section className={styles.focusStatusCard}>
+              <div className={styles.focusSectionHeading}>
+                <small>สถานะวันนี้</small>
+                <h2>รายละเอียดการลงเวลา</h2>
               </div>
 
-              <div>
-                <small>เวลาเลิกงาน</small>
-                <strong>
-                  {record?.check_out_at
-                    ? `${formatThaiTime(record.check_out_at)} น.`
-                    : record?.check_in_at
-                      ? `รอหลัง ${roleEndTime.slice(0, 5)} น.`
-                      : "--"}
-                </strong>
-              </div>
+              <div className={styles.focusStatusGrid}>
+                <div>
+                  <small>เวลาเข้า</small>
+                  <strong>{formatThaiTime(record?.check_in_at ?? null)} น.</strong>
+                </div>
 
-              <div>
-                <small>สถานะ</small>
-                {!record?.check_in_at && todayLeave ? (
-                  <span className={styles.focusStatusLeave}>
-                    {getLeaveDisplayLabel(todayLeave)}
-                  </span>
-                ) : !record?.check_in_at ? (
-                  <span className={styles.focusStatusWaiting}>รอลงเวลา</span>
-                ) : isLate ? (
-                  <span className={styles.focusStatusLate}>มาสาย</span>
-                ) : (
-                  <span className={styles.focusStatusNormal}>ปกติ</span>
-                )}
-              </div>
+                <div>
+                  <small>เวลาเลิกงาน</small>
+                  <strong>
+                    {record?.check_out_at
+                      ? `${formatThaiTime(record.check_out_at)} น.`
+                      : record?.check_in_at
+                        ? `รอหลัง ${roleEndTime.slice(0, 5)} น.`
+                        : "--"}
+                  </strong>
+                </div>
 
-              <div>
-                <small>สถานที่</small>
-                <strong>{settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}</strong>
-              </div>
+                <div>
+                  <small>สถานะ</small>
+                  {!record?.check_in_at && todayLeave ? (
+                    <span className={styles.focusStatusLeave}>
+                      {getLeaveDisplayLabel(todayLeave)}
+                    </span>
+                  ) : !record?.check_in_at ? (
+                    <span className={styles.focusStatusWaiting}>รอลงเวลา</span>
+                  ) : isLate ? (
+                    <span className={styles.focusStatusLate}>มาสาย</span>
+                  ) : (
+                    <span className={styles.focusStatusNormal}>ปกติ</span>
+                  )}
+                </div>
 
-              <div>
-                <small>ระยะ GPS</small>
-                <strong>
-                  {record?.check_in_at
-                    ? record.check_in_distance_meters === null
-                      ? "--"
-                      : `${Math.round(
-                          record.check_in_distance_meters
-                        ).toLocaleString("th-TH")} เมตร`
-                    : distanceMeters === null
-                      ? "--"
-                      : `${Math.round(distanceMeters).toLocaleString(
-                          "th-TH"
-                        )} เมตร`}
-                </strong>
+                <div>
+                  <small>สถานที่</small>
+                  <strong>{settings?.school_name || "โรงเรียนวัดไผ่มุ้ง"}</strong>
+                </div>
+
+                <div>
+                  <small>ระยะ GPS</small>
+                  <strong>
+                    {record?.check_in_at
+                      ? record.check_in_distance_meters === null
+                        ? "--"
+                        : `${Math.round(
+                            record.check_in_distance_meters
+                          ).toLocaleString("th-TH")} เมตร`
+                      : distanceMeters === null
+                        ? "--"
+                        : `${Math.round(distanceMeters).toLocaleString(
+                            "th-TH"
+                          )} เมตร`}
+                  </strong>
+                </div>
               </div>
-            </div>
+            </section>
           </article>
 
           <article className={styles.focusMonthlyCard}>

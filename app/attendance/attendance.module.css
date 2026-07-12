@@ -2574,3 +2574,153 @@
   line-height: 1.25;
   text-align: center;
 }
+
+
+/* ATTENDANCE_DETAIL_INSIDE_CHECKIN_CARD_V2 */
+.focusCheckInCard > .focusStatusCard {
+  width: 100%;
+  margin-top: 18px;
+  border: 1px solid rgba(216, 180, 254, 0.12);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: none;
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  .focusCheckInCard {
+    gap: 0 !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard {
+    width: 100% !important;
+    margin-top: 12px !important;
+    padding: 12px !important;
+    border-radius: 15px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard .focusSectionHeading {
+    padding: 0 1px !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard .focusStatusGrid {
+    margin-top: 8px !important;
+  }
+}
+
+/* ATTENDANCE_MOBILE_FRAME_CLEANUP_V3 */
+@media (max-width: 700px) {
+  .content {
+    padding-top: 72px !important;
+  }
+
+  .focusDashboard {
+    margin-top: 0 !important;
+  }
+
+  .focusCheckInCard {
+    border-radius: 0 0 18px 18px !important;
+    border-top: 0 !important;
+    padding-top: 10px !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard {
+    margin-top: 10px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 10px 0 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard .focusSectionHeading {
+    padding-inline: 2px !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard .focusStatusGrid {
+    margin-top: 8px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .content {
+    padding-top: 68px !important;
+  }
+
+  .focusCheckInCard {
+    padding-top: 8px !important;
+  }
+}
+
+/* ATTENDANCE_MOBILE_NO_GAP_V4 */
+@media (max-width: 700px) {
+  .page {
+    overscroll-behavior-y: none;
+  }
+
+  .mobileTopBar {
+    min-height: 66px !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .content {
+    display: block !important;
+    min-height: 100svh !important;
+    padding:
+      66px
+      12px
+      calc(18px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .focusDashboard {
+    gap: 8px !important;
+    margin: 0 auto !important;
+  }
+
+  .focusCheckInCard {
+    min-height: 0 !important;
+    height: auto !important;
+    align-content: start !important;
+    padding:
+      8px
+      14px
+      8px !important;
+  }
+
+  .focusDate {
+    margin-top: 0 !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard {
+    margin: 8px 0 0 !important;
+    padding: 8px 0 0 !important;
+  }
+
+  .focusCheckInCard > .focusStatusCard .focusStatusGrid {
+    margin-bottom: 0 !important;
+  }
+
+  .focusMonthlyCard {
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .content {
+    padding:
+      64px
+      10px
+      calc(16px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .mobileTopBar {
+    min-height: 64px !important;
+  }
+
+  .focusCheckInCard {
+    padding-bottom: 6px !important;
+  }
+}
