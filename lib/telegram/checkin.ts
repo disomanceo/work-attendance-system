@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 import { isTelegramNotificationEnabled } from "@/lib/telegram/notification-settings";
 
@@ -37,18 +37,29 @@ function formatBangkokTime(isoDate: string) {
 }
 
 function getStatusLabel(checkInStatus: string | null, note: string | null) {
-  if (note === "เธเธเธดเธเธฑเธ•เธดเธฃเธฒเธเธเธฒเธฃเธเนเธญเธเน€เธเนเธฒเนเธฃเธเน€เธฃเธตเธขเธ") {
-    return { icon: "๐—", label: "เนเธเธฃเธฒเธเธเธฒเธฃเธเนเธญเธเน€เธเนเธฒเนเธฃเธเน€เธฃเธตเธขเธ" };
+  if (note === "ปฏิบัติราชการก่อนเข้าโรงเรียน") {
+    return {
+      icon: "🚗",
+      label: "ไปราชการก่อนเข้าโรงเรียน",
+    };
   }
 
   if (checkInStatus === "late") {
-    return { icon: "โฐ", label: "เธกเธฒเธชเธฒเธข" };
+    return {
+      icon: "⏰",
+      label: "มาสาย",
+    };
   }
 
-  return { icon: "โ…", label: "เธเธเธ•เธด" };
+  return {
+    icon: "✅",
+    label: "ปกติ",
+  };
 }
 
-export async function sendTelegramCheckInNotification(input: TelegramCheckInInput) {
+export async function sendTelegramCheckInNotification(
+  input: TelegramCheckInInput,
+) {
   const environmentEnabled =
     process.env.TELEGRAM_CHECKIN_ENABLED?.trim().toLowerCase() === "true";
 
@@ -61,7 +72,7 @@ export async function sendTelegramCheckInNotification(input: TelegramCheckInInpu
   }
 
   const settingEnabled = await isTelegramNotificationEnabled(
-    "attendance.check_in_group"
+    "attendance.check_in_group",
   );
 
   if (!settingEnabled) {
@@ -87,45 +98,58 @@ export async function sendTelegramCheckInNotification(input: TelegramCheckInInpu
   const status = getStatusLabel(input.checkInStatus, input.note);
   const distanceText =
     typeof input.distanceMeters === "number"
-      ? `${Math.round(input.distanceMeters).toLocaleString("th-TH")} เน€เธกเธ•เธฃ`
+      ? `${Math.round(input.distanceMeters).toLocaleString("th-TH")} เมตร`
       : "-";
-  const schoolName = input.schoolName?.trim() || "เนเธฃเธเน€เธฃเธตเธขเธเธงเธฑเธ”เนเธเนเธกเธธเนเธ";
+  const schoolName =
+    input.schoolName?.trim() || "โรงเรียนวัดไผ่มุ้ง";
 
   const message = [
-    `${status.icon} <b>เธกเธตเธเธนเนเน€เธเนเธเธญเธดเธเน€เธเนเธฒเธเธเธดเธเธฑเธ•เธดเธเธฒเธ</b>`,
+    `${status.icon} <b>มีผู้เช็กอินเข้าปฏิบัติงาน</b>`,
     "",
-    `<b>เธเธทเนเธญ:</b> ${escapeHtml(input.fullName)}`,
-    `<b>เธงเธฑเธเธ—เธตเน:</b> ${escapeHtml(formatBangkokDate(input.checkInAt))}`,
-    `<b>เน€เธงเธฅเธฒ:</b> ${escapeHtml(formatBangkokTime(input.checkInAt))} เธ.`,
-    `<b>เธชเธ–เธฒเธเธฐ:</b> ${escapeHtml(status.label)}`,
-    `<b>เธชเธ–เธฒเธเธ—เธตเน:</b> ${escapeHtml(schoolName)}`,
-    `<b>เธฃเธฐเธขเธฐเธซเนเธฒเธ:</b> ${escapeHtml(distanceText)}`,
+    `<b>ชื่อ:</b> ${escapeHtml(input.fullName)}`,
+    `<b>วันที่:</b> ${escapeHtml(formatBangkokDate(input.checkInAt))}`,
+    `<b>เวลา:</b> ${escapeHtml(formatBangkokTime(input.checkInAt))} น.`,
+    `<b>สถานะ:</b> ${escapeHtml(status.label)}`,
+    `<b>สถานที่:</b> ${escapeHtml(schoolName)}`,
+    `<b>ระยะห่าง:</b> ${escapeHtml(distanceText)}`,
   ].join("\n");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
-      signal: controller.signal,
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+        }),
+        signal: controller.signal,
+        cache: "no-store",
+      },
+    );
 
-    const result = (await response.json()) as { ok?: boolean; description?: string };
+    const result = (await response.json()) as {
+      ok?: boolean;
+      description?: string;
+    };
 
     if (!response.ok || !result.ok) {
-      throw new Error(result.description || `Telegram API returned HTTP ${response.status}`);
+      throw new Error(
+        result.description || `Telegram API returned HTTP ${response.status}`,
+      );
     }
 
-    return { sent: true };
+    return {
+      sent: true,
+    };
   } finally {
     clearTimeout(timeout);
   }
