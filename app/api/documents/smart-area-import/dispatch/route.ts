@@ -6,8 +6,8 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ ok:false, message:"Unauthorized" }, { status:401 });
   const token = process.env.GITHUB_WORKFLOW_TOKEN;
   const repo = process.env.GITHUB_WORKFLOW_REPOSITORY || "disomanceo/work-attendance-system";
-  const ref = process.env.GITHUB_WORKFLOW_REF || "feature/smart-area-github-import";
-  if (!token) return NextResponse.json({ ok:false, message:"Missing GitHub workflow token" }, { status:500 });
+  const ref = process.env.GITHUB_WORKFLOW_REF || "main";
+  if (!token) return NextResponse.json({ ok:false, message:"ยังไม่ได้ตั้งค่า GITHUB_WORKFLOW_TOKEN สำหรับสั่งดึงหนังสือจากระบบกลาง" }, { status:500 });
   const admin = adminClient();
   const { data: run, error } = await admin.from("smart_area_import_runs").insert({ status:"queued", created_by:user.id }).select("id").single();
   if (error) return NextResponse.json({ ok:false, message:error.message }, { status:500 });

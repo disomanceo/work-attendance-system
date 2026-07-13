@@ -81,6 +81,17 @@ function firstTextAfterLabel(payload: ImportPayload, keys: string[]) {
   return "";
 }
 
+function stripLeadingLabel(value: unknown, labels: string[]) {
+  let result = text(value);
+
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(`^${escaped}\\s*[:：]?\\s*`, "i"), "");
+  }
+
+  return text(result);
+}
+
 function number(value: unknown) {
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -203,6 +214,33 @@ const THAI_MONTHS: Record<string, number> = {
   "à¸˜à¸±à¸™à¸§à¸²à¸„à¸¡": 12,
 };
 
+Object.assign(THAI_MONTHS, {
+  "\u0e21.\u0e04.": 1,
+  "\u0e21\u0e01\u0e23\u0e32\u0e04\u0e21": 1,
+  "\u0e01.\u0e1e.": 2,
+  "\u0e01\u0e38\u0e21\u0e20\u0e32\u0e1e\u0e31\u0e19\u0e18\u0e4c": 2,
+  "\u0e21\u0e35.\u0e04.": 3,
+  "\u0e21\u0e35\u0e19\u0e32\u0e04\u0e21": 3,
+  "\u0e40\u0e21.\u0e22.": 4,
+  "\u0e40\u0e21\u0e29\u0e32\u0e22\u0e19": 4,
+  "\u0e1e.\u0e04.": 5,
+  "\u0e1e\u0e24\u0e29\u0e20\u0e32\u0e04\u0e21": 5,
+  "\u0e21\u0e34.\u0e22.": 6,
+  "\u0e21\u0e34\u0e16\u0e38\u0e19\u0e32\u0e22\u0e19": 6,
+  "\u0e01.\u0e04.": 7,
+  "\u0e01\u0e23\u0e01\u0e0e\u0e32\u0e04\u0e21": 7,
+  "\u0e2a.\u0e04.": 8,
+  "\u0e2a\u0e34\u0e07\u0e2b\u0e32\u0e04\u0e21": 8,
+  "\u0e01.\u0e22.": 9,
+  "\u0e01\u0e31\u0e19\u0e22\u0e32\u0e22\u0e19": 9,
+  "\u0e15.\u0e04.": 10,
+  "\u0e15\u0e38\u0e25\u0e32\u0e04\u0e21": 10,
+  "\u0e1e.\u0e22.": 11,
+  "\u0e1e\u0e24\u0e28\u0e08\u0e34\u0e01\u0e32\u0e22\u0e19": 11,
+  "\u0e18.\u0e04.": 12,
+  "\u0e18\u0e31\u0e19\u0e27\u0e32\u0e04\u0e21": 12,
+});
+
 function thaiMonthNumber(value: string) {
   const normalized = value.replace(/\s+/g, "").replace(/[.]/g, "");
 
@@ -250,6 +288,17 @@ function isoDate(value: unknown) {
     const month = THAI_MONTHS[thai[2]] || thaiMonthNumber(thai[2]);
     if (month) {
       return `${year}-${String(month).padStart(2, "0")}-${thai[1].padStart(2, "0")}`;
+    }
+  }
+
+  const thaiUnicode = raw.match(/(\d{1,2})\s*([\u0E00-\u0E7F.]+)\s*(\d{4})/);
+  if (thaiUnicode) {
+    let year = Number(thaiUnicode[3]);
+    if (year > 2400) year -= 543;
+
+    const month = THAI_MONTHS[thaiUnicode[2]] || thaiMonthNumber(thaiUnicode[2]);
+    if (month) {
+      return `${year}-${String(month).padStart(2, "0")}-${thaiUnicode[1].padStart(2, "0")}`;
     }
   }
 
@@ -379,8 +428,30 @@ function extension(payload: ImportPayload) {
     summary:
       firstText(payload, ["summary", "note", "à¹€à¸™à¸·à¹‰à¸­à¸«à¸²à¹‚à¸”à¸¢à¸ªà¸£à¸¸à¸›"]) ||
       firstTextByKey(payload, ["summary", "note", "à¹€à¸™à¸·à¹‰à¸­à¸«à¸²à¹‚à¸”à¸¢à¸ªà¸£à¸¸à¸›"]),
-    centralLatestPage: text(payload.centralLatestPage),
-    smartAreaPage: text(payload.smartAreaPage),
+    centralLatestPage: firstText(payload, [
+      "centralLatestPage",
+      "central_latest_page",
+      "latestPage",
+      "latest_page",
+    ]),
+    smartAreaPage: firstText(payload, [
+      "smartAreaPage",
+      "smart_area_page",
+      "pageNumber",
+      "page_number",
+      "page",
+    ]),
+    sourcePageUrl: firstText(payload, [
+      "sourcePageUrl",
+      "source_page_url",
+      "pageUrl",
+      "page_url",
+    ]),
+    rowOrder: firstText(payload, [
+      "rowOrder",
+      "row_order",
+      "order",
+    ]),
     attachmentNames: parseNumberedLines(payload.attachmentText),
     attachmentUrls: parseNumberedLines(payload.attachmentUrl),
   };
@@ -439,6 +510,14 @@ async function upsertDocument(payload: ImportPayload) {
   if (!admin) return json({ ok: false, message: "Missing Supabase server config" }, 500);
 
   const item = extension(payload);
+  item.receiveNo = stripLeadingLabel(item.receiveNo, [
+    "\u0e40\u0e25\u0e02\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e23\u0e31\u0e1a",
+    "\u0e40\u0e25\u0e02\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e23\u0e31\u0e1a",
+  ]);
+  item.documentNo = stripLeadingLabel(item.documentNo, [
+    "\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d",
+    "\u0e40\u0e25\u0e02\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d",
+  ]);
 
   if (!item.smartAreaId) {
     return json({ ok: false, message: "Missing Smart Area ID" }, 400);
@@ -501,8 +580,10 @@ async function upsertDocument(payload: ImportPayload) {
         : {}),
       imported_by: "Import Area PMS",
       source_url: item.sourceUrl,
+      source_page_url: item.sourcePageUrl,
       smart_area_page: item.smartAreaPage,
       central_latest_page: item.centralLatestPage,
+      row_order: item.rowOrder,
       last_synced_at: new Date().toISOString(),
       raw: payload,
     },
@@ -550,8 +631,15 @@ async function upsertDocument(payload: ImportPayload) {
     );
 
     const oldPage = text((existing as any).legacy_payload?.smart_area_page);
+    const oldOrder = text((existing as any).legacy_payload?.row_order);
     const oldUrl = text((existing as any).legacy_payload?.source_url);
-    if (oldPage !== text(item.smartAreaPage) || oldUrl !== item.sourceUrl) {
+    const oldPageUrl = text((existing as any).legacy_payload?.source_page_url);
+    if (
+      oldPage !== text(item.smartAreaPage) ||
+      oldOrder !== text(item.rowOrder) ||
+      oldUrl !== item.sourceUrl ||
+      oldPageUrl !== item.sourcePageUrl
+    ) {
       bookChanged = true;
     }
 

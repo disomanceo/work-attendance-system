@@ -27,6 +27,33 @@ const THAI_MONTHS: Record<string, number> = {
   "ธันวาคม": 12,
 };
 
+Object.assign(THAI_MONTHS, {
+  "\u0e21.\u0e04.": 1,
+  "\u0e21\u0e01\u0e23\u0e32\u0e04\u0e21": 1,
+  "\u0e01.\u0e1e.": 2,
+  "\u0e01\u0e38\u0e21\u0e20\u0e32\u0e1e\u0e31\u0e19\u0e18\u0e4c": 2,
+  "\u0e21\u0e35.\u0e04.": 3,
+  "\u0e21\u0e35\u0e19\u0e32\u0e04\u0e21": 3,
+  "\u0e40\u0e21.\u0e22.": 4,
+  "\u0e40\u0e21\u0e29\u0e32\u0e22\u0e19": 4,
+  "\u0e1e.\u0e04.": 5,
+  "\u0e1e\u0e24\u0e29\u0e20\u0e32\u0e04\u0e21": 5,
+  "\u0e21\u0e34.\u0e22.": 6,
+  "\u0e21\u0e34\u0e16\u0e38\u0e19\u0e32\u0e22\u0e19": 6,
+  "\u0e01.\u0e04.": 7,
+  "\u0e01\u0e23\u0e01\u0e0e\u0e32\u0e04\u0e21": 7,
+  "\u0e2a.\u0e04.": 8,
+  "\u0e2a\u0e34\u0e07\u0e2b\u0e32\u0e04\u0e21": 8,
+  "\u0e01.\u0e22.": 9,
+  "\u0e01\u0e31\u0e19\u0e22\u0e32\u0e22\u0e19": 9,
+  "\u0e15.\u0e04.": 10,
+  "\u0e15\u0e38\u0e25\u0e32\u0e04\u0e21": 10,
+  "\u0e1e.\u0e22.": 11,
+  "\u0e1e\u0e24\u0e28\u0e08\u0e34\u0e01\u0e32\u0e22\u0e19": 11,
+  "\u0e18.\u0e04.": 12,
+  "\u0e18\u0e31\u0e19\u0e27\u0e32\u0e04\u0e21": 12,
+});
+
 export const SMART_AREA_DOCUMENT_DATE_KEYS = [
   "documentDate",
   "docDate",
@@ -165,6 +192,17 @@ export function smartAreaIsoDate(value: unknown) {
     const month = THAI_MONTHS[thai[2]] || thaiMonthNumber(thai[2]);
     if (month) {
       return `${year}-${String(month).padStart(2, "0")}-${thai[1].padStart(2, "0")}`;
+    }
+  }
+
+  const thaiUnicode = raw.match(/(\d{1,2})\s*([\u0E00-\u0E7F.]+)\s*(\d{4})/);
+  if (thaiUnicode) {
+    let year = Number(thaiUnicode[3]);
+    if (year > 2400) year -= 543;
+
+    const month = THAI_MONTHS[thaiUnicode[2]] || thaiMonthNumber(thaiUnicode[2]);
+    if (month) {
+      return `${year}-${String(month).padStart(2, "0")}-${thaiUnicode[1].padStart(2, "0")}`;
     }
   }
 

@@ -2,6 +2,10 @@
   smartAreaPayloadDocumentDate,
   smartAreaPayloadReceivedDate,
 } from "@/lib/smart-area/document-date";
+import {
+  smartAreaPayloadOrder,
+  smartAreaPayloadPage,
+} from "@/lib/smart-area/source-order";
 
 export const SMART_AREA_DOCUMENT_SELECT = `
   id,
@@ -97,16 +101,10 @@ export function serializeSmartAreaBook(
     status: book.status,
     note: book.note || "",
     directorNote: book.director_note || "",
-    smartAreaPage: Number(
-      book.legacy_payload?.smart_area_page ||
-        book.legacy_payload?.raw?.smartAreaPage ||
-        0,
-    ),
-    smartAreaOrder: Number(
-      book.legacy_payload?.raw?.rowOrder ||
-        book.legacy_payload?.raw?.order ||
-        book.registration_number ||
-        0,
+    smartAreaPage: smartAreaPayloadPage(book.legacy_payload),
+    smartAreaOrder: smartAreaPayloadOrder(
+      book.legacy_payload,
+      book.registration_number,
     ),
     sourceUrl:
       book.legacy_payload?.source_url ||

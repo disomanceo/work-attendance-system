@@ -168,6 +168,46 @@ function bookLatestValue(book: BookItem) {
   return Number(book.smartAreaPage || 0) * 100000 + Number(book.smartAreaOrder || 0);
 }
 
+function centralPageValue(book: BookItem) {
+  return Number(book.smartAreaPage || 0);
+}
+
+function centralOrderValue(book: BookItem) {
+  return Number(book.smartAreaOrder || 0) || Number.MAX_SAFE_INTEGER;
+}
+
+function compareCentralSourceOrder(
+  left: BookItem,
+  right: BookItem,
+  direction: "newest" | "oldest" = "newest",
+) {
+  const leftPage = centralPageValue(left);
+  const rightPage = centralPageValue(right);
+
+  if (leftPage || rightPage) {
+    if (leftPage !== rightPage) {
+      return direction === "newest" ? rightPage - leftPage : leftPage - rightPage;
+    }
+
+    const orderCompare = centralOrderValue(left) - centralOrderValue(right);
+    if (orderCompare) return orderCompare;
+  }
+
+  return 0;
+}
+
+function centralSourceLabel(book: BookItem) {
+  const page = Number(book.smartAreaPage || 0);
+
+  if (!page) return "";
+
+  return `${"\u0e2b\u0e19\u0e49\u0e32"} ${page}`;
+}
+
+function registrationDisplay(value: string) {
+  return value || "-";
+}
+
 function shortThaiName(value: string) {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "-";
@@ -552,6 +592,14 @@ export default function DocumentsPage() {
   const isManagerWorkspace = capabilities.canAssign;
   const isClerkWorkspace = canManageAll && !capabilities.canAssign;
   const isMemberWorkspace = !canManageAll;
+
+  function canDirectorCloseBook(book: BookItem) {
+    return (
+      capabilities.canAssign &&
+      capabilities.canClose &&
+      book.status !== "done"
+    );
+  }
 
   function defaultDocumentViewMode(): ViewMode {
     return canManageAll ? "all" : "mine";
@@ -1380,9 +1428,22 @@ export default function DocumentsPage() {
       return searchableText.includes(normalizedQuery);
     });
 
+    const isCentralSourceView =
+      selectedSmartAreaPage !== null || selectedSmartAreaMode !== null;
+
     return [...result].sort((left, right) => {
+      if (isCentralSourceView) {
+        return (
+          compareCentralSourceOrder(left, right, "newest") ||
+          bookLatestValue(right) - bookLatestValue(left)
+        );
+      }
+
       if (sortMode === "oldest") {
-        return bookLatestValue(left) - bookLatestValue(right);
+        return (
+          compareCentralSourceOrder(left, right, "oldest") ||
+          bookLatestValue(left) - bookLatestValue(right)
+        );
       }
 
       if (sortMode === "registration") {
@@ -1393,7 +1454,10 @@ export default function DocumentsPage() {
         );
       }
 
-      return bookLatestValue(right) - bookLatestValue(left);
+      return (
+        compareCentralSourceOrder(left, right, "newest") ||
+        bookLatestValue(right) - bookLatestValue(left)
+      );
     });
   }, [
     assigneeFilter,
@@ -1948,6 +2012,10 @@ export default function DocumentsPage() {
                       <strong>{book.registrationNumber || "-"}</strong>
                     </div>
                     <div>
+                      <span>{"\u0e2b\u0e19\u0e49\u0e32\u0e23\u0e30\u0e1a\u0e1a\u0e01\u0e25\u0e32\u0e07"}</span>
+                      <strong>{centralSourceLabel(book) || "-"}</strong>
+                    </div>
+                    <div>
                       <span>{"\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d"}</span>
                       <strong>{book.documentNumber || "-"}</strong>
                     </div>
@@ -2026,10 +2094,7 @@ export default function DocumentsPage() {
                       เปิดรายละเอียด
                     </button>
 
-                    {workspaceMode === "manager" &&
-                      capabilities.canClose &&
-                      book.status !== "done" &&
-                      book.tasks.length === 0 && (
+                    {canDirectorCloseBook(book) && (
                         <button
                           type="button"
                           className={`${styles.doneAction} ${styles.mobileFinishButton}`}
@@ -2284,9 +2349,7 @@ export default function DocumentsPage() {
                               </button>
                             )}
 
-                          {workspaceMode === "manager" &&
-                      capabilities.canClose &&
-                      book.status !== "done" && (
+                          {canDirectorCloseBook(book) && (
                               <button
                                 type="button"
                                 className={styles.doneAction}
@@ -2349,7 +2412,12 @@ export default function DocumentsPage() {
                   >
                     <td data-label="ลำดับ">
                       <div className={styles.registrationCell}>
-<strong>{book.registrationNumber || "-"}</strong>
+                        <strong>{registrationDisplay(book.registrationNumber)}</strong>
+                        {centralSourceLabel(book) && (
+                          <span className={styles.centralSourceTag}>
+                            {centralSourceLabel(book)}
+                          </span>
+                        )}
                         <small className={styles.documentNumber}>
                           {book.documentNumber || "-"}
                         </small>
@@ -2474,6 +2542,17 @@ export default function DocumentsPage() {
 
                     <td data-label="จัดการ">
                       <div className={styles.actionCell}>
+                        {canDirectorCloseBook(book) && (
+                          <button
+                            type="button"
+                            className={styles.doneAction}
+                            onClick={() => closeBookAsDone(book)}
+                            disabled={savingKey === `close:${book.id}`}
+                          >
+                            {"\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e2a\u0e34\u0e49\u0e19"}
+                          </button>
+                        )}
+
                         {workspaceMode === "clerk" &&
                           book.status === "clerk_review" && (
                             <div className={styles.clerkQuickActions}>
@@ -2551,6 +2630,16 @@ export default function DocumentsPage() {
                                       : "มอบหมายโดยไม่ลงนาม"}
                                   </button>
                                 )}
+                              {canDirectorCloseBook(book) && (
+                                <button
+                                  type="button"
+                                  className={styles.doneAction}
+                                  onClick={() => closeBookAsDone(book)}
+                                  disabled={savingKey === `close:${book.id}`}
+                                >
+                                  {"\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e2a\u0e34\u0e49\u0e19"}
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className={styles.closeDetailButton}

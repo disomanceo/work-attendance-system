@@ -72,6 +72,41 @@ function clean(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function stripLeadingLabel(value, labels) {
+  let result = clean(value);
+
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(`^${escaped}\\s*[:：]?\\s*`, "i"), "");
+  }
+
+  return clean(result);
+}
+
+const LABELS = {
+  detail: "\u0e23\u0e32\u0e22\u0e25\u0e30\u0e40\u0e2d\u0e35\u0e22\u0e14",
+  open: "\u0e40\u0e1b\u0e34\u0e14",
+  select: "\u0e40\u0e25\u0e37\u0e2d\u0e01",
+  download: "\u0e14\u0e32\u0e27\u0e19\u0e4c\u0e42\u0e2b\u0e25\u0e14",
+  attachment: "\u0e40\u0e2d\u0e01\u0e2a\u0e32\u0e23\u0e41\u0e19\u0e1a",
+  order: "\u0e25\u0e33\u0e14\u0e31\u0e1a",
+  date: "\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48",
+  number: "\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48",
+  from: "\u0e08\u0e32\u0e01",
+  documentNo: "\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d",
+  documentNumber: "\u0e40\u0e25\u0e02\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d",
+  subject: "\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07",
+  priority: "\u0e0a\u0e31\u0e49\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27",
+  urgency: "\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27",
+  receiveNo: "\u0e40\u0e25\u0e02\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e23\u0e31\u0e1a",
+  receiveNumber: "\u0e40\u0e25\u0e02\u0e17\u0e30\u0e40\u0e1a\u0e35\u0e22\u0e19\u0e23\u0e31\u0e1a",
+  documentDate: "\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d",
+  letterDate: "\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e25\u0e07\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48",
+  sentBy: "\u0e2a\u0e48\u0e07\u0e42\u0e14\u0e22",
+  summary: "\u0e40\u0e19\u0e37\u0e49\u0e2d\u0e2b\u0e32\u0e42\u0e14\u0e22\u0e2a\u0e23\u0e38\u0e1b",
+  note: "\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38",
+};
+
 await callback("running");
 
 if (!inWorkingHours()) {
@@ -171,7 +206,7 @@ try {
 
     const rows = await page.locator("tr").evaluateAll((tableRows) =>
       tableRows
-        .map((row) => {
+        .map((row, rowIndex) => {
           const normalize = (value) =>
             String(value || "").replace(/\s+/g, " ").trim();
 
@@ -203,7 +238,43 @@ try {
             "จาก",
           ];
 
+          const listDocumentNo = stripLeadingLabel(cells[1], ["เลขหนังสือ"]);
+          const listSubject = clean(cells[2]);
+          const listDocumentDate = clean(cells[4]);
+          const listSender = clean(cells[5]);
+
+          const labelValue = (labels) => {
+            for (let index = 0; index < cells.length; index += 1) {
+              const value = cells[index];
+              const label = labels.find((item) => value.includes(item));
+              if (!label) continue;
+
+              const stripped = value
+                .replace(new RegExp(`^.*?${label}\\s*[:：]?\\s*`), "")
+                .trim();
+              if (stripped && stripped !== value) return stripped;
+              return cells[index + 1] || "";
+            }
+
+            return "";
+          };
+
+          const receiveNo = labelValue([
+            "เลขทะเบียนหนังสือรับ",
+            "เลขทะเบียนรับ",
+          ]);
+          const documentNo =
+            listDocumentNo || labelValue(["เลขที่หนังสือ", "เลขหนังสือ"]);
+          const documentDate = labelValue([
+            "วันที่หนังสือ",
+            "หนังสือลงวันที่",
+            "ลงวันที่",
+          ]) || listDocumentDate;
+          const sender = labelValue(["ส่งโดย", "จาก"]) || listSender;
+          const priority = labelValue(["ชั้นความเร็ว", "ความเร็ว"]);
+
           const subject =
+            listSubject ||
             cells
               .filter((value) => value.length >= 8)
               .filter((value) => !/^\d+$/.test(value))
@@ -222,14 +293,26 @@ try {
             id: match[1],
             url: link?.href || "",
             subject,
+            documentNo,
+            receiveNo,
+            documentDate,
+            sender,
+            priority,
             cells,
+            rowOrder: rowIndex + 1,
           };
         })
         .filter(Boolean),
     );
 
-    for (const row of rows) {
-      items.set(row.id, row);
+    for (const [rowIndex, row] of rows.entries()) {
+      items.set(row.id, {
+        ...row,
+        pageNumber,
+        pageUrl: url.href,
+        latestPage,
+        rowOrder: rowIndex + 1,
+      });
     }
   }
 
@@ -249,7 +332,7 @@ try {
         timeout: 30000,
       });
 
-      const data = await page.evaluate(() => {
+      const data = await page.evaluate((labels) => {
         const text = (value) =>
           String(value || "").replace(/\s+/g, " ").trim();
 
@@ -283,7 +366,9 @@ try {
           );
 
         return {
-          documentNo: pick(["เลขที่หนังสือ", "เลขหนังสือ"]),
+          documentNo:
+            pick(["เลขที่หนังสือ", "เลขหนังสือ"]) ||
+            text((document.body.innerText.match(/รายละเอียดหนังสือ\s*(ที่\s*[^\n\r]+)/) || [])[1]),
           subject: pick(["เรื่อง"]),
           priority: pick(["ชั้นความเร็ว", "ความเร็ว"]),
           receiveNo: pick([
@@ -296,11 +381,19 @@ try {
           ]),
           sender: pick(["ส่งโดย", "จาก"]),
           summary: pick(["เนื้อหาโดยสรุป", "หมายเหตุ"]),
+          knownDocumentNo: pick([labels.documentNo, labels.documentNumber]),
+          knownSubject: pick([labels.subject]),
+          knownPriority: pick([labels.priority, labels.urgency]),
+          knownReceiveNo: pick([labels.receiveNo, labels.receiveNumber]),
+          knownDocumentDate: pick([labels.documentDate, labels.letterDate]),
+          knownSender: pick([labels.sentBy, labels.from]),
+          knownSummary: pick([labels.summary, labels.note]),
           attachments: links,
         };
-      });
+      }, LABELS);
 
-      const subject = clean(data.subject) || clean(item.subject);
+      const subject =
+        clean(data.subject) || clean(data.knownSubject) || clean(item.subject);
 
       if (!subject) {
         throw new Error(
@@ -312,13 +405,31 @@ try {
         action: "upsertDocument",
         sourceUrl: detailUrl,
         smartAreaId: item.id,
-        documentNo: clean(data.documentNo),
+        documentNo:
+          stripLeadingLabel(
+            clean(data.documentNo) ||
+              clean(data.knownDocumentNo) ||
+              clean(item.documentNo),
+            [LABELS.documentNo, LABELS.documentNumber],
+          ),
         subject,
-        priority: clean(data.priority),
-        receiveNo: clean(data.receiveNo),
-        documentDate: clean(data.documentDate),
-        sender: clean(data.sender),
-        summary: clean(data.summary),
+        priority:
+          clean(data.priority) || clean(data.knownPriority) || clean(item.priority),
+        receiveNo:
+          stripLeadingLabel(
+            clean(data.receiveNo) || clean(data.knownReceiveNo) || clean(item.receiveNo),
+            [LABELS.receiveNo, LABELS.receiveNumber],
+          ),
+        documentDate:
+          clean(data.documentDate) ||
+          clean(data.knownDocumentDate) ||
+          clean(item.documentDate),
+        sender: clean(data.sender) || clean(data.knownSender) || clean(item.sender),
+        summary: clean(data.summary) || clean(data.knownSummary),
+        smartAreaPage: String(item.pageNumber || ""),
+        centralLatestPage: String(item.latestPage || ""),
+        sourcePageUrl: item.pageUrl || "",
+        rowOrder: String(item.rowOrder || ""),
         attachmentText: data.attachments
           .map(
             (attachment, index) =>
