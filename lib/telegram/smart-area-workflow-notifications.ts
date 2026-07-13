@@ -9,7 +9,9 @@ type SmartAreaBook = {
   received_date: string | null;
   source_agency: string | null;
   subject: string | null;
+  document_number: string | null;
   urgency: string | null;
+  note: string | null;
 };
 
 type SmartAreaTask = {
@@ -39,18 +41,6 @@ function adminClient() {
   });
 }
 
-function appUrl() {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (explicit) return explicit;
-
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return production ? `https://${production}` : "http://localhost:3000";
-}
-
-function documentUrl(bookId: string) {
-  return `${appUrl()}/documents?book=${encodeURIComponent(bookId)}`;
-}
-
 function escapeHtml(value: string | null | undefined) {
   return String(value ?? "-")
     .replaceAll("&", "&amp;")
@@ -73,11 +63,54 @@ function thaiDateTime(value: string | null) {
   }).format(date);
 }
 
+function thaiDate(value: string | null) {
+  if (!value) return "-";
+
+  const date = new Date(`${value}T00:00:00+07:00`);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function urgencyLabel(value: string | null) {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\s+/g, "");
+
+  if (normalized.includes("\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14")) {
+    return "\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14";
+  }
+
+  if (normalized.includes("\u0e14\u0e48\u0e27\u0e19")) {
+    return "\u0e14\u0e48\u0e27\u0e19";
+  }
+
+  return "\u0e1b\u0e01\u0e15\u0e34";
+}
+
+function displaySubject(value: string | null) {
+  return String(value || "-")
+    .replace(
+      /\s*\[\s*(?:\u0e1b\u0e01\u0e15\u0e34|\u0e14\u0e48\u0e27\u0e19|\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14)\s*\]\s*$/u,
+      "",
+    )
+    .trim();
+}
+
+function messageField(label: string, value: string | null | undefined) {
+  return `<b>${escapeHtml(label)}</b>: ${escapeHtml(value || "-")}`;
+}
+
 async function loadBook(bookId: string) {
   const { data, error } = await adminClient()
     .from("smart_area_books")
     .select(
-      "id, registration_number, received_date, source_agency, subject, urgency",
+      "id, registration_number, received_date, source_agency, subject, document_number, urgency, note",
     )
     .eq("id", bookId)
     .eq("is_active", true)
@@ -146,18 +179,24 @@ function assignmentMessage(input: {
   assignedByName: string;
 }) {
   return [
-    "📄 <b>มีหนังสือราชการมอบหมายใหม่</b>",
+    "\u{1F4D7} <b>\u0e21\u0e35\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e23\u0e32\u0e0a\u0e01\u0e32\u0e23\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22\u0e43\u0e2b\u0e21\u0e48</b>",
+    "\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e1b\u0e34\u0e14\u0e2d\u0e48\u0e32\u0e19\u0e41\u0e25\u0e30\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23\u0e43\u0e19\u0e23\u0e30\u0e1a\u0e1a",
     "",
-    `เลขรับ: ${escapeHtml(input.book.registration_number)}`,
-    `เรื่อง: ${escapeHtml(input.book.subject)}`,
-    `จาก: ${escapeHtml(input.book.source_agency)}`,
-    `ความเร็ว: ${escapeHtml(input.book.urgency)}`,
-    `ผู้มอบหมาย: ${escapeHtml(input.assignedByName)}`,
+    "<b>\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d</b>",
+    messageField("\u0e40\u0e25\u0e02\u0e23\u0e31\u0e1a", input.book.registration_number),
+    messageField("\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e23\u0e31\u0e1a", thaiDate(input.book.received_date)),
+    messageField("\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d", input.book.document_number),
+    messageField("\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07", displaySubject(input.book.subject)),
+    messageField("\u0e08\u0e32\u0e01", input.book.source_agency),
+    messageField("\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27", urgencyLabel(input.book.urgency)),
+    ...(input.book.note ? [messageField("\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38", input.book.note)] : []),
+    "",
+    "<b>\u0e01\u0e32\u0e23\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22</b>",
+    messageField("\u0e1c\u0e39\u0e49\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22", input.assignedByName),
+    messageField("\u0e1c\u0e39\u0e49\u0e23\u0e31\u0e1a\u0e21\u0e2d\u0e1a\u0e2b\u0e21\u0e32\u0e22", input.task.assignee_name_snapshot),
     ...(input.task.assignment_note
-      ? [`หมายเหตุ: ${escapeHtml(input.task.assignment_note)}`]
+      ? [messageField("\u0e04\u0e33\u0e2a\u0e31\u0e48\u0e07/\u0e2b\u0e21\u0e32\u0e22\u0e40\u0e2b\u0e15\u0e38", input.task.assignment_note)]
       : []),
-    "",
-    `เปิดหนังสือ: ${escapeHtml(documentUrl(input.book.id))}`,
   ].join("\n");
 }
 
@@ -168,21 +207,23 @@ function statusMessage(input: {
   actorName: string;
 }) {
   const isDone = input.nextStatus === "done";
-  const heading = isDone
-    ? "✅ <b>ครูดำเนินการหนังสือราชการเสร็จสิ้นแล้ว</b>"
-    : "▶️ <b>ครูเริ่มดำเนินการหนังสือราชการแล้ว</b>";
   const timestamp = isDone ? input.task.completed_at : input.task.started_at;
 
   return [
-    heading,
+    isDone
+      ? "\u2705 <b>\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e23\u0e32\u0e0a\u0e01\u0e32\u0e23\u0e40\u0e2a\u0e23\u0e47\u0e08\u0e2a\u0e34\u0e49\u0e19\u0e41\u0e25\u0e49\u0e27</b>"
+      : "\u25B6\uFE0F <b>\u0e40\u0e23\u0e34\u0e48\u0e21\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e23\u0e32\u0e0a\u0e01\u0e32\u0e23\u0e41\u0e25\u0e49\u0e27</b>",
     "",
-    `ผู้ดำเนินการ: ${escapeHtml(input.actorName || input.task.assignee_name_snapshot)}`,
-    `เลขรับ: ${escapeHtml(input.book.registration_number)}`,
-    `เรื่อง: ${escapeHtml(input.book.subject)}`,
-    `จาก: ${escapeHtml(input.book.source_agency)}`,
-    `เวลา: ${escapeHtml(thaiDateTime(timestamp))}`,
+    "<b>\u0e01\u0e32\u0e23\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23</b>",
+    messageField("\u0e1c\u0e39\u0e49\u0e14\u0e33\u0e40\u0e19\u0e34\u0e19\u0e01\u0e32\u0e23", input.actorName || input.task.assignee_name_snapshot),
+    messageField("\u0e40\u0e27\u0e25\u0e32", thaiDateTime(timestamp)),
     "",
-    `เปิดหนังสือ: ${escapeHtml(documentUrl(input.book.id))}`,
+    "<b>\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d</b>",
+    messageField("\u0e40\u0e25\u0e02\u0e23\u0e31\u0e1a", input.book.registration_number),
+    messageField("\u0e40\u0e25\u0e02\u0e17\u0e35\u0e48\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d", input.book.document_number),
+    messageField("\u0e40\u0e23\u0e37\u0e48\u0e2d\u0e07", displaySubject(input.book.subject)),
+    messageField("\u0e08\u0e32\u0e01", input.book.source_agency),
+    messageField("\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27", urgencyLabel(input.book.urgency)),
   ].join("\n");
 }
 

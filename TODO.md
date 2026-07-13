@@ -57,6 +57,18 @@ Updated: 2026-07-13
 
 ## Changes made
 
+- Updated Telegram notifications for Smart Area official documents:
+  - assignment notifications now use organized sections for document details and assignment details,
+  - document status notifications now use organized sections for progress details and document details,
+  - Telegram inline buttons for document notifications now say `เปิดหนังสือราชการ`,
+  - document links still use `NEXT_PUBLIC_APP_URL`,
+  - Vercel Production now has `NEXT_PUBLIC_APP_URL=https://pm-coming.vercel.app`,
+  - Vercel alias `https://pm-coming.vercel.app` now points to the latest production deployment.
+- Adjusted the official documents UI in `app/documents/page.tsx`:
+  - the documents page now opens on the latest Smart Area source page by default,
+  - document subjects shown in the list/detail no longer show a trailing `[ปกติ]`, `[ด่วน]`, or `[ด่วนที่สุด]` tag,
+  - detail pages now show only the normalized speed level: `ปกติ`, `ด่วน`, or `ด่วนที่สุด`,
+  - duplicate finish buttons inside the detail action area are hidden while the main list finish actions remain available.
 - Added shared source-order helpers:
   - `lib/smart-area/source-order.ts`
 - Restored director finish actions on the documents page:

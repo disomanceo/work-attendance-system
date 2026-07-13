@@ -86,6 +86,20 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
   const bookId =
     typeof metadata.bookId === "string" ? metadata.bookId : "";
 
+  const isDocumentNotification = [
+    "document.assigned",
+    "document.started",
+    "document.completed",
+  ].includes(input.event);
+
+  if (isDocumentNotification) {
+    const url = bookId
+      ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`
+      : `${baseUrl}/documents`;
+
+    return [[{ text: "\u0e40\u0e1b\u0e34\u0e14\u0e2b\u0e19\u0e31\u0e07\u0e2a\u0e37\u0e2d\u0e23\u0e32\u0e0a\u0e01\u0e32\u0e23", url }]];
+  }
+
   if (input.event === "document.assigned") {
     const url = bookId
       ? `${baseUrl}/documents?book=${encodeURIComponent(bookId)}`

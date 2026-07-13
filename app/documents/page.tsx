@@ -330,6 +330,23 @@ function urgencyFilterKey(value: string) {
   return "normal";
 }
 
+function urgencyDisplay(value: string) {
+  const key = urgencyFilterKey(value);
+
+  if (key === "most_urgent") return "\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14";
+  if (key === "urgent") return "\u0e14\u0e48\u0e27\u0e19";
+  return "\u0e1b\u0e01\u0e15\u0e34";
+}
+
+function displayDocumentSubject(value: string) {
+  return String(value || "")
+    .replace(
+      /\s*\[\s*(?:\u0e1b\u0e01\u0e15\u0e34|\u0e14\u0e48\u0e27\u0e19|\u0e14\u0e48\u0e27\u0e19\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14)\s*\]\s*$/u,
+      "",
+    )
+    .trim();
+}
+
 function isDirectorNewBook(book: BookItem) {
   return (
     book.status === "clerk_review" ||
@@ -576,6 +593,7 @@ export default function DocumentsPage() {
   const returnBookHandledRef = useRef(false);
   const deepLinkedBookHandledRef = useRef("");
   const keepSelectedBookOnFilterChangeRef = useRef(false);
+  const defaultSmartAreaPageAppliedRef = useRef(false);
   const mobileScrollYRef = useRef(0);
   const documentVersionRef = useRef(0);
   const documentChangeAtRef = useRef("");
@@ -592,6 +610,7 @@ export default function DocumentsPage() {
   const isManagerWorkspace = capabilities.canAssign;
   const isClerkWorkspace = canManageAll && !capabilities.canAssign;
   const isMemberWorkspace = !canManageAll;
+  const showDetailFinishAction = false;
 
   function canDirectorCloseBook(book: BookItem) {
     return (
@@ -1513,6 +1532,32 @@ export default function DocumentsPage() {
     return [latestSmartAreaPage - 2, latestSmartAreaPage - 1, latestSmartAreaPage]
       .filter((pageNumber) => pageNumber > 0);
   }, [latestSmartAreaPage]);
+
+  useEffect(() => {
+    if (
+      defaultSmartAreaPageAppliedRef.current ||
+      latestSmartAreaPage === null ||
+      selectedSmartAreaPage !== null ||
+      selectedSmartAreaMode !== null ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const requestedBookId =
+      new URLSearchParams(window.location.search).get("book") ||
+      window.sessionStorage.getItem("smart-area-open-book-id");
+
+    if (requestedBookId) {
+      defaultSmartAreaPageAppliedRef.current = true;
+      return;
+    }
+
+    defaultSmartAreaPageAppliedRef.current = true;
+    setSelectedSmartAreaPage(latestSmartAreaPage);
+    setSelectedSmartAreaMode("latest");
+  }, [latestSmartAreaPage, selectedSmartAreaMode, selectedSmartAreaPage]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -2002,7 +2047,7 @@ export default function DocumentsPage() {
                       setSelectedBook(book);
                     }}
                   >
-                    {book.subject}
+                    {displayDocumentSubject(book.subject)}
                   </button>
                   <DocumentListDate book={book} />
 
@@ -2175,7 +2220,7 @@ export default function DocumentsPage() {
                       className={styles.mobileDetailOverlay}
                       role="dialog"
                       aria-modal="true"
-                      aria-label={`รายละเอียดหนังสือ ${book.subject}`}
+                      aria-label={`รายละเอียดหนังสือ ${displayDocumentSubject(book.subject)}`}
                     >
                       <div className={styles.mobileDetailPage}>
                         <header className={styles.mobileDetailTopbar}>
@@ -2186,7 +2231,7 @@ export default function DocumentsPage() {
                             <span className={styles.mobileDetailSubjectLabel}>
                               เรื่อง
                             </span>
-                            <strong>{book.subject}</strong>
+                            <strong>{displayDocumentSubject(book.subject)}</strong>
                             <small className={styles.mobileDetailReference}>
                               {book.documentNumber ||
                                 book.registrationNumber ||
@@ -2253,7 +2298,7 @@ export default function DocumentsPage() {
                             <section>
                               <span>{"\u0e0a\u0e31\u0e49\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27"}</span>
                               <strong className={detailSpeedClass(book.urgency)}>
-                                {book.urgency || "\u0e1b\u0e01\u0e15\u0e34"}
+                                {urgencyDisplay(book.urgency)}
                               </strong>
                             </section>
                             <section className={styles.mobileDetailWide}>
@@ -2349,7 +2394,7 @@ export default function DocumentsPage() {
                               </button>
                             )}
 
-                          {canDirectorCloseBook(book) && (
+                          {showDetailFinishAction && canDirectorCloseBook(book) && (
                               <button
                                 type="button"
                                 className={styles.doneAction}
@@ -2463,7 +2508,7 @@ export default function DocumentsPage() {
                             );
                           }}
                         >
-                          {book.subject}
+                          {displayDocumentSubject(book.subject)}
                         </button>
                         <div className={`${styles.fileLinks} ${book.status === "done" ? styles.hiddenListAttachments : ""}`}>
                           {book.attachments.length === 0 && (
@@ -2596,7 +2641,7 @@ export default function DocumentsPage() {
                           <div className={styles.inlineDetailHeader}>
                             <div>
                               <span>รายละเอียดหนังสือ</span>
-                              <strong>{book.subject}</strong>
+                              <strong>{displayDocumentSubject(book.subject)}</strong>
                             </div>
                             <div className={styles.inlineDetailWorkflow}>
                               <WorkTreeLine
@@ -2630,7 +2675,7 @@ export default function DocumentsPage() {
                                       : "มอบหมายโดยไม่ลงนาม"}
                                   </button>
                                 )}
-                              {canDirectorCloseBook(book) && (
+                              {showDetailFinishAction && canDirectorCloseBook(book) && (
                                 <button
                                   type="button"
                                   className={styles.doneAction}
@@ -2675,11 +2720,9 @@ export default function DocumentsPage() {
                               <strong>{book.sourceAgency || "-"}</strong>
                             </div>
                             <div>
-                              <span>{"\u0e1b\u0e23\u0e30\u0e40\u0e20\u0e17 / \u0e0a\u0e31\u0e49\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27"}</span>
+                              <span>{"\u0e0a\u0e31\u0e49\u0e19\u0e04\u0e27\u0e32\u0e21\u0e40\u0e23\u0e47\u0e27"}</span>
                               <strong className={detailSpeedClass(book.urgency)}>
-                                {[book.documentType, book.urgency]
-                                  .filter(Boolean)
-                                  .join(" \u00b7 ") || "-"}
+                                {urgencyDisplay(book.urgency)}
                               </strong>
                             </div>
                           </div>
