@@ -95,6 +95,10 @@ Updated: 2026-07-13
   - read `documentNo` from the list column `เลขหนังสือ`,
   - read `documentNo` from detail text `รายละเอียดหนังสือ ที่ ...`,
   - read `subject`, `documentDate`, and `sender` from fixed central list columns when detail extraction is incomplete.
+- Updated the Smart Area collector attachment scan:
+  - collect attachment links from normal `href`, `onclick`, `data-url`, and `data-href`,
+  - accept central download/file endpoints that do not end with a file extension,
+  - deduplicate attachment URLs before sending them to the import API.
 - Updated the import API to strip Thai field labels from `receiveNo` and `documentNo` before saving.
 - Kept the Chrome extension finding: extension `1.8.32` sends the correct central metadata, but its hardcoded production endpoint still needs production endpoint verification before real use.
 
@@ -120,6 +124,8 @@ Updated: 2026-07-13
 - [x] Backfilled central pages `163-165` into Supabase
 - [x] Backfilled central pages `162-164` into Supabase
 - [x] Run `npm run build` after the latest compact table UI adjustment.
+- [x] Run `node --check scripts/smart-area-import/index.mjs` after the attachment scan update.
+- [x] Run `npm run build` after the attachment scan update.
 - [ ] Verify `/documents` central-page buttons show the latest central pages after a fresh import that includes metadata.
 - [ ] Verify each selected central page is ordered by `rowOrder` like the central system.
 - [ ] Verify the import button no longer shows `Missing GitHub workflow token`.

@@ -353,17 +353,82 @@ try {
           return "";
         };
 
-        const links = [...document.querySelectorAll("a[href]")]
-          .map((anchor) => ({
-            text: text(anchor.textContent),
-            url: anchor.href,
-          }))
-          .filter(
-            (item) =>
-              /\.(pdf|docx?|xlsx?|pptx?|jpe?g|png|zip|rar)(\?|$)/i.test(
-                item.url,
-              ) || /upload_files/i.test(item.url),
-          );
+        const filePattern =
+          /\.(pdf|docx?|xlsx?|pptx?|jpe?g|png|zip|rar)(?:$|[?#&])/i;
+        const downloadPattern =
+          /(download|file|attach|upload|document|doc|openfile|getfile|viewfile|showfile|readfile|book_file|bookfile|book_pdf|bookpdf)/i;
+        const attachmentWords = [
+          labels.attachment,
+          "\u0e44\u0e1f\u0e25\u0e4c",
+          "\u0e14\u0e32\u0e27\u0e19\u0e4c\u0e42\u0e2b\u0e25\u0e14",
+          "\u0e40\u0e1b\u0e34\u0e14",
+          "\u0e14\u0e39\u0e44\u0e1f\u0e25\u0e4c",
+          "\u0e40\u0e2d\u0e01\u0e2a\u0e32\u0e23",
+        ];
+
+        const resolveUrl = (value) => {
+          if (!String(value || "").trim()) return "";
+
+          try {
+            return new URL(value, document.baseURI).href;
+          } catch {
+            return "";
+          }
+        };
+
+        const urlsFromAttribute = (value) => {
+          const raw = String(value || "");
+          const urls = [];
+
+          for (const match of raw.matchAll(/['"]([^'"]+)['"]/g)) {
+            const candidate = match[1];
+            if (/^(?:https?:)?\/\//i.test(candidate) || /[/?&=]/.test(candidate)) {
+              urls.push(resolveUrl(candidate));
+            }
+          }
+
+          return urls.filter(Boolean);
+        };
+
+        const candidates = [];
+
+        for (const anchor of document.querySelectorAll("a")) {
+          const href = anchor.getAttribute("href") || "";
+          const onclick = anchor.getAttribute("onclick") || "";
+          const rowText = text(anchor.closest("tr")?.textContent);
+          const linkText = text(anchor.textContent || anchor.getAttribute("title"));
+          const urls = [
+            resolveUrl(href),
+            ...urlsFromAttribute(onclick),
+            ...urlsFromAttribute(anchor.getAttribute("data-url")),
+            ...urlsFromAttribute(anchor.getAttribute("data-href")),
+          ].filter(Boolean);
+
+          for (const url of urls) {
+            if (/^(?:javascript:|#|mailto:)/i.test(url)) continue;
+
+            const searchable = [url, href, onclick, rowText, linkText].join(" ");
+            const isAttachment =
+              filePattern.test(searchable) ||
+              downloadPattern.test(searchable) ||
+              attachmentWords.some((word) => word && searchable.includes(word));
+
+            if (!isAttachment) continue;
+
+            candidates.push({
+              text: linkText || rowText || url.split("/").pop() || "",
+              url,
+            });
+          }
+        }
+
+        const seenLinks = new Set();
+        const links = candidates.filter((item) => {
+          const key = item.url.replace(/#.*$/, "");
+          if (!key || seenLinks.has(key)) return false;
+          seenLinks.add(key);
+          return true;
+        });
 
         return {
           documentNo:
