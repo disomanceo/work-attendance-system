@@ -83,6 +83,27 @@ function stripLeadingLabel(value, labels) {
   return clean(result);
 }
 
+function pageRangeValues(value) {
+  return String(value || "")
+    .split(",")
+    .flatMap((part) => {
+      const [start, end] = part
+        .split("-")
+        .map((item) => Number(item.trim()))
+        .filter((item) => Number.isInteger(item) && item > 0);
+
+      if (start && end) {
+        const first = Math.min(start, end);
+        const last = Math.max(start, end);
+        const pages = [];
+        for (let page = first; page <= last; page += 1) pages.push(page);
+        return pages;
+      }
+
+      return start ? [start] : [];
+    });
+}
+
 const LABELS = {
   detail: "\u0e23\u0e32\u0e22\u0e25\u0e30\u0e40\u0e2d\u0e35\u0e22\u0e14",
   open: "\u0e40\u0e1b\u0e34\u0e14",
@@ -191,11 +212,17 @@ try {
     );
 
   const latestPage = Math.max(1, ...pageNumbers);
-  const firstPage = Math.max(1, latestPage - 2);
+  const requestedPages = pageRangeValues(process.env.SMART_AREA_PAGE_RANGE);
+  const scanPages = requestedPages.length
+    ? [...new Set(requestedPages)].sort((left, right) => left - right)
+    : Array.from(
+        { length: latestPage - Math.max(1, latestPage - 2) + 1 },
+        (_, index) => Math.max(1, latestPage - 2) + index,
+      );
 
   const items = new Map();
 
-  for (let pageNumber = firstPage; pageNumber <= latestPage; pageNumber++) {
+  for (const pageNumber of scanPages) {
     const url = new URL(receiveUrl);
     url.searchParams.set("page", String(pageNumber));
 

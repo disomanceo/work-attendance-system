@@ -11,6 +11,10 @@ on:
         description: Optional Smart Area ID for sanitized attachment diagnostics
         required: false
         default: ""
+      pageRange:
+        description: Optional central page or range, for example 165 or 163-165
+        required: false
+        default: ""
   schedule:
     # Thailand time: Monday-Friday at 08:00, 09:00, 11:00
     - cron: "0 1,2,4 * * 1-5"
@@ -39,6 +43,7 @@ jobs:
       FORCE_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
       GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
       DEBUG_SMART_AREA_ID: ${{ github.event.inputs.debugSmartAreaId || '' }}
+      SMART_AREA_PAGE_RANGE: ${{ github.event.inputs.pageRange || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
