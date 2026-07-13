@@ -753,7 +753,12 @@ async function upsertDocument(payload: ImportPayload) {
 
     const { error } = await admin
       .from("smart_area_attachments")
-      .update({ status: "inactive", is_active: false })
+      .update({
+        status: "history",
+        is_active: false,
+        removed_at: new Date().toISOString(),
+        removed_reason: "Removed from the latest Smart Area import",
+      })
       .eq("id", (current as any).id);
 
     if (error) {
