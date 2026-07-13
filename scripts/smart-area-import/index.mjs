@@ -398,31 +398,55 @@ try {
             }
           }
 
+          for (const match of raw.matchAll(
+            /((?:https?:\/\/|\.{0,2}\/)?[A-Za-z0-9_./-]*(?:download|file|attach|upload|document|doc|openfile|getfile|viewfile|showfile|readfile|book_file|bookfile|book_pdf|bookpdf)[A-Za-z0-9_./-]*(?:\.php)?(?:\?[^'"<>\s)]*)?)/gi,
+          )) {
+            urls.push(resolveUrl(match[1]));
+          }
+
           return urls.filter(Boolean);
         };
 
         const candidates = [];
 
-        for (const anchor of document.querySelectorAll("a")) {
-          const href = anchor.getAttribute("href") || "";
-          const onclick = anchor.getAttribute("onclick") || "";
-          const rowText = text(anchor.closest("tr")?.textContent);
-          const linkText = text(anchor.textContent || anchor.getAttribute("title"));
+        for (const element of document.querySelectorAll(
+          "a,button,input,area,iframe,frame,[href],[src],[onclick],[data-url],[data-href]",
+        )) {
+          const href = element.getAttribute("href") || "";
+          const src = element.getAttribute("src") || "";
+          const onclick = element.getAttribute("onclick") || "";
+          const rowText = text(element.closest("tr")?.textContent);
+          const linkText = text(
+            element.textContent ||
+              element.getAttribute("value") ||
+              element.getAttribute("alt") ||
+              element.getAttribute("title"),
+          );
           const urls = [
             resolveUrl(href),
+            resolveUrl(src),
             ...urlsFromAttribute(onclick),
-            ...urlsFromAttribute(anchor.getAttribute("data-url")),
-            ...urlsFromAttribute(anchor.getAttribute("data-href")),
+            ...urlsFromAttribute(element.getAttribute("data-url")),
+            ...urlsFromAttribute(element.getAttribute("data-href")),
           ].filter(Boolean);
 
           for (const url of urls) {
             if (/^(?:javascript:|#|mailto:)/i.test(url)) continue;
 
-            const searchable = [url, href, onclick, rowText, linkText].join(" ");
+            const searchable = [url, href, src, onclick, rowText, linkText].join(" ");
+            const directFileUrl =
+              filePattern.test(url) || downloadPattern.test(url);
+            const contextCanPointToFile =
+              Boolean(href || onclick || element.getAttribute("data-url") || element.getAttribute("data-href")) ||
+              element.tagName.toLowerCase() !== "img";
+            const attachmentContext = attachmentWords.some(
+              (word) => word && searchable.includes(word),
+            );
             const isAttachment =
+              directFileUrl ||
               filePattern.test(searchable) ||
               downloadPattern.test(searchable) ||
-              attachmentWords.some((word) => word && searchable.includes(word));
+              (contextCanPointToFile && attachmentContext);
 
             if (!isAttachment) continue;
 
