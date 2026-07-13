@@ -209,6 +209,17 @@ try {
         .map((row, rowIndex) => {
           const normalize = (value) =>
             String(value || "").replace(/\s+/g, " ").trim();
+          const clean = normalize;
+          const stripLeadingLabel = (value, labels) => {
+            let result = normalize(value);
+
+            for (const label of labels) {
+              const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              result = result.replace(new RegExp(`^${escaped}\\s*[:ï¼š]?\\s*`, "i"), "");
+            }
+
+            return normalize(result);
+          };
 
           const html = row.innerHTML || "";
           const match =

@@ -99,6 +99,9 @@ Updated: 2026-07-13
   - collect attachment links from normal `href`, `onclick`, `data-url`, and `data-href`,
   - accept central download/file endpoints that do not end with a file extension,
   - deduplicate attachment URLs before sending them to the import API.
+- Fixed the Smart Area collector list-row browser context:
+  - define local `clean` and `stripLeadingLabel` helpers inside `evaluateAll`,
+  - prevents GitHub Actions from failing before it reaches detail pages.
 - Updated the import API to strip Thai field labels from `receiveNo` and `documentNo` before saving.
 - Kept the Chrome extension finding: extension `1.8.32` sends the correct central metadata, but its hardcoded production endpoint still needs production endpoint verification before real use.
 
