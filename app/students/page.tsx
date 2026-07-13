@@ -50,6 +50,16 @@ type StudentImportResponse = {
   error?: string;
 };
 
+type StudentPhotoUploadResponse = {
+  ok?: boolean;
+  asset?: {
+    fileId?: string;
+    fileUrl?: string;
+  };
+  message?: string;
+  error?: string;
+};
+
 type EditingStudent = {
   id: string;
   student_code: string;
@@ -71,7 +81,6 @@ type CropPoint = {
   y: number;
 };
 
-const CLASS_ROOMS = ["-", "1", "2", "3"];
 const CLASS_FILTERS = ["ทั้งหมด", ...STUDENT_CLASS_LEVELS] as const;
 const STATUS_FILTERS = [
   { value: "all", label: "ทุกสถานะ" },
@@ -81,11 +90,14 @@ const STATUS_FILTERS = [
   { value: "graduated", label: "จบการศึกษา" },
 ] as const;
 const SORT_OPTIONS = [
-  { value: "class_code", label: "ชั้น / รหัส" },
+  { value: "class_code", label: "ชั้นและรหัส" },
   { value: "code", label: "รหัสนักเรียน" },
   { value: "name", label: "ชื่อ-สกุล" },
   { value: "status", label: "สถานะ" },
 ] as const;
+
+const studentPhotoObjectUrlCache = new Map<string, string>();
+const pendingStudentPhotoRequests = new Map<string, Promise<string>>();
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -144,6 +156,33 @@ function studentPhotoUrl(student: StudentRow, cachedUrl?: string) {
   return cachedUrl || student.photo_file_url || student.photo_url || student.image_url || student.avatar_url || "";
 }
 
+async function getCachedStudentPhotoUrl(fileId: string, accessToken: string) {
+  const cached = studentPhotoObjectUrlCache.get(fileId);
+  if (cached) return cached;
+
+  const pending = pendingStudentPhotoRequests.get(fileId);
+  if (pending) return pending;
+
+  const request = fetch(`/api/students/photo?fileId=${encodeURIComponent(fileId)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store",
+  })
+    .then(async (response) => {
+      if (!response.ok) return "";
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      studentPhotoObjectUrlCache.set(fileId, objectUrl);
+      return objectUrl;
+    })
+    .finally(() => {
+      pendingStudentPhotoRequests.delete(fileId);
+    });
+
+  pendingStudentPhotoRequests.set(fileId, request);
+  return request;
+}
+
 function StudentAvatar({ student, cachedUrl }: { student: StudentRow; cachedUrl?: string }) {
   const url = studentPhotoUrl(student, cachedUrl);
 
@@ -175,7 +214,6 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [query, setQuery] = useState("");
   const [activeClassLevel, setActiveClassLevel] = useState<ClassFilter>("ทั้งหมด");
-  const [roomFilter, setRoomFilter] = useState("ทั้งหมด");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("class_code");
   const [editing, setEditing] = useState<EditingStudent | null>(null);
@@ -217,7 +255,6 @@ export default function StudentsPage() {
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
       if (activeClassLevel !== "ทั้งหมด") params.set("classLevel", activeClassLevel);
-      if (roomFilter !== "ทั้งหมด") params.set("classRoom", roomFilter);
 
       const data = await fetchJson<StudentsResponse>(`/api/students?${params.toString()}`);
       setStudents(data.students ?? []);
@@ -226,7 +263,7 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeClassLevel, fetchJson, query, roomFilter]);
+  }, [activeClassLevel, fetchJson, query]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadStudents(); }, 180);
@@ -236,13 +273,9 @@ export default function StudentsPage() {
   useEffect(() => {
     const fileIds = Array.from(new Set(students.map((student) => student.photo_file_id).filter(Boolean) as string[]));
     let cancelled = false;
-    const createdUrls: string[] = [];
 
     if (fileIds.length === 0) {
-      setStudentPhotoUrls((current) => {
-        Object.values(current).forEach((url) => URL.revokeObjectURL(url));
-        return {};
-      });
+      setStudentPhotoUrls({});
       return () => undefined;
     }
 
@@ -252,29 +285,20 @@ export default function StudentsPage() {
 
       const entries = await Promise.all(fileIds.map(async (fileId) => {
         try {
-          const response = await fetch(`/api/students/photo?fileId=${encodeURIComponent(fileId)}`, {
-            headers: { Authorization: `Bearer ${session.access_token}` },
-            cache: "no-store",
-          });
-          if (!response.ok) return null;
-
-          const blob = await response.blob();
-          const objectUrl = URL.createObjectURL(blob);
-          createdUrls.push(objectUrl);
-          return [fileId, objectUrl] as const;
+          const objectUrl = await getCachedStudentPhotoUrl(fileId, session.access_token);
+          return objectUrl ? ([fileId, objectUrl] as const) : null;
         } catch {
           return null;
         }
       }));
 
-      if (cancelled) {
-        createdUrls.forEach((url) => URL.revokeObjectURL(url));
-        return;
-      }
+      if (cancelled) return;
 
       setStudentPhotoUrls((current) => {
-        Object.values(current).forEach((url) => URL.revokeObjectURL(url));
-        return Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, string]>);
+        return {
+          ...current,
+          ...Object.fromEntries(entries.filter(Boolean) as Array<readonly [string, string]>),
+        };
       });
     }
 
@@ -282,7 +306,6 @@ export default function StudentsPage() {
 
     return () => {
       cancelled = true;
-      createdUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [students, supabase]);
 
@@ -325,6 +348,20 @@ export default function StudentsPage() {
       );
     });
   }, [sortMode, statusFilter, students]);
+
+  const editingStudent = useMemo(
+    () => (editing?.id ? students.find((student) => student.id === editing.id) ?? null : null),
+    [editing?.id, students],
+  );
+
+  const editingStudentPhotoUrl = editingStudent
+    ? studentPhotoUrl(
+        editingStudent,
+        editingStudent.photo_file_id ? studentPhotoUrls[editingStudent.photo_file_id] : undefined,
+      )
+    : "";
+
+  const formStudentPhotoUrl = studentPhotoPreviewUrl || editingStudentPhotoUrl;
 
   function startAdd() {
     setEditing({ ...blankStudent, class_level: defaultAddClassLevel(activeClassLevel) });
@@ -528,6 +565,7 @@ export default function StudentsPage() {
 
     setSaving(true);
     setMessage("");
+    const oldPhotoFileId = editingStudent?.photo_file_id || "";
 
     const payload = {
       student_code: editing.student_code.trim(),
@@ -543,7 +581,19 @@ export default function StudentsPage() {
       const data = await fetchJson<StudentsResponse>(url, { method, body: JSON.stringify(payload) });
       const savedStudentId = data.student?.id || editing.id;
       if (studentPhotoFile && savedStudentId) {
-        await uploadStudentPhoto(savedStudentId, studentPhotoFile);
+        const photoResult = await uploadStudentPhoto(savedStudentId, studentPhotoFile);
+        const newFileId = photoResult.asset?.fileId || "";
+        if (newFileId) {
+          if (oldPhotoFileId && oldPhotoFileId !== newFileId) {
+            const oldObjectUrl = studentPhotoObjectUrlCache.get(oldPhotoFileId);
+            if (oldObjectUrl) URL.revokeObjectURL(oldObjectUrl);
+            studentPhotoObjectUrlCache.delete(oldPhotoFileId);
+          }
+
+          const cachedPreviewUrl = URL.createObjectURL(studentPhotoFile);
+          studentPhotoObjectUrlCache.set(newFileId, cachedPreviewUrl);
+          setStudentPhotoUrls((current) => ({ ...current, [newFileId]: cachedPreviewUrl }));
+        }
       }
       setMessage(data.message || "บันทึกข้อมูลแล้ว");
       closeForm();
@@ -579,7 +629,7 @@ export default function StudentsPage() {
     formData.set("studentId", studentId);
     formData.set("file", file);
 
-    await fetchJson("/api/students/photo", {
+    return await fetchJson<StudentPhotoUploadResponse>("/api/students/photo", {
       method: "POST",
       body: formData,
     });
@@ -680,28 +730,26 @@ export default function StudentsPage() {
         ) : null}
 
         <section className="rounded-[22px] border border-orange-100 bg-white/85 p-1.5 shadow-sm sm:p-2">
-          <div className="grid grid-cols-9 gap-0.5 lg:gap-1">
-            {CLASS_FILTERS.map((level) => (
+          <div className="grid grid-cols-9 gap-1">
+            {CLASS_FILTERS.map((level, index) => (
               <button
                 key={level}
                 type="button"
                 onClick={() => setActiveClassLevel(level)}
-                className={`h-5 rounded px-0 text-[9px] font-medium leading-none transition sm:text-[10px] lg:h-8 lg:rounded-lg lg:text-[11px] ${
+                className={`flex h-7 min-w-0 items-center justify-center rounded-full px-0.5 text-[8px] font-semibold leading-none tracking-tight transition sm:h-8 sm:text-[9.5px] lg:text-[11px] ${
                   activeClassLevel === level
-                    ? "bg-orange-500 text-white shadow-sm"
-                    : "bg-orange-50 text-orange-800 hover:bg-orange-100"
+                    ? "bg-orange-500 text-white shadow-sm ring-1 ring-orange-500"
+                    : "bg-orange-50 text-orange-800 ring-1 ring-orange-100 hover:bg-orange-100"
                 }`}
               >
-                {level === "ทั้งหมด" ? "ทั้งหมด" : shortClassLabel(level)}
+                <span className="block max-w-full overflow-visible whitespace-nowrap">
+                  {index === 0 ? "ทั้งหมด" : shortClassLabel(level)}
+                </span>
               </button>
             ))}
           </div>
-          <div className="mt-1.5 grid grid-cols-[92px_58px_72px_minmax(0,1fr)] gap-0.5 sm:grid-cols-[120px_70px_88px_minmax(0,1fr)] sm:gap-1 lg:grid-cols-[1fr_96px_120px_140px]">
+          <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_72px_minmax(0,1fr)] gap-0.5 sm:grid-cols-[minmax(0,1fr)_88px_minmax(0,1fr)] sm:gap-1 lg:grid-cols-[1fr_120px_140px]">
             <input value={query} onChange={(event) => setQuery(event.target.value)} className="h-7 min-w-0 rounded-md border border-orange-100 bg-white px-1.5 text-[11px] outline-none focus:border-orange-300 lg:h-8 lg:rounded-lg lg:px-2 lg:text-[12px]" placeholder="ค้นหา" />
-            <select value={roomFilter} onChange={(event) => setRoomFilter(event.target.value)} className="h-7 min-w-0 rounded-md border border-orange-100 bg-white px-0.5 text-[10px] outline-none focus:border-orange-300 lg:h-8 lg:rounded-lg lg:px-1.5 lg:text-[11px]">
-              <option value="ทั้งหมด">ทุกห้อง</option>
-              {CLASS_ROOMS.map((room) => <option key={room} value={room}>ห้อง {room}</option>)}
-            </select>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} className="h-7 min-w-0 rounded-md border border-orange-100 bg-white px-0.5 text-[10px] outline-none focus:border-orange-300 lg:h-8 lg:rounded-lg lg:px-1.5 lg:text-[11px]">
               {STATUS_FILTERS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
@@ -758,9 +806,9 @@ export default function StudentsPage() {
             <div className="grid grid-cols-2 gap-1.5">
               <label className="col-span-2 text-[11px] text-slate-600">รูปนักเรียน
                 <div className="mt-1 flex items-center gap-2">
-                  <span className="grid h-10 w-10 shrink-0 overflow-hidden rounded-full bg-orange-50 text-orange-600 ring-1 ring-orange-100">
-                    {studentPhotoPreviewUrl ? (
-                      <img src={studentPhotoPreviewUrl} alt="รูปที่ครอบแล้ว" className="h-full w-full object-cover" />
+                  <span className="grid h-12 w-12 shrink-0 overflow-hidden rounded-full bg-orange-50 text-orange-600 ring-1 ring-orange-100">
+                    {formStudentPhotoUrl ? (
+                      <img src={formStudentPhotoUrl} alt="รูปนักเรียน" className="h-full w-full object-cover" />
                     ) : (
                       <span className="grid h-full w-full place-items-center" aria-hidden="true">
                         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -771,7 +819,7 @@ export default function StudentsPage() {
                     )}
                   </span>
                   <span className="grid h-8 cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white px-2 text-[12px] text-slate-700">
-                    เลือกรูป
+                    {formStudentPhotoUrl ? "เปลี่ยนรูป" : "เลือกรูป"}
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
@@ -783,7 +831,7 @@ export default function StudentsPage() {
                     />
                   </span>
                   <span className="min-w-0 truncate text-[11px] text-slate-500">
-                    {studentPhotoFile ? "ครอบรูปแล้ว" : "ยังไม่เลือกรูป"}
+                    {studentPhotoFile ? "รูปใหม่พร้อมบันทึก" : editingStudentPhotoUrl ? "ใช้รูปเดิม" : "ยังไม่มีรูป"}
                   </span>
                 </div>
                 <span className="mt-1 block text-[10px] text-slate-400">บันทึกเฉพาะรูปที่ครอบแล้ว เพื่อลดขนาดไฟล์ก่อนส่งขึ้น Drive</span>
@@ -802,14 +850,9 @@ export default function StudentsPage() {
               <label className="col-span-2 text-[11px] text-slate-600">ชื่อ-สกุล
                 <input value={editing.full_name} onChange={(event) => updateEditing("full_name", event.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200 px-2 text-[12px]" />
               </label>
-              <label className="text-[11px] text-slate-600">ชั้น
+              <label className="col-span-2 text-[11px] text-slate-600">ชั้น
                 <select value={editing.class_level} onChange={(event) => updateEditing("class_level", event.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200 px-2 text-[12px]">
                   {STUDENT_CLASS_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
-                </select>
-              </label>
-              <label className="text-[11px] text-slate-600">ห้อง
-                <select value={editing.class_room} onChange={(event) => updateEditing("class_room", event.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200 px-2 text-[12px]">
-                  {CLASS_ROOMS.map((room) => <option key={room} value={room}>{room}</option>)}
                 </select>
               </label>
             </div>

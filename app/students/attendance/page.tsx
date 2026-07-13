@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { STUDENT_CLASS_LEVELS } from "@/lib/students/settings";
 
-type AttendanceStatus = "present" | "absent" | "sick" | "personal" | "late";
+type AttendanceStatus = "present" | "late" | "leave" | "absent";
 
 type Profile = { id: string; full_name: string | null; phone?: string | null; profile_image_file_id?: string | null };
 type ClassSetting = {
@@ -41,13 +41,11 @@ type WorkCalendarDayResponse = {
   message?: string;
 };
 
-const CLASS_ROOMS = ["", "1", "2", "3"];
 const STATUS_OPTIONS: Array<{ key: AttendanceStatus; label: string; icon: string; active: string }> = [
-  { key: "present", label: "มา", icon: "✓", active: "bg-emerald-500 text-white border-emerald-500" },
-  { key: "absent", label: "ขาด", icon: "×", active: "bg-rose-500 text-white border-rose-500" },
-  { key: "sick", label: "ป่วย", icon: "+", active: "bg-sky-500 text-white border-sky-500" },
-  { key: "personal", label: "กิจ", icon: "◷", active: "bg-amber-500 text-white border-amber-500" },
-  { key: "late", label: "สาย", icon: "!", active: "bg-violet-500 text-white border-violet-500" },
+  { key: "present", label: "มา", icon: "✓", active: "bg-emerald-500 text-white border-emerald-500 shadow-emerald-100" },
+  { key: "late", label: "สาย", icon: "◷", active: "bg-amber-400 text-white border-amber-400 shadow-amber-100" },
+  { key: "leave", label: "ลา", icon: "□", active: "bg-blue-500 text-white border-blue-500 shadow-blue-100" },
+  { key: "absent", label: "ขาด", icon: "×", active: "bg-rose-500 text-white border-rose-500 shadow-rose-100" },
 ];
 const THAI_WEEKDAYS = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
 const THAI_MONTHS_SHORT = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -79,15 +77,17 @@ function getStudentNo(student: AttendanceStudent, index: number) {
   return String(student.no ?? student.number ?? student.student_no ?? student.student_number ?? index + 1);
 }
 function getStudentName(student: AttendanceStudent) {
-  return String(student.name || student.full_name || "ไม่ระบุชื่อ");
+  return String(student.name || student.full_name || "ไม่ระบุชื่อ")
+    .replace(/^เด็กชาย\s*/, "ด.ช. ")
+    .replace(/^เด็กหญิง\s*/, "ด.ญ. ");
 }
 function getProfileName(profile?: Profile) {
   if (!profile) return "-";
   return profile.full_name || profile.phone || profile.id;
 }
 function normalizeStatus(value: unknown): AttendanceStatus {
-  if (value === "absent" || value === "sick" || value === "personal" || value === "late") return value;
-  if (value === "leave") return "personal";
+  if (value === "absent" || value === "late") return value;
+  if (value === "leave" || value === "sick" || value === "personal") return "leave";
   return "present";
 }
 
@@ -110,7 +110,6 @@ export default function StudentAttendancePage() {
   const supabase = useMemo(() => createClient(), []);
   const [date, setDate] = useState(todayInputValue());
   const [classLevel, setClassLevel] = useState<string>(STUDENT_CLASS_LEVELS[0] ?? "อนุบาล 2");
-  const [classRoom, setClassRoom] = useState<string>("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [classSettings, setClassSettings] = useState<ClassSetting[]>([]);
   const [students, setStudents] = useState<AttendanceStudent[]>([]);
@@ -141,9 +140,8 @@ export default function StudentAttendancePage() {
 
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
   const currentClassSetting = useMemo(() => {
-    return classSettings.find((item) => item.class_level === classLevel && String(item.class_room || "") === classRoom)
-      || classSettings.find((item) => item.class_level === classLevel);
-  }, [classLevel, classRoom, classSettings]);
+    return classSettings.find((item) => item.class_level === classLevel);
+  }, [classLevel, classSettings]);
 
   const automaticAdviserNames = useMemo(() => {
     const ids = Array.from(new Set([
@@ -231,7 +229,7 @@ export default function StudentAttendancePage() {
   }, [adviserProfiles, profileImageCache, supabase]);
 
   const summary = useMemo(() => {
-    const base = { present: 0, absent: 0, sick: 0, personal: 0, late: 0 } as Record<AttendanceStatus, number>;
+    const base = { present: 0, late: 0, leave: 0, absent: 0 } as Record<AttendanceStatus, number>;
     students.forEach((student) => {
       const record = records[student.id];
       base[record?.status || "present"] += 1;
@@ -258,7 +256,6 @@ export default function StudentAttendancePage() {
 
   const loadAttendance = useCallback(async () => {
     const params = new URLSearchParams({ classLevel, date });
-    if (classRoom) params.set("classRoom", classRoom);
     const data = await fetchJson<AttendanceResponse>(`/api/students/attendance?${params}`);
     const nextStudents = data.students ?? [];
     setStudents(nextStudents);
@@ -267,7 +264,7 @@ export default function StudentAttendancePage() {
       student.id,
       { studentId: student.id, status: normalizeStatus(student.status) },
     ])));
-  }, [classLevel, classRoom, date, fetchJson]);
+  }, [classLevel, date, fetchJson]);
 
   useEffect(() => {
     let alive = true;
@@ -305,10 +302,10 @@ export default function StudentAttendancePage() {
         body: JSON.stringify({
           date,
           classLevel,
-          classRoom,
+          classRoom: "",
           records: Object.values(records).map((record) => ({
             ...record,
-            status: record.status === "personal" ? "leave" : record.status,
+            status: record.status,
             note: "",
           })),
         }),
@@ -365,7 +362,7 @@ export default function StudentAttendancePage() {
                       )}
                       <div className="min-w-0">
                         <strong className="block break-words text-[14px] font-semibold leading-tight text-slate-900">{name}</strong>
-                        <span className="mt-0.5 block text-[12px] leading-tight text-slate-600">ครูประจำชั้น {classLevel}{classRoom ? `/${classRoom}` : ""}</span>
+                        <span className="mt-0.5 block text-[12px] leading-tight text-slate-600">ครูประจำชั้น {classLevel}</span>
                       </div>
                     </div>
                   );
@@ -376,7 +373,7 @@ export default function StudentAttendancePage() {
                     </span>
                     <div className="min-w-0">
                       <strong className="block break-words text-[14px] font-semibold leading-tight text-slate-900">{visibleAdviserNames.join(", ") || "ยังไม่ได้กำหนด"}</strong>
-                      <span className="mt-0.5 block text-[12px] leading-tight text-slate-600">ครูประจำชั้น {classLevel}{classRoom ? `/${classRoom}` : ""}</span>
+                      <span className="mt-0.5 block text-[12px] leading-tight text-slate-600">ครูประจำชั้น {classLevel}</span>
                     </div>
                   </div>
                 )}
@@ -386,12 +383,9 @@ export default function StudentAttendancePage() {
         </header>
 
         <section className="rounded-[22px] border border-orange-100 bg-white/85 p-2 shadow-sm">
-          <div className="grid grid-cols-[1fr_72px] gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <select value={classLevel} onChange={(event) => setClassLevel(event.target.value)} className="h-9 rounded-xl border border-orange-100 bg-white px-2 text-[13px] outline-none focus:border-orange-300">
               {STUDENT_CLASS_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
-            </select>
-            <select value={classRoom} onChange={(event) => setClassRoom(event.target.value)} className="h-9 rounded-xl border border-orange-100 bg-white px-2 text-[13px] outline-none focus:border-orange-300">
-              {CLASS_ROOMS.map((room) => <option key={room || "none"} value={room}>{room || "-"}</option>)}
             </select>
           </div>
           <div className="mt-2 grid grid-cols-7 gap-1">
@@ -411,19 +405,33 @@ export default function StudentAttendancePage() {
           </div>
         </section>
 
-        <section className="rounded-[22px] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-2 shadow-sm">
-          <div className="grid grid-cols-6 gap-1 text-center text-[9.5px] leading-tight sm:flex sm:flex-wrap sm:items-center sm:gap-1.5 sm:text-[12px]">
-            <span className="rounded-full bg-white px-1 py-1 font-medium text-slate-700 ring-1 ring-slate-200 sm:px-2.5">ทั้งหมด {students.length}</span>
-            <span className="rounded-full bg-emerald-100 px-1 py-1 font-medium text-emerald-700 sm:px-2.5">มา {summary.present}</span>
-            <span className="rounded-full bg-rose-100 px-1 py-1 font-medium text-rose-700 sm:px-2.5">ขาด {summary.absent}</span>
-            <span className="rounded-full bg-sky-100 px-1 py-1 font-medium text-sky-700 sm:px-2.5">ป่วย {summary.sick}</span>
-            <span className="rounded-full bg-amber-100 px-1 py-1 font-medium text-amber-700 sm:px-2.5">กิจ {summary.personal}</span>
-            <span className="rounded-full bg-violet-100 px-1 py-1 font-medium text-violet-700 sm:px-2.5">สาย {summary.late}</span>
+        <section className="rounded-[20px] border border-slate-200 bg-white p-1.5 shadow-sm">
+          <div className="grid grid-cols-5 gap-1 text-center leading-tight">
+            <span className="rounded-xl bg-slate-50 px-0.5 py-1.5 font-semibold text-slate-700 ring-1 ring-slate-200">
+              <span className="block text-[8.5px]">ทั้งหมด</span>
+              <strong className="block text-[17px] leading-none">{students.length}</strong>
+            </span>
+            <span className="rounded-xl bg-emerald-50 px-0.5 py-1.5 font-semibold text-emerald-700 ring-1 ring-emerald-100">
+              <span className="block text-[8.5px]">มา</span>
+              <strong className="block text-[17px] leading-none">{summary.present}</strong>
+            </span>
+            <span className="rounded-xl bg-amber-50 px-0.5 py-1.5 font-semibold text-amber-700 ring-1 ring-amber-100">
+              <span className="block text-[8.5px]">สาย</span>
+              <strong className="block text-[17px] leading-none">{summary.late}</strong>
+            </span>
+            <span className="rounded-xl bg-blue-50 px-0.5 py-1.5 font-semibold text-blue-700 ring-1 ring-blue-100">
+              <span className="block text-[8.5px]">ลา</span>
+              <strong className="block text-[17px] leading-none">{summary.leave}</strong>
+            </span>
+            <span className="rounded-xl bg-rose-50 px-0.5 py-1.5 font-semibold text-rose-700 ring-1 ring-rose-100">
+              <span className="block text-[8.5px]">ขาด</span>
+              <strong className="block text-[17px] leading-none">{summary.absent}</strong>
+            </span>
           </div>
         </section>
 
         <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
-          <div className="grid grid-cols-[1fr_160px] bg-slate-50 px-2 py-2 text-[13px] font-semibold text-slate-700">
+          <div className="grid grid-cols-[minmax(0,1fr)_112px] bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700 max-[430px]:grid-cols-[minmax(0,1fr)_104px]">
             <span>รายชื่อนักเรียน</span>
             <span className="text-center">สถานะ</span>
           </div>
@@ -436,13 +444,12 @@ export default function StudentAttendancePage() {
               {students.map((student, index) => {
                 const record = records[student.id] || { studentId: student.id, status: "present" as AttendanceStatus };
                 return (
-                  <div key={student.id} className="grid grid-cols-[1fr_160px] items-center gap-1.5 px-2 py-1.5">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="w-5 shrink-0 text-right text-[12px] text-slate-500">{getStudentNo(student, index)}.</span>
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-orange-100 text-[14px]">◉</span>
-                      <span className="min-w-0 truncate text-[13px] font-normal leading-tight text-slate-900">{getStudentName(student)}</span>
+                  <div key={student.id} className="grid grid-cols-[minmax(0,1fr)_112px] items-center gap-1 px-2 py-1 max-[430px]:grid-cols-[minmax(0,1fr)_104px]">
+                    <div className="flex min-w-0 items-start gap-1.5">
+                      <span className="w-5 shrink-0 pt-0.5 text-right text-[11px] text-slate-500">{getStudentNo(student, index)}.</span>
+                      <span className="min-w-0 whitespace-normal break-words text-[11.5px] font-medium leading-snug text-slate-900">{getStudentName(student)}</span>
                     </div>
-                    <div className="grid grid-cols-5 gap-1">
+                    <div className="grid grid-cols-4 gap-0.5">
                       {STATUS_OPTIONS.map((option) => {
                         const active = record.status === option.key;
                         return (
@@ -454,8 +461,8 @@ export default function StudentAttendancePage() {
                               }
                               disabled={
                                 workCalendarDay?.isWorkingDay === false
-                              } className={`h-7 rounded-full border px-0 text-[10.5px] font-medium shadow-sm ${active ? option.active : "border-slate-300 bg-white text-slate-600"}`}>
-                            {option.icon}
+                              } className={`flex h-6 min-w-0 items-center justify-center rounded-md border px-0 text-center text-[11.5px] font-semibold leading-none tracking-normal shadow-sm transition [font-family:Arial,Tahoma,sans-serif] active:scale-95 disabled:opacity-50 ${active ? option.active : "border-slate-200 bg-white text-slate-600"}`}>
+                            {option.label}
                           </button>
                         );
                       })}

@@ -15,8 +15,8 @@ function config() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const gasUrl = process.env.GAS_STUDENT_PHOTO_UPLOAD_URL || process.env.GAS_PROFILE_UPLOAD_URL;
-  const gasSecret = process.env.GAS_STUDENT_PHOTO_UPLOAD_SECRET || process.env.GAS_PROFILE_UPLOAD_SECRET;
+  const gasUrl = process.env.GAS_STUDENT_PHOTO_UPLOAD_URL;
+  const gasSecret = process.env.GAS_STUDENT_PHOTO_UPLOAD_SECRET;
   const rootFolderId = process.env.GAS_STUDENT_PHOTO_ROOT_FOLDER_ID || DEFAULT_STUDENT_PHOTO_ROOT_FOLDER_ID;
 
   if (!supabaseUrl || !publishableKey || !serviceRoleKey || !gasUrl || !gasSecret) return null;

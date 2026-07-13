@@ -633,9 +633,25 @@ export default function AttendancePage() {
       if (attendanceError) throw attendanceError;
       setRecord(attendanceData ?? null);
 
-      await loadTodayLeave(session.access_token);
-      await loadMonthlySummary(session.access_token);
-      await loadRecentDocuments(session.access_token);
+      const backgroundLoads = await Promise.allSettled([
+        loadTodayLeave(session.access_token),
+        loadMonthlySummary(session.access_token),
+        loadRecentDocuments(session.access_token),
+      ]);
+
+      backgroundLoads.forEach((result, index) => {
+        if (result.status === "fulfilled") return;
+
+        const labels = [
+          "today leave",
+          "monthly summary",
+          "recent documents",
+        ];
+        console.error(
+          `Load attendance ${labels[index] ?? "background data"} error:`,
+          result.reason,
+        );
+      });
     } catch (error) {
       console.error("Load attendance error:", error);
       setMessageType("error");

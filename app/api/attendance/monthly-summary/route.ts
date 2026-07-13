@@ -139,7 +139,9 @@ export async function GET(request: Request) {
         .eq("user_id", user.id)
         .in("status", ["pending", "approved"])
         .lte("duty_date", range.end)
-        .gte("duty_end_date", range.start),
+        .or(
+          `duty_end_date.gte.${range.start},and(duty_end_date.is.null,duty_date.gte.${range.start})`,
+        ),
     ]);
 
     if (attendanceError) {
