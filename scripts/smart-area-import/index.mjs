@@ -343,9 +343,24 @@ try {
         timeout: 30000,
       });
 
-      const data = await page.evaluate((labels) => {
+      const data = await page.evaluate(({ labels, debug }) => {
         const text = (value) =>
           String(value || "").replace(/\s+/g, " ").trim();
+        const truncate = (value, length = 120) => {
+          const cleaned = text(value);
+          return cleaned.length > length ? `${cleaned.slice(0, length)}...` : cleaned;
+        };
+        const safeUrl = (value) => {
+          try {
+            const url = new URL(value, document.baseURI);
+            const queryKeys = [...url.searchParams.keys()];
+            url.search = queryKeys.length ? `?${queryKeys.join("&")}` : "";
+            url.hash = "";
+            return url.href;
+          } catch {
+            return truncate(value);
+          }
+        };
 
         const rows = [...document.querySelectorAll("tr")];
 
@@ -408,6 +423,7 @@ try {
         };
 
         const candidates = [];
+        const debugElements = [];
 
         for (const element of document.querySelectorAll(
           "a,button,input,area,iframe,frame,[href],[src],[onclick],[data-url],[data-href]",
@@ -429,6 +445,24 @@ try {
             ...urlsFromAttribute(element.getAttribute("data-url")),
             ...urlsFromAttribute(element.getAttribute("data-href")),
           ].filter(Boolean);
+          const debugSearchable = [href, src, onclick, rowText, linkText].join(" ");
+
+          if (
+            debug &&
+            debugElements.length < 60 &&
+            (downloadPattern.test(debugSearchable) ||
+              attachmentWords.some((word) => word && debugSearchable.includes(word)) ||
+              urls.length > 0)
+          ) {
+            debugElements.push({
+              tag: element.tagName.toLowerCase(),
+              text: truncate(linkText || rowText, 100),
+              href: href ? safeUrl(href) : "",
+              src: src ? safeUrl(src) : "",
+              onclick: truncate(onclick, 160),
+              urls: urls.map(safeUrl).slice(0, 5),
+            });
+          }
 
           for (const url of urls) {
             if (/^(?:javascript:|#|mailto:)/i.test(url)) continue;
@@ -489,8 +523,29 @@ try {
           knownSender: pick([labels.sentBy, labels.from]),
           knownSummary: pick([labels.summary, labels.note]),
           attachments: links,
+          debugAttachmentScan: debug
+            ? {
+                baseUri: safeUrl(document.baseURI),
+                bodyHasAttachmentWord: attachmentWords.some((word) =>
+                  word ? document.body.innerText.includes(word) : false,
+                ),
+                elementCount: document.querySelectorAll("*").length,
+                candidateCount: candidates.length,
+                linkCount: links.length,
+                elements: debugElements,
+              }
+            : null,
         };
-      }, LABELS);
+      }, {
+        labels: LABELS,
+        debug: process.env.DEBUG_SMART_AREA_ID === String(item.id),
+      });
+
+      if (data.debugAttachmentScan) {
+        console.log(
+          `Attachment debug for ${item.id}: ${JSON.stringify(data.debugAttachmentScan)}`,
+        );
+      }
 
       const subject =
         clean(data.subject) || clean(data.knownSubject) || clean(item.subject);
