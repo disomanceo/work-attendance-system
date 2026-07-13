@@ -57,6 +57,16 @@ Updated: 2026-07-13
 
 ## Changes made
 
+- Updated the student information page:
+  - replaced the class dropdown with fixed class tabs from `ทุกชั้น`, `อนุบาล 2` through `ป.6`,
+  - added room, status, and sort filters,
+  - the student list can now load all classes or one selected class through the existing `/api/students` filter,
+  - adding a new student defaults to the currently selected class tab, or `อนุบาล 2` when `ทุกชั้น` is selected.
+- Added student file import:
+  - new API route `/api/students/import`,
+  - supports `.docx`, `.txt`, and `.csv` preview,
+  - imports core fields first: `full_name`, `class_level`, `class_room`, `status`, and an auto-generated temporary `student_code` when needed,
+  - checks existing student codes before insert to avoid duplicate imports.
 - Updated Telegram notifications for Smart Area official documents:
   - assignment notifications now use organized sections for document details and assignment details,
   - document status notifications now use organized sections for progress details and document details,
@@ -157,3 +167,53 @@ Updated: 2026-07-13
 - If the user wants GitHub Actions to import correctly going forward, explicitly approve the git/release path. Do not stage, push, or deploy without that instruction.
 - If the user wants the next button import to use page/order fixes, the fixed collector and import API must be pushed and deployed/released first.
 - If the user wants Chrome extension fallback production-ready, explicitly approve endpoint verification and extension repackaging after production endpoint is confirmed.
+
+## Student Page TODO - 2026-07-13
+
+- Updated the student table column order to `เลขที่ / เลขประจำตัว / รูป / ชื่อ-นามสกุล / ชั้น / จัดการ`.
+- Changed `เลขที่` to show the displayed row order, separate from `เลขประจำตัว`.
+- Added a small circular student photo column with a person icon fallback.
+- Student photos can display from `photo_url`, `image_url`, or `avatar_url`; real image URLs use normal browser caching with lazy loading.
+- Moved the compact student file import controls to the page header beside the add button.
+- Compacted class tabs on mobile into a two-row button grid.
+- Removed `เลขประจำตัว` from the student list table and kept it only inside the edit popup.
+- Compacted each student row to one line with smaller text and class level only.
+- Changed add/edit/move student forms to open in a centered popup instead of rendering below the table.
+- Further compacted the mobile student page:
+  - class filter buttons are smaller on phones,
+  - file picker and import buttons are smaller in the header,
+  - kindergarten labels display as `อ.2` and `อ.3` in filters and list rows.
+- Adjusted the mobile student filters again:
+  - class buttons now stay on one row,
+  - search, room, status, and sort filters now share one compact row.
+- Tuned the mobile student header and filters:
+  - removed the Supabase description line under the student page title,
+  - aligned the add button to the right side of the header controls,
+  - matched file picker and class-tab text size to the student-name text,
+  - enlarged filter text slightly and shortened the search field.
+- Tuned the mobile import/class controls again:
+  - replaced the native import file input with a compact `เลือกไฟล์` button only,
+  - moved the `นำเข้า` button next to `+ เพิ่ม` on mobile,
+  - reduced class-tab text size after removing conflicting responsive text classes.
+- Added a student photo picker area inside the add/edit/move popup.
+- Added backend support for student photo saving:
+  - new `/api/students/photo` upload/read route,
+  - student photo upload stores files under `ปีการศึกษา/<ชั้น>` in Google Drive,
+  - student APIs now return photo metadata for list rendering,
+  - new migration `20260713_student_photo_columns.sql` adds student photo columns,
+  - new Apps Script sample `gas-student-photos/Code.gs` supports upload/get/delete.
+- Added client-side crop before student photo upload:
+  - choosing a photo opens a direct drag-to-select crop popup instead of uploading the raw file,
+  - removed zoom/left-right/up-down slider controls from the crop popup,
+  - cropped output is saved as a 512x512 JPEG before upload to reduce file size,
+  - the form shows only the cropped preview/status and no longer displays the native selected-file text.
+- Student photo Drive integration still needs environment/deployment steps before production use:
+  - target root folder: `https://drive.google.com/drive/folders/1VCUDQlK0LbSlJ5HIhKsCcO2SfC3ySmyM`,
+  - Apps Script profile upload deployment `AKfycbxZZxr8_GwACUVz46xUjvynKTZdqDrc0QrV255a6hjpxzX0ovCbABxFURhoEUnDFOkOrg` was redeployed to version 9 with `uploadStudentPhoto`,
+  - Vercel Production env has `GAS_STUDENT_PHOTO_UPLOAD_URL`, `GAS_STUDENT_PHOTO_UPLOAD_SECRET`, and `GAS_STUDENT_PHOTO_ROOT_FOLDER_ID`,
+  - local `.env.local` has matching `GAS_STUDENT_PHOTO_*` values,
+  - Supabase migration was applied manually in Supabase SQL Editor by the user.
+- [ ] Test `/students` in `npm run dev` and confirm the compact table width looks correct on desktop and mobile.
+- [x] Apply `supabase/migrations/20260713_student_photo_columns.sql` in Supabase before testing real photo uploads.
+- [x] Deploy Apps Script support for student photo upload.
+- [x] Set required Vercel/local env vars for student photo upload.

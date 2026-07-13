@@ -9,6 +9,8 @@ type StudentInput = {
   status?: unknown;
 };
 
+const STUDENT_SELECT = "id, student_code, full_name, class_level, class_room, status, photo_file_id, photo_file_url, photo_mime_type, photo_uploaded_at, created_at, updated_at";
+
 function config() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -108,7 +110,7 @@ export async function GET(request: Request) {
 
   let query = auth.adminClient
     .from("students")
-    .select("id, student_code, full_name, class_level, class_room, status, created_at, updated_at")
+    .select(STUDENT_SELECT)
     .neq("status", "deleted")
     .order("class_level", { ascending: true })
     .order("class_room", { ascending: true })
@@ -148,7 +150,7 @@ export async function POST(request: Request) {
   const { data, error } = await auth.adminClient
     .from("students")
     .insert({ ...payload, created_at: new Date().toISOString() })
-    .select("id, student_code, full_name, class_level, class_room, status, created_at, updated_at")
+    .select(STUDENT_SELECT)
     .single();
 
   if (error) {

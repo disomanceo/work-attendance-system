@@ -9,6 +9,8 @@ type StudentInput = {
   status?: unknown;
 };
 
+const STUDENT_SELECT = "id, student_code, full_name, class_level, class_room, status, photo_file_id, photo_file_url, photo_mime_type, photo_uploaded_at, created_at, updated_at";
+
 function config() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -114,7 +116,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     .from("students")
     .update(payload)
     .eq("id", id)
-    .select("id, student_code, full_name, class_level, class_room, status, created_at, updated_at")
+    .select(STUDENT_SELECT)
     .single();
 
   if (error) {
