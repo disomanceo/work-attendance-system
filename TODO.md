@@ -217,3 +217,57 @@ Updated: 2026-07-13
 - [x] Apply `supabase/migrations/20260713_student_photo_columns.sql` in Supabase before testing real photo uploads.
 - [x] Deploy Apps Script support for student photo upload.
 - [x] Set required Vercel/local env vars for student photo upload.
+
+## Student attendance/photo release - 2026-07-13
+
+Release status:
+
+- [x] Committed latest student/attendance fixes: `c9b1a8d fix: improve student attendance and photo flows`.
+- [x] Pushed commit to `origin/main`.
+- [x] Deployed production on Vercel.
+- [x] Production alias points to `https://pm-coming.vercel.app`.
+- [x] Vercel deployment URL: `https://pm-coming-ej2ka44a9-disomanceo.vercel.app`.
+
+What changed in the latest release:
+
+- Student photo upload now uses only `GAS_STUDENT_PHOTO_UPLOAD_URL` and `GAS_STUDENT_PHOTO_UPLOAD_SECRET`; it no longer falls back to `GAS_PROFILE_*`, so student photos should not affect teacher profile photos.
+- Student photo preview in the add/edit popup now shows the existing photo in the student photo slot, and selecting a new cropped photo replaces the same preview immediately.
+- Student photo file reads are cached client-side by Drive file id to reduce repeated loading on the student list.
+- Student information page no longer shows room filters or room selectors because each class has only one room.
+- Student attendance page no longer shows room selectors or `/room` text after class names.
+- Student attendance statuses are reduced to `มา`, `สาย`, `ลา`, and `ขาด`; old `sick` and `personal` values normalize to `ลา`.
+- Student attendance rows are compacted to one student per row with full names wrapping instead of truncating.
+- Student names abbreviate `เด็กชาย` to `ด.ช.` and `เด็กหญิง` to `ด.ญ.`.
+- Status buttons are text-only, centered, smaller, and use a simpler sans-serif style.
+- Monthly attendance summary loading is isolated from other dashboard loads, so one failing background widget should not break the whole attendance page.
+- Monthly official-duty summary now counts single-day duty rows where `duty_end_date` is null.
+- Mobile attendance layout was tightened to reduce overlapping around checked-in/check-out state.
+
+Verified before release:
+
+- [x] `npm run build` passed locally.
+- [x] `/students` returned HTTP 200 locally.
+- [x] `/students/attendance` returned HTTP 200 locally.
+- [x] Vercel production build passed.
+- [x] Vercel deployment reached `READY`.
+
+Follow-up checks for the next session:
+
+- [ ] On a real mobile device, open `https://pm-coming.vercel.app/students` and confirm the class tabs fit and the room filter is gone.
+- [ ] On a real mobile device, edit a student with an existing photo and confirm the old photo appears immediately in the popup.
+- [ ] Choose a new student photo, crop it, save it, then reopen the student list and confirm the new cached photo appears without a long delay.
+- [ ] On `https://pm-coming.vercel.app/students/attendance`, confirm there is no room dropdown and no class text like `ป.4/1`.
+- [ ] Confirm each student row shows exactly four status buttons: `มา`, `สาย`, `ลา`, `ขาด`.
+- [ ] Confirm the status button text is centered and small enough on narrow mobile screens.
+- [ ] Confirm saving student attendance still writes correctly when `classRoom` is sent as an empty string.
+- [ ] Recheck normal staff attendance check-out on production, especially the `ลงเวลาเลิกงาน` button after 16:30.
+- [ ] Recheck production monthly stats on the attendance home page after a user with current-month attendance signs in.
+- [ ] If check-out still fails, inspect `/api/attendance/check-out` request/response and the work calendar/day status for the selected account/date.
+- [ ] If monthly stats still show blank/zero, inspect `/api/attendance/monthly-summary` response for the signed-in user and current Buddhist/Gregorian month range.
+
+Git/worktree notes:
+
+- Tracked files are clean after commit/push.
+- Existing untracked backup/log files remain in the workspace and were intentionally not committed or deleted.
+- Do not run `git reset`.
+- Do not delete backup files unless the user explicitly asks.
