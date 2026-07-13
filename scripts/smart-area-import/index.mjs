@@ -493,6 +493,7 @@ try {
 
           for (const url of urls) {
             if (/^(?:javascript:|#|mailto:)/i.test(url)) continue;
+            if (/\/modules\/book\/images\//i.test(url)) continue;
 
             const searchable = [url, href, src, onclick, rowText, linkText].join(" ");
             const directFileUrl =

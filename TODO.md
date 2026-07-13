@@ -104,6 +104,7 @@ Updated: 2026-07-13
   - prevents GitHub Actions from failing before it reaches detail pages.
 - Expanded attachment scan again to inspect button/input/src-based file openers while avoiding image-icon false positives.
 - Added optional `pageRange` workflow input and `SMART_AREA_PAGE_RANGE` support so older central pages such as page `165` can be re-imported directly.
+- Filtered Smart Area UI assets under `/modules/book/images/` so status/button images are not imported as attachments.
 - Updated the import API to strip Thai field labels from `receiveNo` and `documentNo` before saving.
 - Kept the Chrome extension finding: extension `1.8.32` sends the correct central metadata, but its hardcoded production endpoint still needs production endpoint verification before real use.
 
