@@ -61,6 +61,8 @@ type PaymentsApiResponse = {
   currentUser?: CurrentUser;
   requesterOptions?: RequesterOption[];
   payment?: Payment;
+  autoCompletedProject?: boolean;
+  projectStatus?: string | null;
   message?: string;
 };
 
@@ -565,7 +567,11 @@ export default function BudgetPaymentsPage() {
 
       const savedProjectId = payingProject.id;
       setMessageType("success");
-      setMessage("บันทึกรายการจ่ายเรียบร้อยแล้ว");
+      setMessage(
+        result.autoCompletedProject
+          ? "บันทึกรายการจ่ายแล้ว และโครงการเสร็จสิ้นอัตโนมัติ"
+          : "บันทึกรายการจ่ายเรียบร้อยแล้ว"
+      );
       setExpandedProjectId(savedProjectId);
       setPayingProject(null);
       window.sessionStorage.removeItem(BUDGET_PROJECTS_CACHE_KEY);
@@ -594,6 +600,8 @@ export default function BudgetPaymentsPage() {
     ) {
       return;
     }
+
+    setSaving(true);
 
     try {
       const accessToken = await getAccessToken();
@@ -661,7 +669,8 @@ export default function BudgetPaymentsPage() {
       }
 
       setMessageType("success");
-      setMessage("กำหนดโครงการเป็นเสร็จสิ้นแล้ว");
+      setMessage("เสร็จสิ้นเรียบร้อยแล้ว");
+      setPayingProject(null);
       window.sessionStorage.removeItem(BUDGET_PROJECTS_CACHE_KEY);
       window.sessionStorage.removeItem(BUDGET_PAYMENTS_CACHE_KEY);
       await loadData({ background: true });
@@ -673,6 +682,8 @@ export default function BudgetPaymentsPage() {
           ? error.message
           : "เกิดข้อผิดพลาดระหว่างปิดโครงการ"
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -703,6 +714,12 @@ export default function BudgetPaymentsPage() {
       : 0;
   const payingNextPaid = payingCurrentSpent + (Number.isFinite(payingAmount) ? payingAmount : 0);
   const payingNextRemaining = payingBudget - payingNextPaid;
+  const canManuallyCompletePayingProject = Boolean(
+    payingProject &&
+      payingPaid > 0 &&
+      payingProject.status !== "เสร็จสิ้น" &&
+      (payingBudget <= 0 || payingPaid < payingBudget)
+  );
   const canPay = Boolean(
     currentUser?.canFinance || currentUser?.canManageAll
   );
@@ -1242,8 +1259,7 @@ export default function BudgetPaymentsPage() {
             <footer>
               <div className="footerLeft">
                 {canPay &&
-                  payingPaid > 0 &&
-                  payingProject.status !== "เสร็จสิ้น" && (
+                  canManuallyCompletePayingProject && (
                     <button
                       type="button"
                       className="completeButton"

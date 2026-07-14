@@ -57,6 +57,12 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Updated budget payment completion behavior:
+  - saving a payment now syncs the project status from active payment totals,
+  - projects are marked `เสร็จสิ้น` automatically when paid amount reaches or exceeds 100% of budget,
+  - the manual `สั่งเสร็จสิ้น` button remains available only when paid amount is still below budget,
+  - manual completion now shows `เสร็จสิ้นเรียบร้อยแล้ว` on screen and prevents duplicate clicks while saving,
+  - verified with `npm run build`.
 - Adjusted mobile daily attendance report recorder display:
   - shortened recorder names in the UI to first-name teacher labels such as `ครูพิมวิภา`,
   - reduced the mobile `% มาเรียน` column and widened the action/status column,

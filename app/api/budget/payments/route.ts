@@ -26,6 +26,13 @@ type GasResponse = {
   trashedFileIds?: string[];
 };
 
+type ProjectPaymentStatusSync = {
+  status: string;
+  autoCompleted: boolean;
+  budget: number;
+  paid: number;
+};
+
 const PAYMENT_SELECT = `
   id,
   project_id,
@@ -201,32 +208,67 @@ async function syncProjectPaymentStatus(
     await Promise.all([
       admin
         .from("budget_projects")
-        .select("id,status")
+        .select("id,status,approved_budget,budget_activities(id,approved_budget)")
         .eq("id", projectId)
         .maybeSingle(),
       admin
         .from("budget_payment_records")
-        .select("id")
+        .select("amount")
         .eq("project_id", projectId)
         .eq("status", "active"),
     ]);
 
   if (projectError) throw projectError;
   if (paymentError) throw paymentError;
-  if (!project) return;
+  if (!project) return null;
 
   const currentStatus = text(project.status);
   const hasActivePayments = (rows ?? []).length > 0;
+  const paid = (rows ?? []).reduce(
+    (sum: number, row: any) => sum + Number(row.amount || 0),
+    0
+  );
+  const activities = Array.isArray(project.budget_activities)
+    ? project.budget_activities
+    : [];
+  const activitiesBudget = activities.reduce(
+    (sum: number, activity: any) =>
+      sum + Number(activity.approved_budget || 0),
+    0
+  );
+  const budget =
+    activities.length > 0
+      ? activitiesBudget
+      : Number(project.approved_budget || 0);
 
-  if (currentStatus === "เสร็จสิ้น") return;
+  if (currentStatus === "เสร็จสิ้น") {
+    return {
+      status: currentStatus,
+      autoCompleted: false,
+      budget,
+      paid,
+    } satisfies ProjectPaymentStatusSync;
+  }
 
-  const nextStatus = hasActivePayments
-    ? "เบิกจ่าย"
-    : currentStatus === "เบิกจ่าย" || currentStatus === "กำลังเบิกจ่าย"
-      ? "กำลังดำเนินการ"
-      : currentStatus;
+  const nextStatus =
+    budget > 0 && paid >= budget
+      ? "เสร็จสิ้น"
+      : hasActivePayments
+        ? "เบิกจ่าย"
+        : currentStatus === "เบิกจ่าย" || currentStatus === "กำลังเบิกจ่าย"
+          ? "กำลังดำเนินการ"
+          : currentStatus;
 
-  if (nextStatus === currentStatus) return;
+  if (nextStatus === currentStatus) {
+    return {
+      status: currentStatus,
+      autoCompleted: false,
+      budget,
+      paid,
+    } satisfies ProjectPaymentStatusSync;
+  }
+
+  const autoCompleted = nextStatus === "เสร็จสิ้น";
 
   const { error } = await admin
     .from("budget_projects")
@@ -237,6 +279,13 @@ async function syncProjectPaymentStatus(
     .eq("id", projectId);
 
   if (error) throw error;
+
+  return {
+    status: nextStatus,
+    autoCompleted,
+    budget,
+    paid,
+  } satisfies ProjectPaymentStatusSync;
 }
 
 export async function GET(request: Request) {
@@ -532,7 +581,7 @@ export async function POST(request: Request) {
       attachment = savedAttachment;
     }
 
-    await syncProjectPaymentStatus(
+    const syncResult = await syncProjectPaymentStatus(
       auth.admin,
       payment.project_id,
       auth.profile.id
@@ -548,7 +597,11 @@ export async function POST(request: Request) {
         "",
         attachment
       ),
-      message: "บันทึกรายการเบิกจ่ายที่ Supabase แล้ว",
+      autoCompletedProject: Boolean(syncResult?.autoCompleted),
+      projectStatus: syncResult?.status ?? null,
+      message: syncResult?.autoCompleted
+        ? "บันทึกรายการเบิกจ่ายแล้ว และโครงการเสร็จสิ้นอัตโนมัติ"
+        : "บันทึกรายการเบิกจ่ายที่ Supabase แล้ว",
     });
   } catch (error) {
     console.error("Budget payments POST error:", error);
