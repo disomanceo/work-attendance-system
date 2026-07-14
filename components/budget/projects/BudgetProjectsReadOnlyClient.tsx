@@ -5344,6 +5344,165 @@ export default function BudgetProjectsReadOnlyClient() {
 }
 /* BUDGET_HEADER_HARMONIZED_THEME_END */
 
+/* BUDGET_PROJECTS_BLUE_GOVERNMENT_THEME_START */
+.projectsRoot,
+.projectsRoot.freeEducationTheme {
+  --budget-header-950: #0b1f4d;
+  --budget-header-900: #123b7a;
+  --budget-header-800: #1d4ed8;
+  --budget-header-700: #2563eb;
+  --budget-header-500: #3b82f6;
+  --budget-header-300: #93c5fd;
+  --budget-header-200: #bfdbfe;
+  --budget-header-100: #dbeafe;
+  --budget-header-50: #eff6ff;
+
+  color: #0f172a;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 32rem),
+    linear-gradient(180deg, #f8fbff 0%, #eff6ff 48%, #eaf2ff 100%);
+}
+
+.projectsRoot .pageTop,
+.projectsRoot.freeEducationTheme .pageTop,
+.projectsRoot .pageHeader,
+.projectsRoot.freeEducationTheme .pageHeader {
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.58);
+  border-left-color: var(--budget-header-500);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.2), transparent 34%),
+    linear-gradient(135deg, var(--budget-header-950) 0%, var(--budget-header-800) 54%, var(--budget-header-500) 100%);
+  box-shadow: 0 16px 36px rgba(29, 78, 216, 0.2);
+}
+
+.projectsRoot .pageTop h2,
+.projectsRoot .pageTop p,
+.projectsRoot .pageTop .lastLoadedAt,
+.projectsRoot.freeEducationTheme .pageTop h2,
+.projectsRoot.freeEducationTheme .pageTop p,
+.projectsRoot.freeEducationTheme .pageTop .lastLoadedAt {
+  color: inherit;
+}
+
+.projectsRoot .createProjectButton,
+.projectsRoot .refreshButton,
+.projectsRoot .startProjectButton,
+.projectsRoot .editProjectButton,
+.projectsRoot .saveEditorButton,
+.projectsRoot.freeEducationTheme .createProjectButton,
+.projectsRoot.freeEducationTheme .refreshButton,
+.projectsRoot.freeEducationTheme .startProjectButton,
+.projectsRoot.freeEducationTheme .editProjectButton,
+.projectsRoot.freeEducationTheme .saveEditorButton {
+  color: #ffffff;
+  border-color: var(--budget-header-700);
+  background: linear-gradient(135deg, var(--budget-header-800), var(--budget-header-500));
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+
+.projectsRoot .createProjectButton:hover,
+.projectsRoot .refreshButton:hover,
+.projectsRoot .startProjectButton:hover,
+.projectsRoot .editProjectButton:hover,
+.projectsRoot .saveEditorButton:hover,
+.projectsRoot.freeEducationTheme .createProjectButton:hover,
+.projectsRoot.freeEducationTheme .refreshButton:hover,
+.projectsRoot.freeEducationTheme .startProjectButton:hover,
+.projectsRoot.freeEducationTheme .editProjectButton:hover,
+.projectsRoot.freeEducationTheme .saveEditorButton:hover {
+  background: linear-gradient(135deg, var(--budget-header-950), var(--budget-header-700));
+}
+
+.projectsRoot .budgetTypeTabs,
+.projectsRoot.freeEducationTheme .budgetTypeTabs {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: #dbeafe;
+}
+
+.projectsRoot .budgetTypeTabs button,
+.projectsRoot.freeEducationTheme .budgetTypeTabs button {
+  color: var(--budget-header-900);
+}
+
+.projectsRoot .budgetTypeTabs button.active,
+.projectsRoot.freeEducationTheme .budgetTypeTabs button.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--budget-header-900), var(--budget-header-700));
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+}
+
+.projectsRoot .summaryGrid article,
+.projectsRoot .filterCard,
+.projectsRoot .dataCard,
+.projectsRoot .projectCard,
+.projectsRoot .projectEditor,
+.projectsRoot .activityPanel,
+.projectsRoot .activityItem,
+.projectsRoot.freeEducationTheme .summaryGrid article,
+.projectsRoot.freeEducationTheme .filterCard,
+.projectsRoot.freeEducationTheme .dataCard,
+.projectsRoot.freeEducationTheme .projectCard,
+.projectsRoot.freeEducationTheme .projectEditor,
+.projectsRoot.freeEducationTheme .activityPanel,
+.projectsRoot.freeEducationTheme .activityItem {
+  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(30, 64, 175, 0.09);
+}
+
+.projectsRoot .columnHeader,
+.projectsRoot.freeEducationTheme .columnHeader,
+.projectsRoot .editorHeader,
+.projectsRoot.freeEducationTheme .editorHeader {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--budget-header-900), var(--budget-header-700));
+}
+
+.projectsRoot .summaryGrid article span,
+.projectsRoot .summaryGrid article small,
+.projectsRoot.freeEducationTheme .summaryGrid article span,
+.projectsRoot.freeEducationTheme .summaryGrid article small {
+  color: var(--budget-header-800);
+}
+
+.projectsRoot .summaryGrid article strong,
+.projectsRoot .projectMain b,
+.projectsRoot .projectText b,
+.projectsRoot .ownerCell b,
+.projectsRoot .leadCell b,
+.projectsRoot .amountCell b,
+.projectsRoot .activityTitle b,
+.projectsRoot.freeEducationTheme .summaryGrid article strong,
+.projectsRoot.freeEducationTheme .projectMain b,
+.projectsRoot.freeEducationTheme .projectText b,
+.projectsRoot.freeEducationTheme .ownerCell b,
+.projectsRoot.freeEducationTheme .leadCell b,
+.projectsRoot.freeEducationTheme .amountCell b,
+.projectsRoot.freeEducationTheme .activityTitle b {
+  color: #0b1f4d;
+}
+
+.projectsRoot input:focus,
+.projectsRoot select:focus,
+.projectsRoot textarea:focus,
+.projectsRoot.freeEducationTheme input:focus,
+.projectsRoot.freeEducationTheme select:focus,
+.projectsRoot.freeEducationTheme textarea:focus {
+  border-color: var(--budget-header-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+}
+
+.projectsRoot .progressFill,
+.projectsRoot .activityProgressFill,
+.projectsRoot .timelineConnectorFlow,
+.projectsRoot.freeEducationTheme .progressFill,
+.projectsRoot.freeEducationTheme .activityProgressFill,
+.projectsRoot.freeEducationTheme .timelineConnectorFlow {
+  background: linear-gradient(90deg, var(--budget-header-800), #60a5fa);
+}
+/* BUDGET_PROJECTS_BLUE_GOVERNMENT_THEME_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}</style>
     </div>

@@ -3180,6 +3180,241 @@ export default function BudgetPaymentsPage() {
 }
 /* PAYMENTS_HEADER_HARMONIZED_THEME_END */
 
+/* BUDGET_PAYMENTS_AMBER_THEME_START */
+.paymentsPage,
+.paymentsPage.freeEducationTheme {
+  --neo-950: #431407;
+  --neo-900: #7c2d12;
+  --neo-800: #9a3412;
+  --neo-700: #c2410c;
+  --neo-600: #ea580c;
+  --neo-500: #f97316;
+  --neo-400: #fb923c;
+  --neo-300: #fdba74;
+  --neo-200: #fed7aa;
+  --neo-100: #ffedd5;
+  --neo-50: #fff7ed;
+
+  color: #1f2937;
+  background:
+    radial-gradient(circle at top right, rgba(251, 146, 60, 0.2), transparent 34rem),
+    linear-gradient(180deg, #fffaf2 0%, #fff7ed 48%, #ffedd5 100%);
+}
+
+.paymentsPage .pageHeader,
+.paymentsPage.freeEducationTheme .pageHeader,
+.paymentsPage.freeEducationTheme .pageTop {
+  color: #ffffff;
+  border-color: rgba(253, 186, 116, 0.62);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 34%),
+    linear-gradient(135deg, #7c2d12 0%, #c2410c 56%, #f59e0b 100%);
+  box-shadow: 0 16px 36px rgba(194, 65, 12, 0.2);
+}
+
+.paymentsPage .pageHeader h1,
+.paymentsPage .pageHeader p,
+.paymentsPage .pageHeader small,
+.paymentsPage.freeEducationTheme .pageHeader h1,
+.paymentsPage.freeEducationTheme .pageHeader p,
+.paymentsPage.freeEducationTheme .pageHeader small {
+  color: inherit;
+}
+
+.paymentsPage .reloadButton,
+.paymentsPage .payButton,
+.paymentsPage .paymentModal footer button[type="submit"],
+.paymentsPage.freeEducationTheme .reloadButton,
+.paymentsPage.freeEducationTheme .payButton,
+.paymentsPage.freeEducationTheme .paymentModal footer button[type="submit"] {
+  color: #ffffff;
+  border-color: var(--neo-700);
+  background: linear-gradient(135deg, var(--neo-700), #f59e0b);
+  box-shadow: 0 8px 18px rgba(194, 65, 12, 0.22);
+}
+
+.paymentsPage .reloadButton:hover,
+.paymentsPage .payButton:hover,
+.paymentsPage .paymentModal footer button[type="submit"]:hover,
+.paymentsPage.freeEducationTheme .reloadButton:hover,
+.paymentsPage.freeEducationTheme .payButton:hover,
+.paymentsPage.freeEducationTheme .paymentModal footer button[type="submit"]:hover {
+  background: linear-gradient(135deg, var(--neo-900), var(--neo-600));
+}
+
+.paymentsPage .budgetTypeTabs,
+.paymentsPage.freeEducationTheme .budgetTypeTabs {
+  border-color: rgba(234, 88, 12, 0.24);
+  background: #ffedd5;
+}
+
+.paymentsPage .budgetTypeTabs button,
+.paymentsPage.freeEducationTheme .budgetTypeTabs button {
+  color: var(--neo-900);
+}
+
+.paymentsPage .budgetTypeTabs button.active,
+.paymentsPage.freeEducationTheme .budgetTypeTabs button.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--neo-900), var(--neo-600));
+  box-shadow: 0 8px 18px rgba(194, 65, 12, 0.24);
+}
+
+.paymentsPage .summaryGrid article,
+.paymentsPage .projectPanel,
+.paymentsPage .projectCard,
+.paymentsPage .historyPanel,
+.paymentsPage .paymentModal,
+.paymentsPage .paymentPreview article,
+.paymentsPage .installmentHistory,
+.paymentsPage .historyItem,
+.paymentsPage .installmentItem,
+.paymentsPage.freeEducationTheme .summaryGrid article,
+.paymentsPage.freeEducationTheme .projectPanel,
+.paymentsPage.freeEducationTheme .projectCard,
+.paymentsPage.freeEducationTheme .historyPanel,
+.paymentsPage.freeEducationTheme .paymentModal,
+.paymentsPage.freeEducationTheme .paymentPreview article,
+.paymentsPage.freeEducationTheme .installmentHistory,
+.paymentsPage.freeEducationTheme .historyItem,
+.paymentsPage.freeEducationTheme .installmentItem {
+  border-color: rgba(234, 88, 12, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(154, 52, 18, 0.09);
+}
+
+.paymentsPage .summaryGrid article,
+.paymentsPage .paymentPreview article,
+.paymentsPage.freeEducationTheme .summaryGrid article,
+.paymentsPage.freeEducationTheme .paymentPreview article {
+  background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+}
+
+.paymentsPage .summaryGrid span,
+.paymentsPage .summaryGrid small,
+.paymentsPage .panelTop p,
+.paymentsPage .projectName small,
+.paymentsPage .historyDate small,
+.paymentsPage .historyDetails small,
+.paymentsPage .historyAmount small,
+.paymentsPage.freeEducationTheme .summaryGrid span,
+.paymentsPage.freeEducationTheme .summaryGrid small,
+.paymentsPage.freeEducationTheme .panelTop p,
+.paymentsPage.freeEducationTheme .projectName small,
+.paymentsPage.freeEducationTheme .historyDate small,
+.paymentsPage.freeEducationTheme .historyDetails small,
+.paymentsPage.freeEducationTheme .historyAmount small {
+  color: var(--neo-800);
+}
+
+.paymentsPage .summaryGrid strong,
+.paymentsPage .panelTop h2,
+.paymentsPage .projectName strong,
+.paymentsPage .historyHeader h3,
+.paymentsPage .paymentModal h2,
+.paymentsPage .installmentHistoryHeader h3,
+.paymentsPage.freeEducationTheme .summaryGrid strong,
+.paymentsPage.freeEducationTheme .panelTop h2,
+.paymentsPage.freeEducationTheme .projectName strong,
+.paymentsPage.freeEducationTheme .historyHeader h3,
+.paymentsPage.freeEducationTheme .paymentModal h2,
+.paymentsPage.freeEducationTheme .installmentHistoryHeader h3 {
+  color: #431407;
+}
+
+.paymentsPage .filterBar input,
+.paymentsPage .filterBar select,
+.paymentsPage .formGrid input,
+.paymentsPage .formGrid select,
+.paymentsPage .formGrid textarea,
+.paymentsPage .evidenceField,
+.paymentsPage.freeEducationTheme .filterBar input,
+.paymentsPage.freeEducationTheme .filterBar select,
+.paymentsPage.freeEducationTheme .formGrid input,
+.paymentsPage.freeEducationTheme .formGrid select,
+.paymentsPage.freeEducationTheme .formGrid textarea,
+.paymentsPage.freeEducationTheme .evidenceField {
+  color: #431407;
+  border-color: var(--neo-300);
+  background: #fffaf2;
+}
+
+.paymentsPage .filterBar input:focus,
+.paymentsPage .filterBar select:focus,
+.paymentsPage .formGrid input:focus,
+.paymentsPage .formGrid select:focus,
+.paymentsPage .formGrid textarea:focus,
+.paymentsPage.freeEducationTheme .filterBar input:focus,
+.paymentsPage.freeEducationTheme .filterBar select:focus,
+.paymentsPage.freeEducationTheme .formGrid input:focus,
+.paymentsPage.freeEducationTheme .formGrid select:focus,
+.paymentsPage.freeEducationTheme .formGrid textarea:focus {
+  border-color: var(--neo-500);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18);
+  outline: none;
+}
+
+.paymentsPage .tableHeader,
+.paymentsPage .historyHeader,
+.paymentsPage .installmentHistoryHeader,
+.paymentsPage .paymentModal > header,
+.paymentsPage.freeEducationTheme .tableHeader,
+.paymentsPage.freeEducationTheme .historyHeader,
+.paymentsPage.freeEducationTheme .installmentHistoryHeader,
+.paymentsPage.freeEducationTheme .paymentModal > header {
+  color: #431407;
+  border-color: var(--neo-200);
+  background: linear-gradient(180deg, #ffedd5, #fed7aa);
+}
+
+.paymentsPage .projectCard:hover,
+.paymentsPage.freeEducationTheme .projectCard:hover {
+  border-color: var(--neo-400);
+  box-shadow: 0 14px 30px rgba(154, 52, 18, 0.14);
+}
+
+.paymentsPage .projectCardHighlighted,
+.paymentsPage.freeEducationTheme .projectCardHighlighted {
+  border-color: var(--neo-500);
+  background: linear-gradient(180deg, #fffaf2 0%, #ffedd5 100%);
+  box-shadow:
+    0 0 0 2px rgba(249, 115, 22, 0.16),
+    0 16px 34px rgba(154, 52, 18, 0.14);
+}
+
+.paymentsPage .historyButton,
+.paymentsPage .paymentModal > header button,
+.paymentsPage.freeEducationTheme .historyButton,
+.paymentsPage.freeEducationTheme .paymentModal > header button {
+  color: var(--neo-900);
+  border-color: var(--neo-300);
+  background: #ffedd5;
+}
+
+.paymentsPage .historyButton:hover,
+.paymentsPage .paymentModal > header button:hover,
+.paymentsPage.freeEducationTheme .historyButton:hover,
+.paymentsPage.freeEducationTheme .paymentModal > header button:hover {
+  border-color: var(--neo-500);
+  background: #fed7aa;
+}
+
+.paymentsPage .modalBackdrop,
+.paymentsPage.freeEducationTheme .modalBackdrop {
+  background: rgba(67, 20, 7, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.paymentsPage .progressFill,
+.paymentsPage .activityProgressFill,
+.paymentsPage .timelineConnectorFlow,
+.paymentsPage.freeEducationTheme .progressFill,
+.paymentsPage.freeEducationTheme .activityProgressFill,
+.paymentsPage.freeEducationTheme .timelineConnectorFlow {
+  background: linear-gradient(90deg, var(--neo-700), #f59e0b);
+}
+/* BUDGET_PAYMENTS_AMBER_THEME_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}
 

@@ -57,6 +57,10 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Updated budget section themes:
+  - `/budget/projects` now uses a blue government-style theme for both project/activity and free-education views,
+  - `/budget/payments` now uses an amber/orange payment theme for both project/activity and free-education views,
+  - verified with `npm run build`.
 - Updated `/budget/payments` responsive layout:
   - tightened the tablet breakpoint to prevent iPad/iOS horizontal overflow,
   - compacted project rows, action buttons, history rows, filters, and payment modal sizing for 761-1180px screens,
