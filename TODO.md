@@ -57,6 +57,14 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Updated the daily student attendance report mobile workflow:
+  - unchecked classes now show `-` for present, absent, leave, and attendance percent instead of defaulting to present counts,
+  - the action column links eligible users directly to the selected class/date attendance page,
+  - users without record permission see a non-action status indicator,
+  - the report defaults to the current Bangkok date and refreshes automatically without a show-report button,
+  - report dates now display in the short Thai format such as `วันอังคารที่ 14 ก.ค. 2569`,
+  - mobile report text was enlarged and the CSS rule that hid the action link was replaced with a tappable icon,
+  - verified with `npm run build`.
 - Updated budget payment completion behavior:
   - saving a payment now syncs the project status from active payment totals,
   - projects are marked `เสร็จสิ้น` automatically when paid amount reaches or exceeds 100% of budget,

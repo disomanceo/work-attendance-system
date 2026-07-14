@@ -29,9 +29,16 @@
   line-height: 1.2;
 }
 
+.header p {
+  margin: 3px 0 0;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 800;
+}
+
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   align-items: end;
   margin-top: 8px;
@@ -56,8 +63,7 @@
 }
 
 .filters input,
-.filters select,
-.filters button {
+.filters select {
   width: 100%;
   height: 48px;
   border-radius: 8px;
@@ -81,19 +87,6 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
-.filters button {
-  grid-column: 4;
-  justify-self: end;
-  min-width: 164px;
-  border: 0;
-  background: #2563eb;
-  color: #ffffff;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 0 12px 22px rgba(37, 99, 235, 0.22);
-}
-
-.filters button:disabled,
 .footer button:disabled {
   cursor: wait;
   opacity: 0.6;
@@ -411,6 +404,15 @@
   white-space: nowrap;
 }
 
+.notChecked small {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .mobileCards {
   display: none;
 }
@@ -466,8 +468,12 @@
   }
 
   .header h1 {
-    font-size: 19px;
+    font-size: 21px;
     line-height: 1.15;
+  }
+
+  .header p {
+    font-size: 12px;
   }
 
   .filters {
@@ -479,33 +485,19 @@
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
   }
 
-  .filters label:nth-of-type(2) {
-    display: none;
-  }
-
   .filters span {
     margin-bottom: 2px;
-    font-size: 8px;
+    font-size: 9.5px;
     line-height: 1;
   }
 
   .filters input,
   .filters select {
-    height: 27px;
+    height: 30px;
     border-radius: 6px;
-    padding: 0 3px;
-    font-size: 8px;
-    line-height: 1;
-  }
-
-  .filters button {
-    grid-column: 1 / -1;
-    width: 100%;
-    min-width: 0;
-    height: 29px;
-    border-radius: 7px;
+    padding: 0 4px;
     font-size: 10px;
-    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.18);
+    line-height: 1;
   }
 
   .summaryScroller {
@@ -527,7 +519,7 @@
     height: 30px;
     border-radius: 999px;
     padding: 0 3px;
-    font-size: 7.5px;
+    font-size: 8.5px;
   }
 
   .summaryLine {
@@ -541,7 +533,7 @@
 
   .summaryLabel {
     overflow: visible;
-    font-size: 8px;
+    font-size: 9.2px;
     letter-spacing: 0;
     text-overflow: clip;
     white-space: nowrap;
@@ -549,11 +541,11 @@
 
   .summaryValue {
     flex: 0 0 auto;
-    font-size: 8.4px;
+    font-size: 9.4px;
   }
 
   .summaryValue small {
-    font-size: 6.8px;
+    font-size: 7.6px;
   }
 
   .reportCard {
@@ -567,12 +559,12 @@
   }
 
   .reportHeader h2 {
-    font-size: 15px;
+    font-size: 16.5px;
   }
 
   .reportHeader p {
     margin-top: 2px;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .desktopTable {
@@ -590,7 +582,7 @@
   .desktopTable th,
   .desktopTable td {
     padding: 5px 1px;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.08;
     overflow-wrap: anywhere;
   }
@@ -633,7 +625,7 @@
   }
 
   .progressCell strong {
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .checked {
@@ -643,7 +635,7 @@
     height: auto;
     border-radius: 6px;
     padding: 3px 4px;
-    font-size: 8.5px;
+    font-size: 9.2px;
   }
 
   .checked::before {
@@ -651,28 +643,41 @@
   }
 
   .checked small {
-    font-size: 7.2px;
+    font-size: 8px;
     line-height: 1.05;
     white-space: nowrap;
   }
 
-  .notChecked span,
-  .notChecked a {
+  .notChecked span {
     display: none;
   }
 
-  .notChecked::before {
-    content: "!";
+  .notChecked {
+    gap: 2px;
+  }
+
+  .notChecked a,
+  .notChecked small {
     display: grid;
     width: 20px;
     height: 20px;
+    min-height: 20px;
     place-items: center;
     border: 1px solid #fecaca;
     border-radius: 6px;
     background: #fff1f2;
     color: #dc2626;
-    font-size: 10px;
+    padding: 0;
+    font-size: 0;
     font-weight: 950;
+    text-decoration: none;
+  }
+
+  .notChecked a::before,
+  .notChecked small::before {
+    content: "!";
+    font-size: 11px;
+    line-height: 1;
   }
 
   .reportMeta {
@@ -703,7 +708,7 @@
   .desktopTable th,
   .desktopTable td {
     padding: 4px 1px;
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .progressTrack {

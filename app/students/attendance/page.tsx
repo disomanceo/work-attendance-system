@@ -118,6 +118,7 @@ export default function StudentAttendancePage() {
   const supabase = useMemo(() => createClient(), []);
   const [date, setDate] = useState(todayInputValue());
   const [classLevel, setClassLevel] = useState<string>(STUDENT_CLASS_LEVELS[0] ?? "อนุบาล 2");
+  const [urlSelectionReady, setUrlSelectionReady] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [classSettings, setClassSettings] = useState<ClassSetting[]>([]);
   const [students, setStudents] = useState<AttendanceStudent[]>([]);
@@ -174,6 +175,22 @@ export default function StudentAttendancePage() {
   }, [currentClassSetting, profileMap]);
 
   const visibleAdviserNames = adviserNames.length > 0 ? adviserNames : automaticAdviserNames;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryDate = params.get("date") || "";
+    const queryClassLevel = params.get("classLevel") || "";
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(queryDate)) {
+      setDate(queryDate);
+    }
+
+    if ((STUDENT_CLASS_LEVELS as readonly string[]).includes(queryClassLevel)) {
+      setClassLevel(queryClassLevel);
+    }
+
+    setUrlSelectionReady(true);
+  }, []);
 
   useEffect(() => {
     const key = "student-adviser-profile-image-cache-v1";
@@ -291,6 +308,8 @@ export default function StudentAttendancePage() {
   }, [classLevel, date, fetchJson]);
 
   useEffect(() => {
+    if (!urlSelectionReady) return;
+
     let alive = true;
     setLoading(true);
     setMessage("");
@@ -307,7 +326,7 @@ export default function StudentAttendancePage() {
     return () => {
       alive = false;
     };
-  }, [loadAttendance, loadSettings, loadWorkCalendarDay]);
+  }, [loadAttendance, loadSettings, loadWorkCalendarDay, urlSelectionReady]);
 
   function updateStatus(studentId: string, status: AttendanceStatus) {
     setAttendanceSaved(false);

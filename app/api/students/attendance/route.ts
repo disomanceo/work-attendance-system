@@ -305,6 +305,7 @@ export async function GET(request: Request) {
     classLevel,
     classRoom,
     adviserNames,
+    canRecord: canRecordAttendance(access, classLevel, date),
     recordedCount: records?.length ?? 0,
     recordedByName,
     students: (students ?? []).map((student: any, index: number) => {

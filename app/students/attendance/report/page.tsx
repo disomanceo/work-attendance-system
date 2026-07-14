@@ -18,6 +18,7 @@ type AttendanceResponse = {
   students?: AttendanceStudent[];
   recordedCount?: number;
   recordedByName?: string;
+  canRecord?: boolean;
   message?: string;
   error?: string;
 };
@@ -30,6 +31,7 @@ type ClassReport = {
   leave: number;
   checked: boolean;
   recordedByName: string;
+  canRecord: boolean;
 };
 
 const SEMESTERS = ["ภาคเรียนที่ 1 / 2569", "ภาคเรียนที่ 2 / 2569"];
@@ -44,19 +46,19 @@ const THAI_WEEKDAYS = [
   "วันเสาร์",
 ];
 
-const THAI_MONTHS = [
-  "มกราคม",
-  "กุมภาพันธ์",
-  "มีนาคม",
-  "เมษายน",
-  "พฤษภาคม",
-  "มิถุนายน",
-  "กรกฎาคม",
-  "สิงหาคม",
-  "กันยายน",
-  "ตุลาคม",
-  "พฤศจิกายน",
-  "ธันวาคม",
+const THAI_MONTHS_SHORT = [
+  "ม.ค.",
+  "ก.พ.",
+  "มี.ค.",
+  "เม.ย.",
+  "พ.ค.",
+  "มิ.ย.",
+  "ก.ค.",
+  "ส.ค.",
+  "ก.ย.",
+  "ต.ค.",
+  "พ.ย.",
+  "ธ.ค.",
 ];
 
 function todayInputValue() {
@@ -75,13 +77,9 @@ function parseIsoDate(value: string) {
   return new Date(year, month - 1, day);
 }
 
-function thaiDayName(value: string) {
-  return THAI_WEEKDAYS[parseIsoDate(value).getDay()] ?? "-";
-}
-
-function formatThaiLongDate(value: string) {
+function formatThaiShortDate(value: string) {
   const date = parseIsoDate(value);
-  return `${THAI_WEEKDAYS[date.getDay()]}ที่ ${date.getDate()} ${THAI_MONTHS[date.getMonth()]} ${date.getFullYear() + 543}`;
+  return `${THAI_WEEKDAYS[date.getDay()]}ที่ ${date.getDate()} ${THAI_MONTHS_SHORT[date.getMonth()]} ${date.getFullYear() + 543}`;
 }
 
 function percent(value: number, total: number) {
@@ -95,6 +93,14 @@ function formatPercent(value: number) {
 
 function formatThaiPercent(value: number) {
   return `ร้อยละ ${value.toFixed(2)}`;
+}
+
+function attendanceLink(report: ClassReport, date: string) {
+  const params = new URLSearchParams({
+    date,
+    classLevel: report.classLevel,
+  });
+  return `/students/attendance?${params.toString()}`;
 }
 
 function normalizeStatus(value: unknown): "present" | "leave" | "absent" {
@@ -115,6 +121,7 @@ function shortTeacherName(value: string) {
 
 function buildReport(classLevel: string, data: AttendanceResponse): ClassReport {
   const students = data.students ?? [];
+  const checked = (data.recordedCount ?? 0) > 0;
   const counts = students.reduce(
     (result, student) => {
       result[normalizeStatus(student.status)] += 1;
@@ -126,11 +133,12 @@ function buildReport(classLevel: string, data: AttendanceResponse): ClassReport 
   return {
     classLevel,
     total: students.length,
-    present: counts.present,
-    absent: counts.absent,
-    leave: counts.leave,
-    checked: (data.recordedCount ?? 0) > 0,
+    present: checked ? counts.present : 0,
+    absent: checked ? counts.absent : 0,
+    leave: checked ? counts.leave : 0,
+    checked,
     recordedByName: data.recordedByName ?? "",
+    canRecord: Boolean(data.canRecord),
   };
 }
 
@@ -268,6 +276,7 @@ export default function StudentDailyReportPage() {
         <header className={styles.header}>
           <div>
             <h1>📅 รายงานการมาเรียนประจำวัน</h1>
+            <p>{formatThaiShortDate(date)}</p>
           </div>
         </header>
 
@@ -275,10 +284,6 @@ export default function StudentDailyReportPage() {
           <label>
             <span>วันที่</span>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-          </label>
-          <label>
-            <span>วัน</span>
-            <input value={thaiDayName(date)} readOnly />
           </label>
           <label>
             <span>ภาคเรียน</span>
@@ -297,9 +302,6 @@ export default function StudentDailyReportPage() {
               ))}
             </select>
           </label>
-          <button type="button" onClick={() => void loadReport()} disabled={loading}>
-            {loading ? "กำลังโหลด..." : "แสดงรายงาน"}
-          </button>
         </section>
 
         {message ? <div className={styles.message}>{message}</div> : null}
@@ -322,7 +324,7 @@ export default function StudentDailyReportPage() {
           <div className={styles.reportHeader}>
             <div>
               <h2>ตารางสรุปรายชั้น</h2>
-              <p>{formatThaiLongDate(date)} · {semester}</p>
+              <p>{formatThaiShortDate(date)} · {semester}</p>
             </div>
           </div>
 
@@ -346,19 +348,23 @@ export default function StudentDailyReportPage() {
                   <tr><td colSpan={7}>ไม่พบข้อมูลรายงาน</td></tr>
                 ) : reports.map((report) => {
                   const presentPercent = percent(report.present, report.total);
+                  const presentText = report.checked ? String(report.present) : "-";
+                  const absentText = report.checked ? String(report.absent) : "-";
+                  const leaveText = report.checked ? String(report.leave) : "-";
+                  const percentText = report.checked ? formatPercent(presentPercent) : "-";
                   return (
                     <tr key={report.classLevel}>
                       <td><strong>{report.classLevel}</strong></td>
                       <td>{report.total}</td>
-                      <td>{report.present}</td>
-                      <td>{report.absent}</td>
-                      <td>{report.leave}</td>
+                      <td>{presentText}</td>
+                      <td>{absentText}</td>
+                      <td>{leaveText}</td>
                       <td>
                         <div className={styles.progressCell}>
                           <span className={styles.progressTrack}>
-                            <span style={{ width: `${presentPercent}%` }} />
+                            <span style={{ width: report.checked ? `${presentPercent}%` : "0%" }} />
                           </span>
-                          <strong>{formatPercent(presentPercent)}</strong>
+                          <strong>{percentText}</strong>
                         </div>
                       </td>
                       <td>
@@ -371,8 +377,12 @@ export default function StudentDailyReportPage() {
                           </span>
                         ) : (
                           <div className={styles.notChecked}>
-                            <span>● ยังไม่ได้เช็ค</span>
-                            <Link href="/students/attendance">ไปเช็คชื่อ</Link>
+                            <span>● ยังไม่ได้ลงเวลา</span>
+                            {report.canRecord ? (
+                              <Link href={attendanceLink(report, date)} aria-label={`ไปเช็คชื่อ ${report.classLevel}`}>ไปเช็คชื่อ</Link>
+                            ) : (
+                              <small>ไม่มีสิทธิ์</small>
+                            )}
                           </div>
                         )}
                       </td>
@@ -410,18 +420,22 @@ export default function StudentDailyReportPage() {
               <div className={styles.mobileState}>ไม่พบข้อมูลรายงาน</div>
             ) : reports.map((report) => {
               const presentPercent = percent(report.present, report.total);
+              const presentText = report.checked ? String(report.present) : "-";
+              const absentText = report.checked ? String(report.absent) : "-";
+              const leaveText = report.checked ? String(report.leave) : "-";
+              const percentText = report.checked ? formatPercent(presentPercent) : "-";
               return (
                 <article key={report.classLevel} className={styles.classCard}>
                   <h3>{report.classLevel}</h3>
                   <dl>
                     <div><dt>นักเรียนทั้งหมด</dt><dd>{report.total}</dd></div>
-                    <div><dt>มาเรียน</dt><dd>{report.present}</dd></div>
-                    <div><dt>ขาดเรียน</dt><dd>{report.absent}</dd></div>
-                    <div><dt>ลา</dt><dd>{report.leave}</dd></div>
+                    <div><dt>มาเรียน</dt><dd>{presentText}</dd></div>
+                    <div><dt>ขาดเรียน</dt><dd>{absentText}</dd></div>
+                    <div><dt>ลา</dt><dd>{leaveText}</dd></div>
                   </dl>
                   <div className={styles.mobileProgress}>
-                    <span><i style={{ width: `${presentPercent}%` }} /></span>
-                    <strong>{formatPercent(presentPercent)}</strong>
+                    <span><i style={{ width: report.checked ? `${presentPercent}%` : "0%" }} /></span>
+                    <strong>{percentText}</strong>
                   </div>
                   {report.checked ? (
                     <p className={styles.mobileChecked}>
@@ -432,8 +446,12 @@ export default function StudentDailyReportPage() {
                     </p>
                   ) : (
                     <div className={styles.mobileNotChecked}>
-                      <p>● ยังไม่ได้เช็ค</p>
-                      <Link href="/students/attendance">ไปเช็คชื่อ</Link>
+                      <p>● ยังไม่ได้ลงเวลา</p>
+                      {report.canRecord ? (
+                        <Link href={attendanceLink(report, date)}>ไปเช็คชื่อ</Link>
+                      ) : (
+                        <small>ไม่มีสิทธิ์</small>
+                      )}
                     </div>
                   )}
                 </article>
