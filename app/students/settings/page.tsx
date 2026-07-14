@@ -8,7 +8,14 @@ import {
   STUDENT_WORK_PERMISSION_LABELS,
 } from "@/lib/students/settings";
 
-type Profile = { id: string; full_name: string | null; phone?: string | null };
+type Profile = {
+  id: string;
+  full_name: string | null;
+  phone?: string | null;
+  role?: string | null;
+  position?: string | null;
+  departments?: string[] | null;
+};
 type ClassSetting = {
   id?: string;
   class_level: string;
@@ -83,6 +90,46 @@ function teacherChipName(profile?: Profile) {
   const firstName = cleanName.split(/\s+/)[0] || cleanName;
   return `ครู${firstName}`;
 }
+function hasDepartment(profile: Profile | undefined, department: string) {
+  return Array.isArray(profile?.departments) && profile.departments.includes(department);
+}
+function isStudentAdminProfile(profile: Profile | undefined) {
+  const role = String(profile?.role ?? "").trim().toLowerCase();
+  return (
+    role === "admin" ||
+    role === "director" ||
+    role === "staff" ||
+    hasDepartment(profile, "personnel_administration")
+  );
+}
+function hasWorkPermission(permissions: WorkPermission[], profileId: string, permissionKey: string) {
+  return permissions.some((item) => item.profile_id === profileId && item.permission_key === permissionKey);
+}
+function editorNames(profiles: Profile[], permissions: WorkPermission[], mode: "duty" | "advisers" | "calendar") {
+  return profiles
+    .filter((profile) => {
+      if (mode === "calendar") {
+        return isStudentAdminProfile(profile) || hasDepartment(profile, "academic_administration");
+      }
+
+      return (
+        isStudentAdminProfile(profile) ||
+        hasWorkPermission(permissions, profile.id, STUDENT_WORK_PERMISSION_KEYS.studentSettingsManager) ||
+        hasWorkPermission(
+          permissions,
+          profile.id,
+          mode === "duty"
+            ? STUDENT_WORK_PERMISSION_KEYS.dutyRosterManager
+            : STUDENT_WORK_PERMISSION_KEYS.classAdviser,
+        )
+      );
+    })
+    .map((profile) => displayName(profile))
+    .filter((name) => name && name !== "-");
+}
+function editorSummary(names: string[], fallback: string) {
+  return names.length > 0 ? names.join(", ") : fallback;
+}
 function emptyClassSettings(): ClassSetting[] {
   return STUDENT_CLASS_LEVELS.map((level) => ({ class_level: level, class_room: "", adviser_profile_id: null, adviser_profile_ids: [] }));
 }
@@ -138,6 +185,9 @@ export default function StudentClassroomSettingsPage() {
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
   const months = useMemo(() => academicMonths(academicYear), [academicYear]);
   const selectedPermissions = useMemo(() => workPermissions.filter((item) => item.profile_id === selectedProfileId), [workPermissions, selectedProfileId]);
+  const dutyEditorNames = useMemo(() => editorNames(profiles, workPermissions, "duty"), [profiles, workPermissions]);
+  const adviserEditorNames = useMemo(() => editorNames(profiles, workPermissions, "advisers"), [profiles, workPermissions]);
+  const calendarEditorNames = useMemo(() => editorNames(profiles, workPermissions, "calendar"), [profiles, workPermissions]);
   const visibleTabs = useMemo(() => {
     const canManageAll = Boolean(access?.isAdmin || access?.canManageStudentSettings);
     return TABS.filter((tab) => {
@@ -249,6 +299,7 @@ export default function StudentClassroomSettingsPage() {
 
   async function saveClassSettings() {
     setSaving("class");
+    setMessage("");
     try {
       await fetchJson("/api/students/settings", { method: "POST", body: JSON.stringify({ type: "class-settings", rows: classSettings }) });
       setMessage("บันทึกครูประจำชั้นแล้ว");
@@ -371,6 +422,7 @@ export default function StudentClassroomSettingsPage() {
 
   async function saveDutyRoster(nextRows = dutyRoster) {
     setSaving("duty");
+    setMessage("");
     try {
       await fetchJson("/api/students/settings", { method: "POST", body: JSON.stringify({ type: "duty-roster", rows: nextRows }) });
       setDutyRoster(nextRows);
@@ -386,7 +438,8 @@ export default function StudentClassroomSettingsPage() {
     if (!selectedDutyProfileId) return;
     const exists = dutyRoster.some((item) => item.weekday === selectedDutyWeekday && item.profile_id === selectedDutyProfileId);
     if (exists) return;
-    void saveDutyRoster([...dutyRoster, { weekday: selectedDutyWeekday, profile_id: selectedDutyProfileId }]);
+    setDutyRoster((current) => [...current, { weekday: selectedDutyWeekday, profile_id: selectedDutyProfileId }]);
+    setMessage("เพิ่มครูเวรแล้ว กรุณากดบันทึก");
   }
 
   return (
@@ -395,7 +448,11 @@ export default function StudentClassroomSettingsPage() {
         <header className="rounded-[24px] border border-orange-100 bg-white/85 px-3 py-3 shadow-sm">
           <div className="flex items-center justify-between gap-2">
             <h1 className="text-[19px] font-semibold leading-tight text-orange-800">ตั้งค่าห้องเรียน</h1>
-            {activeTab === "advisers" ? (
+            {activeTab === "duty" ? (
+              <button type="button" onClick={() => void saveDutyRoster()} disabled={saving === "duty"} className="h-8 shrink-0 rounded-xl bg-orange-500 px-3 text-[12px] font-medium text-white disabled:opacity-50">
+                {saving === "duty" ? "กำลังบันทึก..." : "บันทึก"}
+              </button>
+            ) : activeTab === "advisers" ? (
               <button type="button" onClick={() => void saveClassSettings()} disabled={saving === "class"} className="h-8 shrink-0 rounded-xl bg-orange-500 px-3 text-[12px] font-medium text-white disabled:opacity-50">บันทึก</button>
             ) : null}
           </div>
@@ -409,11 +466,19 @@ export default function StudentClassroomSettingsPage() {
           ))}
         </section>
 
+        <section className="rounded-[18px] border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] leading-relaxed text-blue-800 sm:text-[12px]">
+          <p><strong>ผู้มีสิทธิ์กำหนดครูเวร:</strong> {editorSummary(dutyEditorNames, "ยังไม่พบรายชื่อผู้มีสิทธิ์")}</p>
+          <p><strong>ผู้มีสิทธิ์แต่งตั้งครูประจำชั้น:</strong> {editorSummary(adviserEditorNames, "ยังไม่พบรายชื่อผู้มีสิทธิ์")}</p>
+        </section>
+
         {message ? <div className="rounded-2xl bg-blue-50 px-3 py-2 text-[12px] font-medium text-blue-700">{message}</div> : null}
         {loading ? <section className="rounded-2xl bg-white p-4 text-sm text-slate-600">กำลังโหลดข้อมูล...</section> : null}
 
         {!loading && activeTab === "duty" ? (
           <section className="rounded-[22px] border border-slate-200 bg-white p-2 shadow-sm">
+            <div className="mb-2 rounded-2xl bg-blue-50 px-3 py-2 text-[12px] leading-relaxed text-blue-800">
+              <strong>ผู้มีสิทธิ์กำหนดครูเวร:</strong> ฝ่ายบริหารงานบุคคล และผู้ได้รับสิทธิ์แต่งตั้งครูเวร ได้แก่ {editorSummary(dutyEditorNames, "ยังไม่พบรายชื่อผู้มีสิทธิ์")}
+            </div>
             <div className="grid grid-cols-[92px_1fr_58px] gap-1.5">
               <select value={selectedDutyWeekday} onChange={(event) => setSelectedDutyWeekday(Number(event.target.value))} className="h-9 rounded-xl border border-slate-200 px-2 text-[12px]">
                 {WEEKDAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}
@@ -434,7 +499,16 @@ export default function StudentClassroomSettingsPage() {
                       {rows.map((item) => (
                         <div key={`${item.weekday}-${item.profile_id}`} className="flex items-center justify-between rounded-xl bg-white px-2 py-1 text-[12px]">
                           <span>{displayName(profileMap.get(item.profile_id))}</span>
-                          <button type="button" onClick={() => void saveDutyRoster(dutyRoster.filter((row) => !(row.weekday === item.weekday && row.profile_id === item.profile_id)))} className="text-rose-600">×</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDutyRoster((current) => current.filter((row) => !(row.weekday === item.weekday && row.profile_id === item.profile_id)));
+                              setMessage("ลบครูเวรแล้ว กรุณากดบันทึก");
+                            }}
+                            className="text-rose-600"
+                          >
+                            ×
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -449,6 +523,9 @@ export default function StudentClassroomSettingsPage() {
           <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-sm">
             <div className="mb-2">
               <h2 className="text-[14px] font-semibold text-slate-800">ครูประจำชั้น</h2>
+              <p className="mt-1 rounded-2xl bg-blue-50 px-3 py-2 text-[12px] leading-relaxed text-blue-800">
+                <strong>ผู้มีสิทธิ์แต่งตั้งครูประจำชั้น:</strong> ฝ่ายบริหารงานบุคคล และผู้ได้รับสิทธิ์แต่งตั้งครูประจำชั้น ได้แก่ {editorSummary(adviserEditorNames, "ยังไม่พบรายชื่อผู้มีสิทธิ์")}
+              </p>
             </div>
             <div className="space-y-0.5">
               {classSettings.map((setting) => {
@@ -521,7 +598,12 @@ export default function StudentClassroomSettingsPage() {
         {!loading && activeTab === "calendar" ? (
           <section className="rounded-[22px] border border-slate-200 bg-white p-2 shadow-sm">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h2 className="text-[15px] font-semibold text-slate-800">ปีการศึกษา {thaiYear(academicYear)}</h2>
+              <div>
+                <h2 className="text-[15px] font-semibold text-slate-800">ปีการศึกษา {thaiYear(academicYear)}</h2>
+                <p className="mt-1 rounded-2xl bg-blue-50 px-3 py-2 text-[12px] leading-relaxed text-blue-800">
+                  <strong>ผู้มีสิทธิ์แก้ไขปฏิทิน:</strong> ครูฝ่ายวิชาการ และผู้ดูแลระบบงานนักเรียน ได้แก่ {editorSummary(calendarEditorNames, "ยังไม่พบรายชื่อผู้มีสิทธิ์")}
+                </p>
+              </div>
               <div className="flex gap-1">
                 <button type="button" onClick={() => setAcademicYear((value) => value - 1)} className="h-8 rounded-xl bg-slate-100 px-2 text-xs">‹</button>
                 <button type="button" onClick={() => setAcademicYear((value) => value + 1)} className="h-8 rounded-xl bg-slate-100 px-2 text-xs">›</button>

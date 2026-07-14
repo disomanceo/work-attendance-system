@@ -51,7 +51,7 @@ export async function GET(request: Request) {
     const [profiles, classSettings, workPermissions, dutyRoster] = await Promise.all([
       supabase
         .from("profiles")
-        .select("id, full_name, phone, role, position, account_status, profile_image_file_id")
+        .select("id, full_name, phone, role, position, departments, account_status, profile_image_file_id")
         .eq("account_status", "active")
         .order("full_name", { ascending: true }),
       supabase
@@ -80,7 +80,12 @@ export async function GET(request: Request) {
       classSettings: summary.isAdmin || summary.canManageStudentSettings
         ? classSettings.data ?? []
         : (classSettings.data ?? []).filter((item) => visibleClassLevels.has(String(item.class_level || ""))),
-      workPermissions: summary.canManageStudentSettings ? workPermissions.data ?? [] : [],
+      workPermissions: summary.canManageStudentSettings ||
+        summary.canManageClassAdvisers ||
+        summary.canManageDutyRoster ||
+        summary.canManageCalendar
+        ? workPermissions.data ?? []
+        : [],
       dutyRoster: summary.isAdmin || summary.canManageDutyRoster ? dutyRoster.data ?? [] : [],
       access: summary,
     });

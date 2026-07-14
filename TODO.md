@@ -57,6 +57,13 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Updated classroom settings permission visibility and save workflow:
+  - duty roster edits now have an explicit `บันทึก` button and show pending/success messages,
+  - class adviser saves clear old messages and continue showing save confirmation,
+  - classroom settings now shows who can assign duty teachers and class advisers on every settings tab,
+  - the calendar tab shows academic-side/calendar editors by name and keeps its save confirmation flow,
+  - the settings API now returns departments and readable work permissions for authorized settings pages,
+  - verified with `npm run build`.
 - Updated the daily student attendance report mobile workflow:
   - unchecked classes now show `-` for present, absent, leave, and attendance percent instead of defaulting to present counts,
   - the action column links eligible users directly to the selected class/date attendance page,
