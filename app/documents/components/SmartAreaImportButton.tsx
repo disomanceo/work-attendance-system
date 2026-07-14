@@ -13,10 +13,26 @@ type ImportRun = {
   added?: number | null;
   updated?: number | null;
   duplicate?: number | null;
+  scanned?: number | null;
   failed?: number | null;
   finished_at?: string | null;
   github_run_id?: string | null;
   errors?: unknown[] | null;
+};
+
+type DispatchResponse = {
+  ok: boolean;
+  message?: string;
+  githubToken?: string;
+  skipped?: boolean;
+  reason?: string;
+};
+
+type ReconcileInfo = {
+  type?: string;
+  scanned?: unknown;
+  existingAfter?: unknown;
+  missingAfter?: unknown;
 };
 
 const ACTIVE_STATUSES = new Set(["queued", "running"]);
@@ -82,6 +98,36 @@ function errorText(value: unknown): string {
   } catch {
     return String(value);
   }
+}
+
+function reconcileInfo(run: ImportRun | null): ReconcileInfo | null {
+  const errors = Array.isArray(run?.errors) ? run.errors : [];
+  const item = errors.find(
+    (entry) =>
+      entry &&
+      typeof entry === "object" &&
+      (entry as ReconcileInfo).type === "reconcile",
+  );
+
+  return item ? (item as ReconcileInfo) : null;
+}
+
+function reconcileText(run: ImportRun | null) {
+  const info = reconcileInfo(run);
+  if (!info) return "";
+
+  const scanned = Number(info.scanned || run?.scanned || 0);
+  const existingAfter = Number(info.existingAfter || 0);
+  const missingAfter = Array.isArray(info.missingAfter)
+    ? info.missingAfter.map(String).filter(Boolean)
+    : [];
+
+  if (!scanned) return "";
+  if (missingAfter.length) {
+    return `ตรงกัน ${existingAfter}/${scanned} · ขาด ${missingAfter.length}: ${missingAfter.slice(0, 8).join(", ")}`;
+  }
+
+  return `ตรงกัน ${existingAfter}/${scanned}`;
 }
 
 function runErrorMessage(run: ImportRun | null) {
@@ -153,11 +199,16 @@ function requestExtensionImport() {
   });
 }
 
-export default function SmartAreaImportButton() {
+export default function SmartAreaImportButton({
+  autoOnly = false,
+}: {
+  autoOnly?: boolean;
+}) {
   const [run, setRun] = useState<ImportRun | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const announcedRunRef = useRef("");
+  const autoStartedRef = useRef(false);
 
   const authFetch = useCallback(async (url: string, init?: RequestInit) => {
     const { data } = await createClient().auth.getSession();
@@ -217,18 +268,30 @@ export default function SmartAreaImportButton() {
     return () => window.clearInterval(id);
   }, [load]);
 
-  async function start() {
+  async function start(mode: "manual" | "auto" = "manual") {
+    if (mode === "auto" && autoStartedRef.current) return;
+    if (mode === "auto") autoStartedRef.current = true;
+
     setBusy(true);
-    setMessage("กำลังส่งคำสั่ง...");
+    if (mode === "manual") setMessage("กำลังส่งคำสั่ง...");
 
     try {
       const response = await authFetch(
         "/api/documents/smart-area-import/dispatch",
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ mode }),
+        },
       );
-      const body = await response.json();
+      const body = (await response.json()) as DispatchResponse;
 
       if (!body.ok) {
+        if (mode === "auto") {
+          await load();
+          return;
+        }
+
         if (isMobileLike()) {
           setMessage(
             `${body.message || "เริ่มงานผ่าน GitHub ไม่สำเร็จ"} · มือถือใช้ Extension ไม่ได้ กรุณาตรวจ GitHub App/token และลองอีกครั้ง`,
@@ -257,27 +320,38 @@ export default function SmartAreaImportButton() {
         return;
       }
 
-      setMessage(
-        body.githubToken
-          ? `เริ่ม GitHub workflow แล้ว (${body.githubToken})`
-          : "เริ่ม GitHub workflow แล้ว",
-      );
+      if (body.skipped) {
+        if (mode === "manual") setMessage(body.message || "ยังไม่เริ่มงานใหม่");
+      } else if (mode === "manual") {
+        setMessage(
+          body.githubToken
+            ? `เริ่ม GitHub workflow แล้ว (${body.githubToken})`
+            : "เริ่ม GitHub workflow แล้ว",
+        );
+      }
       await load();
     } finally {
       setBusy(false);
     }
   }
 
+  useEffect(() => {
+    void start("auto");
+  }, []);
+
+  if (autoOnly) return null;
+
   const active =
     busy || ACTIVE_STATUSES.has(run?.status || "");
   const finished = formatFinishedAt(run?.finished_at);
   const status = run?.status ? ` · ${run.status}` : "";
+  const reconcile = reconcileText(run);
 
   return (
     <div className={styles.importDock}>
       <button
         type="button"
-        onClick={start}
+        onClick={() => void start("manual")}
         disabled={active}
         className={styles.importButton}
       >
@@ -304,6 +378,7 @@ export default function SmartAreaImportButton() {
               {run?.updated ?? 0} · ซ้ำ{" "}
               {run?.duplicate ?? 0}
             </span>
+            {reconcile ? <span>{reconcile}</span> : null}
             <span>
               ผิดพลาด {run?.failed ?? 0}
               {finished ? ` · ${finished}` : ""}

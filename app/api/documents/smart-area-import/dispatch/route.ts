@@ -8,6 +8,8 @@ export const runtime = "nodejs";
 const WORKFLOW_FILE = "smart-area-import.yml";
 const GITHUB_API_VERSION = "2022-11-28";
 const DISPATCH_TIMEOUT_MS = 12000;
+const MANUAL_COOLDOWN_MS = 3 * 60 * 1000;
+const AUTO_COOLDOWN_MS = 15 * 60 * 1000;
 const TRANSIENT_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
 type WorkflowToken = {
@@ -197,6 +199,15 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function text(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function recentEnough(value: unknown, cooldownMs: number) {
+  const time = Date.parse(text(value));
+  return Number.isFinite(time) && Date.now() - time < cooldownMs;
+}
+
 async function dispatchWorkflow({
   repo,
   ref,
@@ -308,7 +319,65 @@ export async function POST(request: Request) {
   const repo =
     process.env.GITHUB_WORKFLOW_REPOSITORY || "disomanceo/work-attendance-system";
   const ref = process.env.GITHUB_WORKFLOW_REF || "main";
+  const body = (await request.json().catch(() => ({}))) as { mode?: unknown };
+  const mode = text(body.mode) === "auto" ? "auto" : "manual";
+  const cooldownMs = mode === "auto" ? AUTO_COOLDOWN_MS : MANUAL_COOLDOWN_MS;
   const admin = adminClient();
+
+  const { data: activeRun, error: activeError } = await admin
+    .from("smart_area_import_runs")
+    .select("id, status, created_at")
+    .in("status", ["queued", "running"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeError) {
+    return NextResponse.json(
+      { ok: false, message: activeError.message },
+      { status: 500 },
+    );
+  }
+
+  if (activeRun?.id) {
+    return NextResponse.json({
+      ok: true,
+      runId: activeRun.id,
+      skipped: true,
+      reason: "active",
+      message: "มีงานดึงข้อมูลกำลังทำงานอยู่",
+    });
+  }
+
+  const { data: latestRun, error: latestError } = await admin
+    .from("smart_area_import_runs")
+    .select("id, status, created_at, finished_at")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestError) {
+    return NextResponse.json(
+      { ok: false, message: latestError.message },
+      { status: 500 },
+    );
+  }
+
+  const latestTime = latestRun?.finished_at || latestRun?.created_at;
+  if (latestRun?.id && recentEnough(latestTime, cooldownMs)) {
+    return NextResponse.json({
+      ok: true,
+      runId: latestRun.id,
+      skipped: true,
+      reason: "cooldown",
+      cooldownSeconds: Math.ceil(cooldownMs / 1000),
+      message:
+        mode === "auto"
+          ? "เพิ่งตรวจหนังสือล่าสุดแล้ว"
+          : "เพิ่งสั่งดึงข้อมูล กรุณารอสักครู่ก่อนกดซ้ำ",
+    });
+  }
+
   const { data: run, error } = await admin
     .from("smart_area_import_runs")
     .insert({ status: "queued", created_by: user.id })

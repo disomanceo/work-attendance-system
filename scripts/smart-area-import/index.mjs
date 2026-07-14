@@ -20,9 +20,11 @@ const result = {
   duplicate: 0,
   failed: 0,
   errors: [],
+  reconcile: null,
 };
 
-const DEFAULT_LOOKBACK_PAGES = 5;
+const DEFAULT_LOOKBACK_PAGES = 3;
+const MAX_MISSING_IMPORT_ATTEMPTS = 3;
 
 const callback = async (status) => {
   if (!process.env.WORK_ATTENDANCE_CALLBACK_URL) return;
@@ -425,9 +427,9 @@ try {
     ),
   );
 
-  const failedIds = new Set();
+  const lastImportErrors = new Map();
 
-  for (const item of items.values()) {
+  async function importItem(item, attempt = 1) {
     try {
       const detailUrl =
         item.url ||
@@ -721,22 +723,52 @@ try {
       } else {
         result.duplicate++;
       }
+
+      lastImportErrors.delete(String(item.id));
+      return true;
     } catch (error) {
-      failedIds.add(String(item.id));
-      result.failed++;
-      result.errors.push({
+      lastImportErrors.set(String(item.id), {
         id: item.id,
+        attempt,
         message: String(error.message || error),
       });
+      return false;
     }
   }
 
-  const existingAfter = await checkSchoolExisting(items.values());
-  const missingAfter = [...items.values()].filter(
-    (item) =>
-      !existingAfter.has(String(item.id)) &&
-      !failedIds.has(String(item.id)),
+  for (const item of items.values()) {
+    await importItem(item);
+  }
+
+  let existingAfter = await checkSchoolExisting(items.values());
+  let missingAfter = [...items.values()].filter(
+    (item) => !existingAfter.has(String(item.id)),
   );
+
+  for (
+    let attempt = 2;
+    missingAfter.length > 0 && attempt <= MAX_MISSING_IMPORT_ATTEMPTS;
+    attempt += 1
+  ) {
+    for (const item of missingAfter) {
+      await importItem(item, attempt);
+    }
+
+    existingAfter = await checkSchoolExisting(items.values());
+    missingAfter = [...items.values()].filter(
+      (item) => !existingAfter.has(String(item.id)),
+    );
+  }
+
+  result.reconcile = {
+    latestPage,
+    scanPages,
+    scanned: result.scanned,
+    existingBefore: existingBefore.size,
+    missingBefore: missingBefore.map((item) => String(item.id)),
+    existingAfter: existingAfter.size,
+    missingAfter: missingAfter.map((item) => String(item.id)),
+  };
 
   if (missingAfter.length > 0) {
     result.failed += missingAfter.length;
@@ -748,6 +780,9 @@ try {
         page: item.pageNumber,
         rowOrder: item.rowOrder,
       })),
+      importErrors: missingAfter
+        .map((item) => lastImportErrors.get(String(item.id)))
+        .filter(Boolean),
     });
   }
 
@@ -756,7 +791,7 @@ try {
 
   console.log(JSON.stringify(result, null, 2));
 
-  if (result.failed && result.failed === result.scanned) {
+  if (result.failed) {
     process.exitCode = 1;
   }
 } catch (error) {

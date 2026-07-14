@@ -626,22 +626,11 @@ async function upsertDocument(payload: ImportPayload) {
       urgency: item.priority || null,
     };
 
-    bookChanged = Object.entries(comparable).some(
+    const contentChanged = Object.entries(comparable).some(
       ([key, value]) => text((existing as any)[key]) !== text(value),
     );
 
-    const oldPage = text((existing as any).legacy_payload?.smart_area_page);
-    const oldOrder = text((existing as any).legacy_payload?.row_order);
-    const oldUrl = text((existing as any).legacy_payload?.source_url);
-    const oldPageUrl = text((existing as any).legacy_payload?.source_page_url);
-    if (
-      oldPage !== text(item.smartAreaPage) ||
-      oldOrder !== text(item.rowOrder) ||
-      oldUrl !== item.sourceUrl ||
-      oldPageUrl !== item.sourcePageUrl
-    ) {
-      bookChanged = true;
-    }
+    bookChanged = contentChanged;
 
     const { error: updateError } = await admin
       .from("smart_area_books")
@@ -653,7 +642,7 @@ async function upsertDocument(payload: ImportPayload) {
       return json({ ok: false, message: "Cannot update Smart Area book" }, 500);
     }
 
-    if (bookChanged) message = "updated";
+    if (contentChanged) message = "updated";
   }
 
   const { data: currentAttachments, error: currentAttachmentError } = await admin
@@ -790,7 +779,7 @@ async function upsertDocument(payload: ImportPayload) {
 
 async function getImportScanPlan(payload: ImportPayload) {
   const latestPage = number(payload.latestPage);
-  const lookback = Math.max(number(payload.lookbackPages) || 5, 1);
+  const lookback = Math.max(number(payload.lookbackPages) || 3, 1);
 
   return json({
     ok: true,

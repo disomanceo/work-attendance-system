@@ -57,6 +57,18 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Tightened Smart Area importer reconciliation:
+  - default central scan window is back to the latest 3 pages,
+  - importer now compares the central 3-page ID set with `smart_area_books.legacy_smart_area_id`,
+  - missing IDs are retried up to 3 import attempts before the run is marked partial/failed,
+  - callback stores reconcile details so the UI can show matched/missing counts,
+  - metadata-only central page/order/source URL refreshes no longer inflate the `updated` count.
+- Added Smart Area import throttling and auto checks:
+  - manual import dispatch is throttled to 3 minutes per system when no run is active,
+  - automatic import dispatch is throttled to 15 minutes per system,
+  - active queued/running imports are reused instead of starting duplicate GitHub workflows,
+  - opening the documents page auto-checks once,
+  - opening the attendance home page auto-checks once without showing an import button.
 - Added daily duty teacher display to the attendance report:
   - report header now shows a `ครูเวรประจำวัน` box under the date picker,
   - duty teacher names are loaded from the active duty roster for the selected weekday,
