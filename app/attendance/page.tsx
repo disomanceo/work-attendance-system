@@ -45,6 +45,7 @@ type AttendanceRecord = {
   check_in_status: string | null;
   check_out_status: string | null;
   check_in_distance_meters?: number | null;
+  check_out_distance_meters?: number | null;
 };
 
 type PositionData = {
@@ -983,6 +984,8 @@ schoolName: settings?.school_name ?? null,
         throw new Error(`ยังไม่ถึงเวลาเลิกงาน ${roleEndTime.slice(0, 5)} น.`);
       }
 
+      const { position } = await verifyLocation();
+
       const {
         data: { session },
         error: sessionError,
@@ -996,7 +999,9 @@ schoolName: settings?.school_name ?? null,
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ position }),
         cache: "no-store",
       });
 

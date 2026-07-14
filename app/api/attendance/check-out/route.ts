@@ -8,6 +8,15 @@ type AttendanceRecord = {
   check_in_status: string | null;
   check_out_status: string | null;
   check_in_distance_meters: number | null;
+  check_out_distance_meters: number | null;
+};
+
+type CheckOutRequestBody = {
+  position?: {
+    latitude?: unknown;
+    longitude?: unknown;
+    accuracy?: unknown;
+  };
 };
 
 function getAccessToken(request: Request) {
@@ -41,6 +50,39 @@ function getBangkokTime() {
 
 function normalizeTime(value: string) {
   return value.slice(0, 8);
+}
+
+function calculateDistanceMeters(
+  latitude1: number,
+  longitude1: number,
+  latitude2: number,
+  longitude2: number
+) {
+  const earthRadius = 6371000;
+  const toRadians = (degree: number) => (degree * Math.PI) / 180;
+  const latitudeDelta = toRadians(latitude2 - latitude1);
+  const longitudeDelta = toRadians(longitude2 - longitude1);
+  const firstLatitude = toRadians(latitude1);
+  const secondLatitude = toRadians(latitude2);
+
+  const calculation =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(firstLatitude) *
+      Math.cos(secondLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  const angle = 2 * Math.atan2(
+    Math.sqrt(calculation),
+    Math.sqrt(1 - calculation)
+  );
+
+  return Math.round(earthRadius * angle);
+}
+
+function readFiniteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : null;
 }
 
 function getRoleEndTime(
@@ -112,6 +154,13 @@ export async function POST(request: Request) {
       },
     });
 
+    let requestBody: CheckOutRequestBody = {};
+    try {
+      requestBody = (await request.json()) as CheckOutRequestBody;
+    } catch {
+      requestBody = {};
+    }
+
     const { data: profile, error: profileError } = await adminClient
       .from("profiles")
       .select("id, role, account_status")
@@ -132,7 +181,7 @@ export async function POST(request: Request) {
     const { data: settings, error: settingsError } = await adminClient
       .from("attendance_settings")
       .select(
-        "director_end_time, teacher_end_time, staff_end_time, janitor_end_time"
+        "director_end_time, teacher_end_time, staff_end_time, janitor_end_time, latitude, longitude, allowed_radius_meters, gps_enabled"
       )
       .eq("id", 1)
       .single();
@@ -156,12 +205,56 @@ export async function POST(request: Request) {
       );
     }
 
+    let checkOutDistanceMeters: number | null = null;
+
+    if (settings.gps_enabled) {
+      const schoolLatitude = readFiniteNumber(settings.latitude);
+      const schoolLongitude = readFiniteNumber(settings.longitude);
+      const userLatitude = readFiniteNumber(requestBody.position?.latitude);
+      const userLongitude = readFiniteNumber(requestBody.position?.longitude);
+
+      if (schoolLatitude === null || schoolLongitude === null) {
+        return NextResponse.json(
+          { ok: false, message: "ยังไม่ได้กำหนดพิกัดโรงเรียน" },
+          { status: 500 }
+        );
+      }
+
+      if (userLatitude === null || userLongitude === null) {
+        return NextResponse.json(
+          { ok: false, message: "กรุณาอนุญาตให้เว็บไซต์เข้าถึงตำแหน่งก่อนลงเวลาเลิกงาน" },
+          { status: 400 }
+        );
+      }
+
+      checkOutDistanceMeters = calculateDistanceMeters(
+        userLatitude,
+        userLongitude,
+        schoolLatitude,
+        schoolLongitude
+      );
+
+      if (checkOutDistanceMeters > settings.allowed_radius_meters) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message: `คุณอยู่นอกพื้นที่ลงเวลา ระยะห่าง ${checkOutDistanceMeters.toLocaleString(
+              "th-TH"
+            )} เมตร อนุญาตไม่เกิน ${settings.allowed_radius_meters.toLocaleString(
+              "th-TH"
+            )} เมตร`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const workDate = getBangkokDate();
 
     const { data: currentRecord, error: recordError } = await adminClient
       .from("attendance_records")
       .select(
-        "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters"
+        "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters, check_out_distance_meters"
       )
       .eq("user_id", user.id)
       .eq("work_date", workDate)
@@ -198,13 +291,14 @@ export async function POST(request: Request) {
       .update({
         check_out_at: checkOutAt,
         check_out_status: "normal",
+        check_out_distance_meters: checkOutDistanceMeters,
         updated_at: checkOutAt,
       })
       .eq("id", currentRecord.id)
       .eq("user_id", user.id)
       .is("check_out_at", null)
       .select(
-        "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters"
+        "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters, check_out_distance_meters"
       )
       .maybeSingle();
 
