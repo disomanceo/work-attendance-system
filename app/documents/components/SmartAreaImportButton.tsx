@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./SmartAreaImportButton.module.css";
 
@@ -28,12 +28,58 @@ function formatFinishedAt(value?: string | null) {
   }).format(date);
 }
 
+function requestExtensionImport() {
+  return new Promise<{ ok: boolean; error?: string }>((resolve) => {
+    const requestId =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : String(Date.now());
+
+    const timeout = window.setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      resolve({
+        ok: false,
+        error:
+          "Extension ยังไม่ตอบสนอง กรุณาติดตั้ง/อัปเดต Extension แล้วเปิด Chrome ใหม่",
+      });
+    }, 3500);
+
+    function onMessage(event: MessageEvent) {
+      if (
+        event.source !== window ||
+        !event.data ||
+        event.data.type !== "SMARTAREA_RUN_EXTENSION_IMPORT_RESULT" ||
+        event.data.requestId !== requestId
+      ) {
+        return;
+      }
+
+      window.clearTimeout(timeout);
+      window.removeEventListener("message", onMessage);
+      resolve({
+        ok: Boolean(event.data.ok),
+        error: event.data.error || "",
+      });
+    }
+
+    window.addEventListener("message", onMessage);
+    window.postMessage(
+      {
+        type: "SMARTAREA_RUN_EXTENSION_IMPORT",
+        requestId,
+        payload: { force: true },
+      },
+      "*",
+    );
+  });
+}
+
 export default function SmartAreaImportButton() {
   const [run, setRun] = useState<ImportRun | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function authFetch(url: string, init?: RequestInit) {
+  const authFetch = useCallback(async (url: string, init?: RequestInit) => {
     const { data } = await createClient().auth.getSession();
     const token = data.session?.access_token;
 
@@ -44,9 +90,9 @@ export default function SmartAreaImportButton() {
         authorization: `Bearer ${token}`,
       },
     });
-  }
+  }, []);
 
-  async function load() {
+  const load = useCallback(async () => {
     const response = await authFetch(
       "/api/documents/smart-area-import/status",
     );
@@ -62,7 +108,7 @@ export default function SmartAreaImportButton() {
         setMessage("");
       }
     }
-  }
+  }, [authFetch]);
 
   useEffect(() => {
     void load();
@@ -72,7 +118,7 @@ export default function SmartAreaImportButton() {
     }, 10000);
 
     return () => window.clearInterval(id);
-  }, []);
+  }, [load]);
 
   async function start() {
     setBusy(true);
@@ -86,7 +132,21 @@ export default function SmartAreaImportButton() {
       const body = await response.json();
 
       if (!body.ok) {
-        setMessage(body.message || "เริ่มงานไม่สำเร็จ");
+        const fallback = await requestExtensionImport();
+
+        if (fallback.ok) {
+          setMessage(
+            "GitHub token ใช้งานไม่ได้ จึงสั่ง Extension ให้ดึงข้อมูลแทนแล้ว",
+          );
+          return;
+        }
+
+        setMessage(
+          `${body.message || "เริ่มงานไม่สำเร็จ"} · ${
+            fallback.error ||
+            "Extension ยังไม่พร้อมทำงาน กรุณาอัปเดต Extension"
+          }`,
+        );
         return;
       }
 

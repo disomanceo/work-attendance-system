@@ -836,10 +836,10 @@ async function handle(request: Request) {
 
     return json({
       ok: true,
-      version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.32",
+      version: process.env.SMART_AREA_EXTENSION_VERSION?.trim() || "1.8.33",
       downloadUrl:
         process.env.SMART_AREA_EXTENSION_DOWNLOAD_URL?.trim() ||
-        "https://drive.google.com/file/d/1Iwbi7jQNxGNHlvsrh-UjKxDoCO-zwIzf/view?usp=drive_link",
+        `${appUrl}/downloads/import-area-pms-1.8.33-installer.zip`,
     });
   }
 
