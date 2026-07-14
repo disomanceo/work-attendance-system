@@ -57,6 +57,11 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Added attendance recorder names to the daily student attendance report:
+  - `/api/students/attendance` now returns the profile name of the recorder for checked classes,
+  - the report action/status column shows the recorder name under `เช็คชื่อแล้ว`,
+  - export CSV includes the recorder name beside checked status,
+  - verified with `npm run build`.
 - Updated student attendance save status:
   - shows `ยังไม่ได้บันทึก` or `บันทึกแล้ว` under the save button,
   - marks the form unsaved when a status is changed,

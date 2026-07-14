@@ -17,6 +17,7 @@ type AttendanceResponse = {
   ok?: boolean;
   students?: AttendanceStudent[];
   recordedCount?: number;
+  recordedByName?: string;
   message?: string;
   error?: string;
 };
@@ -28,6 +29,7 @@ type ClassReport = {
   absent: number;
   leave: number;
   checked: boolean;
+  recordedByName: string;
 };
 
 const SEMESTERS = ["ภาคเรียนที่ 1 / 2569", "ภาคเรียนที่ 2 / 2569"];
@@ -118,6 +120,7 @@ function buildReport(classLevel: string, data: AttendanceResponse): ClassReport 
     absent: counts.absent,
     leave: counts.leave,
     checked: (data.recordedCount ?? 0) > 0,
+    recordedByName: data.recordedByName ?? "",
   };
 }
 
@@ -234,7 +237,9 @@ export default function StudentDailyReportPage() {
         String(report.absent),
         String(report.leave),
         formatPercent(percent(report.present, report.total)),
-        report.checked ? "เช็คชื่อแล้ว" : "ยังไม่ได้เช็ค",
+        report.checked
+          ? `เช็คชื่อแล้ว${report.recordedByName ? ` (${report.recordedByName})` : ""}`
+          : "ยังไม่ได้เช็ค",
       ]),
     ];
     const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -348,7 +353,12 @@ export default function StudentDailyReportPage() {
                       </td>
                       <td>
                         {report.checked ? (
-                          <span className={styles.checked}>● ✔ เช็คชื่อแล้ว</span>
+                          <span className={styles.checked}>
+                            ● ✔ เช็คชื่อแล้ว
+                            {report.recordedByName ? (
+                              <small>{report.recordedByName}</small>
+                            ) : null}
+                          </span>
                         ) : (
                           <div className={styles.notChecked}>
                             <span>● ยังไม่ได้เช็ค</span>
@@ -404,7 +414,12 @@ export default function StudentDailyReportPage() {
                     <strong>{formatPercent(presentPercent)}</strong>
                   </div>
                   {report.checked ? (
-                    <p className={styles.mobileChecked}>✔ เช็คชื่อแล้ว</p>
+                    <p className={styles.mobileChecked}>
+                      ✔ เช็คชื่อแล้ว
+                      {report.recordedByName ? (
+                        <small>{report.recordedByName}</small>
+                      ) : null}
+                    </p>
                   ) : (
                     <div className={styles.mobileNotChecked}>
                       <p>● ยังไม่ได้เช็ค</p>

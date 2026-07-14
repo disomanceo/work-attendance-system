@@ -38,6 +38,13 @@ type StudentCodeRow = {
   student_code: string | null;
 };
 
+type AttendanceRecordRow = {
+  student_id: string | null;
+  status: AttendanceStatus | null;
+  note: string | null;
+  recorded_by: string | null;
+};
+
 const allowedStatuses = new Set<AttendanceStatus>([
   "present",
   "absent",
@@ -229,7 +236,7 @@ export async function GET(request: Request) {
 
   let recordsQuery = auth.adminClient
     .from("student_attendance")
-    .select("student_id, status, note")
+    .select("student_id, status, note, recorded_by")
     .eq("attendance_date", date)
     .eq("class_level", classLevel);
 
@@ -270,6 +277,28 @@ export async function GET(request: Request) {
     ]),
   );
 
+  const recordRows = (records ?? []) as AttendanceRecordRow[];
+  const recorderIds = Array.from(
+    new Set(recordRows.map((record) => record.recorded_by).filter((id): id is string => Boolean(id))),
+  );
+  let recordedByName = "";
+
+  if (recorderIds.length > 0) {
+    const { data: recorderProfiles } = await auth.adminClient
+      .from("profiles")
+      .select("id, full_name, phone")
+      .in("id", recorderIds);
+
+    const profileRows = (recorderProfiles ?? []) as AdviserProfileRow[];
+    const profileMap = new Map(
+      profileRows.map((profile) => [
+        profile.id,
+        profile.full_name || profile.phone || profile.id,
+      ]),
+    );
+    recordedByName = recorderIds.map((id) => profileMap.get(id)).filter(Boolean).join(", ");
+  }
+
   return NextResponse.json({
     ok: true,
     date,
@@ -277,6 +306,7 @@ export async function GET(request: Request) {
     classRoom,
     adviserNames,
     recordedCount: records?.length ?? 0,
+    recordedByName,
     students: (students ?? []).map((student: any, index: number) => {
       const record = recordMap.get(String(student.id));
       return {
