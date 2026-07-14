@@ -271,3 +271,48 @@ Git/worktree notes:
 - Existing untracked backup/log files remain in the workspace and were intentionally not committed or deleted.
 - Do not run `git reset`.
 - Do not delete backup files unless the user explicitly asks.
+
+## Smart Area GitHub workflow reliability - 2026-07-14
+
+Release status:
+
+- [x] Added workflow dispatch retry for transient GitHub errors (`408`, `429`, `5xx`, timeout).
+- [x] Added PAT fallback order: `GITHUB_WORKFLOW_TOKEN`, `GITHUB_WORKFLOW_TOKEN_BACKUP`, `GITHUB_WORKFLOW_TOKEN_2`.
+- [x] Added GitHub App support as the preferred dispatch method when configured.
+- [x] GitHub App support creates a fresh installation token on each `/api/documents/smart-area-import/dispatch` call.
+- [x] Kept PAT tokens as fallback after GitHub App.
+- [x] Added attempt logging into `smart_area_import_runs.errors` when dispatch fails.
+- [x] Rebuilt and pushed commit `33784b5 feat: support github app workflow dispatch`.
+- [x] Vercel reported production deployments as `Ready` after the GitHub App dispatch update.
+- [x] Extension package `1.8.33` exists and the production `extensionInfo` endpoint points to the hosted zip.
+
+Current dispatch order:
+
+1. GitHub App installation token (`GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY_BASE64`)
+2. `GITHUB_WORKFLOW_TOKEN`
+3. `GITHUB_WORKFLOW_TOKEN_BACKUP`
+4. `GITHUB_WORKFLOW_TOKEN_2`
+5. Web extension fallback from the documents page
+
+GitHub App setup notes:
+
+- GitHub App homepage can be `https://pm-coming.vercel.app` if that is the primary production domain.
+- Webhook can stay disabled.
+- Repository permissions required:
+  - `Actions: Read and write`
+  - `Contents: Read-only`
+  - `Metadata: Read-only`
+- Install the GitHub App only on `disomanceo/work-attendance-system`.
+- Add these Vercel Production env vars:
+  - `GITHUB_APP_ID`
+  - `GITHUB_APP_INSTALLATION_ID`
+  - `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY_BASE64`
+- Redeploy production after setting or changing any GitHub App env var.
+
+Follow-up checks:
+
+- [ ] After GitHub App env vars are added, redeploy production and press `ดึงล่าสุด`.
+- [ ] Confirm the dispatch response/run log uses `github-app` before PAT tokens.
+- [ ] Confirm no `GitHub HTTP 401: Bad credentials` appears after the GitHub App env vars are active.
+- [ ] Keep PAT env vars in Vercel as backup even after GitHub App works.
+- [ ] If extension fallback says it is not responding, install/reload Extension `v1.8.33` and refresh `/documents`.
