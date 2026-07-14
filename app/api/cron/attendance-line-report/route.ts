@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { sendDailyAttendanceReport } from "@/lib/line/notifications";
 import { sendDailyTelegramReport } from "@/lib/telegram/daily-report";
+import { sendStudentAttendanceReminder } from "@/lib/telegram/student-attendance-reminder";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,10 +44,11 @@ export async function GET(request: Request) {
     schedule: request.headers.get("x-vercel-cron-schedule"),
   });
 
-  const [lineResult, telegramResult] =
+  const [lineResult, telegramResult, studentReminderResult] =
     await Promise.allSettled([
       sendDailyAttendanceReport(date),
       sendDailyTelegramReport(requestOrigin, date),
+      sendStudentAttendanceReminder(requestOrigin, date),
     ]);
 
   if (lineResult.status === "rejected") {
@@ -60,6 +62,13 @@ export async function GET(request: Request) {
     console.error(
       "Automatic Telegram attendance report failed:",
       telegramResult.reason
+    );
+  }
+
+  if (studentReminderResult.status === "rejected") {
+    console.error(
+      "Automatic Telegram student attendance reminder failed:",
+      studentReminderResult.reason
     );
   }
 
@@ -85,12 +94,25 @@ export async function GET(request: Request) {
               : "ส่ง Telegram ไม่สำเร็จ",
         };
 
+  const studentReminder =
+    studentReminderResult.status === "fulfilled"
+      ? studentReminderResult.value
+      : {
+          sent: false,
+          error:
+            studentReminderResult.reason instanceof Error
+              ? studentReminderResult.reason.message
+              : "ส่ง Telegram แจ้งเตือนเช็คชื่อนักเรียนไม่สำเร็จ",
+        };
+
   return NextResponse.json({
     ok:
       lineResult.status === "fulfilled" ||
-      telegramResult.status === "fulfilled",
+      telegramResult.status === "fulfilled" ||
+      studentReminderResult.status === "fulfilled",
     date,
     line,
     telegram,
+    studentReminder,
   });
 }

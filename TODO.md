@@ -486,14 +486,14 @@ Follow-up checks:
 
 Release status:
 
-- [x] Added `/api/cron/student-attendance-reminder` for the 08:30 Bangkok-time student attendance reminder.
+- [x] Added `/api/cron/student-attendance-reminder` helper endpoint for the student attendance reminder.
 - [x] Added Telegram group notification listing active class levels that still have no student attendance records for the day.
 - [x] Skips weekends and configured school/public holidays unless the day is marked as a special workday.
 - [x] Uses notification logs to avoid duplicate reminders for the same date.
-- [x] Added Vercel cron schedule `30 1 * * *`.
+- [x] Reused the existing attendance notification Vercel cron and moved it to `30 1 * * *` so it runs at 08:30 Bangkok time without adding another cron slot.
 - [x] Ran `npm run build` successfully.
 
 Follow-up checks:
 
-- [ ] After deploy, confirm Vercel lists `/api/cron/student-attendance-reminder`.
+- [ ] After deploy, confirm Vercel keeps the existing attendance notification cron at `30 1 * * *`.
 - [ ] Confirm the Telegram group receives a message at 08:30 only when at least one class level has not checked attendance.
