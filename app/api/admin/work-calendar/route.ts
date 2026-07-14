@@ -24,8 +24,13 @@ async function requireDirector(request: Request) {
   const { data: { user } } = await auth.auth.getUser(token);
   if (!user) return { ok: false as const, response: NextResponse.json({ ok: false, message: "Session หมดอายุ กรุณาเข้าสู่ระบบใหม่" }, { status: 401 }) };
   const admin = createClient(c.supabaseUrl, c.serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: profile } = await admin.from("profiles").select("role, account_status").eq("id", user.id).single();
-  if (!profile || !["director", "admin", "staff"].includes(profile.role) || profile.account_status !== "active") {
+  const { data: profile } = await admin.from("profiles").select("role, account_status, departments").eq("id", user.id).single();
+  const departments = Array.isArray(profile?.departments) ? profile.departments : [];
+  const canManageCalendar =
+    ["director", "admin", "staff"].includes(profile?.role) ||
+    departments.includes("personnel_administration") ||
+    departments.includes("academic_administration");
+  if (!profile || !canManageCalendar || profile.account_status !== "active") {
     return { ok: false as const, response: NextResponse.json({ ok: false, message: "เฉพาะผู้อำนวยการหรือผู้ดูแลระบบเท่านั้น" }, { status: 403 }) };
   }
   return { ok: true as const, admin, userId: user.id };

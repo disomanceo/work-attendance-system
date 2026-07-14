@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import {
   accessSummary,
   canManageClassAdvisers,
@@ -41,8 +41,8 @@ export async function GET(request: Request) {
 
   try {
     const supabase = auth.adminClient;
-    const access = await loadStudentAccess(supabase, auth.user.id, auth.profile.role);
-    const summary = accessSummary(access, requestedDate(request));
+    const access = await loadStudentAccess(supabase, auth.user.id, auth.profile);
+    const summary = accessSummary(access, requestedDate(request), auth.profile);
     const visibleClassLevels = new Set([
       ...summary.attendanceClassLevels,
       ...summary.studentDataClassLevels,
@@ -98,11 +98,11 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as StudentSettingsBody;
     const supabase = auth.adminClient;
-    const access = await loadStudentAccess(supabase, auth.user.id, auth.profile.role);
+    const access = await loadStudentAccess(supabase, auth.user.id, auth.profile);
 
     if (body.type === "class-settings") {
       if (!canManageClassAdvisers(access)) {
-        return forbidden("คุณไม่มีสิทธิ์แต่งตั้งครูประจำชั้น");
+        return forbidden("??????????????????????????????????");
       }
 
       const rows: StudentSettingsInputRow[] = Array.isArray(body.rows) ? body.rows : [];
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
 
     if (body.type === "work-permissions") {
       if (!canManageStudentSettings(access)) {
-        return forbidden("คุณไม่มีสิทธิ์จัดการสิทธิ์งานนักเรียน");
+        return forbidden("?????????????????????????????????????");
       }
 
       const profileId = body.profile_id;
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
 
     if (body.type === "duty-roster") {
       if (!canManageDutyRoster(access)) {
-        return forbidden("คุณไม่มีสิทธิ์แต่งตั้งครูเวรประจำวัน");
+        return forbidden("????????????????????????????????????");
       }
 
       const rows: StudentSettingsInputRow[] = Array.isArray(body.rows) ? body.rows : [];

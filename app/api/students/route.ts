@@ -114,7 +114,7 @@ export async function GET(request: Request) {
   const classLevel = text(url.searchParams.get("classLevel"));
   const classRoom = text(url.searchParams.get("classRoom"));
   const queryText = text(url.searchParams.get("q"));
-  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile);
   const allowedLevels = studentDataClassLevels(access);
 
   if (allowedLevels.length === 0) {
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile);
   if (!canManageStudentData(access, payload.class_level)) {
     return forbidden("คุณไม่มีสิทธิ์เพิ่มข้อมูลนักเรียนชั้นนี้");
   }

@@ -64,7 +64,7 @@ export async function requireBudgetUser(request: Request) {
   const admin = createBudgetAdminClient();
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, full_name, role, position, account_status")
+    .select("id, full_name, role, position, account_status, work_permissions, departments")
     .eq("id", user.id)
     .maybeSingle();
 

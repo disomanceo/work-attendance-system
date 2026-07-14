@@ -319,7 +319,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile);
   const deniedLevel = rows.find((row) => !canManageStudentData(access, row.class_level))?.class_level;
   if (deniedLevel) {
     return forbidden(`คุณไม่มีสิทธิ์นำเข้าข้อมูลนักเรียนชั้น ${deniedLevel}`);

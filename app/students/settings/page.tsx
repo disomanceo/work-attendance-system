@@ -25,6 +25,7 @@ type StudentSettingsAccess = {
   canManageStudentSettings?: boolean;
   canManageClassAdvisers?: boolean;
   canManageDutyRoster?: boolean;
+  canManageCalendar?: boolean;
 };
 type SettingsResponse = {
   profiles?: Profile[];
@@ -140,7 +141,7 @@ export default function StudentClassroomSettingsPage() {
   const visibleTabs = useMemo(() => {
     const canManageAll = Boolean(access?.isAdmin || access?.canManageStudentSettings);
     return TABS.filter((tab) => {
-      if (tab.key === "calendar") return canManageAll;
+      if (tab.key === "calendar") return Boolean(canManageAll || access?.canManageCalendar);
       if (tab.key === "advisers") return Boolean(canManageAll || access?.canManageClassAdvisers);
       if (tab.key === "duty") return Boolean(canManageAll || access?.canManageDutyRoster);
       if (tab.key === "permissions") return canManageAll;
@@ -164,7 +165,7 @@ export default function StudentClassroomSettingsPage() {
       setSelectedDutyProfileId((current) => current || loadedProfiles[0]?.id || "");
       const nextTabs = TABS.filter((tab) => {
         const canManageAll = Boolean(data.access?.isAdmin || data.access?.canManageStudentSettings);
-        if (tab.key === "calendar") return canManageAll;
+        if (tab.key === "calendar") return Boolean(canManageAll || data.access?.canManageCalendar);
         if (tab.key === "advisers") return Boolean(canManageAll || data.access?.canManageClassAdvisers);
         if (tab.key === "duty") return Boolean(canManageAll || data.access?.canManageDutyRoster);
         if (tab.key === "permissions") return canManageAll;
@@ -192,7 +193,7 @@ export default function StudentClassroomSettingsPage() {
 
   useEffect(() => { void loadData(); }, []);
   useEffect(() => {
-    if (!access || !(access.isAdmin || access.canManageStudentSettings)) return;
+    if (!access || !(access.isAdmin || access.canManageStudentSettings || access.canManageCalendar)) return;
     void loadCalendar().catch((error) => setMessage(error instanceof Error ? error.message : "โหลดปฏิทินไม่สำเร็จ"));
   }, [academicYear, access]);
 

@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireBudgetUser } from "@/lib/budget/supabase-server";
+import {
+  budgetAccessSummary,
+  canManageAllBudget,
+  canRecordBudgetPayment,
+  DEPARTMENTS,
+} from "@/lib/budget/access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -94,21 +100,7 @@ async function callBudgetGas(payload: Record<string, unknown>) {
 
 async function getFinanceAccess(auth: Awaited<ReturnType<typeof requireBudgetUser>>) {
   if (!auth.ok) return false;
-
-  const manager = ["admin", "director"].includes(text(auth.profile.role));
-  if (manager) return true;
-
-  const { data } = await auth.admin
-    .from("profiles")
-    .select("work_permissions")
-    .eq("id", auth.profile.id)
-    .maybeSingle();
-
-  const permissions = Array.isArray(data?.work_permissions)
-    ? data.work_permissions
-    : [];
-
-  return permissions.includes("budget.finance");
+  return canRecordBudgetPayment(auth.profile);
 }
 
 async function loadPaymentAttachments(admin: any, paymentIds: string[]) {
@@ -166,7 +158,7 @@ function mapPayment(
 async function loadRequesterOptions(admin: any) {
   const { data, error } = await admin
     .from("profiles")
-    .select("id,full_name,role,position,work_permissions,account_status")
+    .select("id,full_name,role,position,work_permissions,departments,account_status")
     .eq("account_status", "active")
     .order("full_name", { ascending: true });
 
@@ -181,6 +173,8 @@ async function loadRequesterOptions(admin: any) {
 
       return (
         ["admin", "director"].includes(role) ||
+        (Array.isArray(profile.departments) &&
+          profile.departments.includes(DEPARTMENTS.budget)) ||
         permissions.includes("budget.procurement") ||
         permissions.includes("budget.finance") ||
         permissions.includes("budget.requester")
@@ -314,8 +308,9 @@ export async function GET(request: Request) {
         id: auth.profile.id,
         fullName: auth.profile.full_name,
         role: auth.profile.role,
+        ...budgetAccessSummary(auth.profile),
         canFinance,
-        canManageAll: ["admin", "director"].includes(text(auth.profile.role)),
+        canManageAll: canManageAllBudget(auth.profile),
       },
     });
   } catch (error) {

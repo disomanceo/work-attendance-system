@@ -347,3 +347,36 @@ Follow-up checks:
 - [ ] Sign in as a Monday duty teacher on Monday and confirm `/students/attendance` lists all classes.
 - [ ] Sign in as a non-duty teacher with no class assignment and confirm student records are not exposed.
 - [ ] Sign in as `staff` and confirm the work calendar can be saved.
+
+## Member-configured permissions alignment - 2026-07-14
+
+Release status:
+
+- [x] Added shared budget access helper in `lib/budget/access.ts`.
+- [x] Updated budget auth profile loading to include `work_permissions` and `departments`.
+- [x] `budget.procurement` and `budget_administration` now count as full budget managers.
+- [x] `budget.finance` can record payments and create/edit projects where the current user is the owner.
+- [x] Budget payment APIs now use the member-configured budget permissions instead of only `admin/director`.
+- [x] Budget project editor now allows full budget managers to edit all projects and finance users to edit only their own projects.
+- [x] Personnel administration now inherits student-management access.
+- [x] Academic administration can manage the work calendar through the student settings calendar tab.
+- [x] Work calendar API now allows admin/director/staff, personnel administration, and academic administration.
+- [x] Smart Area clerk permission was reviewed; `smart_area.clerk` already has clerk workspace access and cannot assign work.
+- [x] Ran `npm run build` successfully.
+
+Policy implemented:
+
+- `budget.procurement`: full budget access across every project, including editing and payment recording.
+- `budget.finance`: payment recording plus create/edit access for projects owned by the current user.
+- `budget_administration`: full budget access.
+- `personnel_administration`: student work settings, class advisers, duty roster, attendance access, and work calendar.
+- `academic_administration`: work calendar access.
+- `smart_area.clerk`: official-document clerk workspace, submit/close clerk-review documents, no assignment permission.
+
+Follow-up checks:
+
+- [ ] Sign in as a budget procurement user and confirm all project edit/payment actions are visible and accepted.
+- [ ] Sign in as a finance user and confirm they can create/edit their own project and cannot edit another owner's project.
+- [ ] Sign in as an academic administration user and confirm the classroom settings page opens the calendar tab.
+- [ ] Sign in as a personnel administration user and confirm student settings, duty roster, advisers, and calendar tabs are available.
+- [ ] Sign in as a Smart Area clerk and confirm assignment buttons remain hidden while clerk submit/close actions work.

@@ -118,7 +118,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
   }
 
-  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile);
   const { data: currentStudent, error: currentError } = await auth.adminClient
     .from("students")
     .select("class_level")
@@ -158,7 +158,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 
   const { id } = await context.params;
 
-  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile);
   const { data: currentStudent, error: currentError } = await auth.adminClient
     .from("students")
     .select("class_level")

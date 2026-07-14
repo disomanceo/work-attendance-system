@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireBudgetUser } from "@/lib/budget/supabase-server";
+import {
+  budgetAccessSummary,
+  canManageAllBudget,
+  canRecordBudgetPayment,
+  isOwnBudgetProject,
+} from "@/lib/budget/access";
 
 function text(value: unknown) {
   return String(value ?? "").trim();
@@ -7,21 +13,7 @@ function text(value: unknown) {
 
 async function canStartBudgetProjects(auth: Awaited<ReturnType<typeof requireBudgetUser>>) {
   if (!auth.ok) return false;
-
-  const role = text(auth.profile.role).toLowerCase();
-  if (role === "admin" || role === "director") return true;
-
-  const { data } = await auth.admin
-    .from("profiles")
-    .select("work_permissions")
-    .eq("id", auth.profile.id)
-    .maybeSingle();
-
-  const permissions = Array.isArray(data?.work_permissions)
-    ? data.work_permissions.map((item: unknown) => text(item))
-    : [];
-
-  return permissions.includes("budget.procurement");
+  return canManageAllBudget(auth.profile) || canRecordBudgetPayment(auth.profile);
 }
 
 export const dynamic = "force-dynamic";
@@ -201,6 +193,7 @@ export async function GET(request: Request) {
     configured: true,
     source: "supabase",
     canStartProjects,
+    access: budgetAccessSummary(auth.profile),
     projects,
   });
 }

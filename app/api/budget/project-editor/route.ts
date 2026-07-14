@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireBudgetUser } from "@/lib/budget/supabase-server";
+import {
+  canCreateOwnBudgetProject,
+  canEditOwnBudgetProject,
+  canManageAllBudget,
+  isOwnBudgetProject,
+} from "@/lib/budget/access";
 
 export const dynamic = "force-dynamic";
 
@@ -290,11 +296,12 @@ export async function POST(request: Request) {
     }
 
     const existingProject = await findProject(auth.admin, projectId);
-    const manager = ["admin", "director"].includes(auth.profile.role);
+    const manager = canManageAllBudget(auth.profile);
     const currentName = text(auth.profile.full_name);
     const existingOwner = text(existingProject?.owner_name_snapshot);
+    const requestedOwnerName = text(payload.project.owner || project.lead);
 
-    if (!existingProject && !manager) {
+    if (!existingProject && !manager && !canCreateOwnBudgetProject(auth.profile)) {
       return NextResponse.json(
         {
           ok: false,
@@ -305,7 +312,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (existingProject && !manager && existingOwner !== currentName) {
+    if (
+      existingProject &&
+      !manager &&
+      (!canEditOwnBudgetProject(auth.profile) ||
+        !isOwnBudgetProject(auth.profile, existingOwner))
+    ) {
       return NextResponse.json(
         {
           ok: false,
@@ -316,7 +328,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const ownerName = text(payload.project.owner || project.lead);
+    if (!manager && requestedOwnerName !== currentName) {
+      return NextResponse.json(
+        {
+          ok: false,
+          configured: true,
+          message: "คุณเพิ่มหรือแก้ไขได้เฉพาะโครงการที่ระบุชื่อตัวเองเป็นผู้รับผิดชอบ",
+        },
+        { status: 403 },
+      );
+    }
+
+    const ownerName = manager ? requestedOwnerName : currentName;
     const ownerId = await findOwnerId(auth.admin, ownerName);
 
     const projectRow = {

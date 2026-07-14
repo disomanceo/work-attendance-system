@@ -181,7 +181,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "ไม่พบนักเรียนสำหรับบันทึกรูป" }, { status: 404 });
     }
 
-    const access = await loadStudentAccess(auth.adminClient, auth.profile.id, auth.profile.role);
+    const access = await loadStudentAccess(auth.adminClient, auth.profile.id, auth.profile);
     if (!canManageStudentData(access, String(student.class_level || ""))) {
       return forbidden("คุณไม่มีสิทธิ์อัปโหลดรูปนักเรียนชั้นนี้");
     }
@@ -273,7 +273,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, message: "ไม่มีสิทธิ์เปิดรูปนี้" }, { status: 403 });
     }
 
-    const access = await loadStudentAccess(auth.adminClient, auth.profile.id, auth.profile.role);
+    const access = await loadStudentAccess(auth.adminClient, auth.profile.id, auth.profile);
     if (!studentDataClassLevels(access).includes(String(student.class_level || ""))) {
       return forbidden("คุณไม่มีสิทธิ์เปิดรูปนักเรียนชั้นนี้");
     }

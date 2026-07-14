@@ -50,6 +50,14 @@ export type StudentAccess = {
 };
 
 const ADMIN_ROLES = new Set(["admin", "director", "staff"]);
+const PERSONNEL_DEPARTMENT = "personnel_administration";
+const ACADEMIC_DEPARTMENT = "academic_administration";
+
+function stringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.map((item) => String(item ?? "").trim()).filter(Boolean)
+    : [];
+}
 
 function config() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -85,6 +93,14 @@ export function todayBangkok() {
 }
 
 export function isStudentAdminRole(role: unknown) {
+  if (typeof role === "object" && role !== null) {
+    const profile = role as { role?: unknown; departments?: unknown };
+    return (
+      ADMIN_ROLES.has(String(profile.role ?? "").trim().toLowerCase()) ||
+      stringArray(profile.departments).includes(PERSONNEL_DEPARTMENT)
+    );
+  }
+
   return ADMIN_ROLES.has(String(role ?? "").trim().toLowerCase());
 }
 
@@ -269,12 +285,25 @@ export function canManageDutyRoster(access: StudentAccess) {
   );
 }
 
-export function accessSummary(access: StudentAccess, date = todayBangkok()) {
+export function canManageStudentCalendar(roleOrProfile: unknown) {
+  if (isStudentAdminRole(roleOrProfile)) return true;
+  if (typeof roleOrProfile !== "object" || roleOrProfile === null) return false;
+  return stringArray((roleOrProfile as { departments?: unknown }).departments).includes(
+    ACADEMIC_DEPARTMENT,
+  );
+}
+
+export function accessSummary(
+  access: StudentAccess,
+  date = todayBangkok(),
+  roleOrProfile?: unknown,
+) {
   return {
     isAdmin: access.isAdmin,
     canManageStudentSettings: canManageStudentSettings(access),
     canManageClassAdvisers: canManageClassAdvisers(access),
     canManageDutyRoster: canManageDutyRoster(access),
+    canManageCalendar: canManageStudentCalendar(roleOrProfile),
     canManageStudentData: studentDataClassLevels(access).length > 0,
     canRecordAllClasses: attendanceClassLevelsForDate(access, date).length === STUDENT_CLASS_LEVELS.length,
     adviserClassLevels: access.adviserClassLevels,
