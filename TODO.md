@@ -481,3 +481,19 @@ Follow-up checks:
 
 - [ ] Test the check-out button in production and confirm the record stores `check_out_at` with `check_out_status = normal`.
 - [ ] Open the daily student attendance report on mobile and desktop and confirm the date filter and duty teacher card no longer overflow.
+
+## Student attendance Telegram reminder - 2026-07-14
+
+Release status:
+
+- [x] Added `/api/cron/student-attendance-reminder` for the 08:30 Bangkok-time student attendance reminder.
+- [x] Added Telegram group notification listing active class levels that still have no student attendance records for the day.
+- [x] Skips weekends and configured school/public holidays unless the day is marked as a special workday.
+- [x] Uses notification logs to avoid duplicate reminders for the same date.
+- [x] Added Vercel cron schedule `30 1 * * *`.
+- [x] Ran `npm run build` successfully.
+
+Follow-up checks:
+
+- [ ] After deploy, confirm Vercel lists `/api/cron/student-attendance-reminder`.
+- [ ] Confirm the Telegram group receives a message at 08:30 only when at least one class level has not checked attendance.

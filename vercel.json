@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/attendance-line-report-fallback",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/student-attendance-reminder",
+      "schedule": "30 1 * * *"
     }
   ]
 }
