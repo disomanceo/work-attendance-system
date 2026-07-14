@@ -264,6 +264,7 @@ export async function GET(request: Request) {
     classLevel,
     classRoom,
     adviserNames,
+    recordedCount: records?.length ?? 0,
     students: (students ?? []).map((student: any, index: number) => {
       const record = recordMap.get(String(student.id));
       return {

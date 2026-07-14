@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { STUDENT_CLASS_LEVELS } from "@/lib/students/settings";
 
-type AttendanceStatus = "present" | "late" | "leave" | "absent";
+type AttendanceStatus = "present" | "leave" | "absent";
 
 type Profile = { id: string; full_name: string | null; phone?: string | null; profile_image_file_id?: string | null };
 type ClassSetting = {
@@ -43,7 +43,6 @@ type WorkCalendarDayResponse = {
 
 const STATUS_OPTIONS: Array<{ key: AttendanceStatus; label: string; icon: string; active: string }> = [
   { key: "present", label: "มา", icon: "✓", active: "bg-emerald-500 text-white border-emerald-500 shadow-emerald-100" },
-  { key: "late", label: "สาย", icon: "◷", active: "bg-amber-400 text-white border-amber-400 shadow-amber-100" },
   { key: "leave", label: "ลา", icon: "□", active: "bg-blue-500 text-white border-blue-500 shadow-blue-100" },
   { key: "absent", label: "ขาด", icon: "×", active: "bg-rose-500 text-white border-rose-500 shadow-rose-100" },
 ];
@@ -86,7 +85,7 @@ function getProfileName(profile?: Profile) {
   return profile.full_name || profile.phone || profile.id;
 }
 function normalizeStatus(value: unknown): AttendanceStatus {
-  if (value === "absent" || value === "late") return value;
+  if (value === "absent") return value;
   if (value === "leave" || value === "sick" || value === "personal") return "leave";
   return "present";
 }
@@ -229,7 +228,7 @@ export default function StudentAttendancePage() {
   }, [adviserProfiles, profileImageCache, supabase]);
 
   const summary = useMemo(() => {
-    const base = { present: 0, late: 0, leave: 0, absent: 0 } as Record<AttendanceStatus, number>;
+    const base = { present: 0, leave: 0, absent: 0 } as Record<AttendanceStatus, number>;
     students.forEach((student) => {
       const record = records[student.id];
       base[record?.status || "present"] += 1;
@@ -406,7 +405,7 @@ export default function StudentAttendancePage() {
         </section>
 
         <section className="rounded-[20px] border border-slate-200 bg-white p-1.5 shadow-sm">
-          <div className="grid grid-cols-5 gap-1 text-center leading-tight">
+          <div className="grid grid-cols-4 gap-1.5 text-center leading-tight">
             <span className="rounded-xl bg-slate-50 px-0.5 py-1.5 font-semibold text-slate-700 ring-1 ring-slate-200">
               <span className="block text-[8.5px]">ทั้งหมด</span>
               <strong className="block text-[17px] leading-none">{students.length}</strong>
@@ -414,10 +413,6 @@ export default function StudentAttendancePage() {
             <span className="rounded-xl bg-emerald-50 px-0.5 py-1.5 font-semibold text-emerald-700 ring-1 ring-emerald-100">
               <span className="block text-[8.5px]">มา</span>
               <strong className="block text-[17px] leading-none">{summary.present}</strong>
-            </span>
-            <span className="rounded-xl bg-amber-50 px-0.5 py-1.5 font-semibold text-amber-700 ring-1 ring-amber-100">
-              <span className="block text-[8.5px]">สาย</span>
-              <strong className="block text-[17px] leading-none">{summary.late}</strong>
             </span>
             <span className="rounded-xl bg-blue-50 px-0.5 py-1.5 font-semibold text-blue-700 ring-1 ring-blue-100">
               <span className="block text-[8.5px]">ลา</span>
@@ -431,7 +426,7 @@ export default function StudentAttendancePage() {
         </section>
 
         <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm">
-          <div className="grid grid-cols-[minmax(0,1fr)_112px] bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700 max-[430px]:grid-cols-[minmax(0,1fr)_104px]">
+          <div className="grid grid-cols-[minmax(0,1fr)_132px] bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700 max-[430px]:grid-cols-[minmax(0,1fr)_122px]">
             <span>รายชื่อนักเรียน</span>
             <span className="text-center">สถานะ</span>
           </div>
@@ -444,12 +439,12 @@ export default function StudentAttendancePage() {
               {students.map((student, index) => {
                 const record = records[student.id] || { studentId: student.id, status: "present" as AttendanceStatus };
                 return (
-                  <div key={student.id} className="grid grid-cols-[minmax(0,1fr)_112px] items-center gap-1 px-2 py-1 max-[430px]:grid-cols-[minmax(0,1fr)_104px]">
+                  <div key={student.id} className="grid grid-cols-[minmax(0,1fr)_132px] items-center gap-2 px-2 py-1.5 max-[430px]:grid-cols-[minmax(0,1fr)_122px]">
                     <div className="flex min-w-0 items-start gap-1.5">
                       <span className="w-5 shrink-0 pt-0.5 text-right text-[11px] text-slate-500">{getStudentNo(student, index)}.</span>
                       <span className="min-w-0 whitespace-normal break-words text-[11.5px] font-medium leading-snug text-slate-900">{getStudentName(student)}</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-0.5">
+                    <div className="grid grid-cols-3 gap-1.5">
                       {STATUS_OPTIONS.map((option) => {
                         const active = record.status === option.key;
                         return (
@@ -461,7 +456,7 @@ export default function StudentAttendancePage() {
                               }
                               disabled={
                                 workCalendarDay?.isWorkingDay === false
-                              } className={`flex h-6 min-w-0 items-center justify-center rounded-md border px-0 text-center text-[11.5px] font-semibold leading-none tracking-normal shadow-sm transition [font-family:Arial,Tahoma,sans-serif] active:scale-95 disabled:opacity-50 ${active ? option.active : "border-slate-200 bg-white text-slate-600"}`}>
+                              } className={`flex h-7 min-w-0 items-center justify-center rounded-lg border px-0 text-center text-[11.5px] font-semibold leading-none tracking-normal shadow-sm transition [font-family:Arial,Tahoma,sans-serif] active:scale-95 disabled:opacity-50 ${active ? option.active : "border-slate-200 bg-white text-slate-600"}`}>
                             {option.label}
                           </button>
                         );

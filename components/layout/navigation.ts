@@ -87,19 +87,27 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) =>
         value.startsWith("/budget/payments") ||
         value.startsWith("/budget/disbursements"),
-    },    {
-      label: "ข้อมูลนักเรียน",
-      icon: "▥",
-      href: "/students",
-      section: "students",
-      match: (value) => value === "/students",
     },
     {
       label: "เช็คชื่อนักเรียน",
       icon: "✓",
       href: "/students/attendance",
       section: "students",
-      match: (value) => value.startsWith("/students/attendance"),
+      match: (value) => value === "/students/attendance",
+    },
+    {
+      label: "รายงานการมาเรียน",
+      icon: "📅",
+      href: "/students/attendance/report",
+      section: "students",
+      match: (value) => value.startsWith("/students/attendance/report"),
+    },
+    {
+      label: "ข้อมูลนักเรียน",
+      icon: "▥",
+      href: "/students",
+      section: "students",
+      match: (value) => value === "/students",
     },
     {
       label: "ตั้งค่าห้องเรียน",
