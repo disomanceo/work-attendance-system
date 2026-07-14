@@ -401,6 +401,46 @@ Follow-up checks:
 - [ ] Keep PAT env vars in Vercel as backup even after GitHub App works.
 - [ ] If extension fallback says it is not responding, install/reload Extension `v1.8.33` and refresh `/documents`.
 
+## Smart Area mobile import reliability - 2026-07-14
+
+Release status:
+
+- [x] Confirmed the current workspace path is `D:\work-attendance-main`.
+- [x] Checked `git status` before editing; tracked files were clean.
+- [x] Confirmed `.env.local` is ignored by git and added local Smart Area central credentials there for local testing only.
+- [x] Confirmed the central Smart Area login page is reachable from the machine and the supplied account can log in to the receive page.
+- [x] Updated the Smart Area import button so mobile/tablet browsers do not wait for the Chrome Extension fallback when GitHub dispatch fails.
+- [x] Kept Extension fallback for desktop browsers when GitHub dispatch is unavailable.
+- [x] Improved the import button message so dispatch/run failures surface the latest error from `smart_area_import_runs.errors`.
+- [x] After successful/partial import completion, the import button now announces a document update event.
+- [x] Updated `/documents` to reload the document list when the Smart Area import update event fires, so new books appear without waiting for focus/version polling.
+- [x] Ran `npm.cmd run build` successfully.
+
+Important production setup still required:
+
+- Mobile import depends on GitHub workflow dispatch because mobile browsers cannot use the Chrome Extension fallback.
+- Vercel Production must have either GitHub App env vars or a valid workflow token:
+  - `GITHUB_APP_ID`
+  - `GITHUB_APP_INSTALLATION_ID`
+  - `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY_BASE64`
+  - or `GITHUB_WORKFLOW_TOKEN`
+- GitHub Actions secrets must include:
+  - `SMART_AREA_BASE_URL`
+  - `SMART_AREA_USERNAME`
+  - `SMART_AREA_PASSWORD`
+  - `WORK_ATTENDANCE_IMPORT_URL`
+  - `WORK_ATTENDANCE_IMPORT_SECRET`
+  - `WORK_ATTENDANCE_CALLBACK_URL`
+- `WORK_ATTENDANCE_IMPORT_SECRET` in GitHub Actions must match `SMART_AREA_IMPORT_SECRET` in Vercel Production.
+- After setting/changing Vercel env vars, production must be redeployed before mobile import can use the new values.
+
+Follow-up checks:
+
+- [ ] Press `ดึงล่าสุด` on a real mobile device and confirm it starts GitHub workflow instead of waiting for Extension.
+- [ ] Confirm the latest `smart_area_import_runs` row reaches `success` or `partial`.
+- [ ] Confirm `/documents` reloads and shows new Smart Area books after the import run finishes.
+- [ ] If mobile still fails, inspect the visible button error and `smart_area_import_runs.errors` first.
+
 ## Student role access hardening - 2026-07-14
 
 Release status:

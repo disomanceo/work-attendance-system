@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./SmartAreaImportButton.module.css";
 
@@ -15,7 +15,17 @@ type ImportRun = {
   duplicate?: number | null;
   failed?: number | null;
   finished_at?: string | null;
+  github_run_id?: string | null;
+  errors?: unknown[] | null;
 };
+
+const ACTIVE_STATUSES = new Set(["queued", "running"]);
+const TERMINAL_STATUSES = new Set([
+  "success",
+  "partial",
+  "failed",
+  "skipped",
+]);
 
 function formatFinishedAt(value?: string | null) {
   if (!value) return "";
@@ -30,6 +40,71 @@ function formatFinishedAt(value?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+function isMobileLike() {
+  if (typeof window === "undefined") return false;
+
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches;
+  const narrowScreen = window.innerWidth <= 900;
+  const mobileAgent =
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+
+  return mobileAgent || (coarsePointer && narrowScreen);
+}
+
+function errorText(value: unknown): string {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value instanceof Error) return value.message;
+
+  if (typeof value === "object") {
+    const item = value as {
+      message?: unknown;
+      id?: unknown;
+      token?: unknown;
+      status?: unknown;
+      stage?: unknown;
+    };
+    const parts = [
+      item.message ? String(item.message) : "",
+      item.id ? `ID ${String(item.id)}` : "",
+      item.token ? `token ${String(item.token)}` : "",
+      item.status ? `HTTP ${String(item.status)}` : "",
+      item.stage ? String(item.stage) : "",
+    ].filter(Boolean);
+
+    if (parts.length) return parts.join(" · ");
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function runErrorMessage(run: ImportRun | null) {
+  const errors = Array.isArray(run?.errors) ? run.errors : [];
+  const latest = errors.length ? errorText(errors[errors.length - 1]) : "";
+
+  if (latest) return latest;
+  if (run?.status === "failed") return "งานดึงข้อมูลล้มเหลว";
+  if ((run?.failed ?? 0) > 0) return "มีบางรายการนำเข้าไม่สำเร็จ";
+  return "";
+}
+
+function announceDocumentsUpdated(run: ImportRun | null) {
+  window.dispatchEvent(
+    new CustomEvent("smart-area-documents-updated", {
+      detail: {
+        source: "smart-area-import",
+        status: run?.status || "",
+        added: run?.added ?? 0,
+        updated: run?.updated ?? 0,
+      },
+    }),
+  );
 }
 
 function requestExtensionImport() {
@@ -82,6 +157,7 @@ export default function SmartAreaImportButton() {
   const [run, setRun] = useState<ImportRun | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const announcedRunRef = useRef("");
 
   const authFetch = useCallback(async (url: string, init?: RequestInit) => {
     const { data } = await createClient().auth.getSession();
@@ -103,15 +179,32 @@ export default function SmartAreaImportButton() {
     const body = await response.json();
 
     if (body.ok) {
-      setRun(body.run);
+      const nextRun = (body.run || null) as ImportRun | null;
+      setRun(nextRun);
 
       if (
-        body.run &&
-        !["queued", "running"].includes(body.run.status)
+        nextRun &&
+        TERMINAL_STATUSES.has(String(nextRun.status || ""))
       ) {
-        setMessage("");
+        const marker = `${nextRun.finished_at || ""}:${nextRun.status || ""}:${nextRun.added || 0}:${nextRun.updated || 0}:${nextRun.failed || 0}`;
+
+        if (
+          nextRun.finished_at &&
+          announcedRunRef.current !== marker &&
+          ["success", "partial"].includes(String(nextRun.status || ""))
+        ) {
+          announcedRunRef.current = marker;
+          announceDocumentsUpdated(nextRun);
+        }
+
+        const latestError = runErrorMessage(nextRun);
+        setMessage(latestError ? `ผลดึงข้อมูล: ${latestError}` : "");
       }
+
+      return nextRun;
     }
+
+    return null;
   }, [authFetch]);
 
   useEffect(() => {
@@ -136,12 +229,22 @@ export default function SmartAreaImportButton() {
       const body = await response.json();
 
       if (!body.ok) {
+        if (isMobileLike()) {
+          setMessage(
+            `${body.message || "เริ่มงานผ่าน GitHub ไม่สำเร็จ"} · มือถือใช้ Extension ไม่ได้ กรุณาตรวจ GitHub App/token และลองอีกครั้ง`,
+          );
+          await load();
+          return;
+        }
+
         const fallback = await requestExtensionImport();
 
         if (fallback.ok) {
           setMessage(
             "GitHub token ใช้งานไม่ได้ จึงสั่ง Extension ให้ดึงข้อมูลแทนแล้ว",
           );
+          announceDocumentsUpdated(null);
+          await load();
           return;
         }
 
@@ -154,7 +257,11 @@ export default function SmartAreaImportButton() {
         return;
       }
 
-      setMessage("");
+      setMessage(
+        body.githubToken
+          ? `เริ่ม GitHub workflow แล้ว (${body.githubToken})`
+          : "เริ่ม GitHub workflow แล้ว",
+      );
       await load();
     } finally {
       setBusy(false);
@@ -162,8 +269,9 @@ export default function SmartAreaImportButton() {
   }
 
   const active =
-    busy || ["queued", "running"].includes(run?.status || "");
+    busy || ACTIVE_STATUSES.has(run?.status || "");
   const finished = formatFinishedAt(run?.finished_at);
+  const status = run?.status ? ` · ${run.status}` : "";
 
   return (
     <div className={styles.importDock}>
@@ -199,6 +307,7 @@ export default function SmartAreaImportButton() {
             <span>
               ผิดพลาด {run?.failed ?? 0}
               {finished ? ` · ${finished}` : ""}
+              {status}
             </span>
           </>
         )}

@@ -1004,6 +1004,23 @@ export default function DocumentsPage() {
     void loadBooks();
   }, [loadBooks]);
 
+  useEffect(() => {
+    const handleDocumentsUpdated = () => {
+      void loadBooks();
+    };
+
+    window.addEventListener(
+      "smart-area-documents-updated",
+      handleDocumentsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "smart-area-documents-updated",
+        handleDocumentsUpdated,
+      );
+    };
+  }, [loadBooks]);
 
   useEffect(() => {
     void loadAssignees();
