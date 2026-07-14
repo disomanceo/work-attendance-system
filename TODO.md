@@ -57,6 +57,11 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Refined the budget project activity column again:
+  - pinned mobile row columns so the activity count stays on the same line,
+  - shifted desktop budget/status/file columns left to give activity more space,
+  - made the pending status badge smaller and plainer on mobile,
+  - verified with `npm run build`.
 - Adjusted the budget project list layout:
   - removed the leading chevron before project names,
   - shifted project names left and widened the activity column for mobile/tablet,

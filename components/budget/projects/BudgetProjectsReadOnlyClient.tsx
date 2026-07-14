@@ -5499,6 +5499,27 @@ export default function BudgetProjectsReadOnlyClient() {
 /* BUDGET_PROJECTS_BLUE_GOVERNMENT_THEME_END */
 
 /* BUDGET_PROJECTS_ACTIVITY_COLUMN_FIT_START */
+@media (min-width: 981px) {
+  .projectsRoot .dataCard {
+    --project-grid:
+      30px
+      minmax(360px, 2.72fr)
+      minmax(100px, 0.58fr)
+      minmax(138px, 0.78fr)
+      minmax(72px, 0.38fr)
+      minmax(72px, 0.38fr)
+      minmax(72px, 0.38fr)
+      minmax(68px, 0.36fr)
+      minmax(58px, 0.3fr)
+      72px;
+  }
+
+  .projectsRoot .activityCount {
+    width: 46px;
+    min-width: 46px;
+  }
+}
+
 @media (max-width: 980px) {
   .projectsRoot .columnHeader > div:nth-child(9),
   .projectsRoot .columnHeader > div:nth-child(10),
@@ -5526,7 +5547,7 @@ export default function BudgetProjectsReadOnlyClient() {
 
 @media (max-width: 760px) {
   .projectsRoot .dataCard {
-    --project-grid: 24px minmax(0, 1fr) 32px 60px;
+    --project-grid: 24px minmax(0, 1fr) 68px 54px;
     overflow: hidden;
   }
 
@@ -5539,29 +5560,69 @@ export default function BudgetProjectsReadOnlyClient() {
     gap: 5px;
   }
 
+  .projectsRoot .columnHeader > div:nth-child(8) {
+    display: block;
+    min-width: 68px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .projectsRoot .columnHeader > div:nth-child(9) {
+    display: none;
+  }
+
   .projectsRoot .columnHeader > div:nth-child(10) {
-    min-width: 60px;
+    display: block;
+    min-width: 54px;
     font-size: 9.5px;
     line-height: 1.15;
   }
 
-  .projectsRoot .fileCell {
-    min-width: 0;
+  .projectsRoot .indexCell {
+    grid-column: 1;
+    grid-row: 1;
   }
 
-  .projectsRoot .fileIcon,
-  .projectsRoot .fileMore {
-    width: 22px;
-    min-width: 22px;
-    height: 24px;
+  .projectsRoot .projectMain {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .projectsRoot .ownerCell,
+  .projectsRoot .leadCell,
+  .projectsRoot .amountCell,
+  .projectsRoot .fileCell {
+    display: none !important;
+  }
+
+  .projectsRoot .statusCell {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex !important;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .projectsRoot .statusBadge {
+    min-width: 0;
+    min-height: 22px;
+    padding: 2px 6px;
+    border-radius: 7px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
   }
 
   .projectsRoot .activityCount {
-    width: 40px;
-    min-width: 40px;
+    grid-column: 4;
+    grid-row: 1;
+    width: 44px;
+    min-width: 44px;
     height: 26px;
     font-size: 10px;
     line-height: 1;
+    justify-self: center;
+    align-self: center;
   }
 }
 
