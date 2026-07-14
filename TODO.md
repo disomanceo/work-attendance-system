@@ -57,6 +57,10 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Matched desktop daily attendance report styling with mobile:
+  - changed `นักเรียนทั้งหมด` labels to `ทั้งหมด` across the report,
+  - applied the emerald header theme to desktop,
+  - verified with `npm run build`.
 - Refined the mobile daily attendance report header and table:
   - mobile header now uses an emerald highlight band,
   - report title stays on one compact line with the date centered below it,

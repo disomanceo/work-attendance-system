@@ -228,7 +228,7 @@ export default function StudentDailyReportPage() {
       tone: "orange",
     },
     {
-      label: "นักเรียนทั้งหมด",
+      label: "ทั้งหมด",
       icon: "👥",
       value: totals.total,
       percent: totals.total > 0 ? 100 : 0,
@@ -238,7 +238,7 @@ export default function StudentDailyReportPage() {
 
   function exportExcel() {
     const rows = [
-      ["ระดับชั้น", "นักเรียนทั้งหมด", "มาเรียน", "ขาดเรียน", "ลา", "% มาเรียน", "สถานะเช็คชื่อ"],
+      ["ระดับชั้น", "ทั้งหมด", "มาเรียน", "ขาดเรียน", "ลา", "% มาเรียน", "สถานะเช็คชื่อ"],
       ...reports.map((report) => [
         report.classLevel,
         String(report.total),
@@ -303,7 +303,7 @@ export default function StudentDailyReportPage() {
               <thead>
                 <tr>
                   <th>ระดับชั้น</th>
-                  <th>นักเรียนทั้งหมด</th>
+                  <th>ทั้งหมด</th>
                   <th>มาเรียน</th>
                   <th>ขาดเรียน</th>
                   <th>ลา</th>
@@ -398,7 +398,7 @@ export default function StudentDailyReportPage() {
                 <article key={report.classLevel} className={styles.classCard}>
                   <h3>{report.classLevel}</h3>
                   <dl>
-                    <div><dt>นักเรียนทั้งหมด</dt><dd>{report.total}</dd></div>
+                    <div><dt>ทั้งหมด</dt><dd>{report.total}</dd></div>
                     <div><dt>มาเรียน</dt><dd>{presentText}</dd></div>
                     <div><dt>ขาดเรียน</dt><dd>{absentText}</dd></div>
                     <div><dt>ลา</dt><dd>{leaveText}</dd></div>
