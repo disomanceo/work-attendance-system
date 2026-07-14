@@ -7,6 +7,7 @@ type AttendanceRecord = {
   check_out_at: string | null;
   check_in_status: string | null;
   check_out_status: string | null;
+  check_in_distance_meters: number | null;
 };
 
 function getAccessToken(request: Request) {
@@ -160,7 +161,7 @@ export async function POST(request: Request) {
     const { data: currentRecord, error: recordError } = await adminClient
       .from("attendance_records")
       .select(
-        "id, check_in_at, check_out_at, check_in_status, check_out_status"
+        "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters"
       )
       .eq("user_id", user.id)
       .eq("work_date", workDate)
@@ -203,7 +204,7 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .is("check_out_at", null)
       .select(
-        "id, check_in_at, check_out_at, check_in_status, check_out_status"
+        "id, check_in_at, check_out_at, check_in_status, check_out_status, check_in_distance_meters"
       )
       .maybeSingle();
 

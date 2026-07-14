@@ -473,6 +473,7 @@ Release status:
 - [x] Added weekday-colored duty teacher cards, including yellow for Monday.
 - [x] Changed manual check-out saves to use `check_out_status: "normal"` so the update matches the database check constraint.
 - [x] Fixed the mobile header selector so the date filter and duty teacher card no longer inherit full-width sizing.
+- [x] Included `check_in_distance_meters` in the check-out API response and guarded GPS distance formatting so it never shows `NaN เมตร`.
 - [x] Ran `npm run build` successfully.
 
 Follow-up checks:

@@ -44,7 +44,7 @@ type AttendanceRecord = {
   check_out_at: string | null;
   check_in_status: string | null;
   check_out_status: string | null;
-  check_in_distance_meters: number | null;
+  check_in_distance_meters?: number | null;
 };
 
 type PositionData = {
@@ -292,6 +292,12 @@ function calculateDistanceMeters(
   );
 
   return Math.round(earthRadius * angle);
+}
+
+function formatDistanceMeters(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${Math.round(value).toLocaleString("th-TH")} เมตร`
+    : "--";
 }
 
 function getLocation() {
@@ -1381,16 +1387,8 @@ schoolName: settings?.school_name ?? null,
                   <small>ระยะ GPS</small>
                   <strong>
                     {record?.check_in_at
-                      ? record.check_in_distance_meters === null
-                        ? "--"
-                        : `${Math.round(
-                            record.check_in_distance_meters
-                          ).toLocaleString("th-TH")} เมตร`
-                      : distanceMeters === null
-                        ? "--"
-                        : `${Math.round(distanceMeters).toLocaleString(
-                            "th-TH"
-                          )} เมตร`}
+                      ? formatDistanceMeters(record.check_in_distance_meters)
+                      : formatDistanceMeters(distanceMeters)}
                   </strong>
                 </div>
               </div>
