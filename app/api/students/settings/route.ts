@@ -102,7 +102,7 @@ export async function POST(request: Request) {
 
     if (body.type === "class-settings") {
       if (!canManageClassAdvisers(access)) {
-        return forbidden("??????????????????????????????????");
+        return forbidden("คุณไม่มีสิทธิ์แต่งตั้งหรือแก้ไขครูประจำชั้น");
       }
 
       const rows: StudentSettingsInputRow[] = Array.isArray(body.rows) ? body.rows : [];
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
 
     if (body.type === "work-permissions") {
       if (!canManageStudentSettings(access)) {
-        return forbidden("?????????????????????????????????????");
+        return forbidden("คุณไม่มีสิทธิ์จัดการสิทธิ์งานนักเรียน");
       }
 
       const profileId = body.profile_id;
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
 
     if (body.type === "duty-roster") {
       if (!canManageDutyRoster(access)) {
-        return forbidden("????????????????????????????????????");
+        return forbidden("คุณไม่มีสิทธิ์จัดการครูเวรประจำวัน");
       }
 
       const rows: StudentSettingsInputRow[] = Array.isArray(body.rows) ? body.rows : [];

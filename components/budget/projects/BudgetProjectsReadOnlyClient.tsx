@@ -5503,6 +5503,91 @@ export default function BudgetProjectsReadOnlyClient() {
 }
 /* BUDGET_PROJECTS_BLUE_GOVERNMENT_THEME_END */
 
+/* BUDGET_PROJECTS_ACTIVITY_COLUMN_FIT_START */
+@media (max-width: 980px) {
+  .projectsRoot .columnHeader > div:nth-child(9),
+  .projectsRoot .columnHeader > div:nth-child(10),
+  .projectsRoot .fileCell,
+  .projectsRoot .activityCount {
+    justify-self: center;
+  }
+
+  .projectsRoot .columnHeader > div:nth-child(10) {
+    min-width: 50px;
+    text-align: center;
+    white-space: nowrap;
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+
+  .projectsRoot .activityCount {
+    width: 34px;
+    min-width: 34px;
+    height: 28px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (max-width: 760px) {
+  .projectsRoot .dataCard {
+    --project-grid: 24px minmax(0, 1fr) 34px 52px;
+    overflow: hidden;
+  }
+
+  .projectsRoot .columnHeader,
+  .projectsRoot .projectRow {
+    grid-template-columns: var(--project-grid);
+  }
+
+  .projectsRoot .columnHeader {
+    gap: 5px;
+  }
+
+  .projectsRoot .columnHeader > div:nth-child(10) {
+    min-width: 52px;
+    font-size: 9.5px;
+    line-height: 1.15;
+  }
+
+  .projectsRoot .fileCell {
+    min-width: 0;
+  }
+
+  .projectsRoot .fileIcon,
+  .projectsRoot .fileMore {
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+  }
+
+  .projectsRoot .activityCount {
+    width: 34px;
+    min-width: 34px;
+    height: 26px;
+    font-size: 10px;
+    line-height: 1;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 980px) {
+  .projectsRoot .dataCard {
+    --project-grid:
+      28px
+      minmax(0, 1fr)
+      minmax(132px, 0.58fr)
+      minmax(86px, 0.38fr)
+      42px
+      56px;
+  }
+
+  .projectsRoot .columnHeader,
+  .projectsRoot .projectRow {
+    grid-template-columns: var(--project-grid);
+  }
+}
+/* BUDGET_PROJECTS_ACTIVITY_COLUMN_FIT_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}</style>
     </div>

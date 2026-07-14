@@ -57,6 +57,10 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Fixed budget project activity column and student settings permission messages:
+  - kept the mobile/tablet activity count column on one line without horizontal overflow,
+  - replaced placeholder question-mark forbidden messages in `/api/students/settings`,
+  - verified with `npm run build`.
 - Updated budget section themes:
   - `/budget/projects` now uses a blue government-style theme for both project/activity and free-education views,
   - `/budget/payments` now uses an amber/orange payment theme for both project/activity and free-education views,
