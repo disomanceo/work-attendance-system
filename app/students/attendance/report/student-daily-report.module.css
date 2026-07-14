@@ -469,36 +469,66 @@
   }
 
   .header {
-    gap: 6px;
-    padding: 0 0 5px;
+    position: relative;
+    min-height: 64px;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 104px 8px 8px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #047857, #10b981);
+    box-shadow: 0 8px 18px rgba(5, 150, 105, 0.22);
+  }
+
+  .header > div {
+    width: 100%;
+    min-width: 0;
+    text-align: center;
   }
 
   .header h1 {
-    font-size: 20px;
-    line-height: 1.15;
+    overflow: hidden;
+    color: #ffffff;
+    font-size: 15px;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .header p {
-    font-size: 13.5px;
+    margin-top: 4px;
+    color: #dcfce7;
+    font-size: 12px;
+    font-weight: 850;
+    line-height: 1.15;
+    text-align: center;
   }
 
   .dateFilter {
-    min-width: 126px;
-    padding: 6px;
-    border-radius: 10px;
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    min-width: 92px;
+    width: 92px;
+    gap: 2px;
+    padding: 4px;
+    border-color: rgba(255, 255, 255, 0.45);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: none;
   }
 
   .dateFilter span {
-    margin-bottom: 2px;
-    font-size: 9px;
+    color: #047857;
+    font-size: 7.5px;
+    font-weight: 850;
     line-height: 1;
   }
 
   .dateFilter input {
-    height: 28px;
-    border-radius: 6px;
-    padding: 0 3px;
-    font-size: 9.5px;
+    height: 24px;
+    border-radius: 5px;
+    padding: 0 2px;
+    font-size: 8px;
     line-height: 1;
   }
 
@@ -586,9 +616,26 @@
   .desktopTable th,
   .desktopTable td {
     padding: 5px 1px;
-    font-size: 10.8px;
+    font-size: 9.6px;
+    font-weight: 500;
     line-height: 1.08;
     overflow-wrap: anywhere;
+  }
+
+  .desktopTable tbody td:nth-child(2),
+  .desktopTable tbody td:nth-child(3),
+  .desktopTable tbody td:nth-child(4),
+  .desktopTable tbody td:nth-child(5) {
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .desktopTable tfoot td:nth-child(2),
+  .desktopTable tfoot td:nth-child(3),
+  .desktopTable tfoot td:nth-child(4),
+  .desktopTable tfoot td:nth-child(5) {
+    font-size: 10px;
+    font-weight: 600;
   }
 
   .desktopTable th:nth-child(1),
@@ -629,7 +676,8 @@
   }
 
   .progressCell strong {
-    font-size: 9.5px;
+    font-size: 8.8px;
+    font-weight: 650;
   }
 
   .checked {
@@ -712,7 +760,16 @@
   .desktopTable th,
   .desktopTable td {
     padding: 4px 1px;
-    font-size: 10px;
+    font-size: 8.8px;
+    font-weight: 500;
+  }
+
+  .desktopTable tbody td:nth-child(2),
+  .desktopTable tbody td:nth-child(3),
+  .desktopTable tbody td:nth-child(4),
+  .desktopTable tbody td:nth-child(5) {
+    font-size: 9.2px;
+    font-weight: 500;
   }
 
   .progressTrack {

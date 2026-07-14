@@ -57,6 +57,12 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Refined the mobile daily attendance report header and table:
+  - mobile header now uses an emerald highlight band,
+  - report title stays on one compact line with the date centered below it,
+  - the date picker is smaller and fixed to the top-right of the mobile header,
+  - mobile table numbers are smaller and lighter,
+  - verified with `npm run build`.
 - Refined the daily attendance report layout:
   - moved the date picker to the top-right header area,
   - removed semester and class-level filters so the report always shows all classes,
