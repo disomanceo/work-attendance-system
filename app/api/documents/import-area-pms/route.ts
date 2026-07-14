@@ -831,8 +831,9 @@ async function handle(request: Request) {
 
   if (action === "extensionInfo") {
     const appUrl =
+      new URL(request.url).origin ||
       process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ||
-      "https://work-attendance-system-beige.vercel.app";
+      "https://work-attendance-system-ashen.vercel.app";
 
     return json({
       ok: true,
