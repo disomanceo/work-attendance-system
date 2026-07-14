@@ -22,6 +22,8 @@ const result = {
   errors: [],
 };
 
+const DEFAULT_LOOKBACK_PAGES = 5;
+
 const callback = async (status) => {
   if (!process.env.WORK_ATTENDANCE_CALLBACK_URL) return;
 
@@ -102,6 +104,43 @@ function pageRangeValues(value) {
 
       return start ? [start] : [];
     });
+}
+
+function lookbackPageCount() {
+  const value = Number(process.env.SMART_AREA_LOOKBACK_PAGES || DEFAULT_LOOKBACK_PAGES);
+  return Number.isInteger(value) && value > 0 ? value : DEFAULT_LOOKBACK_PAGES;
+}
+
+async function checkSchoolExisting(items) {
+  const itemList = [...items].map((item) => ({
+    smartAreaId: item.id,
+  }));
+
+  if (itemList.length === 0) return new Set();
+
+  const response = await fetch(process.env.WORK_ATTENDANCE_IMPORT_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-import-secret": process.env.WORK_ATTENDANCE_IMPORT_SECRET,
+    },
+    body: JSON.stringify({
+      action: "checkExistingSmartAreaItems",
+      items: itemList,
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok || !body.ok) {
+    throw new Error(body.message || `Existing check HTTP ${response.status}`);
+  }
+
+  return new Set(
+    Object.entries(body.existing || {})
+      .filter(([, exists]) => exists)
+      .map(([id]) => String(id)),
+  );
 }
 
 const LABELS = {
@@ -213,14 +252,16 @@ try {
 
   const latestPage = Math.max(1, ...pageNumbers);
   const requestedPages = pageRangeValues(process.env.SMART_AREA_PAGE_RANGE);
+  const lookbackPages = lookbackPageCount();
   const scanPages = requestedPages.length
     ? [...new Set(requestedPages)].sort((left, right) => left - right)
     : Array.from(
-        { length: latestPage - Math.max(1, latestPage - 2) + 1 },
-        (_, index) => Math.max(1, latestPage - 2) + index,
+        { length: latestPage - Math.max(1, latestPage - lookbackPages + 1) + 1 },
+        (_, index) => Math.max(1, latestPage - lookbackPages + 1) + index,
       );
 
   const items = new Map();
+  const pageCounts = {};
 
   for (const pageNumber of scanPages) {
     const url = new URL(receiveUrl);
@@ -352,9 +393,39 @@ try {
         rowOrder: rowIndex + 1,
       });
     }
+
+    pageCounts[pageNumber] = rows.length;
   }
 
   result.scanned = items.size;
+
+  const existingBefore = await checkSchoolExisting(items.values());
+  const missingBefore = [...items.values()].filter(
+    (item) => !existingBefore.has(String(item.id)),
+  );
+
+  console.log(
+    JSON.stringify(
+      {
+        scanPlan: {
+          latestPage,
+          scanPages,
+          pageCounts,
+          scanned: result.scanned,
+          existingBefore: existingBefore.size,
+          missingBefore: missingBefore.map((item) => ({
+            id: item.id,
+            page: item.pageNumber,
+            rowOrder: item.rowOrder,
+          })),
+        },
+      },
+      null,
+      2,
+    ),
+  );
+
+  const failedIds = new Set();
 
   for (const item of items.values()) {
     try {
@@ -651,12 +722,33 @@ try {
         result.duplicate++;
       }
     } catch (error) {
+      failedIds.add(String(item.id));
       result.failed++;
       result.errors.push({
         id: item.id,
         message: String(error.message || error),
       });
     }
+  }
+
+  const existingAfter = await checkSchoolExisting(items.values());
+  const missingAfter = [...items.values()].filter(
+    (item) =>
+      !existingAfter.has(String(item.id)) &&
+      !failedIds.has(String(item.id)),
+  );
+
+  if (missingAfter.length > 0) {
+    result.failed += missingAfter.length;
+    result.errors.push({
+      message: "Central Smart Area items are still missing from school database after import",
+      ids: missingAfter.map((item) => String(item.id)),
+      pages: missingAfter.map((item) => ({
+        id: item.id,
+        page: item.pageNumber,
+        rowOrder: item.rowOrder,
+      })),
+    });
   }
 
   result.status = result.failed ? "partial" : "success";

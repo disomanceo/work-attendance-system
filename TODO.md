@@ -441,6 +441,38 @@ Follow-up checks:
 - [ ] Confirm `/documents` reloads and shows new Smart Area books after the import run finishes.
 - [ ] If mobile still fails, inspect the visible button error and `smart_area_import_runs.errors` first.
 
+## Smart Area central/school reconciliation - 2026-07-14
+
+Findings:
+
+- The latest successful GitHub workflow run `29334534729` reported:
+  - `scanned`: 60
+  - `added`: 0
+  - `updated`: 1
+  - `duplicate`: 59
+  - `failed`: 0
+- Direct comparison against the central receive pages found page `166` has central IDs:
+  - already in school DB: `50032`, `50037`, `50072`, `50073`, `50078`
+  - missing from school DB: `50085`, `50086`, `50200`, `50202`, `50205`
+- These missing rows were not hidden/inactive in the school system; they did not exist in `smart_area_books`.
+- The importer needed a stronger central-vs-school reconciliation step, not only a successful workflow status.
+
+Changes made:
+
+- Expanded the default Smart Area scan window from the latest 3 central pages to the latest 5 central pages.
+- Added `SMART_AREA_LOOKBACK_PAGES` support so the scan window can be widened from GitHub Actions/Vercel secrets without changing code.
+- Added a pre-import reconciliation check using `checkExistingSmartAreaItems` to log which central IDs are missing from the school DB before importing.
+- Added a post-import reconciliation check so the workflow becomes `partial` with explicit missing IDs if any scanned central item is still absent from the school DB after import.
+- Kept `SMART_AREA_PAGE_RANGE` support for targeted backfills.
+
+Follow-up checks:
+
+- [ ] Run `node --check scripts/smart-area-import/index.mjs`.
+- [ ] Run `npm.cmd run build`.
+- [ ] Push and deploy the importer reconciliation update.
+- [ ] Press `ดึงล่าสุด` and confirm IDs `50085`, `50086`, `50200`, `50202`, and `50205` are added.
+- [ ] Confirm the workflow log prints `scanPlan` with central pages, counts, and `missingBefore`.
+
 ## Student role access hardening - 2026-07-14
 
 Release status:
