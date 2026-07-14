@@ -464,3 +464,17 @@ Follow-up checks:
 - [ ] Sign in as an academic administration user and confirm the classroom settings page opens the calendar tab.
 - [ ] Sign in as a personnel administration user and confirm student settings, duty roster, advisers, and calendar tabs are available.
 - [ ] Sign in as a Smart Area clerk and confirm assignment buttons remain hidden while clerk submit/close actions work.
+
+## Attendance duty header and checkout save fix - 2026-07-14
+
+Release status:
+
+- [x] Locked the daily attendance report date filter and duty teacher card to fixed compact widths so the header does not stretch on desktop or mobile.
+- [x] Added weekday-colored duty teacher cards, including yellow for Monday.
+- [x] Changed manual check-out saves to use `check_out_status: "normal"` so the update matches the database check constraint.
+- [x] Ran `npm run build` successfully.
+
+Follow-up checks:
+
+- [ ] Test the check-out button in production and confirm the record stores `check_out_at` with `check_out_status = normal`.
+- [ ] Open the daily student attendance report on mobile and desktop and confirm the date filter and duty teacher card no longer overflow.

@@ -196,7 +196,7 @@ export async function POST(request: Request) {
       .from("attendance_records")
       .update({
         check_out_at: checkOutAt,
-        check_out_status: "manual",
+        check_out_status: "normal",
         updated_at: checkOutAt,
       })
       .eq("id", currentRecord.id)

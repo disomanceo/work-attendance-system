@@ -98,6 +98,19 @@ function weekdayNumber(value: string) {
   return day === 0 ? 7 : day;
 }
 
+function weekdayTone(value: string) {
+  const tones = [
+    "weekdaySunday",
+    "weekdayMonday",
+    "weekdayTuesday",
+    "weekdayWednesday",
+    "weekdayThursday",
+    "weekdayFriday",
+    "weekdaySaturday",
+  ];
+  return tones[parseIsoDate(value).getDay()];
+}
+
 function formatThaiFullDate(value: string) {
   const date = parseIsoDate(value);
   return `${THAI_WEEKDAYS[date.getDay()]}ที่ ${date.getDate()} ${THAI_MONTHS_FULL[date.getMonth()]} ${date.getFullYear() + 543}`;
@@ -322,7 +335,7 @@ export default function StudentDailyReportPage() {
               <span>วันที่</span>
               <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
             </label>
-            <div className={styles.dutyBox}>
+            <div className={`${styles.dutyBox} ${styles[weekdayTone(date)]}`}>
               <span>ครูเวรประจำวัน</span>
               <strong>{dutyTeacherNames.length > 0 ? dutyTeacherNames.join(", ") : "-"}</strong>
             </div>

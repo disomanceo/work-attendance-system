@@ -46,14 +46,19 @@
 
 .headerAside {
   display: grid;
-  width: 190px;
-  flex: 0 0 190px;
-  gap: 8px;
+  width: 180px;
+  min-width: 0;
+  flex: 0 0 180px;
+  align-self: stretch;
+  gap: 6px;
 }
 
 .dateFilter {
   display: grid;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   gap: 5px;
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.52);
@@ -91,6 +96,9 @@
 .dutyBox {
   display: grid;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   gap: 4px;
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.52);
@@ -107,6 +115,8 @@
 }
 
 .dutyBox strong {
+  display: block;
+  max-width: 100%;
   overflow: hidden;
   color: #064e3b;
   font-size: 13px;
@@ -114,6 +124,97 @@
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dutyBox.weekdaySunday {
+  border-color: #fecaca;
+  background: #fee2e2;
+}
+
+.dutyBox.weekdaySunday span {
+  color: #dc2626;
+}
+
+.dutyBox.weekdaySunday strong {
+  color: #7f1d1d;
+}
+
+.dutyBox.weekdayMonday {
+  border-color: #fde68a;
+  background: #fef3c7;
+}
+
+.dutyBox.weekdayMonday span {
+  color: #a16207;
+}
+
+.dutyBox.weekdayMonday strong {
+  color: #713f12;
+}
+
+.dutyBox.weekdayTuesday {
+  border-color: #fbcfe8;
+  background: #fce7f3;
+}
+
+.dutyBox.weekdayTuesday span {
+  color: #be185d;
+}
+
+.dutyBox.weekdayTuesday strong {
+  color: #831843;
+}
+
+.dutyBox.weekdayWednesday {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+}
+
+.dutyBox.weekdayWednesday span {
+  color: #15803d;
+}
+
+.dutyBox.weekdayWednesday strong {
+  color: #14532d;
+}
+
+.dutyBox.weekdayThursday {
+  border-color: #fed7aa;
+  background: #ffedd5;
+}
+
+.dutyBox.weekdayThursday span {
+  color: #c2410c;
+}
+
+.dutyBox.weekdayThursday strong {
+  color: #7c2d12;
+}
+
+.dutyBox.weekdayFriday {
+  border-color: #bfdbfe;
+  background: #dbeafe;
+}
+
+.dutyBox.weekdayFriday span {
+  color: #1d4ed8;
+}
+
+.dutyBox.weekdayFriday strong {
+  color: #1e3a8a;
+}
+
+.dutyBox.weekdaySaturday {
+  border-color: #ddd6fe;
+  background: #ede9fe;
+}
+
+.dutyBox.weekdaySaturday span {
+  color: #7c3aed;
+}
+
+.dutyBox.weekdaySaturday strong {
+  color: #4c1d95;
 }
 
 .footer button:disabled {
@@ -508,10 +609,10 @@
 
   .header {
     position: relative;
-    min-height: 86px;
+    min-height: 92px;
     align-items: center;
     gap: 4px;
-    padding: 8px 108px 8px 8px;
+    padding: 8px 112px 8px 8px;
     border-radius: 12px;
     box-shadow: 0 8px 18px rgba(5, 150, 105, 0.22);
   }
@@ -526,7 +627,8 @@
     position: absolute;
     top: 7px;
     right: 7px;
-    width: 96px;
+    width: 98px;
+    min-width: 0;
     gap: 4px;
   }
 
@@ -550,6 +652,8 @@
 
   .dateFilter {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     gap: 2px;
     padding: 4px;
     border-color: rgba(255, 255, 255, 0.45);
@@ -574,11 +678,13 @@
   }
 
   .dutyBox {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     gap: 1px;
     padding: 4px;
     border-color: rgba(255, 255, 255, 0.45);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.96);
     box-shadow: none;
   }
 
@@ -589,8 +695,10 @@
   }
 
   .dutyBox strong {
-    font-size: 8px;
-    line-height: 1.1;
+    display: block;
+    max-width: 100%;
+    font-size: 7.8px;
+    line-height: 1.05;
   }
 
   .summaryScroller {
