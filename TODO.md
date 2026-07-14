@@ -70,6 +70,10 @@ Updated: 2026-07-14
   - active queued/running imports are reused instead of starting duplicate GitHub workflows,
   - opening the documents page auto-checks once,
   - opening the attendance home page auto-checks once without showing an import button.
+- Added Smart Area attachment proxy behavior:
+  - original central attachments now load through the school HTTPS API without permanent file storage,
+  - PDF and image files are served inline for viewing,
+  - Word, Excel, ZIP, RAR, and other files are served as downloads.
 - Added daily duty teacher display to the attendance report:
   - report header now shows a `ครูเวรประจำวัน` box under the date picker,
   - duty teacher names are loaded from the active duty roster for the selected weekday,

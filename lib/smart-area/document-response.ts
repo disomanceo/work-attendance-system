@@ -53,6 +53,8 @@ export function smartAreaText(value: unknown) {
 }
 
 function fileOpenUrl(attachment: {
+  id?: unknown;
+  attachment_type?: unknown;
   drive_file_id?: unknown;
   file_url?: unknown;
   source_url?: unknown;
@@ -63,6 +65,15 @@ function fileOpenUrl(attachment: {
     return `https://drive.google.com/file/d/${encodeURIComponent(
       driveFileId,
     )}/view`;
+  }
+
+  if (
+    smartAreaText(attachment.id) &&
+    smartAreaText(attachment.attachment_type) !== "signed"
+  ) {
+    return `/api/documents/attachments/${encodeURIComponent(
+      smartAreaText(attachment.id),
+    )}/download`;
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, useRef, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./page.module.css";
@@ -1144,6 +1144,65 @@ export default function DocumentsPage() {
     }
   }
 
+  function downloadFileName(response: Response, fallback: string) {
+    const disposition = response.headers.get("content-disposition") || "";
+    const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utfMatch?.[1]) return decodeURIComponent(utfMatch[1]);
+
+    const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+    if (plainMatch?.[1]) return plainMatch[1];
+
+    return fallback || "attachment";
+  }
+
+  async function openAttachment(
+    event: MouseEvent<HTMLAnchorElement>,
+    book: BookItem,
+    attachment: AttachmentItem,
+  ) {
+    void markAssignmentRead(book, attachment);
+
+    if (!attachment.openUrl.startsWith("/api/documents/attachments/")) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const token = await sessionToken();
+    if (!token) {
+      setMessage("กรุณาเข้าสู่ระบบใหม่");
+      return;
+    }
+
+    const response = await fetch(attachment.openUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      setMessage("ไม่สามารถโหลดไฟล์แนบได้");
+      return;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const disposition = response.headers.get("content-disposition") || "";
+    const shouldDownload = disposition.toLowerCase().includes("attachment");
+
+    if (!shouldDownload) {
+      window.open(objectUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = downloadFileName(response, attachment.fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  }
+
   async function markBookRead(book: BookItem) {
     if (book.isRead) return;
 
@@ -2133,8 +2192,8 @@ export default function DocumentsPage() {
                                 ? assignmentState(book, currentUserId)
                                 : undefined
                             }
-                            onClick={() => {
-                              void markAssignmentRead(book, attachment);
+                            onClick={(event) => {
+                              void openAttachment(event, book, attachment);
                             }}
                           >
                             {attachment.attachmentType !== "signed" && (
@@ -2364,8 +2423,8 @@ export default function DocumentsPage() {
                                 ? assignmentState(book, currentUserId)
                                 : undefined
                             }
-                            onClick={() => {
-                              void markAssignmentRead(book, attachment);
+                            onClick={(event) => {
+                              void openAttachment(event, book, attachment);
                             }}
                           >
                                     {attachment.attachmentType !== "signed" && (
@@ -2561,8 +2620,8 @@ export default function DocumentsPage() {
                                 ? assignmentState(book, currentUserId)
                                 : undefined
                             }
-                            onClick={() => {
-                              void markAssignmentRead(book, attachment);
+                            onClick={(event) => {
+                              void openAttachment(event, book, attachment);
                             }}
                           >
                                 {attachment.attachmentType !== "signed" && (
@@ -2786,16 +2845,15 @@ export default function DocumentsPage() {
                                       target="_blank"
                                       rel="noreferrer"
                                       title={attachment.fileName}
-                                    
-                            data-assignment-state={
-                              attachment.attachmentType === "signed"
-                                ? assignmentState(book, currentUserId)
-                                : undefined
-                            }
-                            onClick={() => {
-                              void markAssignmentRead(book, attachment);
-                            }}
-                          >
+                                      data-assignment-state={
+                                        attachment.attachmentType === "signed"
+                                          ? assignmentState(book, currentUserId)
+                                          : undefined
+                                      }
+                                      onClick={(event) => {
+                                        void openAttachment(event, book, attachment);
+                                      }}
+                                    >
                                       {attachment.attachmentType !== "signed" && (
                               <span>
                                 {originalAttachmentNumber(book, attachment)}.
