@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./SmartAreaImportButton.module.css";
 
+const EXTENSION_VERSION = "1.8.33";
+const EXTENSION_DOWNLOAD_URL =
+  "/downloads/import-area-pms-1.8.33-installer.zip";
+
 type ImportRun = {
   status?: string | null;
   added?: number | null;
@@ -40,7 +44,7 @@ function requestExtensionImport() {
       resolve({
         ok: false,
         error:
-          "Extension ยังไม่ตอบสนอง กรุณาติดตั้ง/อัปเดต Extension แล้วเปิด Chrome ใหม่",
+          `Extension ยังไม่ตอบสนอง กรุณาติดตั้ง/อัปเดตเป็น v${EXTENSION_VERSION} แล้ว Reload Extension หรือเปิด Chrome ใหม่`,
       });
     }, 3500);
 
@@ -174,7 +178,17 @@ export default function SmartAreaImportButton() {
 
       <div className={styles.importMeta} aria-live="polite">
         {message ? (
-          <span>{message}</span>
+          <span>
+            {message}
+            {message.includes("Extension") ? (
+              <>
+                {" "}
+                <a href={EXTENSION_DOWNLOAD_URL} target="_blank" rel="noreferrer">
+                  อัปเดต Extension v{EXTENSION_VERSION}
+                </a>
+              </>
+            ) : null}
+          </span>
         ) : (
           <>
             <span>

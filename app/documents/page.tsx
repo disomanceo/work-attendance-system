@@ -556,6 +556,21 @@ function attachmentDisplayLabel(
   const number = originalAttachmentNumber(book, attachment) ?? 1;
   return displayAttachmentName(attachment.fileName, number - 1);
 }
+
+function NewWorkBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+
+  return (
+    <sup
+      className={styles.newWorkBadge}
+      aria-label={`งานใหม่ ${count} งาน`}
+      title={`งานใหม่ ${count} งาน`}
+    >
+      {count}
+    </sup>
+  );
+}
+
 export default function DocumentsPage() {
   const router = useRouter();
 
@@ -601,9 +616,8 @@ export default function DocumentsPage() {
   const hadSelectedBookRef = useRef(false);
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInfo>({
-    version: "1.8.32",
-    downloadUrl:
-      "https://drive.google.com/file/d/1Iwbi7jQNxGNHlvsrh-UjKxDoCO-zwIzf/view?usp=drive_link",
+    version: "1.8.33",
+    downloadUrl: "/downloads/import-area-pms-1.8.33-installer.zip",
   });
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
@@ -818,7 +832,7 @@ export default function DocumentsPage() {
           version: String(result.version || "1.8.17"),
           downloadUrl: String(
             result.downloadUrl ||
-              "https://drive.google.com/file/d/1Iwbi7jQNxGNHlvsrh-UjKxDoCO-zwIzf/view?usp=drive_link",
+              "/downloads/import-area-pms-1.8.33-installer.zip",
           ),
         });
       }
@@ -1626,7 +1640,7 @@ export default function DocumentsPage() {
     };
   }, [books, currentUserId, isMemberWorkspace]);
 
-  function NewWorkBadge({ count }: { count: number }) {
+  function unusedNewWorkBadge({ count }: { count: number }) {
     if (count <= 0) return null;
 
     return (
@@ -1639,6 +1653,7 @@ export default function DocumentsPage() {
       </sup>
     );
   }
+  void unusedNewWorkBadge;
 
   useEffect(() => {
     if (keepSelectedBookOnFilterChangeRef.current) {
@@ -2967,7 +2982,7 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      <footer className={styles.documentFooter}>
+      <footer className={styles.documentFooter} hidden aria-hidden="true">
         <div>
           ระบบสารบรรณโรงเรียนจากข้อมูล Smart Area · โรงเรียนวัดไผ่มุ้ง
         </div>
@@ -2994,6 +3009,36 @@ export default function DocumentsPage() {
           </a>{" "}
           · © 2026 นายสุธน พุทธรัตน์ ผู้อำนวยการโรงเรียนวัดไผ่มุ้ง
           · สงวนลิขสิทธิ์ · โทร. 086-6271047
+        </div>
+      </footer>
+
+      <footer className={styles.documentFooter}>
+        <div>ระบบสารบรรณโรงเรียนจากข้อมูล Smart Area · โรงเรียนวัดไผ่มุ้ง</div>
+        <div>
+          อัปเดตล่าสุด{" "}
+          {lastLoadedAt
+            ? new Intl.DateTimeFormat("th-TH", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }).format(lastLoadedAt)
+            : "-"}
+        </div>
+        <div>
+          <a
+            href={extensionInfo.downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={styles.extensionLink}
+          >
+            ดาวน์โหลด/อัปเดต Extension v{extensionInfo.version || "1.8.33"}
+          </a>
+        </div>
+        <div>
+          © 2026 นายสุธน พุทธรัตน์ ผู้อำนวยการโรงเรียนวัดไผ่มุ้ง ·
+          สงวนลิขสิทธิ์ · โทร. 086-6271047
         </div>
       </footer>
 

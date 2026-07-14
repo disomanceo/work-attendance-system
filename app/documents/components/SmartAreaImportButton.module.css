@@ -37,6 +37,14 @@
   overflow-wrap: anywhere;
 }
 
+.importMeta a {
+  display: inline-flex;
+  color: #0a6e58;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 760px) {
   .importButton {
     min-height: 25px;

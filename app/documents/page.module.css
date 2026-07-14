@@ -1125,6 +1125,18 @@
   background: #e3f4ee;
 }
 
+.documentFooter .extensionLink {
+  border: 1px solid #b9ded2;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #f0fbf7;
+  color: #075e50;
+}
+
+.documentFooter .extensionLink:hover {
+  background: #dff3ed;
+}
+
 @media (max-width: 760px) {
   .fromColumn {
     width: auto;
