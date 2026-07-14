@@ -617,18 +617,19 @@
     box-shadow: 0 8px 18px rgba(5, 150, 105, 0.22);
   }
 
-  .header > div {
+  .header > div:first-child {
     width: 100%;
     min-width: 0;
     text-align: center;
   }
 
-  .headerAside {
+  .header > .headerAside {
     position: absolute;
     top: 7px;
     right: 7px;
     width: 98px;
     min-width: 0;
+    max-width: 98px;
     gap: 4px;
   }
 
