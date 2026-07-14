@@ -15,10 +15,35 @@ function text(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function isInlineCentralAttachment(attachment: {
+  file_name?: unknown;
+  mime_type?: unknown;
+  file_url?: unknown;
+  source_url?: unknown;
+}) {
+  const value = [
+    attachment.file_name,
+    attachment.mime_type,
+    attachment.file_url,
+    attachment.source_url,
+  ]
+    .map(text)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    value.includes("application/pdf") ||
+    value.includes("image/") ||
+    /\.(pdf|png|jpe?g|gif|webp|bmp|svg)(?:$|[?#\s])/i.test(value)
+  );
+}
+
 function fileOpenUrl(attachment: {
   id?: unknown;
   attachment_type?: unknown;
   drive_file_id?: unknown;
+  file_name?: unknown;
+  mime_type?: unknown;
   file_url?: unknown;
   source_url?: unknown;
 }) {
@@ -29,7 +54,11 @@ function fileOpenUrl(attachment: {
     )}/view`;
   }
 
-  if (text(attachment.id) && text(attachment.attachment_type) !== "signed") {
+  if (
+    text(attachment.id) &&
+    text(attachment.attachment_type) !== "signed" &&
+    !isInlineCentralAttachment(attachment)
+  ) {
     return `/api/documents/attachments/${encodeURIComponent(
       text(attachment.id),
     )}/download`;

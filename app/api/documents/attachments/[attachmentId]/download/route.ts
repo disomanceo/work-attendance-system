@@ -23,6 +23,46 @@ function extensionName(fileName: string, url: string) {
   return match ? match[1].toLowerCase().replace("jpeg", "jpg") : "";
 }
 
+function fileNameFromDisposition(value: string) {
+  const utfMatch = value.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utfMatch?.[1]) return decodeURIComponent(utfMatch[1]);
+
+  const plainMatch = value.match(/filename="?([^";]+)"?/i);
+  return plainMatch?.[1] || "";
+}
+
+function extensionFromMime(value: string) {
+  const mime = value.toLowerCase();
+  const types: Record<string, string> = {
+    "application/pdf": "pdf",
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/bmp": "bmp",
+    "image/svg+xml": "svg",
+    "application/msword": "doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-powerpoint": "ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+    "application/zip": "zip",
+    "application/x-zip-compressed": "zip",
+    "application/vnd.rar": "rar",
+    "application/x-rar": "rar",
+    "application/x-rar-compressed": "rar",
+  };
+
+  return types[mime] || "";
+}
+
+function ensureExtension(fileName: string, extension: string) {
+  const cleaned = safeFileName(fileName);
+  if (!extension || /\.[A-Za-z0-9]{2,5}$/.test(cleaned)) return cleaned;
+  return `${cleaned}.${extension}`;
+}
+
 function mimeFromExtension(extension: string) {
   const types: Record<string, string> = {
     pdf: "application/pdf",
@@ -156,13 +196,23 @@ export async function GET(
     );
   }
 
-  const fileName = safeFileName(text(attachment.file_name) || "attachment");
-  const extension = extensionName(fileName, sourceUrl);
   const upstreamType = text(upstream.headers.get("content-type")).split(";")[0];
+  const upstreamFileName = fileNameFromDisposition(
+    text(upstream.headers.get("content-disposition")),
+  );
+  const fileName = safeFileName(
+    upstreamFileName || text(attachment.file_name) || "attachment",
+  );
+  const extension =
+    extensionName(fileName, sourceUrl) || extensionFromMime(upstreamType);
   const contentType =
     upstreamType && !upstreamType.includes("text/html")
       ? upstreamType
       : mimeFromExtension(extension);
+  const responseFileName = ensureExtension(
+    fileName,
+    extension || extensionFromMime(contentType),
+  );
   const disposition = isInlineFile(contentType, extension)
     ? "inline"
     : "attachment";
@@ -171,7 +221,7 @@ export async function GET(
   headers.set("content-type", contentType);
   headers.set(
     "content-disposition",
-    `${disposition}; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    `${disposition}; filename*=UTF-8''${encodeURIComponent(responseFileName)}`,
   );
   headers.set("cache-control", "private, no-store");
 
