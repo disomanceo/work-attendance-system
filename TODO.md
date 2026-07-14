@@ -1,6 +1,6 @@
 # Work Attendance TODO
 
-Updated: 2026-07-13
+Updated: 2026-07-14
 
 ## Current rules
 
@@ -316,3 +316,34 @@ Follow-up checks:
 - [ ] Confirm no `GitHub HTTP 401: Bad credentials` appears after the GitHub App env vars are active.
 - [ ] Keep PAT env vars in Vercel as backup even after GitHub App works.
 - [ ] If extension fallback says it is not responding, install/reload Extension `v1.8.33` and refresh `/documents`.
+
+## Student role access hardening - 2026-07-14
+
+Release status:
+
+- [x] Created branch `codex/student-role-access`.
+- [x] Added shared student access helper in `lib/students/access.ts`.
+- [x] Locked student attendance API so only director/admin/staff, class advisers, all-class recorders, or duty teachers for that date can view/save attendance.
+- [x] Locked student master data APIs so director/admin/staff can manage all classes and class advisers can manage only their own classes.
+- [x] Locked student import and student photo upload/read paths by the same class-level access rules.
+- [x] Added auth and role checks to `/api/students/settings` and limited settings saves by permission type.
+- [x] Allowed `staff` to manage the work calendar with director/admin.
+- [x] Updated `/students/attendance` to load allowed class choices from the server before loading attendance rows.
+- [x] Updated `/students` to use allowed class choices from the server and hide/disable management controls when not allowed.
+- [x] Updated `/students/settings` tabs to show only settings areas the user can manage.
+- [x] Ran `npm run build` successfully.
+
+Policy implemented:
+
+- `director`, `admin`, and `staff` can manage all student data, attendance, roster/settings, and work calendar.
+- Class advisers can view/manage students in their own class and check attendance for their own class.
+- Duty teachers can check attendance for every class only on the weekday they are assigned.
+- Teachers with `student_attendance_all_classes` can check attendance for every class.
+- Non-adviser teachers cannot edit student master data outside their assigned class.
+
+Follow-up checks:
+
+- [ ] Sign in as a class adviser and confirm `/students` only returns their class.
+- [ ] Sign in as a Monday duty teacher on Monday and confirm `/students/attendance` lists all classes.
+- [ ] Sign in as a non-duty teacher with no class assignment and confirm student records are not exposed.
+- [ ] Sign in as `staff` and confirm the work calendar can be saved.

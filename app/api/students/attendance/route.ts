@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  canRecordAttendance,
+  forbidden,
+  loadStudentAccess,
+  requireStudentAuth,
+} from "@/lib/students/access";
 
 type AttendanceStatus = "present" | "absent" | "sick" | "leave" | "late";
 
@@ -197,7 +203,7 @@ async function loadAdviserNames(
 }
 
 export async function GET(request: Request) {
-  const auth = await requireActiveUser(request);
+  const auth = await requireStudentAuth(request);
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
@@ -205,6 +211,11 @@ export async function GET(request: Request) {
   const date = validDate(requestedDate) ? requestedDate : todayBangkok();
   const classLevel = text(url.searchParams.get("classLevel")) || "อนุบาล 2";
   const classRoom = text(url.searchParams.get("classRoom"));
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+
+  if (!canRecordAttendance(access, classLevel, date)) {
+    return forbidden("คุณไม่มีสิทธิ์ดูหรือเช็คชื่อนักเรียนชั้นนี้");
+  }
 
   let studentsQuery = auth.adminClient
     .from("students")
@@ -284,7 +295,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireActiveUser(request);
+  const auth = await requireStudentAuth(request);
   if (!auth.ok) return auth.response;
 
   let body: SaveBody;
@@ -306,6 +317,11 @@ export async function POST(request: Request) {
       { ok: false, message: "กรุณาระบุวันที่และชั้นเรียนให้ครบ" },
       { status: 400 },
     );
+  }
+
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  if (!canRecordAttendance(access, classLevel, date)) {
+    return forbidden("คุณไม่มีสิทธิ์บันทึกเช็คชื่อนักเรียนชั้นนี้");
   }
 
   const records = Array.isArray(body.records) ? body.records : [];

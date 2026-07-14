@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  canManageStudentData,
+  forbidden,
+  loadStudentAccess,
+  requireStudentAuth,
+  studentDataClassLevels,
+} from "@/lib/students/access";
 
 type StudentInput = {
   student_code?: unknown;
@@ -100,13 +107,19 @@ function normalizeStudent(input: StudentInput) {
 }
 
 export async function GET(request: Request) {
-  const auth = await requireActiveUser(request);
+  const auth = await requireStudentAuth(request);
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
   const classLevel = text(url.searchParams.get("classLevel"));
   const classRoom = text(url.searchParams.get("classRoom"));
   const queryText = text(url.searchParams.get("q"));
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const allowedLevels = studentDataClassLevels(access);
+
+  if (allowedLevels.length === 0) {
+    return NextResponse.json({ ok: true, students: [], access: { studentDataClassLevels: [] } });
+  }
 
   let query = auth.adminClient
     .from("students")
@@ -116,7 +129,14 @@ export async function GET(request: Request) {
     .order("class_room", { ascending: true })
     .order("student_code", { ascending: true });
 
-  if (classLevel && classLevel !== "ทั้งหมด") query = query.eq("class_level", classLevel);
+  if (classLevel && classLevel !== "ทั้งหมด") {
+    if (!allowedLevels.includes(classLevel)) {
+      return forbidden("คุณไม่มีสิทธิ์ดูข้อมูลนักเรียนชั้นนี้");
+    }
+    query = query.eq("class_level", classLevel);
+  } else {
+    query = query.in("class_level", allowedLevels);
+  }
   if (classRoom && classRoom !== "ทั้งหมด") query = query.eq("class_room", classRoom);
   if (queryText) query = query.or(`student_code.ilike.%${queryText}%,full_name.ilike.%${queryText}%`);
 
@@ -126,11 +146,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, message: `โหลดข้อมูลนักเรียนไม่สำเร็จ: ${error.message}` }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, students: data ?? [] });
+  return NextResponse.json({
+    ok: true,
+    students: data ?? [],
+    access: {
+      canManageStudentData: allowedLevels.length > 0,
+      studentDataClassLevels: allowedLevels,
+    },
+  });
 }
 
 export async function POST(request: Request) {
-  const auth = await requireActiveUser(request);
+  const auth = await requireStudentAuth(request);
   if (!auth.ok) return auth.response;
 
   let body: StudentInput;
@@ -145,6 +172,11 @@ export async function POST(request: Request) {
     payload = normalizeStudent(body);
   } catch (error) {
     return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
+  }
+
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  if (!canManageStudentData(access, payload.class_level)) {
+    return forbidden("คุณไม่มีสิทธิ์เพิ่มข้อมูลนักเรียนชั้นนี้");
   }
 
   const { data, error } = await auth.adminClient

@@ -1,5 +1,14 @@
 ﻿import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import {
+  accessSummary,
+  canManageClassAdvisers,
+  canManageDutyRoster,
+  canManageStudentSettings,
+  forbidden,
+  loadStudentAccess,
+  requireStudentAuth,
+  todayBangkok,
+} from "@/lib/students/access";
 
 type StudentSettingsInputRow = {
   class_level?: string;
@@ -21,22 +30,23 @@ type StudentSettingsBody = {
   permissions?: StudentSettingsInputRow[];
 };
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-function getAdminClient() {
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Supabase environment variables are not configured.");
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
+function requestedDate(request: Request) {
+  const value = new URL(request.url).searchParams.get("date") || "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : todayBangkok();
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requireStudentAuth(request);
+  if (!auth.ok) return auth.response;
+
   try {
-    const supabase = getAdminClient();
+    const supabase = auth.adminClient;
+    const access = await loadStudentAccess(supabase, auth.user.id, auth.profile.role);
+    const summary = accessSummary(access, requestedDate(request));
+    const visibleClassLevels = new Set([
+      ...summary.attendanceClassLevels,
+      ...summary.studentDataClassLevels,
+    ]);
 
     const [profiles, classSettings, workPermissions, dutyRoster] = await Promise.all([
       supabase
@@ -67,9 +77,12 @@ export async function GET() {
 
     return NextResponse.json({
       profiles: profiles.data ?? [],
-      classSettings: classSettings.data ?? [],
-      workPermissions: workPermissions.data ?? [],
-      dutyRoster: dutyRoster.data ?? [],
+      classSettings: summary.isAdmin || summary.canManageStudentSettings
+        ? classSettings.data ?? []
+        : (classSettings.data ?? []).filter((item) => visibleClassLevels.has(String(item.class_level || ""))),
+      workPermissions: summary.canManageStudentSettings ? workPermissions.data ?? [] : [],
+      dutyRoster: summary.isAdmin || summary.canManageDutyRoster ? dutyRoster.data ?? [] : [],
+      access: summary,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -79,11 +92,19 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireStudentAuth(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const body = (await request.json()) as StudentSettingsBody;
-    const supabase = getAdminClient();
+    const supabase = auth.adminClient;
+    const access = await loadStudentAccess(supabase, auth.user.id, auth.profile.role);
 
     if (body.type === "class-settings") {
+      if (!canManageClassAdvisers(access)) {
+        return forbidden("คุณไม่มีสิทธิ์แต่งตั้งครูประจำชั้น");
+      }
+
       const rows: StudentSettingsInputRow[] = Array.isArray(body.rows) ? body.rows : [];
       const payload = rows.map((row: StudentSettingsInputRow) => ({
         class_level: row.class_level,
@@ -109,6 +130,10 @@ export async function POST(request: Request) {
     }
 
     if (body.type === "work-permissions") {
+      if (!canManageStudentSettings(access)) {
+        return forbidden("คุณไม่มีสิทธิ์จัดการสิทธิ์งานนักเรียน");
+      }
+
       const profileId = body.profile_id;
       const permissions: StudentSettingsInputRow[] = Array.isArray(body.permissions) ? body.permissions : [];
 
@@ -149,6 +174,10 @@ export async function POST(request: Request) {
     }
 
     if (body.type === "duty-roster") {
+      if (!canManageDutyRoster(access)) {
+        return forbidden("คุณไม่มีสิทธิ์แต่งตั้งครูเวรประจำวัน");
+      }
+
       const rows: StudentSettingsInputRow[] = Array.isArray(body.rows) ? body.rows : [];
 
       const clearResult = await supabase

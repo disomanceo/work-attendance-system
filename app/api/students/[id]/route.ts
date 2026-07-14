@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  canManageStudentData,
+  forbidden,
+  loadStudentAccess,
+  requireStudentAuth,
+} from "@/lib/students/access";
 
 type StudentInput = {
   student_code?: unknown;
@@ -93,7 +99,7 @@ function normalizeStudent(input: StudentInput) {
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await requireActiveUser(request);
+  const auth = await requireStudentAuth(request);
   if (!auth.ok) return auth.response;
 
   const { id } = await context.params;
@@ -112,6 +118,25 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, message: error instanceof Error ? error.message : "ข้อมูลไม่ถูกต้อง" }, { status: 400 });
   }
 
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const { data: currentStudent, error: currentError } = await auth.adminClient
+    .from("students")
+    .select("class_level")
+    .eq("id", id)
+    .neq("status", "deleted")
+    .single();
+
+  if (currentError || !currentStudent) {
+    return NextResponse.json({ ok: false, message: "ไม่พบนักเรียนสำหรับแก้ไข" }, { status: 404 });
+  }
+
+  if (
+    !canManageStudentData(access, String(currentStudent.class_level || "")) ||
+    !canManageStudentData(access, payload.class_level)
+  ) {
+    return forbidden("คุณไม่มีสิทธิ์แก้ไขข้อมูลนักเรียนชั้นนี้");
+  }
+
   const { data, error } = await auth.adminClient
     .from("students")
     .update(payload)
@@ -128,10 +153,26 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const auth = await requireActiveUser(request);
+  const auth = await requireStudentAuth(request);
   if (!auth.ok) return auth.response;
 
   const { id } = await context.params;
+
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const { data: currentStudent, error: currentError } = await auth.adminClient
+    .from("students")
+    .select("class_level")
+    .eq("id", id)
+    .neq("status", "deleted")
+    .single();
+
+  if (currentError || !currentStudent) {
+    return NextResponse.json({ ok: false, message: "ไม่พบนักเรียนสำหรับลบ" }, { status: 404 });
+  }
+
+  if (!canManageStudentData(access, String(currentStudent.class_level || ""))) {
+    return forbidden("คุณไม่มีสิทธิ์ลบข้อมูลนักเรียนชั้นนี้");
+  }
 
   const { error } = await auth.adminClient
     .from("students")

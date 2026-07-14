@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  canManageStudentData,
+  forbidden,
+  loadStudentAccess,
+  studentDataClassLevels,
+} from "@/lib/students/access";
 
 const DEFAULT_STUDENT_PHOTO_ROOT_FOLDER_ID = "1VCUDQlK0LbSlJ5HIhKsCcO2SfC3ySmyM";
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
@@ -175,6 +181,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "ไม่พบนักเรียนสำหรับบันทึกรูป" }, { status: 404 });
     }
 
+    const access = await loadStudentAccess(auth.adminClient, auth.profile.id, auth.profile.role);
+    if (!canManageStudentData(access, String(student.class_level || ""))) {
+      return forbidden("คุณไม่มีสิทธิ์อัปโหลดรูปนักเรียนชั้นนี้");
+    }
+
     const year = await academicYear(auth.adminClient);
     const extension = photoExtension(file.type);
     const fileName = `${safeName(String(student.student_code || student.id))}-${safeName(String(student.full_name))}-${Date.now()}.${extension}`;
@@ -252,7 +263,7 @@ export async function GET(request: Request) {
 
     const { data: student } = await auth.adminClient
       .from("students")
-      .select("id")
+      .select("id, class_level")
       .eq("photo_file_id", fileId)
       .neq("status", "deleted")
       .limit(1)
@@ -260,6 +271,11 @@ export async function GET(request: Request) {
 
     if (!student) {
       return NextResponse.json({ ok: false, message: "ไม่มีสิทธิ์เปิดรูปนี้" }, { status: 403 });
+    }
+
+    const access = await loadStudentAccess(auth.adminClient, auth.profile.id, auth.profile.role);
+    if (!studentDataClassLevels(access).includes(String(student.class_level || ""))) {
+      return forbidden("คุณไม่มีสิทธิ์เปิดรูปนักเรียนชั้นนี้");
     }
 
     const gasResult = await callGas(auth.env.gasUrl, {

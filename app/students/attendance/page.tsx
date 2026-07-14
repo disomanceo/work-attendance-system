@@ -23,7 +23,16 @@ type AttendanceStudent = {
   full_name?: string | null;
   status?: string | null;
 };
-type SettingsResponse = { profiles?: Profile[]; classSettings?: ClassSetting[]; message?: string; error?: string };
+type StudentAccessSummary = {
+  attendanceClassLevels?: string[];
+};
+type SettingsResponse = {
+  profiles?: Profile[];
+  classSettings?: ClassSetting[];
+  access?: StudentAccessSummary;
+  message?: string;
+  error?: string;
+};
 type AttendanceResponse = { students?: AttendanceStudent[]; adviserNames?: string[]; message?: string; error?: string };
 type AttendanceRecord = { studentId: string; status: AttendanceStatus };
 type WorkCalendarDayResponse = {
@@ -113,6 +122,7 @@ export default function StudentAttendancePage() {
   const [classSettings, setClassSettings] = useState<ClassSetting[]>([]);
   const [students, setStudents] = useState<AttendanceStudent[]>([]);
   const [adviserNames, setAdviserNames] = useState<string[]>([]);
+  const [allowedClassLevels, setAllowedClassLevels] = useState<string[]>([STUDENT_CLASS_LEVELS[0] ?? "อนุบาล 2"]);
   const [profileImageCache, setProfileImageCache] = useState<Record<string, string>>({});
   const [records, setRecords] = useState<Record<string, AttendanceRecord>>({});
   const [loading, setLoading] = useState(true);
@@ -248,13 +258,23 @@ export default function StudentAttendancePage() {
   }, [date, fetchJson]);
 
   const loadSettings = useCallback(async () => {
-    const data = await fetchJson<SettingsResponse>("/api/students/settings");
+    const data = await fetchJson<SettingsResponse>(`/api/students/settings?date=${encodeURIComponent(date)}`);
+    const nextAllowed = (data.access?.attendanceClassLevels ?? []).filter(Boolean);
     setProfiles(data.profiles ?? []);
     setClassSettings(data.classSettings ?? []);
-  }, [fetchJson]);
+    if (nextAllowed.length > 0) {
+      const nextClassLevel = nextAllowed.includes(classLevel) ? classLevel : nextAllowed[0];
+      setAllowedClassLevels(nextAllowed);
+      setClassLevel(nextClassLevel);
+      return nextClassLevel;
+    } else {
+      setAllowedClassLevels([]);
+    }
+    return classLevel;
+  }, [classLevel, date, fetchJson]);
 
-  const loadAttendance = useCallback(async () => {
-    const params = new URLSearchParams({ classLevel, date });
+  const loadAttendance = useCallback(async (targetClassLevel = classLevel) => {
+    const params = new URLSearchParams({ classLevel: targetClassLevel, date });
     const data = await fetchJson<AttendanceResponse>(`/api/students/attendance?${params}`);
     const nextStudents = data.students ?? [];
     setStudents(nextStudents);
@@ -269,7 +289,8 @@ export default function StudentAttendancePage() {
     let alive = true;
     setLoading(true);
     setMessage("");
-    Promise.all([loadSettings(), loadAttendance(), loadWorkCalendarDay()])
+    Promise.all([loadSettings(), loadWorkCalendarDay()])
+      .then(([nextClassLevel]) => loadAttendance(nextClassLevel))
       .then(() => {
         if (alive) setLoading(false);
       })
@@ -384,7 +405,7 @@ export default function StudentAttendancePage() {
         <section className="rounded-[22px] border border-orange-100 bg-white/85 p-2 shadow-sm">
           <div className="grid grid-cols-1 gap-2">
             <select value={classLevel} onChange={(event) => setClassLevel(event.target.value)} className="h-9 rounded-xl border border-orange-100 bg-white px-2 text-[13px] outline-none focus:border-orange-300">
-              {STUDENT_CLASS_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+              {(allowedClassLevels.length > 0 ? allowedClassLevels : [classLevel]).map((level) => <option key={level} value={level}>{level}</option>)}
             </select>
           </div>
           <div className="mt-2 grid grid-cols-7 gap-1">

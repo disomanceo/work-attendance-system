@@ -20,7 +20,21 @@ type WorkPermission = { id?: string; profile_id: string; permission_key: string;
 type DutyRoster = { id?: string; weekday: number; profile_id: string };
 type CalendarDayType = "PUBLIC_HOLIDAY" | "SCHOOL_HOLIDAY" | "SPECIAL_WORKDAY";
 type CalendarDay = { work_date: string; day_type: CalendarDayType; title?: string | null; report_text?: string | null; note?: string | null };
-type SettingsResponse = { profiles?: Profile[]; classSettings?: ClassSetting[]; workPermissions?: WorkPermission[]; dutyRoster?: DutyRoster[]; message?: string; error?: string };
+type StudentSettingsAccess = {
+  isAdmin?: boolean;
+  canManageStudentSettings?: boolean;
+  canManageClassAdvisers?: boolean;
+  canManageDutyRoster?: boolean;
+};
+type SettingsResponse = {
+  profiles?: Profile[];
+  classSettings?: ClassSetting[];
+  workPermissions?: WorkPermission[];
+  dutyRoster?: DutyRoster[];
+  access?: StudentSettingsAccess;
+  message?: string;
+  error?: string;
+};
 type CalendarResponse = { ok?: boolean; days?: CalendarDay[]; message?: string; error?: string };
 type TabKey = "duty" | "advisers" | "calendar" | "permissions";
 
@@ -118,10 +132,21 @@ export default function StudentClassroomSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState("");
   const [message, setMessage] = useState("");
+  const [access, setAccess] = useState<StudentSettingsAccess | null>(null);
 
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
   const months = useMemo(() => academicMonths(academicYear), [academicYear]);
   const selectedPermissions = useMemo(() => workPermissions.filter((item) => item.profile_id === selectedProfileId), [workPermissions, selectedProfileId]);
+  const visibleTabs = useMemo(() => {
+    const canManageAll = Boolean(access?.isAdmin || access?.canManageStudentSettings);
+    return TABS.filter((tab) => {
+      if (tab.key === "calendar") return canManageAll;
+      if (tab.key === "advisers") return Boolean(canManageAll || access?.canManageClassAdvisers);
+      if (tab.key === "duty") return Boolean(canManageAll || access?.canManageDutyRoster);
+      if (tab.key === "permissions") return canManageAll;
+      return false;
+    });
+  }, [access]);
 
   async function loadData() {
     setLoading(true);
@@ -130,12 +155,22 @@ export default function StudentClassroomSettingsPage() {
       const data = await fetchJson<SettingsResponse>("/api/students/settings");
       const savedSettings = data.classSettings ?? [];
       const loadedProfiles = data.profiles ?? [];
+      setAccess(data.access ?? null);
       setProfiles(loadedProfiles);
       setClassSettings(emptyClassSettings().map((base) => savedSettings.find((item) => item.class_level === base.class_level && String(item.class_room ?? "") === "") ?? base));
       setWorkPermissions(data.workPermissions ?? []);
       setDutyRoster(data.dutyRoster ?? []);
       setSelectedProfileId((current) => current || loadedProfiles[0]?.id || "");
       setSelectedDutyProfileId((current) => current || loadedProfiles[0]?.id || "");
+      const nextTabs = TABS.filter((tab) => {
+        const canManageAll = Boolean(data.access?.isAdmin || data.access?.canManageStudentSettings);
+        if (tab.key === "calendar") return canManageAll;
+        if (tab.key === "advisers") return Boolean(canManageAll || data.access?.canManageClassAdvisers);
+        if (tab.key === "duty") return Boolean(canManageAll || data.access?.canManageDutyRoster);
+        if (tab.key === "permissions") return canManageAll;
+        return false;
+      });
+      setActiveTab((current) => nextTabs.some((tab) => tab.key === current) ? current : nextTabs[0]?.key ?? "advisers");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "โหลดข้อมูลไม่สำเร็จ");
     } finally {
@@ -156,7 +191,10 @@ export default function StudentClassroomSettingsPage() {
   }
 
   useEffect(() => { void loadData(); }, []);
-  useEffect(() => { void loadCalendar().catch((error) => setMessage(error instanceof Error ? error.message : "โหลดปฏิทินไม่สำเร็จ")); }, [academicYear]);
+  useEffect(() => {
+    if (!access || !(access.isAdmin || access.canManageStudentSettings)) return;
+    void loadCalendar().catch((error) => setMessage(error instanceof Error ? error.message : "โหลดปฏิทินไม่สำเร็จ"));
+  }, [academicYear, access]);
 
   function openDate(date: Date) {
     const key = dateKey(date);
@@ -363,7 +401,7 @@ export default function StudentClassroomSettingsPage() {
         </header>
 
         <section className="grid grid-cols-4 gap-1.5 rounded-[22px] border border-orange-100 bg-white/85 p-1.5 shadow-sm">
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={`h-9 rounded-2xl text-[12px] font-medium ${activeTab === tab.key ? "bg-orange-500 text-white" : "bg-slate-50 text-slate-700"}`}>
               {tab.label}
             </button>

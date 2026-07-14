@@ -2,6 +2,12 @@ import { inflateRawSync } from "node:zlib";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { STUDENT_CLASS_LEVELS } from "@/lib/students/settings";
+import {
+  canManageStudentData,
+  forbidden,
+  loadStudentAccess,
+  requireStudentAuth,
+} from "@/lib/students/access";
 
 const STUDENT_SELECT = "id, student_code, full_name, class_level, class_room, status, photo_file_id, photo_file_url, photo_mime_type, photo_uploaded_at, created_at, updated_at";
 
@@ -292,7 +298,7 @@ async function rowsFromJson(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireActiveUser(request);
+  const auth = await requireStudentAuth(request);
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
@@ -311,6 +317,12 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile.role);
+  const deniedLevel = rows.find((row) => !canManageStudentData(access, row.class_level))?.class_level;
+  if (deniedLevel) {
+    return forbidden(`คุณไม่มีสิทธิ์นำเข้าข้อมูลนักเรียนชั้น ${deniedLevel}`);
   }
 
   if (!commit) {

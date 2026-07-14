@@ -29,6 +29,10 @@ type StudentsResponse = {
   ok?: boolean;
   students?: StudentRow[];
   student?: StudentRow;
+  access?: {
+    canManageStudentData?: boolean;
+    studentDataClassLevels?: string[];
+  };
   message?: string;
   error?: string;
 };
@@ -103,7 +107,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-type ClassFilter = (typeof CLASS_FILTERS)[number];
+type ClassFilter = string;
 type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
 type SortMode = (typeof SORT_OPTIONS)[number]["value"];
 
@@ -145,7 +149,9 @@ function classOrder(value: string) {
 }
 
 function defaultAddClassLevel(value: ClassFilter): StudentClassLevel {
-  return value === "ทั้งหมด" ? STUDENT_CLASS_LEVELS[0] : value;
+  return value === "ทั้งหมด" || !STUDENT_CLASS_LEVELS.includes(value as StudentClassLevel)
+    ? STUDENT_CLASS_LEVELS[0]
+    : value as StudentClassLevel;
 }
 
 function compareStudentCode(left: string, right: string) {
@@ -226,6 +232,7 @@ export default function StudentsPage() {
   const [studentPhotoFile, setStudentPhotoFile] = useState<File | null>(null);
   const [studentPhotoPreviewUrl, setStudentPhotoPreviewUrl] = useState("");
   const [studentPhotoUrls, setStudentPhotoUrls] = useState<Record<string, string>>({});
+  const [allowedClassLevels, setAllowedClassLevels] = useState<string[]>([...STUDENT_CLASS_LEVELS]);
   const [cropSourceUrl, setCropSourceUrl] = useState("");
   const [cropSourceName, setCropSourceName] = useState("");
   const [cropSelection, setCropSelection] = useState<CropSelection>({ x: 10, y: 10, width: 80, height: 80 });
@@ -257,6 +264,15 @@ export default function StudentsPage() {
       if (activeClassLevel !== "ทั้งหมด") params.set("classLevel", activeClassLevel);
 
       const data = await fetchJson<StudentsResponse>(`/api/students?${params.toString()}`);
+      const nextAllowed = (data.access?.studentDataClassLevels ?? []).filter(Boolean);
+      if (nextAllowed.length > 0) {
+        setAllowedClassLevels(nextAllowed);
+        if (activeClassLevel !== "ทั้งหมด" && !nextAllowed.includes(activeClassLevel)) {
+          setActiveClassLevel("ทั้งหมด");
+        }
+      } else {
+        setAllowedClassLevels([]);
+      }
       setStudents(data.students ?? []);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "โหลดข้อมูลนักเรียนไม่สำเร็จ");
@@ -362,15 +378,20 @@ export default function StudentsPage() {
     : "";
 
   const formStudentPhotoUrl = studentPhotoPreviewUrl || editingStudentPhotoUrl;
+  const classFilters = useMemo(() => ["ทั้งหมด", ...allowedClassLevels] as const, [allowedClassLevels]);
+  const canManageCurrentStudents = allowedClassLevels.length > 0;
 
   function startAdd() {
-    setEditing({ ...blankStudent, class_level: defaultAddClassLevel(activeClassLevel) });
+    if (!canManageCurrentStudents) return;
+    const classLevel = activeClassLevel === "ทั้งหมด" ? allowedClassLevels[0] : defaultAddClassLevel(activeClassLevel);
+    setEditing({ ...blankStudent, class_level: classLevel as StudentClassLevel });
     clearSelectedStudentPhoto();
     setMode("add");
     setMessage("");
   }
 
   function startEdit(student: StudentRow) {
+    if (!allowedClassLevels.includes(student.class_level)) return;
     setEditing({
       id: student.id,
       student_code: student.student_code || "",
@@ -385,6 +406,7 @@ export default function StudentsPage() {
   }
 
   function startMove(student: StudentRow) {
+    if (!allowedClassLevels.includes(student.class_level)) return;
     setEditing({
       id: student.id,
       student_code: student.student_code || "",
@@ -710,13 +732,13 @@ export default function StudentsPage() {
                   title="นำเข้าไฟล์"
                 />
               </label>
-              <button type="button" onClick={() => void previewImport()} disabled={importing || !importFile} className="h-7 rounded-md bg-emerald-50 px-1.5 text-[11px] font-medium text-emerald-700 disabled:opacity-50 sm:px-2">
+              <button type="button" onClick={() => void previewImport()} disabled={importing || !importFile || !canManageCurrentStudents} className="h-7 rounded-md bg-emerald-50 px-1.5 text-[11px] font-medium text-emerald-700 disabled:opacity-50 sm:px-2">
                 ตรวจ
               </button>
-              <button type="button" onClick={() => void saveImportRows()} disabled={importing || importRows.length === 0} className="ml-auto h-7 rounded-md bg-emerald-600 px-1.5 text-[11px] font-medium text-white disabled:opacity-50 sm:px-2">
+              <button type="button" onClick={() => void saveImportRows()} disabled={importing || importRows.length === 0 || !canManageCurrentStudents} className="ml-auto h-7 rounded-md bg-emerald-600 px-1.5 text-[11px] font-medium text-white disabled:opacity-50 sm:px-2">
                 นำเข้า
               </button>
-              <button type="button" onClick={startAdd} className="h-7 rounded-md bg-orange-500 px-2 text-[11px] font-medium text-white sm:h-8 sm:px-2.5 sm:text-[12px]">
+              <button type="button" onClick={startAdd} disabled={!canManageCurrentStudents} className="h-7 rounded-md bg-orange-500 px-2 text-[11px] font-medium text-white disabled:opacity-50 sm:h-8 sm:px-2.5 sm:text-[12px]">
                 + เพิ่ม
               </button>
             </div>
@@ -731,7 +753,7 @@ export default function StudentsPage() {
 
         <section className="rounded-[22px] border border-orange-100 bg-white/85 p-1.5 shadow-sm sm:p-2">
           <div className="grid grid-cols-9 gap-1">
-            {CLASS_FILTERS.map((level, index) => (
+            {classFilters.map((level, index) => (
               <button
                 key={level}
                 type="button"
@@ -782,9 +804,15 @@ export default function StudentsPage() {
                   </div>
                   <span className="truncate rounded-full bg-blue-50 px-1 py-0.5 text-center text-[10px] text-blue-700 lg:text-[11px]">{classNameOf(student)}</span>
                   <div className="flex justify-end gap-0.5 lg:gap-1">
-                    <button type="button" onClick={() => startEdit(student)} className="grid h-6 w-6 place-items-center rounded-md bg-slate-100 text-[10px] text-slate-700" title="แก้ไข">✎</button>
-                    <button type="button" onClick={() => startMove(student)} className="grid h-6 w-6 place-items-center rounded-md bg-amber-50 text-[10px] text-amber-700" title="ย้าย">⇄</button>
-                    <button type="button" onClick={() => void deleteStudent(student.id)} className="grid h-6 w-6 place-items-center rounded-md bg-rose-50 text-[11px] text-rose-700" title="ลบ">×</button>
+                    {allowedClassLevels.includes(student.class_level) ? (
+                      <>
+                        <button type="button" onClick={() => startEdit(student)} className="grid h-6 w-6 place-items-center rounded-md bg-slate-100 text-[10px] text-slate-700" title="แก้ไข">✎</button>
+                        <button type="button" onClick={() => startMove(student)} className="grid h-6 w-6 place-items-center rounded-md bg-amber-50 text-[10px] text-amber-700" title="ย้าย">⇄</button>
+                        <button type="button" onClick={() => void deleteStudent(student.id)} className="grid h-6 w-6 place-items-center rounded-md bg-rose-50 text-[11px] text-rose-700" title="ลบ">×</button>
+                      </>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">-</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -852,7 +880,7 @@ export default function StudentsPage() {
               </label>
               <label className="col-span-2 text-[11px] text-slate-600">ชั้น
                 <select value={editing.class_level} onChange={(event) => updateEditing("class_level", event.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200 px-2 text-[12px]">
-                  {STUDENT_CLASS_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+                  {(allowedClassLevels.length > 0 ? allowedClassLevels : STUDENT_CLASS_LEVELS).map((level) => <option key={level} value={level}>{level}</option>)}
                 </select>
               </label>
             </div>
