@@ -57,6 +57,14 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Refined the daily attendance report layout:
+  - moved the date picker to the top-right header area,
+  - removed semester and class-level filters so the report always shows all classes,
+  - changed the header date to a clear full Thai date such as `วันอังคารที่ 14 กรกฎาคม 2569`,
+  - compacted the percentage summary cards into rounded rectangles,
+  - renamed the table heading to `ตารางสรุปการมาเรียนรายชั้น` and removed duplicate date text there,
+  - enlarged class-level table numbers,
+  - verified with `npm run build`.
 - Updated classroom settings permission visibility and save workflow:
   - duty roster edits now have an explicit `บันทึก` button and show pending/success messages,
   - class adviser saves clear old messages and continue showing save confirmation,

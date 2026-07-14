@@ -18,6 +18,10 @@
 }
 
 .header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
   padding: 0 2px 6px;
 }
 
@@ -30,59 +34,46 @@
 }
 
 .header p {
-  margin: 3px 0 0;
-  color: #475569;
-  font-size: 15px;
-  font-weight: 800;
+  margin: 6px 0 0;
+  color: #1d4ed8;
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.2;
 }
 
-.filters {
+.dateFilter {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  align-items: end;
-  margin-top: 8px;
-  padding: 16px 20px;
-  border: 1px solid #e8edf5;
-  border-radius: 16px;
+  min-width: 170px;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.055);
 }
 
-.filters label {
-  min-width: 0;
-}
-
-.filters span {
+.dateFilter span {
   display: block;
-  margin-bottom: 6px;
   color: #475569;
   font-size: 12px;
   font-weight: 800;
   line-height: 1.1;
 }
 
-.filters input,
-.filters select {
+.dateFilter input {
   width: 100%;
-  height: 48px;
+  height: 36px;
   border-radius: 8px;
-  font: inherit;
-  font-size: 14px;
-}
-
-.filters input,
-.filters select {
-  min-width: 0;
   border: 1px solid #dbe3ee;
   background: #ffffff;
   color: #0f172a;
-  padding: 0 12px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
   outline: 0;
 }
 
-.filters input:focus,
-.filters select:focus {
+.dateFilter input:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -116,21 +107,25 @@
 
 .summaryCard {
   display: grid;
-  min-height: 112px;
+  min-height: 92px;
   grid-template-rows: auto auto;
   place-items: center;
-  gap: 8px;
-  padding: 4px 4px;
+  gap: 7px;
+  padding: 10px 8px;
+  border: 1px solid #e5ebf3;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
 }
 
 .summaryIcon {
   display: grid;
-  width: 92px;
-  height: 92px;
+  min-width: 112px;
+  height: 36px;
   place-items: center;
-  border-radius: 999px;
-  padding: 0 8px;
-  font-size: 15px;
+  border-radius: 12px;
+  padding: 0 12px;
+  font-size: 14px;
   font-weight: 950;
   line-height: 1;
   text-align: center;
@@ -239,11 +234,11 @@
 
 .desktopTable th,
 .desktopTable td {
-  padding: 13px 12px;
+  padding: 12px 12px;
   border-right: 1px solid #e5ebf3;
   border-bottom: 1px solid #e5ebf3;
   color: #0b1736;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.25;
   text-align: center;
   vertical-align: middle;
@@ -251,6 +246,7 @@
 
 .desktopTable th {
   background: #f8fbff;
+  font-size: 14px;
   font-weight: 950;
 }
 
@@ -295,18 +291,27 @@
 .desktopTable tbody td:nth-child(3),
 .desktopTable tfoot td:nth-child(3) {
   color: #16a34a;
+  font-size: 18px;
   font-weight: 950;
 }
 
 .desktopTable tbody td:nth-child(4),
 .desktopTable tfoot td:nth-child(4) {
   color: #ef4444;
+  font-size: 18px;
   font-weight: 950;
 }
 
 .desktopTable tbody td:nth-child(5),
 .desktopTable tfoot td:nth-child(5) {
   color: #f97316;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.desktopTable tbody td:nth-child(2),
+.desktopTable tfoot td:nth-child(2) {
+  font-size: 18px;
   font-weight: 950;
 }
 
@@ -464,39 +469,36 @@
   }
 
   .header {
+    gap: 6px;
     padding: 0 0 5px;
   }
 
   .header h1 {
-    font-size: 21px;
+    font-size: 20px;
     line-height: 1.15;
   }
 
   .header p {
-    font-size: 12px;
+    font-size: 13.5px;
   }
 
-  .filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
-    margin-top: 4px;
-    padding: 7px;
+  .dateFilter {
+    min-width: 126px;
+    padding: 6px;
     border-radius: 10px;
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
   }
 
-  .filters span {
+  .dateFilter span {
     margin-bottom: 2px;
-    font-size: 9.5px;
+    font-size: 9px;
     line-height: 1;
   }
 
-  .filters input,
-  .filters select {
-    height: 30px;
+  .dateFilter input {
+    height: 28px;
     border-radius: 6px;
-    padding: 0 4px;
-    font-size: 10px;
+    padding: 0 3px;
+    font-size: 9.5px;
     line-height: 1;
   }
 
@@ -510,16 +512,18 @@
 
   .summaryCard {
     min-height: 58px;
-    gap: 2px;
-    padding: 3px 2px;
+    gap: 3px;
+    padding: 5px 2px;
+    border-radius: 9px;
   }
 
   .summaryIcon {
-    width: 50px;
-    height: 30px;
-    border-radius: 999px;
-    padding: 0 3px;
-    font-size: 8.5px;
+    min-width: 0;
+    width: 88%;
+    height: 24px;
+    border-radius: 8px;
+    padding: 0 2px;
+    font-size: 8px;
   }
 
   .summaryLine {
@@ -582,7 +586,7 @@
   .desktopTable th,
   .desktopTable td {
     padding: 5px 1px;
-    font-size: 10px;
+    font-size: 10.8px;
     line-height: 1.08;
     overflow-wrap: anywhere;
   }
@@ -625,7 +629,7 @@
   }
 
   .progressCell strong {
-    font-size: 9px;
+    font-size: 9.5px;
   }
 
   .checked {
@@ -708,7 +712,7 @@
   .desktopTable th,
   .desktopTable td {
     padding: 4px 1px;
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .progressTrack {
@@ -717,7 +721,7 @@
 }
 
 @media print {
-  .filters,
+  .dateFilter,
   .footer {
     display: none;
   }

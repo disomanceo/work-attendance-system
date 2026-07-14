@@ -34,8 +34,6 @@ type ClassReport = {
   canRecord: boolean;
 };
 
-const SEMESTERS = ["ภาคเรียนที่ 1 / 2569", "ภาคเรียนที่ 2 / 2569"];
-const ALL_CLASSES = "ทุกระดับชั้น";
 const THAI_WEEKDAYS = [
   "วันอาทิตย์",
   "วันจันทร์",
@@ -46,19 +44,19 @@ const THAI_WEEKDAYS = [
   "วันเสาร์",
 ];
 
-const THAI_MONTHS_SHORT = [
-  "ม.ค.",
-  "ก.พ.",
-  "มี.ค.",
-  "เม.ย.",
-  "พ.ค.",
-  "มิ.ย.",
-  "ก.ค.",
-  "ส.ค.",
-  "ก.ย.",
-  "ต.ค.",
-  "พ.ย.",
-  "ธ.ค.",
+const THAI_MONTHS_FULL = [
+  "มกราคม",
+  "กุมภาพันธ์",
+  "มีนาคม",
+  "เมษายน",
+  "พฤษภาคม",
+  "มิถุนายน",
+  "กรกฎาคม",
+  "สิงหาคม",
+  "กันยายน",
+  "ตุลาคม",
+  "พฤศจิกายน",
+  "ธันวาคม",
 ];
 
 function todayInputValue() {
@@ -77,9 +75,9 @@ function parseIsoDate(value: string) {
   return new Date(year, month - 1, day);
 }
 
-function formatThaiShortDate(value: string) {
+function formatThaiFullDate(value: string) {
   const date = parseIsoDate(value);
-  return `${THAI_WEEKDAYS[date.getDay()]}ที่ ${date.getDate()} ${THAI_MONTHS_SHORT[date.getMonth()]} ${date.getFullYear() + 543}`;
+  return `${THAI_WEEKDAYS[date.getDay()]}ที่ ${date.getDate()} ${THAI_MONTHS_FULL[date.getMonth()]} ${date.getFullYear() + 543}`;
 }
 
 function percent(value: number, total: number) {
@@ -145,16 +143,9 @@ function buildReport(classLevel: string, data: AttendanceResponse): ClassReport 
 export default function StudentDailyReportPage() {
   const supabase = useMemo(() => createClient(), []);
   const [date, setDate] = useState(todayInputValue());
-  const [semester, setSemester] = useState(SEMESTERS[0]);
-  const [classFilter, setClassFilter] = useState(ALL_CLASSES);
   const [reports, setReports] = useState<ClassReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-
-  const visibleClasses = useMemo(
-    () => (classFilter === ALL_CLASSES ? [...STUDENT_CLASS_LEVELS] : [classFilter]),
-    [classFilter],
-  );
 
   const loadReport = useCallback(async () => {
     setLoading(true);
@@ -171,7 +162,7 @@ export default function StudentDailyReportPage() {
       }
 
       const nextReports = await Promise.all(
-        visibleClasses.map(async (classLevel) => {
+        STUDENT_CLASS_LEVELS.map(async (classLevel) => {
           const params = new URLSearchParams({ date, classLevel, view: "report" });
           const response = await fetch(`/api/students/attendance?${params.toString()}`, {
             headers,
@@ -194,7 +185,7 @@ export default function StudentDailyReportPage() {
     } finally {
       setLoading(false);
     }
-  }, [date, supabase, visibleClasses]);
+  }, [date, supabase]);
 
   useEffect(() => {
     void loadReport();
@@ -276,33 +267,13 @@ export default function StudentDailyReportPage() {
         <header className={styles.header}>
           <div>
             <h1>📅 รายงานการมาเรียนประจำวัน</h1>
-            <p>{formatThaiShortDate(date)}</p>
+            <p>{formatThaiFullDate(date)}</p>
           </div>
-        </header>
-
-        <section className={styles.filters} aria-label="ตัวกรองรายงาน">
-          <label>
+          <label className={styles.dateFilter}>
             <span>วันที่</span>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
-          <label>
-            <span>ภาคเรียน</span>
-            <select value={semester} onChange={(event) => setSemester(event.target.value)}>
-              {SEMESTERS.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>ระดับชั้น</span>
-            <select value={classFilter} onChange={(event) => setClassFilter(event.target.value)}>
-              <option value={ALL_CLASSES}>{ALL_CLASSES}</option>
-              {STUDENT_CLASS_LEVELS.map((level) => (
-                <option key={level} value={level}>{level}</option>
-              ))}
-            </select>
-          </label>
-        </section>
+        </header>
 
         {message ? <div className={styles.message}>{message}</div> : null}
 
@@ -323,8 +294,7 @@ export default function StudentDailyReportPage() {
         <section className={styles.reportCard}>
           <div className={styles.reportHeader}>
             <div>
-              <h2>ตารางสรุปรายชั้น</h2>
-              <p>{formatThaiShortDate(date)} · {semester}</p>
+              <h2>ตารางสรุปการมาเรียนรายชั้น</h2>
             </div>
           </div>
 
