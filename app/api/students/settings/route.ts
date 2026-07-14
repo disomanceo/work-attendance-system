@@ -86,7 +86,7 @@ export async function GET(request: Request) {
         summary.canManageCalendar
         ? workPermissions.data ?? []
         : [],
-      dutyRoster: summary.isAdmin || summary.canManageDutyRoster ? dutyRoster.data ?? [] : [],
+      dutyRoster: dutyRoster.data ?? [],
       access: summary,
     });
   } catch (error) {

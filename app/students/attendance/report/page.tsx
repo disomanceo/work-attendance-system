@@ -23,6 +23,24 @@ type AttendanceResponse = {
   error?: string;
 };
 
+type DutyRoster = {
+  weekday: number;
+  profile_id: string;
+};
+
+type Profile = {
+  id: string;
+  full_name: string | null;
+  phone?: string | null;
+};
+
+type SettingsResponse = {
+  profiles?: Profile[];
+  dutyRoster?: DutyRoster[];
+  message?: string;
+  error?: string;
+};
+
 type ClassReport = {
   classLevel: string;
   total: number;
@@ -75,6 +93,11 @@ function parseIsoDate(value: string) {
   return new Date(year, month - 1, day);
 }
 
+function weekdayNumber(value: string) {
+  const day = parseIsoDate(value).getDay();
+  return day === 0 ? 7 : day;
+}
+
 function formatThaiFullDate(value: string) {
   const date = parseIsoDate(value);
   return `${THAI_WEEKDAYS[date.getDay()]}ที่ ${date.getDate()} ${THAI_MONTHS_FULL[date.getMonth()]} ${date.getFullYear() + 543}`;
@@ -117,6 +140,10 @@ function shortTeacherName(value: string) {
   return firstName ? `ครู${firstName}` : "";
 }
 
+function displayProfileName(profile?: Profile) {
+  return profile?.full_name || profile?.phone || profile?.id || "";
+}
+
 function buildReport(classLevel: string, data: AttendanceResponse): ClassReport {
   const students = data.students ?? [];
   const checked = (data.recordedCount ?? 0) > 0;
@@ -144,6 +171,7 @@ export default function StudentDailyReportPage() {
   const supabase = useMemo(() => createClient(), []);
   const [date, setDate] = useState(todayInputValue());
   const [reports, setReports] = useState<ClassReport[]>([]);
+  const [dutyTeacherNames, setDutyTeacherNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -161,6 +189,17 @@ export default function StudentDailyReportPage() {
         headers.set("Authorization", `Bearer ${session.access_token}`);
       }
 
+      const settingsPromise = fetch(`/api/students/settings?date=${encodeURIComponent(date)}`, {
+        headers,
+        cache: "no-store",
+      })
+        .then(async (response) => {
+          const data = (await response.json()) as SettingsResponse;
+          if (!response.ok) throw new Error(data.message || data.error || "โหลดครูเวรไม่สำเร็จ");
+          return data;
+        })
+        .catch(() => ({ profiles: [], dutyRoster: [] }) satisfies SettingsResponse);
+
       const nextReports = await Promise.all(
         STUDENT_CLASS_LEVELS.map(async (classLevel) => {
           const params = new URLSearchParams({ date, classLevel, view: "report" });
@@ -177,10 +216,19 @@ export default function StudentDailyReportPage() {
           return buildReport(classLevel, data);
         }),
       );
+      const settings = await settingsPromise;
+      const profileMap = new Map((settings.profiles ?? []).map((profile) => [profile.id, profile]));
+      const dutyWeekday = weekdayNumber(date);
+      const nextDutyTeacherNames = (settings.dutyRoster ?? [])
+        .filter((item) => Number(item.weekday) === dutyWeekday)
+        .map((item) => shortTeacherName(displayProfileName(profileMap.get(item.profile_id))))
+        .filter(Boolean);
 
       setReports(nextReports);
+      setDutyTeacherNames(Array.from(new Set(nextDutyTeacherNames)));
     } catch (error) {
       setReports([]);
+      setDutyTeacherNames([]);
       setMessage(error instanceof Error ? error.message : "โหลดรายงานไม่สำเร็จ");
     } finally {
       setLoading(false);
@@ -269,10 +317,16 @@ export default function StudentDailyReportPage() {
             <h1>📅 รายงานการมาเรียนประจำวัน</h1>
             <p>{formatThaiFullDate(date)}</p>
           </div>
-          <label className={styles.dateFilter}>
-            <span>วันที่</span>
-            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-          </label>
+          <div className={styles.headerAside}>
+            <label className={styles.dateFilter}>
+              <span>วันที่</span>
+              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            </label>
+            <div className={styles.dutyBox}>
+              <span>ครูเวรประจำวัน</span>
+              <strong>{dutyTeacherNames.length > 0 ? dutyTeacherNames.join(", ") : "-"}</strong>
+            </div>
+          </div>
         </header>
 
         {message ? <div className={styles.message}>{message}</div> : null}

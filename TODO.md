@@ -57,6 +57,11 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Added daily duty teacher display to the attendance report:
+  - report header now shows a `ครูเวรประจำวัน` box under the date picker,
+  - duty teacher names are loaded from the active duty roster for the selected weekday,
+  - the duty box is balanced with the date filter on desktop and mobile,
+  - verified with `npm run build`.
 - Matched desktop daily attendance report styling with mobile:
   - changed `นักเรียนทั้งหมด` labels to `ทั้งหมด` across the report,
   - applied the emerald header theme to desktop,
