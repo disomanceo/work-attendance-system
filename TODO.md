@@ -57,6 +57,11 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Updated student attendance save status:
+  - shows `ยังไม่ได้บันทึก` or `บันทึกแล้ว` under the save button,
+  - marks the form unsaved when a status is changed,
+  - asks for confirmation before saving edits over existing attendance records,
+  - verified with `npm run build`.
 - Opened the daily student attendance report for all active teachers/staff:
   - report page now requests read-only report access for every class,
   - attendance save/edit permissions still use the existing `canRecordAttendance` rules,

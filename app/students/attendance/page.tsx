@@ -33,7 +33,7 @@ type SettingsResponse = {
   message?: string;
   error?: string;
 };
-type AttendanceResponse = { students?: AttendanceStudent[]; adviserNames?: string[]; message?: string; error?: string };
+type AttendanceResponse = { students?: AttendanceStudent[]; adviserNames?: string[]; recordedCount?: number; message?: string; error?: string };
 type AttendanceRecord = { studentId: string; status: AttendanceStatus };
 type WorkCalendarDayResponse = {
   ok: boolean;
@@ -128,6 +128,8 @@ export default function StudentAttendancePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [attendanceSaved, setAttendanceSaved] = useState(false);
+  const [attendanceEverSaved, setAttendanceEverSaved] = useState(false);
   const [workCalendarDay, setWorkCalendarDay] =
     useState<WorkCalendarDayResponse | null>(null);
 
@@ -277,8 +279,11 @@ export default function StudentAttendancePage() {
     const params = new URLSearchParams({ classLevel: targetClassLevel, date });
     const data = await fetchJson<AttendanceResponse>(`/api/students/attendance?${params}`);
     const nextStudents = data.students ?? [];
+    const hasSavedRecords = (data.recordedCount ?? 0) > 0;
     setStudents(nextStudents);
     setAdviserNames(data.adviserNames ?? []);
+    setAttendanceSaved(hasSavedRecords);
+    setAttendanceEverSaved(hasSavedRecords);
     setRecords(Object.fromEntries(nextStudents.map((student) => [
       student.id,
       { studentId: student.id, status: normalizeStatus(student.status) },
@@ -305,10 +310,15 @@ export default function StudentAttendancePage() {
   }, [loadAttendance, loadSettings, loadWorkCalendarDay]);
 
   function updateStatus(studentId: string, status: AttendanceStatus) {
+    setAttendanceSaved(false);
     setRecords((current) => ({ ...current, [studentId]: { studentId, status } }));
   }
 
   async function saveAttendance() {
+    if (attendanceEverSaved && !window.confirm("ต้องการบันทึกแก้ไข ใช่ไหม")) {
+      return;
+    }
+
     setSaving(true);
     setMessage("");
     try {
@@ -331,6 +341,8 @@ export default function StudentAttendancePage() {
         }),
       });
       setMessage("บันทึกแล้ว");
+      setAttendanceSaved(true);
+      setAttendanceEverSaved(true);
       await loadAttendance();
       window.setTimeout(() => setMessage(""), 2400);
     } catch (error) {
@@ -352,18 +364,29 @@ export default function StudentAttendancePage() {
           <div className="flex flex-col gap-1 pt-3">
             <div className="flex items-center justify-between gap-2">
               <h1 className="min-w-0 text-[19px] font-semibold leading-tight text-orange-800">เช็คชื่อนักเรียน</h1>
-              <button
-                type="button"
-                onClick={saveAttendance}
-                disabled={saving || loading || students.length === 0 || workCalendarDay?.isWorkingDay === false}
-                className="max-w-[150px] shrink-0 truncate rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white shadow-[0_5px_14px_rgba(249,115,22,0.2)] transition active:scale-95 disabled:opacity-75 sm:max-w-none sm:px-3 sm:py-1.5 sm:text-[11px]"
-                aria-label="บันทึก"
-                title="บันทึก"
-              >
-                {workCalendarDay?.isWorkingDay === false
-                  ? "วันหยุด"
-                  : "บันทึก"}
-              </button>
+              <div className="grid shrink-0 justify-items-end gap-0.5">
+                <button
+                  type="button"
+                  onClick={saveAttendance}
+                  disabled={saving || loading || students.length === 0 || workCalendarDay?.isWorkingDay === false}
+                  className="max-w-[150px] truncate rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-white shadow-[0_5px_14px_rgba(249,115,22,0.2)] transition active:scale-95 disabled:opacity-75 sm:max-w-none sm:px-3 sm:py-1.5 sm:text-[11px]"
+                  aria-label="บันทึก"
+                  title="บันทึก"
+                >
+                  {workCalendarDay?.isWorkingDay === false
+                    ? "วันหยุด"
+                    : "บันทึก"}
+                </button>
+                {workCalendarDay?.isWorkingDay !== false ? (
+                  <span
+                    className={`text-[10px] font-medium leading-tight ${
+                      attendanceSaved ? "text-emerald-700" : "text-amber-700"
+                    }`}
+                  >
+                    {attendanceSaved ? "บันทึกแล้ว" : "ยังไม่ได้บันทึก"}
+                  </span>
+                ) : null}
+              </div>
             </div>
             <div className="min-w-0">
               <div className="mt-1 flex flex-col gap-1.5 text-slate-700">
