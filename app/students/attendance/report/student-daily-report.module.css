@@ -613,12 +613,12 @@
 
   .desktopTable th:nth-child(6),
   .desktopTable td:nth-child(6) {
-    width: 28%;
+    width: 18%;
   }
 
   .desktopTable th:nth-child(7),
   .desktopTable td:nth-child(7) {
-    width: 8%;
+    width: 18%;
   }
 
   .progressCell {
@@ -628,7 +628,7 @@
   }
 
   .progressTrack {
-    width: 38px;
+    width: 28px;
     height: 6px;
   }
 
@@ -637,13 +637,13 @@
   }
 
   .checked {
-    min-width: 48px;
+    min-width: 64px;
     width: auto;
     min-height: 24px;
     height: auto;
     border-radius: 6px;
-    padding: 3px 5px;
-    font-size: 8px;
+    padding: 3px 4px;
+    font-size: 8.5px;
   }
 
   .checked::before {
@@ -651,8 +651,9 @@
   }
 
   .checked small {
-    font-size: 7px;
+    font-size: 7.2px;
     line-height: 1.05;
+    white-space: nowrap;
   }
 
   .notChecked span,

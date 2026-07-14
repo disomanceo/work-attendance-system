@@ -57,6 +57,10 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Adjusted mobile daily attendance report recorder display:
+  - shortened recorder names in the UI to first-name teacher labels such as `ครูพิมวิภา`,
+  - reduced the mobile `% มาเรียน` column and widened the action/status column,
+  - verified with `npm run build`.
 - Added attendance recorder names to the daily student attendance report:
   - `/api/students/attendance` now returns the profile name of the recorder for checked classes,
   - the report action/status column shows the recorder name under `เช็คชื่อแล้ว`,

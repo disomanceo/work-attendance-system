@@ -103,6 +103,16 @@ function normalizeStatus(value: unknown): "present" | "leave" | "absent" {
   return "present";
 }
 
+function shortTeacherName(value: string) {
+  const firstName = value
+    .split(",")[0]
+    ?.trim()
+    .replace(/^(นาย|นางสาว|นาง|ครู)\s*/u, "")
+    .split(/\s+/)[0];
+
+  return firstName ? `ครู${firstName}` : "";
+}
+
 function buildReport(classLevel: string, data: AttendanceResponse): ClassReport {
   const students = data.students ?? [];
   const counts = students.reduce(
@@ -356,7 +366,7 @@ export default function StudentDailyReportPage() {
                           <span className={styles.checked}>
                             ● ✔ เช็คชื่อแล้ว
                             {report.recordedByName ? (
-                              <small>{report.recordedByName}</small>
+                              <small>{shortTeacherName(report.recordedByName)}</small>
                             ) : null}
                           </span>
                         ) : (
@@ -417,7 +427,7 @@ export default function StudentDailyReportPage() {
                     <p className={styles.mobileChecked}>
                       ✔ เช็คชื่อแล้ว
                       {report.recordedByName ? (
-                        <small>{report.recordedByName}</small>
+                        <small>{shortTeacherName(report.recordedByName)}</small>
                       ) : null}
                     </p>
                   ) : (
