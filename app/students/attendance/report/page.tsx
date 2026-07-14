@@ -151,7 +151,7 @@ export default function StudentDailyReportPage() {
 
       const nextReports = await Promise.all(
         visibleClasses.map(async (classLevel) => {
-          const params = new URLSearchParams({ date, classLevel });
+          const params = new URLSearchParams({ date, classLevel, view: "report" });
           const response = await fetch(`/api/students/attendance?${params.toString()}`, {
             headers,
             cache: "no-store",

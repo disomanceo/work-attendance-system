@@ -57,6 +57,10 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Opened the daily student attendance report for all active teachers/staff:
+  - report page now requests read-only report access for every class,
+  - attendance save/edit permissions still use the existing `canRecordAttendance` rules,
+  - verified with `npm run build`.
 - Refined the budget project activity column again:
   - pinned mobile row columns so the activity count stays on the same line,
   - shifted desktop budget/status/file columns left to give activity more space,

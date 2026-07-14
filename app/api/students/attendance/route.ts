@@ -211,9 +211,10 @@ export async function GET(request: Request) {
   const date = validDate(requestedDate) ? requestedDate : todayBangkok();
   const classLevel = text(url.searchParams.get("classLevel")) || "อนุบาล 2";
   const classRoom = text(url.searchParams.get("classRoom"));
+  const isDailyReportView = text(url.searchParams.get("view")) === "report";
   const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile);
 
-  if (!canRecordAttendance(access, classLevel, date)) {
+  if (!isDailyReportView && !canRecordAttendance(access, classLevel, date)) {
     return forbidden("คุณไม่มีสิทธิ์ดูหรือเช็คชื่อนักเรียนชั้นนี้");
   }
 
