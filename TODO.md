@@ -57,6 +57,11 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Updated `/budget/payments` responsive layout:
+  - tightened the tablet breakpoint to prevent iPad/iOS horizontal overflow,
+  - compacted project rows, action buttons, history rows, filters, and payment modal sizing for 761-1180px screens,
+  - verified with `npm run build`.
+
 - Updated the student information page:
   - replaced the class dropdown with fixed class tabs from `ทุกชั้น`, `อนุบาล 2` through `ป.6`,
   - added room, status, and sort filters,

@@ -2818,8 +2818,21 @@ export default function BudgetPaymentsPage() {
 }
 
 @media (min-width: 761px) and (max-width: 1180px) {
+  .paymentsPage {
+    overflow-x: clip;
+  }
+
   .pageHeader {
     padding: 13px 15px;
+  }
+
+  .pageHeader,
+  .panelTop,
+  .projectPanel,
+  .projectCard,
+  .historyPanel,
+  .paymentModal {
+    min-width: 0;
   }
 
   .summaryGrid article {
@@ -2828,6 +2841,140 @@ export default function BudgetPaymentsPage() {
 
   .projectPanel {
     padding: 12px;
+  }
+
+  .filterBar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .tableHeader,
+  .projectRow {
+    grid-template-columns:
+      34px
+      minmax(0, 1fr)
+      minmax(82px, 96px)
+      minmax(82px, 96px)
+      minmax(86px, 100px)
+      minmax(126px, auto);
+    gap: 6px;
+  }
+
+  .tableHeader > div:nth-child(6),
+  .tableHeader > div:nth-child(7),
+  .countCell,
+  .latestCell {
+    display: none;
+  }
+
+  .actionCell {
+    grid-column: auto;
+    min-width: 0;
+    justify-content: end;
+  }
+
+  .payButton,
+  .historyButton {
+    min-width: 58px;
+    padding-inline: 9px;
+    white-space: nowrap;
+  }
+
+  .projectName strong,
+  .projectName small {
+    min-width: 0;
+  }
+
+  .historyItem {
+    grid-template-columns: 28px minmax(120px, 0.8fr) minmax(0, 1fr) minmax(96px, auto);
+    gap: 8px;
+  }
+
+  .historyEvidence,
+  .historyAction {
+    min-width: 0;
+  }
+
+  .modalBackdrop {
+    padding: 12px;
+  }
+
+  .paymentModal {
+    width: min(700px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+  }
+
+  .paymentModalBody {
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .paymentsPage {
+    padding-inline: 12px;
+  }
+
+  .pageHeader {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .projectRow {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 7px;
+    align-items: start;
+    padding: 9px;
+  }
+
+  .projectName {
+    grid-column: 2 / 3;
+  }
+
+  .projectName strong {
+    white-space: normal;
+  }
+
+  .amountCell,
+  .countCell,
+  .latestCell {
+    display: none;
+  }
+
+  .actionCell {
+    grid-column: 3 / 4;
+    grid-row: 1 / span 2;
+    display: grid;
+    gap: 5px;
+  }
+
+  .payButton,
+  .historyButton {
+    min-width: 72px;
+    height: 30px;
+    font-size: 11px;
+  }
+
+  .historyItem {
+    grid-template-columns: 26px minmax(0, 1fr);
+  }
+
+  .historyDate,
+  .historyDetails,
+  .historyAmount,
+  .historyEvidence,
+  .historyAction {
+    grid-column: 2;
+    text-align: left;
   }
 }
 /* BUDGET_PAYMENTS_MOBILE_COMPACT_V1_END */
