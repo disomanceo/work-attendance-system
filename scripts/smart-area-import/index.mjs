@@ -108,6 +108,35 @@ function pageRangeValues(value) {
     });
 }
 
+async function centralPageIds(page, receiveUrl, pageNumber) {
+  const url = new URL(receiveUrl);
+  url.searchParams.set("page", String(pageNumber));
+
+  await page.goto(url.href, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
+
+  return page.locator("tr").evaluateAll((tableRows) =>
+    tableRows
+      .map((row) => {
+        const html = row.innerHTML || "";
+        const match =
+          html.match(/b_id=(\d+)/i) ||
+          html.match(/bookdetail_school_saraban\.php[^'"<>]*?(\d+)/i) ||
+          html.match(/check\([^)]*?(\d{2,})/i);
+
+        return match ? match[1] : "";
+      })
+      .filter(Boolean),
+  );
+}
+
+function sameIdList(left, right) {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
 function lookbackPageCount() {
   const value = Number(process.env.SMART_AREA_LOOKBACK_PAGES || DEFAULT_LOOKBACK_PAGES);
   return Number.isInteger(value) && value > 0 ? value : DEFAULT_LOOKBACK_PAGES;
@@ -252,7 +281,21 @@ try {
         .filter((value) => Number.isInteger(value) && value > 0),
     );
 
-  const latestPage = Math.max(1, ...pageNumbers);
+  let latestPage = Math.max(1, ...pageNumbers);
+  let latestPageIds = await centralPageIds(page, receiveUrl, latestPage);
+
+  for (let offset = 1; offset <= 10; offset += 1) {
+    const nextPage = latestPage + 1;
+    const nextPageIds = await centralPageIds(page, receiveUrl, nextPage);
+
+    if (nextPageIds.length === 0 || sameIdList(latestPageIds, nextPageIds)) {
+      break;
+    }
+
+    latestPage = nextPage;
+    latestPageIds = nextPageIds;
+  }
+
   const requestedPages = pageRangeValues(process.env.SMART_AREA_PAGE_RANGE);
   const lookbackPages = lookbackPageCount();
   const scanPages = requestedPages.length

@@ -59,6 +59,7 @@ Updated: 2026-07-14
 
 - Tightened Smart Area importer reconciliation:
   - default central scan window is back to the latest 3 pages,
+  - latest page detection probes pages after the pagination value so hidden next pages such as page 166 are included,
   - importer now compares the central 3-page ID set with `smart_area_books.legacy_smart_area_id`,
   - missing IDs are retried up to 3 import attempts before the run is marked partial/failed,
   - callback stores reconcile details so the UI can show matched/missing counts,
