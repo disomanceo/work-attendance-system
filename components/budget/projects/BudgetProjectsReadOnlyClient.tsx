@@ -1744,11 +1744,6 @@ export default function BudgetProjectsReadOnlyClient() {
                     onClick={() => toggleProject(project.id)}
                     aria-expanded={expanded}
                   >
-                    <span
-                      className={expanded ? "chevron chevronOpen" : "chevron"}
-                    >
-                      ›
-                    </span>
                     <span className="projectText">
                       <b>{project.name}</b>
                       <small></small>
@@ -3115,9 +3110,9 @@ export default function BudgetProjectsReadOnlyClient() {
 
         .projectMain {
           display: grid;
-          grid-template-columns: 16px minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1fr);
           align-items: center;
-          gap: 8px;
+          gap: 0;
           padding: 0;
           border: 0;
           background: transparent;
@@ -4447,7 +4442,7 @@ export default function BudgetProjectsReadOnlyClient() {
           .fileCell { padding-top: 1px; }
 
           .projectMain {
-            grid-template-columns: 14px 26px minmax(0, 1fr);
+            grid-template-columns: minmax(0, 1fr);
           }
 
           .activityPanelHeader {
@@ -4962,8 +4957,8 @@ export default function BudgetProjectsReadOnlyClient() {
   }
 
   .projectMain {
-    grid-template-columns: 10px minmax(0, 1fr);
-    gap: 5px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
   .chevron {
@@ -5513,7 +5508,7 @@ export default function BudgetProjectsReadOnlyClient() {
   }
 
   .projectsRoot .columnHeader > div:nth-child(10) {
-    min-width: 50px;
+    min-width: 58px;
     text-align: center;
     white-space: nowrap;
     word-break: keep-all;
@@ -5531,7 +5526,7 @@ export default function BudgetProjectsReadOnlyClient() {
 
 @media (max-width: 760px) {
   .projectsRoot .dataCard {
-    --project-grid: 24px minmax(0, 1fr) 34px 52px;
+    --project-grid: 24px minmax(0, 1fr) 32px 60px;
     overflow: hidden;
   }
 
@@ -5545,7 +5540,7 @@ export default function BudgetProjectsReadOnlyClient() {
   }
 
   .projectsRoot .columnHeader > div:nth-child(10) {
-    min-width: 52px;
+    min-width: 60px;
     font-size: 9.5px;
     line-height: 1.15;
   }
@@ -5556,14 +5551,14 @@ export default function BudgetProjectsReadOnlyClient() {
 
   .projectsRoot .fileIcon,
   .projectsRoot .fileMore {
-    width: 24px;
-    min-width: 24px;
+    width: 22px;
+    min-width: 22px;
     height: 24px;
   }
 
   .projectsRoot .activityCount {
-    width: 34px;
-    min-width: 34px;
+    width: 40px;
+    min-width: 40px;
     height: 26px;
     font-size: 10px;
     line-height: 1;
@@ -5576,9 +5571,9 @@ export default function BudgetProjectsReadOnlyClient() {
       28px
       minmax(0, 1fr)
       minmax(132px, 0.58fr)
-      minmax(86px, 0.38fr)
-      42px
-      56px;
+      minmax(78px, 0.34fr)
+      38px
+      64px;
   }
 
   .projectsRoot .columnHeader,

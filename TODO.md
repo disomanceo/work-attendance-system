@@ -57,6 +57,10 @@ Updated: 2026-07-14
 
 ## Changes made
 
+- Adjusted the budget project list layout:
+  - removed the leading chevron before project names,
+  - shifted project names left and widened the activity column for mobile/tablet,
+  - verified with `npm run build`.
 - Fixed budget project activity column and student settings permission messages:
   - kept the mobile/tablet activity count column on one line without horizontal overflow,
   - replaced placeholder question-mark forbidden messages in `/api/students/settings`,
