@@ -31,6 +31,7 @@ type AdviserProfileRow = {
   id: string;
   full_name: string | null;
   phone: string | null;
+  signature_file_id?: string | null;
 };
 
 type StudentCodeRow = {
@@ -195,18 +196,21 @@ async function loadAdviserNames(
 
   const { data: profiles } = await adminClient
     .from("profiles")
-    .select("id, full_name, phone")
+    .select("id, full_name, phone, signature_file_id")
     .in("id", ids);
 
   const profileRows = (profiles ?? []) as AdviserProfileRow[];
   const profileMap = new Map(
     profileRows.map((profile) => [
       profile.id,
-      profile.full_name || profile.phone || profile.id,
+      {
+        name: profile.full_name || profile.phone || profile.id,
+        signatureFileId: profile.signature_file_id || "",
+      },
     ]),
   );
 
-  return ids.map((id) => profileMap.get(id)).filter((name): name is string => Boolean(name));
+  return ids.map((id) => profileMap.get(id)).filter(Boolean);
 }
 
 export async function GET(request: Request) {
@@ -304,7 +308,8 @@ export async function GET(request: Request) {
     date,
     classLevel,
     classRoom,
-    adviserNames,
+    adviserNames: adviserNames.map((adviser: any) => adviser.name).filter(Boolean),
+    adviserSignatureFileIds: adviserNames.map((adviser: any) => adviser.signatureFileId).filter(Boolean),
     canRecord: canRecordAttendance(access, classLevel, date),
     recordedCount: records?.length ?? 0,
     recordedByName,

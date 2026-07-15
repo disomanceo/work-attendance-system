@@ -505,10 +505,46 @@
 }
 
 .monthLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid #e5ebf3;
   border-radius: 999px;
   background: #ffffff;
   padding: 4px 8px;
+}
+
+.statusSymbol {
+  display: inline-grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.statusSymbol.present {
+  background: #16a34a;
+}
+
+.statusSymbol.absent {
+  background: #ef4444;
+}
+
+.statusSymbol.leave {
+  border-radius: 4px;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: #f97316;
+  font-size: 10px;
+  padding-top: 5px;
+}
+
+.statusSymbol.late {
+  background: #2563eb;
+  font-size: 9px;
 }
 
 .monthTableWrap {
@@ -573,6 +609,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .monthTable th:nth-child(2) {
@@ -593,6 +631,10 @@
 .monthTotalRow td {
   background: #eff6ff;
   font-weight: 950;
+}
+
+.monthMobileCards {
+  display: none;
 }
 
 .monthSignatureGrid {
@@ -1216,6 +1258,108 @@
 
   .monthLegend span {
     padding: 3px 5px;
+  }
+
+  .monthTableWrap {
+    display: none;
+  }
+
+  .monthMobileCards {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .monthMobileCards article {
+    overflow: hidden;
+    border: 1px solid #dbe3ee;
+    border-radius: 8px;
+    background: #ffffff;
+  }
+
+  .monthMobileCards header {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #e5ebf3;
+    background: #f8fbff;
+  }
+
+  .monthMobileCards header span {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #075985;
+    font-size: 11px;
+    font-weight: 950;
+  }
+
+  .monthMobileCards header strong {
+    overflow: hidden;
+    color: #0b1736;
+    font-size: 13px;
+    font-weight: 950;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .monthMobileDayGrid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
+    padding: 8px;
+  }
+
+  .monthMobileDayGrid > span {
+    display: grid;
+    min-height: 34px;
+    place-items: center;
+    gap: 2px;
+    border: 1px solid #e5ebf3;
+    border-radius: 6px;
+    background: #ffffff;
+  }
+
+  .monthMobileDayGrid small {
+    color: #64748b;
+    font-size: 8px;
+    font-weight: 850;
+    line-height: 1;
+  }
+
+  .monthMobileCards dl {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin: 0;
+    border-top: 1px solid #e5ebf3;
+  }
+
+  .monthMobileCards dl div {
+    display: grid;
+    gap: 2px;
+    padding: 6px 2px;
+    text-align: center;
+  }
+
+  .monthMobileCards dt,
+  .monthMobileCards dd {
+    margin: 0;
+    font-size: 10px;
+    font-weight: 900;
+  }
+
+  .monthMobileCards dt {
+    color: #64748b;
+  }
+
+  .monthMobileCards dd {
+    color: #0b1736;
   }
 
   .monthTableWrap {

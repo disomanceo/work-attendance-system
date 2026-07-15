@@ -26,6 +26,11 @@ Updated: 2026-07-15
   - [x] Added production Vercel env vars: `GAS_STUDENT_ATTENDANCE_REPORT_URL` and `GAS_STUDENT_ATTENDANCE_REPORT_SECRET`.
   - [x] Added the same production env vars to the `pm-coming` Vercel project after the Sheet/PDF buttons showed missing GAS env there.
   - [x] Redeployed `pm-coming` production so the newly added GAS env vars are loaded at runtime.
+  - [x] Moved student attendance Sheet/PDF generation to the existing public daily-PDF Apps Script project after the first new Apps Script deployment returned 403.
+  - [x] Added a clearer GAS error response path when Apps Script returns HTML/non-JSON.
+  - [x] Updated attendance marks to use green check, red cross, orange warning, and blue late symbols in the report preview.
+  - [x] Added mobile-friendly student cards for monthly attendance instead of forcing the 38-column table onto small screens.
+  - [x] Passed adviser/director signature file IDs to the Sheet/PDF export payload for Drive image insertion.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.

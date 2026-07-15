@@ -39,6 +39,12 @@ type AdviserProfileRow = {
   id: string;
   full_name?: string | null;
   phone?: string | null;
+  signature_file_id?: string | null;
+};
+
+type SignerInfo = {
+  name: string;
+  signatureFileId: string;
 };
 
 const DEFAULT_TEMPLATE_ID = "1PzumW4--bM2HJyA-PEoYaFeGpBFPm3YkzpxaMCOSHlo";
@@ -67,8 +73,8 @@ function isoDateForDay(month: string, day: number) {
 }
 
 function statusMark(value: unknown) {
-  if (value === "absent") return "ข";
-  if (value === "leave" || value === "sick" || value === "personal") return "ล";
+  if (value === "absent") return "×";
+  if (value === "leave" || value === "sick" || value === "personal") return "!";
   if (value === "late") return "ส";
   return "✓";
 }
@@ -96,7 +102,7 @@ function academicYear(month: string) {
   return monthNumber >= 5 ? thaiYear : thaiYear - 1;
 }
 
-async function loadAdviserNames(adminClient: any, classLevel: string) {
+async function loadAdviserSigners(adminClient: any, classLevel: string): Promise<SignerInfo[]> {
   const { data: settings } = await adminClient
     .from("student_class_settings")
     .select("adviser_profile_id, adviser_profile_ids")
@@ -116,17 +122,38 @@ async function loadAdviserNames(adminClient: any, classLevel: string) {
 
   const { data: profiles } = await adminClient
     .from("profiles")
-    .select("id, full_name, phone")
+    .select("id, full_name, phone, signature_file_id")
     .in("id", ids);
 
   const profileMap = new Map(
     ((profiles ?? []) as AdviserProfileRow[]).map((profile) => [
       profile.id,
-      profile.full_name || profile.phone || profile.id,
+      {
+        name: profile.full_name || profile.phone || profile.id,
+        signatureFileId: profile.signature_file_id || "",
+      },
     ]),
   );
 
-  return ids.map((id) => profileMap.get(id)).filter((name): name is string => Boolean(name));
+  return ids.map((id) => profileMap.get(id)).filter((profile): profile is SignerInfo => Boolean(profile));
+}
+
+async function loadDirectorSigner(adminClient: any): Promise<SignerInfo | null> {
+  const { data } = await adminClient
+    .from("profiles")
+    .select("id, full_name, phone, signature_file_id")
+    .eq("role", "director")
+    .eq("account_status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  const profile = data as AdviserProfileRow | null;
+  if (!profile) return null;
+
+  return {
+    name: profile.full_name || profile.phone || DIRECTOR_NAME,
+    signatureFileId: profile.signature_file_id || "",
+  };
 }
 
 export async function POST(request: Request) {
@@ -168,7 +195,7 @@ export async function POST(request: Request) {
   const startDate = isoDateForDay(month, 1);
   const endDate = isoDateForDay(month, days.length);
 
-  const [{ data: students, error: studentsError }, { data: records, error: recordsError }, adviserNames] =
+  const [{ data: students, error: studentsError }, { data: records, error: recordsError }, adviserSigners, directorSigner] =
     await Promise.all([
       auth.adminClient
         .from("students")
@@ -182,7 +209,8 @@ export async function POST(request: Request) {
         .eq("class_level", classLevel)
         .gte("attendance_date", startDate)
         .lte("attendance_date", endDate),
-      loadAdviserNames(auth.adminClient, classLevel),
+      loadAdviserSigners(auth.adminClient, classLevel),
+      loadDirectorSigner(auth.adminClient),
     ]);
 
   if (studentsError || recordsError) {
@@ -220,7 +248,7 @@ export async function POST(request: Request) {
 
   const response = await fetch(gasUrl, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({
       action: "studentAttendanceMonthlyReport",
       secret,
@@ -230,8 +258,10 @@ export async function POST(request: Request) {
       folderId: process.env.STUDENT_ATTENDANCE_EXPORT_FOLDER_ID || DEFAULT_FOLDER_ID,
       logoFileId: process.env.STUDENT_ATTENDANCE_LOGO_FILE_ID || DEFAULT_LOGO_FILE_ID,
       schoolName: SCHOOL_NAME,
-      directorName: DIRECTOR_NAME,
-      adviserName: adviserNames.join(", "),
+      directorName: directorSigner?.name || DIRECTOR_NAME,
+      directorSignatureFileId: directorSigner?.signatureFileId || "",
+      adviserName: adviserSigners.map((adviser) => adviser.name).join(", "),
+      adviserSignatureFileId: adviserSigners.find((adviser) => adviser.signatureFileId)?.signatureFileId || "",
       classLevel,
       month,
       academicYear: academicYear(month),
@@ -241,7 +271,22 @@ export async function POST(request: Request) {
     cache: "no-store",
   });
 
-  const result = await response.json().catch(() => ({}));
+  const responseText = await response.text();
+  let result: { ok?: boolean; message?: string; [key: string]: unknown } = {};
+
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    const shortText = responseText.replace(/\s+/g, " ").slice(0, 180);
+    return NextResponse.json(
+      {
+        ok: false,
+        message: `Google Apps Script ไม่ได้ตอบกลับเป็น JSON (${response.status}) ${shortText || "ไม่มีรายละเอียด"}`,
+      },
+      { status: response.ok ? 500 : response.status },
+    );
+  }
+
   if (!response.ok || result.ok === false) {
     return NextResponse.json(
       { ok: false, message: result.message || "สร้างไฟล์รายงานไม่สำเร็จ" },

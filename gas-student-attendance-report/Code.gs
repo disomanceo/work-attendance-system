@@ -134,7 +134,7 @@ function fillHeader_(sheet, payload, thaiMonth) {
 
   if (logoFileId) {
     sheet.setRowHeight(1, 48);
-    sheet.getRange(1, 19).setFormula(`=IMAGE("https://drive.google.com/uc?export=view&id=${logoFileId}",4,42,42)`);
+    insertDriveImage_(sheet, logoFileId, 19, 1, 42, 42);
   }
 
   sheet.getRange("A2:AL2").merge().setValue("แบบบันทึกการมาเรียนของนักเรียน");
@@ -194,7 +194,9 @@ function fillTable_(sheet, payload) {
     .setFontSize(11);
   sheet.getRange(STUDENT_START_ROW, 2, rowCount, 1)
     .setHorizontalAlignment("left")
-    .setFontSize(12);
+    .setFontSize(13)
+    .setFontWeight("bold");
+  styleStatusSymbols_(sheet, rowCount);
 
   fillSignatures_(sheet, payload, extraRows);
 }
@@ -218,6 +220,8 @@ function fillSignatures_(sheet, payload, extraRows) {
   const signatureNameRow = SIGNATURE_NAME_ROW + extraRows;
   const adviserName = String(payload.adviserName || "").trim();
   const directorName = String(payload.directorName || DEFAULT_DIRECTOR_NAME).trim();
+  const adviserSignatureFileId = String(payload.adviserSignatureFileId || "").trim();
+  const directorSignatureFileId = String(payload.directorSignatureFileId || "").trim();
 
   sheet.getRange(signatureLineRow, 1, 3, TOTAL_COLUMN)
     .setFontSize(12)
@@ -227,6 +231,46 @@ function fillSignatures_(sheet, payload, extraRows) {
   sheet.getRange(signatureNameRow, 3).setValue(`(${adviserName || "........................................"})`);
   sheet.getRange(signatureLineRow, 23).setValue("ลงชื่อ........................................ผู้อำนวยการโรงเรียน");
   sheet.getRange(signatureNameRow, 23).setValue(`(${directorName})`);
+
+  if (adviserSignatureFileId) {
+    insertDriveImage_(sheet, adviserSignatureFileId, 9, signatureLineRow - 1, 150, 48);
+  }
+  if (directorSignatureFileId) {
+    insertDriveImage_(sheet, directorSignatureFileId, 29, signatureLineRow - 1, 150, 48);
+  }
+}
+
+function styleStatusSymbols_(sheet, rowCount) {
+  const range = sheet.getRange(STUDENT_START_ROW, 3, rowCount, 31);
+  const values = range.getValues();
+  const colors = [];
+  const backgrounds = [];
+
+  values.forEach((row) => {
+    colors.push(row.map((value) => value ? "#ffffff" : "#0b1736"));
+    backgrounds.push(row.map((value) => {
+      if (value === "✓") return "#16a34a";
+      if (value === "×") return "#ef4444";
+      if (value === "!") return "#f97316";
+      if (value === "ส") return "#2563eb";
+      return "#ffffff";
+    }));
+  });
+
+  range
+    .setFontWeight("bold")
+    .setFontColors(colors)
+    .setBackgrounds(backgrounds);
+}
+
+function insertDriveImage_(sheet, fileId, column, row, width, height) {
+  try {
+    const blob = DriveApp.getFileById(fileId).getBlob();
+    const image = sheet.insertImage(blob, column, row);
+    image.setWidth(width).setHeight(height);
+  } catch (error) {
+    console.error(`Insert image failed ${fileId}: ${error && error.message ? error.message : error}`);
+  }
 }
 
 function formatThaiMonth_(month) {

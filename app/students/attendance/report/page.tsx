@@ -22,6 +22,7 @@ type AttendanceResponse = {
   ok?: boolean;
   students?: AttendanceStudent[];
   adviserNames?: string[];
+  adviserSignatureFileIds?: string[];
   recordedCount?: number;
   recordedByName?: string;
   canRecord?: boolean;
@@ -86,6 +87,7 @@ type MonthlyClassReport = {
   rows: MonthlyStudentRow[];
   checkedDays: Record<number, boolean>;
   adviserNames: string[];
+  adviserSignatureFileIds: string[];
 };
 
 const THAI_WEEKDAYS = [
@@ -202,10 +204,25 @@ function statusLabel(value: unknown) {
 }
 
 function monthlyStatusMark(value: unknown) {
-  if (value === "absent") return "ข";
-  if (value === "leave" || value === "sick" || value === "personal") return "ล";
+  if (value === "absent") return "×";
+  if (value === "leave" || value === "sick" || value === "personal") return "!";
   if (value === "late") return "ส";
   return "✓";
+}
+
+function statusToneFromMark(mark: string) {
+  if (mark === "×") return "absent";
+  if (mark === "!") return "leave";
+  if (mark === "ส") return "late";
+  if (mark === "✓") return "present";
+  return "";
+}
+
+function StatusSymbol({ mark }: { mark: string }) {
+  const tone = statusToneFromMark(mark);
+  if (!tone) return null;
+  const symbol = tone === "present" ? "✓" : tone === "absent" ? "×" : tone === "leave" ? "!" : "ส";
+  return <span className={`${styles.statusSymbol} ${styles[tone]}`}>{symbol}</span>;
 }
 
 function countMonthlyStatus(row: MonthlyStudentRow, value: unknown) {
@@ -424,6 +441,7 @@ export default function StudentDailyReportPage() {
           rows: Array.from(rowMap.values()).sort((left, right) => Number(left.no) - Number(right.no)),
           checkedDays,
           adviserNames: responses[0]?.data.adviserNames ?? [],
+          adviserSignatureFileIds: responses[0]?.data.adviserSignatureFileIds ?? [],
         },
       }));
     } catch (error) {
@@ -804,7 +822,7 @@ export default function StudentDailyReportPage() {
             </div>
             <div className={styles.monthTemplateHeader}>
               <img
-                src="https://drive.google.com/uc?export=view&id=1vxcGKLir_wVM0XelzgQbeR_2BXVTflui"
+                src="https://drive.google.com/thumbnail?id=1vxcGKLir_wVM0XelzgQbeR_2BXVTflui&sz=w120"
                 alt=""
               />
               <strong>แบบบันทึกการมาเรียนของนักเรียน</strong>
@@ -812,10 +830,10 @@ export default function StudentDailyReportPage() {
               <span>เดือน {formatThaiMonth(selectedMonth)}</span>
             </div>
             <div className={styles.monthLegend}>
-              <span>✓ มา</span>
-              <span>ส สาย</span>
-              <span>ล ลา</span>
-              <span>ข ขาด</span>
+              <span><StatusSymbol mark="✓" /> มา</span>
+              <span><StatusSymbol mark="×" /> ขาด</span>
+              <span><StatusSymbol mark="!" /> ลา</span>
+              <span><StatusSymbol mark="ส" /> สาย</span>
               <span>ช่องว่าง = ยังไม่ได้เช็คชื่อ/ไม่มีข้อมูล</span>
             </div>
             <div className={styles.monthTableWrap}>
@@ -861,7 +879,7 @@ export default function StudentDailyReportPage() {
                           <td>{row.name}</td>
                           {activeMonthlyReport.days.map((day) => (
                             <td key={day} className={row.statuses[day] ? styles.markedDay : ""}>
-                              {row.statuses[day] || ""}
+                              <StatusSymbol mark={row.statuses[day] || ""} />
                             </td>
                           ))}
                           <td>{row.presentCount}</td>
@@ -887,6 +905,33 @@ export default function StudentDailyReportPage() {
                 </tbody>
               </table>
             </div>
+            {activeMonthlyReport && activeMonthlyReport.rows.length > 0 ? (
+              <div className={styles.monthMobileCards}>
+                {activeMonthlyReport.rows.map((row) => (
+                  <article key={row.id}>
+                    <header>
+                      <span>{row.no}</span>
+                      <strong>{row.name}</strong>
+                    </header>
+                    <div className={styles.monthMobileDayGrid}>
+                      {activeMonthlyReport.days.map((day) => (
+                        <span key={day}>
+                          <small>{day}</small>
+                          <StatusSymbol mark={row.statuses[day] || ""} />
+                        </span>
+                      ))}
+                    </div>
+                    <dl>
+                      <div><dt>มา</dt><dd>{row.presentCount}</dd></div>
+                      <div><dt>ขาด</dt><dd>{row.absentCount}</dd></div>
+                      <div><dt>ลา</dt><dd>{row.leaveCount}</dd></div>
+                      <div><dt>สาย</dt><dd>{row.lateCount}</dd></div>
+                      <div><dt>รวม</dt><dd>{row.totalCount}</dd></div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+            ) : null}
             <div className={styles.monthSignatureGrid}>
               <div>
                 <p>ลงชื่อ........................................ครูประจำชั้น</p>
