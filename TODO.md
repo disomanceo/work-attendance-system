@@ -635,6 +635,8 @@ Release status:
 - [x] Changed the student Telegram report to show each active class level with the present count or `ยังไม่ได้เช็คชื่อ`.
 - [x] Moved the director/admin `ส่งสรุป` button to the profile card top-right on desktop while keeping it right-aligned under the position on mobile.
 - [x] Ran `npm run build` successfully after the manual Telegram overview and ordering updates.
+- [x] Moved the director/admin `ส่งสรุป` button from the sidebar profile card to the main attendance date row, aligned to the top-right of the check-in frame.
+- [x] Ran `npm run build` successfully after moving the `ส่งสรุป` button to the main attendance date row.
 
 Follow-up checks:
 

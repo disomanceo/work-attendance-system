@@ -363,6 +363,8 @@ export default function AttendancePage() {
   const [lateReasonOpen, setLateReasonOpen] = useState(false);
   const [lateReason, setLateReason] = useState("");
   const [lateReasonError, setLateReasonError] = useState("");
+  const [overviewSending, setOverviewSending] = useState(false);
+  const [overviewMessage, setOverviewMessage] = useState("");
   const [pendingCheckIn, setPendingCheckIn] =
     useState<PendingCheckIn | null>(null);
 
@@ -794,6 +796,47 @@ export default function AttendancePage() {
     return { position, distance };
   }
 
+  async function sendDirectorOverview() {
+    if (overviewSending) return;
+
+    setOverviewSending(true);
+    setOverviewMessage("");
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setOverviewMessage("กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+
+      const response = await fetch("/api/telegram/director-overview", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+      } | null;
+
+      if (!response.ok || !result?.ok) {
+        setOverviewMessage(result?.message || "ส่งไม่สำเร็จ");
+        return;
+      }
+
+      setOverviewMessage(result.message || "ส่งแล้ว");
+    } catch {
+      setOverviewMessage("ส่งไม่สำเร็จ");
+    } finally {
+      setOverviewSending(false);
+    }
+  }
+
   function countReasonCharacters(value: string) {
     return Array.from(value.trim()).length;
   }
@@ -1110,6 +1153,8 @@ schoolName: settings?.school_name ?? null,
 
   const isLate = record?.check_in_status === "late";
   const hasCheckedIn = Boolean(record?.check_in_at);
+  const canSendDirectorOverview =
+    profile.role === "director" || profile.role === "admin";
   const roleEndTime =
     settings && profile
       ? getRoleEndTime(profile.role, settings)
@@ -1169,7 +1214,27 @@ schoolName: settings?.school_name ?? null,
         )}
 <section className={styles.focusDashboard}>
           <article className={styles.focusCheckInCard}>
-            <p className={styles.focusDate}>{formatThaiDate(now)}</p>
+            <div className={styles.focusDateRow}>
+              <p className={styles.focusDate}>{formatThaiDate(now)}</p>
+              {canSendDirectorOverview && (
+                <div className={styles.directorOverviewWrap}>
+                  <button
+                    type="button"
+                    className={styles.directorOverviewButton}
+                    onClick={() => void sendDirectorOverview()}
+                    disabled={overviewSending}
+                    title="ส่งสรุปเวลาปฏิบัติงานและรายงานการมาเรียนไป Telegram"
+                  >
+                    {overviewSending ? "กำลังส่ง" : "ส่งสรุป"}
+                  </button>
+                  {overviewMessage && (
+                    <em className={styles.directorOverviewMessage}>
+                      {overviewMessage}
+                    </em>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className={styles.focusClock}>
               {new Intl.DateTimeFormat("th-TH", {

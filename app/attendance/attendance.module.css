@@ -2000,6 +2000,59 @@
   font-weight: 800;
 }
 
+.focusDateRow {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.directorOverviewWrap {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.directorOverviewButton {
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid rgba(125, 211, 252, 0.38);
+  border-radius: 9px;
+  color: #e0f7ff;
+  background: rgba(14, 165, 233, 0.15);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.directorOverviewButton:hover:not(:disabled) {
+  border-color: rgba(125, 211, 252, 0.62);
+  background: rgba(14, 165, 233, 0.24);
+}
+
+.directorOverviewButton:disabled {
+  cursor: progress;
+  opacity: 0.68;
+}
+
+.directorOverviewMessage {
+  max-width: 130px;
+  overflow: hidden;
+  color: #bae6fd;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .focusClock {
   display: grid;
   justify-items: center;
@@ -4307,5 +4360,41 @@
     width: 78px;
     height: 78px;
     font-size: 40px;
+  }
+}
+
+/* Director manual summary button in the attendance date row */
+@media (max-width: 700px) {
+  .focusDateRow {
+    grid-area: date;
+    align-items: flex-start;
+  }
+
+  .focusDate {
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: left;
+  }
+
+  .directorOverviewButton {
+    min-height: 28px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .directorOverviewMessage {
+    max-width: 98px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 390px) {
+  .focusDateRow {
+    gap: 8px;
+  }
+
+  .directorOverviewButton {
+    padding-inline: 7px;
   }
 }
