@@ -98,8 +98,23 @@ function printStatusMark(value: unknown) {
   return "✓";
 }
 
-function studentNo(student: StudentRow, index: number) {
-  return String(student.student_code || index + 1);
+function studentNo(index: number) {
+  return String(index + 1);
+}
+
+const studentCodeCollator = new Intl.Collator("th", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+function compareStudents(left: StudentRow, right: StudentRow) {
+  const leftCode = text(left.student_code);
+  const rightCode = text(right.student_code);
+  const codeCompare = studentCodeCollator.compare(leftCode, rightCode);
+
+  if (codeCompare !== 0) return codeCompare;
+
+  return studentCodeCollator.compare(text(left.full_name), text(right.full_name));
 }
 
 function academicYear(month: string) {
@@ -231,7 +246,8 @@ export async function POST(request: Request) {
     ]),
   );
 
-  const rows = ((students ?? []) as StudentRow[]).map((student, index) => {
+  const sortedStudents = [...((students ?? []) as StudentRow[])].sort(compareStudents);
+  const rows = sortedStudents.map((student, index) => {
     const counts = { present: 0, absent: 0, leave: 0, late: 0, total: 0 };
     const statuses = days.map((day) => {
       const status = recordMap.get(`${student.id}:${isoDateForDay(month, day)}`);
@@ -241,7 +257,7 @@ export async function POST(request: Request) {
     });
 
     return {
-      no: studentNo(student, index),
+      no: studentNo(index),
       name: student.full_name || "",
       statuses,
       presentCount: counts.present,
@@ -264,7 +280,9 @@ export async function POST(request: Request) {
       folderId: process.env.STUDENT_ATTENDANCE_EXPORT_FOLDER_ID || DEFAULT_FOLDER_ID,
       schoolName: SCHOOL_NAME,
       directorName: directorSigner?.name || DIRECTOR_NAME,
+      directorSignatureFileId: directorSigner?.signatureFileId || "",
       adviserName: adviserSigners.map((adviser) => adviser.name).join(", "),
+      adviserSignatureFileId: adviserSigners[0]?.signatureFileId || "",
       classLevel,
       month,
       academicYear: academicYear(month),

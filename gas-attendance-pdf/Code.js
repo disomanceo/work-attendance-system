@@ -241,7 +241,15 @@ function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
   const classLevel = String(payload.classLevel || "");
   const academicYear = String(payload.academicYear || "");
 
-  sheet.getRange("A2").setValue("แบบบันทึกการมาเรียนของนักเรียน");
+  const title = "แบบบันทึกการมาเรียนของนักเรียน";
+  const firstTitle = String(sheet.getRange("A1").getDisplayValue() || "").trim();
+
+  if (firstTitle === title) {
+    sheet.getRange("A2").clearContent();
+  } else {
+    sheet.getRange("A2").setValue(title);
+  }
+
   sheet.getRange("A3").setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
   sheet.getRange("A4").setValue(schoolName);
   sheet.getRange("A5").setValue(`เดือน ${thaiMonth}`);
@@ -306,11 +314,22 @@ function unmergeStudentAttendanceOverlaps_(range) {
 function fillStudentAttendanceSignatures_(sheet, payload, extraRows) {
   const signatureLineRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_LINE_ROW + extraRows;
   const signatureNameRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_NAME_ROW + extraRows;
+  const adviserName = String(payload.adviserName || "").trim();
+  const directorName = String(payload.directorName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_DIRECTOR_NAME).trim();
+  const adviserSignatureFileId = String(payload.adviserSignatureFileId || "").trim();
+  const directorSignatureFileId = String(payload.directorSignatureFileId || "").trim();
 
   sheet.getRange(signatureLineRow, 3).setValue("ลงชื่อ........................................ครูประจำชั้น");
-  sheet.getRange(signatureNameRow, 3).setValue("(..........................................)");
+  sheet.getRange(signatureNameRow, 3).setValue(`(${adviserName || "........................................"})`);
   sheet.getRange(signatureLineRow, 20).setValue("ลงชื่อ........................................ผู้อำนวยการโรงเรียน");
-  sheet.getRange(signatureNameRow, 20).setValue("(..........................................)");
+  sheet.getRange(signatureNameRow, 20).setValue(`(${directorName})`);
+
+  if (adviserSignatureFileId) {
+    insertStudentAttendanceDriveImage_(sheet, adviserSignatureFileId, 9, signatureLineRow - 1, 150, 48);
+  }
+  if (directorSignatureFileId) {
+    insertStudentAttendanceDriveImage_(sheet, directorSignatureFileId, 26, signatureLineRow - 1, 150, 48);
+  }
 }
 
 function insertStudentAttendanceDriveImage_(sheet, fileId, column, row, width, height) {

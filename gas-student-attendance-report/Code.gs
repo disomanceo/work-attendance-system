@@ -131,13 +131,19 @@ function fillHeader_(sheet, payload, thaiMonth) {
   const classLevel = String(payload.classLevel || "");
   const academicYear = String(payload.academicYear || "");
   const logoFileId = String(payload.logoFileId || "").trim();
+  const title = "แบบบันทึกการมาเรียนของนักเรียน";
 
   if (logoFileId) {
     sheet.setRowHeight(1, 48);
     insertDriveImage_(sheet, logoFileId, 19, 1, 42, 42);
   }
 
-  sheet.getRange("A2:AL2").merge().setValue("แบบบันทึกการมาเรียนของนักเรียน");
+  if (String(sheet.getRange("A1").getDisplayValue() || "").trim() === title) {
+    sheet.getRange("A2:AL2").clearContent();
+  } else {
+    sheet.getRange("A2:AL2").merge().setValue(title);
+  }
+
   sheet.getRange("A3:AL3").merge().setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
   sheet.getRange("A4:AL4").merge().setValue(schoolName);
   sheet.getRange("A5:AL5").merge().setValue(`เดือน ${thaiMonth}`);

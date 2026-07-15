@@ -13,6 +13,13 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance monthly Sheet/PDF export fix on 2026-07-15:
+  - [x] Changed the exported `ที่` column to sequential row numbers instead of `student_code`.
+  - [x] Added numeric-aware student sorting before generating export rows.
+  - [x] Prevented the template title from being written twice when the source Sheet already contains `แบบบันทึกการมาเรียนของนักเรียน`.
+  - [x] Filled adviser and director names in the bottom signature parentheses from system profile/class settings data.
+  - [x] Run `npm run build` after this export fix.
+
 - Student attendance monthly Sheet/PDF template export on 2026-07-15:
   - [x] Added `/api/students/attendance/export` to generate per-class monthly attendance exports from the Google Sheet template.
   - [x] Added `gas-student-attendance-report/Code.gs` for copying the template, filling class/month/student attendance rows, and creating PDF files.
