@@ -413,6 +413,139 @@
   font-weight: 800;
 }
 
+.monthReportCard {
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid #e8edf5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055);
+}
+
+.monthReportHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5ebf3;
+  background: #f8fbff;
+}
+
+.monthReportHeader h2,
+.monthReportHeader p {
+  margin: 0;
+}
+
+.monthReportHeader h2 {
+  color: #0b1736;
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.monthReportHeader p {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.monthReportHeader > span {
+  display: inline-grid;
+  min-width: 72px;
+  min-height: 38px;
+  place-items: center;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.monthLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.monthLegend span {
+  border: 1px solid #e5ebf3;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 4px 8px;
+}
+
+.monthTableWrap {
+  margin: 10px 14px 14px;
+  overflow: auto;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+}
+
+.monthTable {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.monthTable th,
+.monthTable td {
+  min-width: 34px;
+  height: 32px;
+  border-right: 1px solid #dbe3ee;
+  border-bottom: 1px solid #dbe3ee;
+  padding: 4px 5px;
+  color: #0b1736;
+  font-size: 12px;
+  line-height: 1.15;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.monthTable th {
+  background: #f8fbff;
+  font-weight: 950;
+}
+
+.monthTable th:first-child,
+.monthTable td:first-child {
+  min-width: 42px;
+}
+
+.monthTable th:nth-child(2),
+.monthTable td:nth-child(2) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 220px;
+  max-width: 260px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.monthTable th:nth-child(2) {
+  z-index: 2;
+  background: #f8fbff;
+}
+
+.monthTable th:last-child,
+.monthTable td:last-child {
+  min-width: 50px;
+  font-weight: 950;
+}
+
+.markedDay {
+  color: #15803d !important;
+  font-weight: 950;
+}
+
 .summaryScroller {
   margin-top: 10px;
 }
@@ -971,6 +1104,72 @@
     font-size: 9px;
   }
 
+  .monthReportCard {
+    margin-top: 4px;
+    border-radius: 10px;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.045);
+  }
+
+  .monthReportHeader {
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .monthReportHeader h2 {
+    font-size: 15.5px;
+  }
+
+  .monthReportHeader p {
+    font-size: 10.5px;
+  }
+
+  .monthReportHeader > span {
+    min-width: 0;
+    min-height: 28px;
+    justify-self: start;
+    border-radius: 8px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .monthLegend {
+    gap: 4px;
+    padding: 6px 8px 0;
+    font-size: 8.8px;
+  }
+
+  .monthLegend span {
+    padding: 3px 5px;
+  }
+
+  .monthTableWrap {
+    margin: 6px 0 6px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .monthTable th,
+  .monthTable td {
+    min-width: 26px;
+    height: 26px;
+    padding: 3px 2px;
+    font-size: 9px;
+  }
+
+  .monthTable th:first-child,
+  .monthTable td:first-child {
+    min-width: 30px;
+  }
+
+  .monthTable th:nth-child(2),
+  .monthTable td:nth-child(2) {
+    min-width: 136px;
+    max-width: 150px;
+    font-size: 9px;
+  }
+
   .summaryGrid {
     gap: 4px;
   }
@@ -1216,8 +1415,6 @@
   .dateFilter,
   .dutyBox,
   .classTabs,
-  .summaryScroller,
-  .reportCard,
   .reportMeta,
   .footer {
     display: none;
@@ -1238,5 +1435,33 @@
   .classDetailCard {
     border: 0;
     box-shadow: none;
+  }
+
+  .monthReportCard,
+  .reportCard,
+  .summaryCard {
+    box-shadow: none;
+  }
+
+  .monthTableWrap {
+    overflow: visible;
+  }
+
+  .monthTable {
+    width: 100%;
+  }
+
+  .monthTable th,
+  .monthTable td {
+    min-width: 0;
+    height: 22px;
+    padding: 2px;
+    font-size: 8px;
+  }
+
+  .monthTable th:nth-child(2),
+  .monthTable td:nth-child(2) {
+    position: static;
+    min-width: 120px;
   }
 }

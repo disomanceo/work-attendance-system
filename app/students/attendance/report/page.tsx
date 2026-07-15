@@ -58,6 +58,22 @@ type ClassReport = {
   students: AttendanceStudent[];
 };
 
+type MonthlyStudentRow = {
+  id: string;
+  no: string;
+  name: string;
+  statuses: Record<number, string>;
+  presentCount: number;
+};
+
+type MonthlyClassReport = {
+  classLevel: string;
+  month: string;
+  days: number[];
+  rows: MonthlyStudentRow[];
+  checkedDays: Record<number, boolean>;
+};
+
 const THAI_WEEKDAYS = [
   "วันอาทิตย์",
   "วันจันทร์",
@@ -122,6 +138,21 @@ function formatThaiFullDate(value: string) {
   return `${THAI_WEEKDAYS[date.getDay()]}ที่ ${date.getDate()} ${THAI_MONTHS_FULL[date.getMonth()]} ${date.getFullYear() + 543}`;
 }
 
+function formatThaiMonth(value: string) {
+  const [year, month] = value.split("-").map(Number);
+  return `${THAI_MONTHS_FULL[(month || 1) - 1]} ${year + 543}`;
+}
+
+function daysInMonth(value: string) {
+  const [year, month] = value.split("-").map(Number);
+  const total = new Date(year, month, 0).getDate();
+  return Array.from({ length: total }, (_, index) => index + 1);
+}
+
+function isoDateForDay(month: string, day: number) {
+  return `${month}-${String(day).padStart(2, "0")}`;
+}
+
 function percent(value: number, total: number) {
   if (total <= 0) return 0;
   return Math.round((value / total) * 1000) / 10;
@@ -154,6 +185,13 @@ function statusLabel(value: unknown) {
   if (value === "leave" || value === "sick" || value === "personal") return "ลา";
   if (value === "late") return "สาย";
   return "มา";
+}
+
+function monthlyStatusMark(value: unknown) {
+  if (value === "absent") return "ข";
+  if (value === "leave" || value === "sick" || value === "personal") return "ล";
+  if (value === "late") return "ส";
+  return "✓";
 }
 
 function getStudentNo(student: AttendanceStudent, index: number) {
@@ -205,11 +243,14 @@ function buildReport(classLevel: string, data: AttendanceResponse): ClassReport 
 export default function StudentDailyReportPage() {
   const supabase = useMemo(() => createClient(), []);
   const [date, setDate] = useState(todayInputValue());
-  const [selectedClassLevel, setSelectedClassLevel] = useState<string>(STUDENT_CLASS_LEVELS[0] ?? "อนุบาล 2");
+  const [activeTab, setActiveTab] = useState<string>("summary");
   const [reports, setReports] = useState<ClassReport[]>([]);
+  const [monthlyReports, setMonthlyReports] = useState<Record<string, MonthlyClassReport>>({});
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [dutyTeacherNames, setDutyTeacherNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const selectedMonth = date.slice(0, 7);
 
   const loadReport = useCallback(async () => {
     setLoading(true);
@@ -275,12 +316,94 @@ export default function StudentDailyReportPage() {
     void loadReport();
   }, [loadReport]);
 
-  useEffect(() => {
-    if (reports.length === 0) return;
-    if (!reports.some((report) => report.classLevel === selectedClassLevel)) {
-      setSelectedClassLevel(reports[0].classLevel);
+  const loadMonthlyClassReport = useCallback(async (classLevel: string) => {
+    const key = `${classLevel}:${selectedMonth}`;
+    if (monthlyReports[key]) return;
+
+    setMonthlyLoading(true);
+    setMessage("");
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers = new Headers({ Accept: "application/json" });
+      if (session?.access_token) {
+        headers.set("Authorization", `Bearer ${session.access_token}`);
+      }
+
+      const days = daysInMonth(selectedMonth);
+      const responses = await Promise.all(
+        days.map(async (day) => {
+          const params = new URLSearchParams({
+            date: isoDateForDay(selectedMonth, day),
+            classLevel,
+            view: "report",
+          });
+          const response = await fetch(`/api/students/attendance?${params.toString()}`, {
+            headers,
+            cache: "no-store",
+          });
+          const data = (await response.json()) as AttendanceResponse;
+
+          if (!response.ok || data.ok === false) {
+            throw new Error(data.message || data.error || "โหลดรายงานรายเดือนไม่สำเร็จ");
+          }
+
+          return { day, data };
+        }),
+      );
+
+      const rowMap = new Map<string, MonthlyStudentRow>();
+      const checkedDays: Record<number, boolean> = {};
+
+      responses.forEach(({ day, data }) => {
+        const checked = (data.recordedCount ?? 0) > 0;
+        checkedDays[day] = checked;
+
+        (data.students ?? []).forEach((student, index) => {
+          const id = student.id;
+          const row = rowMap.get(id) ?? {
+            id,
+            no: getStudentNo(student, index),
+            name: getStudentName(student),
+            statuses: {},
+            presentCount: 0,
+          };
+
+          if (checked) {
+            row.statuses[day] = monthlyStatusMark(student.status);
+            if (normalizeStatus(student.status) === "present") row.presentCount += 1;
+          } else {
+            row.statuses[day] = "";
+          }
+
+          rowMap.set(id, row);
+        });
+      });
+
+      setMonthlyReports((current) => ({
+        ...current,
+        [key]: {
+          classLevel,
+          month: selectedMonth,
+          days,
+          rows: Array.from(rowMap.values()).sort((left, right) => Number(left.no) - Number(right.no)),
+          checkedDays,
+        },
+      }));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "โหลดรายงานรายเดือนไม่สำเร็จ");
+    } finally {
+      setMonthlyLoading(false);
     }
-  }, [reports, selectedClassLevel]);
+  }, [monthlyReports, selectedMonth, supabase]);
+
+  useEffect(() => {
+    if (activeTab === "summary") return;
+    void loadMonthlyClassReport(activeTab);
+  }, [activeTab, loadMonthlyClassReport]);
 
   const totals = useMemo(() => {
     return reports.reduce(
@@ -295,7 +418,7 @@ export default function StudentDailyReportPage() {
   }, [reports]);
 
   const totalPresentPercent = percent(totals.present, totals.total);
-  const selectedReport = reports.find((report) => report.classLevel === selectedClassLevel) ?? reports[0];
+  const activeMonthlyReport = activeTab === "summary" ? null : monthlyReports[`${activeTab}:${selectedMonth}`];
 
   const summaryCards = [
     {
@@ -329,29 +452,42 @@ export default function StudentDailyReportPage() {
   ] as const;
 
   function exportSheet() {
-    if (!selectedReport) return;
-    const rows = [
-      ["แบบบันทึกการมาเรียนของนักเรียน"],
-      [`ชั้น ${selectedReport.classLevel}`, `วันที่ ${formatThaiFullDate(date)}`],
-      ["โรงเรียนวัดไผ่มุ้ง"],
-      [],
-      ["ที่", "ชื่อ - สกุล", "สถานะ", "หมายเหตุ"],
-      ...selectedReport.students.map((student, index) => [
-        getStudentNo(student, index),
-        getStudentName(student),
-        selectedReport.checked ? statusLabel(student.status) : "ยังไม่ได้เช็คชื่อ",
-        "",
-      ]),
-      [],
-      ["รวม", String(selectedReport.total), `มา ${selectedReport.present}`, `ขาด ${selectedReport.absent}`, `ลา ${selectedReport.leave}`],
-      ["ผู้บันทึก", selectedReport.recordedByName || "-"],
-    ];
+    const rows = activeMonthlyReport
+      ? [
+          ["แบบบันทึกการมาเรียนของนักเรียน"],
+          [`ชั้น ${activeMonthlyReport.classLevel}`, `เดือน ${formatThaiMonth(activeMonthlyReport.month)}`],
+          ["โรงเรียนวัดไผ่มุ้ง"],
+          [],
+          ["ที่", "ชื่อ - สกุล", ...activeMonthlyReport.days.map(String), "รวม(วัน)"],
+          ...activeMonthlyReport.rows.map((row) => [
+            row.no,
+            row.name,
+            ...activeMonthlyReport.days.map((day) => row.statuses[day] || ""),
+            String(row.presentCount),
+          ]),
+        ]
+      : [
+          ["ระดับชั้น", "ทั้งหมด", "มาเรียน", "ขาดเรียน", "ลา", "% มาเรียน", "สถานะเช็คชื่อ"],
+          ...reports.map((report) => [
+            report.classLevel,
+            String(report.total),
+            String(report.present),
+            String(report.absent),
+            String(report.leave),
+            formatPercent(percent(report.present, report.total)),
+            report.checked
+              ? `เช็คชื่อแล้ว${report.recordedByName ? ` (${report.recordedByName})` : ""}`
+              : "ยังไม่ได้เช็ค",
+          ]),
+        ];
     const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `student-attendance-${selectedReport.classLevel}-${date}.csv`;
+    link.download = activeMonthlyReport
+      ? `student-attendance-${activeMonthlyReport.classLevel}-${activeMonthlyReport.month}.csv`
+      : `student-daily-report-summary-${date}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -379,100 +515,138 @@ export default function StudentDailyReportPage() {
         {message ? <div className={styles.message}>{message}</div> : null}
 
         <nav className={styles.classTabs} aria-label="เลือกชั้นเรียน">
-          {reports.length === 0 ? STUDENT_CLASS_LEVELS.map((level) => (
-            <button key={level} type="button" disabled>{level}</button>
-          )) : reports.map((report) => (
+          <button
+            type="button"
+            className={activeTab === "summary" ? styles.activeClassTab : ""}
+            onClick={() => setActiveTab("summary")}
+          >
+            สรุปรายชั้น
+          </button>
+          {STUDENT_CLASS_LEVELS.map((level) => (
             <button
-              key={report.classLevel}
+              key={level}
               type="button"
-              className={report.classLevel === selectedClassLevel ? styles.activeClassTab : ""}
-              onClick={() => setSelectedClassLevel(report.classLevel)}
+              className={activeTab === level ? styles.activeClassTab : ""}
+              onClick={() => setActiveTab(level)}
             >
-              {report.classLevel}
+              {level}
             </button>
           ))}
         </nav>
 
-        {selectedReport ? (
-          <section className={styles.classDetailCard}>
-            <div className={styles.classDetailHeader}>
-              <div>
-                <h2>รายงานการมาเรียน {selectedReport.classLevel}</h2>
-                <p>{selectedReport.checked ? `เช็คชื่อแล้ว${selectedReport.recordedByName ? ` โดย ${selectedReport.recordedByName}` : ""}` : "ยังไม่ได้เช็คชื่อ"}</p>
+        {activeTab === "summary" ? (
+          <>
+            <section className={styles.summaryScroller} aria-label="สรุปภาพรวม">
+              <div className={styles.summaryGrid}>
+                {summaryCards.map((card) => (
+                    <article key={card.label} className={`${styles.summaryCard} ${styles[card.tone]}`}>
+                      <span className={styles.summaryIcon}>{formatThaiPercent(card.percent)}</span>
+                      <p className={styles.summaryLine}>
+                        <span className={styles.summaryLabel}>{card.label}</span>
+                        <strong className={styles.summaryValue}>{card.value} <small>คน</small></strong>
+                      </p>
+                  </article>
+                ))}
               </div>
-              <div className={styles.classDetailStats}>
-                <span><strong>{selectedReport.total}</strong><small>ทั้งหมด</small></span>
-                <span><strong>{selectedReport.checked ? selectedReport.present : "-"}</strong><small>มา</small></span>
-                <span><strong>{selectedReport.checked ? selectedReport.absent : "-"}</strong><small>ขาด</small></span>
-                <span><strong>{selectedReport.checked ? selectedReport.leave : "-"}</strong><small>ลา</small></span>
+            </section>
+
+            <section className={styles.reportCard}>
+              <div className={styles.reportHeader}>
+                <div>
+                  <h2>ตารางสรุปการมาเรียนรายชั้น</h2>
+                </div>
               </div>
-            </div>
 
-            <div className={styles.classStudentList}>
-              <div className={styles.classStudentHead}>
-                <span>ที่</span>
-                <span>ชื่อ - สกุล</span>
-                <span>สถานะ</span>
+              <div className={styles.desktopTable}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ระดับชั้น</th>
+                      <th>ทั้งหมด</th>
+                      <th>มาเรียน</th>
+                      <th>ขาดเรียน</th>
+                      <th>ลา</th>
+                      <th>% มาเรียน</th>
+                      <th>การดำเนินงาน</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr><td colSpan={7}>กำลังโหลดข้อมูล...</td></tr>
+                    ) : reports.length === 0 ? (
+                      <tr><td colSpan={7}>ไม่พบข้อมูลรายงาน</td></tr>
+                    ) : reports.map((report) => {
+                      const presentPercent = percent(report.present, report.total);
+                      const presentText = report.checked ? String(report.present) : "-";
+                      const absentText = report.checked ? String(report.absent) : "-";
+                      const leaveText = report.checked ? String(report.leave) : "-";
+                      const percentText = report.checked ? formatPercent(presentPercent) : "-";
+                      return (
+                        <tr key={report.classLevel}>
+                          <td><strong>{report.classLevel}</strong></td>
+                          <td>{report.total}</td>
+                          <td>{presentText}</td>
+                          <td>{absentText}</td>
+                          <td>{leaveText}</td>
+                          <td>
+                            <div className={styles.progressCell}>
+                              <span className={styles.progressTrack}>
+                                <span style={{ width: report.checked ? `${presentPercent}%` : "0%" }} />
+                              </span>
+                              <strong>{percentText}</strong>
+                            </div>
+                          </td>
+                          <td>
+                            {report.checked ? (
+                              <span className={styles.checked}>
+                                ● ✔ เช็คชื่อแล้ว
+                                {report.recordedByName ? (
+                                  <small>{shortTeacherName(report.recordedByName)}</small>
+                                ) : null}
+                              </span>
+                            ) : (
+                              <div className={styles.notChecked}>
+                                <span>● ยังไม่ได้ลงเวลา</span>
+                                {report.canRecord ? (
+                                  <Link href={attendanceLink(report, date)} aria-label={`ไปเช็คชื่อ ${report.classLevel}`}>ไปเช็คชื่อ</Link>
+                                ) : (
+                                  <small>ไม่มีสิทธิ์</small>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {!loading && reports.length > 0 ? (
+                    <tfoot>
+                      <tr>
+                        <td><strong>รวม</strong></td>
+                        <td>{totals.total}</td>
+                        <td>{totals.present}</td>
+                        <td>{totals.absent}</td>
+                        <td>{totals.leave}</td>
+                        <td>
+                          <div className={styles.progressCell}>
+                            <span className={styles.progressTrack}>
+                              <span style={{ width: `${totalPresentPercent}%` }} />
+                            </span>
+                            <strong>{formatPercent(totalPresentPercent)}</strong>
+                          </div>
+                        </td>
+                        <td>-</td>
+                      </tr>
+                    </tfoot>
+                  ) : null}
+                </table>
               </div>
-              {loading ? (
-                <div className={styles.classStudentState}>กำลังโหลดข้อมูล...</div>
-              ) : selectedReport.students.length === 0 ? (
-                <div className={styles.classStudentState}>ยังไม่มีรายชื่อนักเรียนในชั้นนี้</div>
-              ) : selectedReport.students.map((student, index) => {
-                const normalized = normalizeStatus(student.status);
-                return (
-                  <div key={student.id} className={styles.classStudentRow}>
-                    <span>{getStudentNo(student, index)}</span>
-                    <strong>{getStudentName(student)}</strong>
-                    <em className={selectedReport.checked ? styles[normalized] : styles.unchecked}>
-                      {selectedReport.checked ? statusLabel(student.status) : "ยังไม่ได้เช็ค"}
-                    </em>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
 
-        <section className={styles.summaryScroller} aria-label="สรุปภาพรวม">
-          <div className={styles.summaryGrid}>
-            {summaryCards.map((card) => (
-                <article key={card.label} className={`${styles.summaryCard} ${styles[card.tone]}`}>
-                  <span className={styles.summaryIcon}>{formatThaiPercent(card.percent)}</span>
-                  <p className={styles.summaryLine}>
-                    <span className={styles.summaryLabel}>{card.label}</span>
-                    <strong className={styles.summaryValue}>{card.value} <small>คน</small></strong>
-                  </p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.reportCard}>
-          <div className={styles.reportHeader}>
-            <div>
-              <h2>ตารางสรุปการมาเรียนรายชั้น</h2>
-            </div>
-          </div>
-
-          <div className={styles.desktopTable}>
-            <table>
-              <thead>
-                <tr>
-                  <th>ระดับชั้น</th>
-                  <th>ทั้งหมด</th>
-                  <th>มาเรียน</th>
-                  <th>ขาดเรียน</th>
-                  <th>ลา</th>
-                  <th>% มาเรียน</th>
-                  <th>การดำเนินงาน</th>
-                </tr>
-              </thead>
-              <tbody>
+              <div className={styles.mobileCards}>
                 {loading ? (
-                  <tr><td colSpan={7}>กำลังโหลดข้อมูล...</td></tr>
+                  <div className={styles.mobileState}>กำลังโหลดข้อมูล...</div>
                 ) : reports.length === 0 ? (
-                  <tr><td colSpan={7}>ไม่พบข้อมูลรายงาน</td></tr>
+                  <div className={styles.mobileState}>ไม่พบข้อมูลรายงาน</div>
                 ) : reports.map((report) => {
                   const presentPercent = percent(report.present, report.total);
                   const presentText = report.checked ? String(report.present) : "-";
@@ -480,120 +654,99 @@ export default function StudentDailyReportPage() {
                   const leaveText = report.checked ? String(report.leave) : "-";
                   const percentText = report.checked ? formatPercent(presentPercent) : "-";
                   return (
-                    <tr key={report.classLevel}>
-                      <td><strong>{report.classLevel}</strong></td>
-                      <td>{report.total}</td>
-                      <td>{presentText}</td>
-                      <td>{absentText}</td>
-                      <td>{leaveText}</td>
-                      <td>
-                        <div className={styles.progressCell}>
-                          <span className={styles.progressTrack}>
-                            <span style={{ width: report.checked ? `${presentPercent}%` : "0%" }} />
-                          </span>
-                          <strong>{percentText}</strong>
+                    <article key={report.classLevel} className={styles.classCard}>
+                      <h3>{report.classLevel}</h3>
+                      <dl>
+                        <div><dt>ทั้งหมด</dt><dd>{report.total}</dd></div>
+                        <div><dt>มาเรียน</dt><dd>{presentText}</dd></div>
+                        <div><dt>ขาดเรียน</dt><dd>{absentText}</dd></div>
+                        <div><dt>ลา</dt><dd>{leaveText}</dd></div>
+                      </dl>
+                      <div className={styles.mobileProgress}>
+                        <span><i style={{ width: report.checked ? `${presentPercent}%` : "0%" }} /></span>
+                        <strong>{percentText}</strong>
+                      </div>
+                      {report.checked ? (
+                        <p className={styles.mobileChecked}>
+                          ✔ เช็คชื่อแล้ว
+                          {report.recordedByName ? (
+                            <small>{shortTeacherName(report.recordedByName)}</small>
+                          ) : null}
+                        </p>
+                      ) : (
+                        <div className={styles.mobileNotChecked}>
+                          <p>● ยังไม่ได้ลงเวลา</p>
+                          {report.canRecord ? (
+                            <Link href={attendanceLink(report, date)}>ไปเช็คชื่อ</Link>
+                          ) : (
+                            <small>ไม่มีสิทธิ์</small>
+                          )}
                         </div>
-                      </td>
-                      <td>
-                        {report.checked ? (
-                          <span className={styles.checked}>
-                            ● ✔ เช็คชื่อแล้ว
-                            {report.recordedByName ? (
-                              <small>{shortTeacherName(report.recordedByName)}</small>
-                            ) : null}
-                          </span>
-                        ) : (
-                          <div className={styles.notChecked}>
-                            <span>● ยังไม่ได้ลงเวลา</span>
-                            {report.canRecord ? (
-                              <Link href={attendanceLink(report, date)} aria-label={`ไปเช็คชื่อ ${report.classLevel}`}>ไปเช็คชื่อ</Link>
-                            ) : (
-                              <small>ไม่มีสิทธิ์</small>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                      )}
+                    </article>
                   );
                 })}
-              </tbody>
-              {!loading && reports.length > 0 ? (
-                <tfoot>
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className={styles.monthReportCard}>
+            <div className={styles.monthReportHeader}>
+              <div>
+                <h2>แบบบันทึกการมาเรียน {activeTab}</h2>
+                <p>เดือน {formatThaiMonth(selectedMonth)} โรงเรียนวัดไผ่มุ้ง</p>
+              </div>
+              <span>{monthlyLoading ? "กำลังโหลด..." : `${activeMonthlyReport?.rows.length ?? 0} คน`}</span>
+            </div>
+            <div className={styles.monthLegend}>
+              <span>✓ มา</span>
+              <span>ส สาย</span>
+              <span>ล ลา</span>
+              <span>ข ขาด</span>
+              <span>ช่องว่าง = ยังไม่ได้เช็คชื่อ/ไม่มีข้อมูล</span>
+            </div>
+            <div className={styles.monthTableWrap}>
+              <table className={styles.monthTable}>
+                <thead>
                   <tr>
-                    <td><strong>รวม</strong></td>
-                    <td>{totals.total}</td>
-                    <td>{totals.present}</td>
-                    <td>{totals.absent}</td>
-                    <td>{totals.leave}</td>
-                    <td>
-                      <div className={styles.progressCell}>
-                        <span className={styles.progressTrack}>
-                          <span style={{ width: `${totalPresentPercent}%` }} />
-                        </span>
-                        <strong>{formatPercent(totalPresentPercent)}</strong>
-                      </div>
-                    </td>
-                    <td>-</td>
+                    <th>ที่</th>
+                    <th>ชื่อ - สกุล</th>
+                    {activeMonthlyReport?.days.map((day) => (
+                      <th key={day}>{day}</th>
+                    ))}
+                    <th>รวม</th>
                   </tr>
-                </tfoot>
-              ) : null}
-            </table>
-          </div>
-
-          <div className={styles.mobileCards}>
-            {loading ? (
-              <div className={styles.mobileState}>กำลังโหลดข้อมูล...</div>
-            ) : reports.length === 0 ? (
-              <div className={styles.mobileState}>ไม่พบข้อมูลรายงาน</div>
-            ) : reports.map((report) => {
-              const presentPercent = percent(report.present, report.total);
-              const presentText = report.checked ? String(report.present) : "-";
-              const absentText = report.checked ? String(report.absent) : "-";
-              const leaveText = report.checked ? String(report.leave) : "-";
-              const percentText = report.checked ? formatPercent(presentPercent) : "-";
-              return (
-                <article key={report.classLevel} className={styles.classCard}>
-                  <h3>{report.classLevel}</h3>
-                  <dl>
-                    <div><dt>ทั้งหมด</dt><dd>{report.total}</dd></div>
-                    <div><dt>มาเรียน</dt><dd>{presentText}</dd></div>
-                    <div><dt>ขาดเรียน</dt><dd>{absentText}</dd></div>
-                    <div><dt>ลา</dt><dd>{leaveText}</dd></div>
-                  </dl>
-                  <div className={styles.mobileProgress}>
-                    <span><i style={{ width: report.checked ? `${presentPercent}%` : "0%" }} /></span>
-                    <strong>{percentText}</strong>
-                  </div>
-                  {report.checked ? (
-                    <p className={styles.mobileChecked}>
-                      ✔ เช็คชื่อแล้ว
-                      {report.recordedByName ? (
-                        <small>{shortTeacherName(report.recordedByName)}</small>
-                      ) : null}
-                    </p>
-                  ) : (
-                    <div className={styles.mobileNotChecked}>
-                      <p>● ยังไม่ได้ลงเวลา</p>
-                      {report.canRecord ? (
-                        <Link href={attendanceLink(report, date)}>ไปเช็คชื่อ</Link>
-                      ) : (
-                        <small>ไม่มีสิทธิ์</small>
-                      )}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {monthlyLoading && !activeMonthlyReport ? (
+                    <tr><td colSpan={34}>กำลังโหลดข้อมูลรายเดือน...</td></tr>
+                  ) : !activeMonthlyReport || activeMonthlyReport.rows.length === 0 ? (
+                    <tr><td colSpan={34}>ยังไม่มีรายชื่อนักเรียนในชั้นนี้</td></tr>
+                  ) : activeMonthlyReport.rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.no}</td>
+                      <td>{row.name}</td>
+                      {activeMonthlyReport.days.map((day) => (
+                        <td key={day} className={row.statuses[day] ? styles.markedDay : ""}>
+                          {row.statuses[day] || ""}
+                        </td>
+                      ))}
+                      <td>{row.presentCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         <section className={styles.reportMeta}>
           <p>ⓘ ข้อมูล ณ วันที่ {date} เวลา {new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit" }).format(new Date())} น.</p>
         </section>
 
         <footer className={styles.footer}>
-          <button type="button" onClick={exportSheet} disabled={!selectedReport}>Sheet</button>
-          <button type="button" onClick={() => window.print()} disabled={!selectedReport}>PDF</button>
+          <button type="button" onClick={exportSheet} disabled={activeTab !== "summary" && !activeMonthlyReport}>Sheet</button>
+          <button type="button" onClick={() => window.print()} disabled={activeTab !== "summary" && !activeMonthlyReport}>PDF</button>
           <button type="button" onClick={() => void loadReport()} disabled={loading}>รีเฟรชข้อมูล</button>
         </footer>
       </section>

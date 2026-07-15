@@ -24,6 +24,12 @@ Updated: 2026-07-15
   - [x] Changed the footer `Sheet` export to use the currently selected class instead of the whole-school summary.
   - [x] Changed the footer `PDF` print view to focus on the selected class report.
   - [x] Ran `npm run build` after the class-tab report update.
+- Student daily attendance monthly class-tab revision on 2026-07-15:
+  - [x] Changed the first tab to `สรุปรายชั้น`.
+  - [x] Moved the whole-school summary table into the first tab only.
+  - [x] Changed each class tab to show a read-only monthly attendance grid similar to the Sheet template.
+  - [x] Updated `Sheet` export to export the active class monthly grid when a class tab is selected.
+  - [x] Ran `npm run build` after the monthly class-tab revision.
 
 - Latest database rows imported at `2026-07-13T04:15-04:16Z` have no central page metadata:
   - `legacy_payload.smart_area_page` is empty.
