@@ -19,6 +19,10 @@ Updated: 2026-07-15
   - [x] Prevented the template title from being written twice when the source Sheet already contains `แบบบันทึกการมาเรียนของนักเรียน`.
   - [x] Filled adviser and director names in the bottom signature parentheses from system profile/class settings data.
   - [x] Run `npm run build` after this export fix.
+  - [x] Committed and pushed the export fix to `origin/main`.
+  - [x] Vercel production deployment reached `READY` and aliases include `https://pm-coming.vercel.app`.
+  - [x] Deployed `gas-attendance-pdf` Apps Script production web app to version `60`.
+  - [x] Deployed `gas-student-attendance-report` Apps Script web app to version `2`.
 
 - Student attendance monthly Sheet/PDF template export on 2026-07-15:
   - [x] Added `/api/students/attendance/export` to generate per-class monthly attendance exports from the Google Sheet template.
