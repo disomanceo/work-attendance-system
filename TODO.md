@@ -618,3 +618,19 @@ Follow-up checks:
 
 - [ ] After 19:15 Bangkok time on 2026-07-15, confirm `/api/cron/attendance-daily-pdf` returns success and creates the daily attendance PDF.
 - [ ] Confirm weekend/special-calendar daily PDFs are created when the cron runs and the GAS daily PDF env vars are present.
+
+## Director manual Telegram overview button - 2026-07-15
+
+Release status:
+
+- [x] Added a director/admin-only small `ส่งสรุป` button under the user name and position in the main sidebar profile card.
+- [x] Added `/api/telegram/director-overview` to send one Telegram group message with the work attendance summary followed by rooms/classes that have not checked student attendance.
+- [x] Added a 10-minute cooldown using notification logs to avoid repeated manual Telegram spam.
+- [x] The button uses the current session token and shows compact success/error/cooldown status text under the button.
+- [x] Ran `npm run build` successfully.
+
+Follow-up checks:
+
+- [ ] Sign in as director/admin and confirm the small `ส่งสรุป` button appears under the profile position.
+- [ ] Press `ส่งสรุป` and confirm Telegram receives the attendance summary followed by unchecked student rooms/classes.
+- [ ] Press again within 10 minutes and confirm the UI shows the cooldown message.

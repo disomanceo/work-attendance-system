@@ -176,6 +176,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         profileInitial={profileInitial}
         profileName={profileName}
         profileLabel={profileLabel}
+        profileRole={role}
         onToggleCollapsed={toggleCollapsed}
         onNavigate={(href) => router.push(href)}
         onLogout={() => void logout()}

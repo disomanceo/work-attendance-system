@@ -14,6 +14,7 @@ type AppSidebarProps = {
   profileInitial: string;
   profileName: string;
   profileLabel: string;
+  profileRole: string;
   onToggleCollapsed: () => void;
   onNavigate: (href: string) => void;
   onLogout: () => void;
@@ -78,12 +79,15 @@ export default function AppSidebar({
   profileInitial,
   profileName,
   profileLabel,
+  profileRole,
   onToggleCollapsed,
   onNavigate,
   onLogout,
 }: AppSidebarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const [newDocumentCount, setNewDocumentCount] = useState(0);
+  const [overviewSending, setOverviewSending] = useState(false);
+  const [overviewMessage, setOverviewMessage] = useState("");
   const supabase = useMemo(() => createClient(), []);
 
   const loadNewDocumentCount = useCallback(async () => {
@@ -146,6 +150,8 @@ export default function AppSidebar({
   const homeItems = items.filter((item) => item.section === "home");
   const reviewItems = items.filter((item) => item.section === "review");
   const accountItems = items.filter((item) => item.section === "account");
+  const canSendDirectorOverview =
+    profileRole === "director" || profileRole === "admin";
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -189,6 +195,47 @@ export default function AppSidebar({
     setExpandedModule((current) => (current === key ? null : key));
   }
 
+  async function sendDirectorOverview() {
+    if (overviewSending) return;
+
+    setOverviewSending(true);
+    setOverviewMessage("");
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setOverviewMessage("กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+
+      const response = await fetch("/api/telegram/director-overview", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+      } | null;
+
+      if (!response.ok || !result?.ok) {
+        setOverviewMessage(result?.message || "ส่งไม่สำเร็จ");
+        return;
+      }
+
+      setOverviewMessage(result.message || "ส่งแล้ว");
+    } catch {
+      setOverviewMessage("ส่งไม่สำเร็จ");
+    } finally {
+      setOverviewSending(false);
+    }
+  }
+
   return (
     <aside
       className={`${styles.sidebar} ${open ? styles.sidebarOpen : ""} ${
@@ -223,6 +270,22 @@ export default function AppSidebar({
           <div className={styles.userInfo}>
             <strong>{profileName}</strong>
             <small>{profileLabel}</small>
+            {canSendDirectorOverview && (
+              <>
+                <button
+                  type="button"
+                  className={styles.overviewButton}
+                  onClick={() => void sendDirectorOverview()}
+                  disabled={overviewSending}
+                  title="ส่งสรุปเวลาปฏิบัติงานและห้องที่ยังไม่ได้เช็คชื่อนักเรียนไป Telegram"
+                >
+                  {overviewSending ? "กำลังส่ง" : "ส่งสรุป"}
+                </button>
+                {overviewMessage && (
+                  <em className={styles.overviewMessage}>{overviewMessage}</em>
+                )}
+              </>
+            )}
             <span>● ออนไลน์</span>
           </div>
         )}
