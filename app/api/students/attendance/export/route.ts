@@ -73,8 +73,17 @@ function statusMark(value: unknown) {
   return "✓";
 }
 
-function isPresent(value: unknown) {
-  return value !== "absent" && value !== "leave" && value !== "sick" && value !== "personal";
+function countStatus(counts: { present: number; absent: number; leave: number; late: number; total: number }, value: unknown) {
+  counts.total += 1;
+  if (value === "absent") {
+    counts.absent += 1;
+  } else if (value === "leave" || value === "sick" || value === "personal") {
+    counts.leave += 1;
+  } else if (value === "late") {
+    counts.late += 1;
+  } else {
+    counts.present += 1;
+  }
 }
 
 function studentNo(student: StudentRow, index: number) {
@@ -189,11 +198,11 @@ export async function POST(request: Request) {
   );
 
   const rows = ((students ?? []) as StudentRow[]).map((student, index) => {
-    let presentCount = 0;
+    const counts = { present: 0, absent: 0, leave: 0, late: 0, total: 0 };
     const statuses = days.map((day) => {
       const status = recordMap.get(`${student.id}:${isoDateForDay(month, day)}`);
       if (!status) return "";
-      if (isPresent(status)) presentCount += 1;
+      countStatus(counts, status);
       return statusMark(status);
     });
 
@@ -201,7 +210,11 @@ export async function POST(request: Request) {
       no: studentNo(student, index),
       name: student.full_name || "",
       statuses,
-      presentCount,
+      presentCount: counts.present,
+      absentCount: counts.absent,
+      leaveCount: counts.leave,
+      lateCount: counts.late,
+      totalCount: counts.total,
     };
   });
 

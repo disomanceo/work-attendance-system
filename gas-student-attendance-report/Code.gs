@@ -20,7 +20,7 @@ const STUDENT_START_ROW = 9;
 const TEMPLATE_STUDENT_ROWS = 12;
 const SIGNATURE_LINE_ROW = 23;
 const SIGNATURE_NAME_ROW = 25;
-const TOTAL_COLUMN = 34;
+const TOTAL_COLUMN = 38;
 
 function doPost(e) {
   try {
@@ -43,6 +43,12 @@ function doPost(e) {
   }
 }
 
+function setStudentAttendanceReportSecret(secret) {
+  if (!secret) throw new Error("Missing secret");
+  PropertiesService.getScriptProperties().setProperty("STUDENT_ATTENDANCE_REPORT_SECRET", String(secret));
+  return "OK";
+}
+
 function createStudentAttendanceMonthlyReport_(payload) {
   const templateId = String(payload.templateId || "").trim();
   const folderId = String(payload.folderId || "").trim();
@@ -61,13 +67,14 @@ function createStudentAttendanceMonthlyReport_(payload) {
 
   fillHeader_(sheet, payload, thaiMonth);
   fillTable_(sheet, payload);
+  fitSheet_(sheet);
   SpreadsheetApp.flush();
 
   const sheetUrl = ss.getUrl();
   let pdfUrl = "";
 
   if (String(payload.format || "") === "pdf") {
-    const pdfBlob = copy.getAs(MimeType.PDF).setName(`${fileName}.pdf`);
+    const pdfBlob = exportSheetPdf_(ss.getId(), sheet.getSheetId(), `${fileName}.pdf`);
     const pdfFile = folder.createFile(pdfBlob);
     pdfUrl = pdfFile.getUrl();
   }
@@ -80,6 +87,40 @@ function createStudentAttendanceMonthlyReport_(payload) {
   };
 }
 
+function exportSheetPdf_(spreadsheetId, sheetId, fileName) {
+  const params = {
+    format: "pdf",
+    gid: sheetId,
+    size: "A4",
+    portrait: "false",
+    fitw: "true",
+    scale: "4",
+    sheetnames: "false",
+    printtitle: "false",
+    pagenumbers: "false",
+    gridlines: "false",
+    fzr: "false",
+    top_margin: "0.25",
+    bottom_margin: "0.25",
+    left_margin: "0.15",
+    right_margin: "0.15",
+  };
+  const query = Object.keys(params)
+    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
+    .join("&");
+  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?${query}`;
+  const response = UrlFetchApp.fetch(url, {
+    headers: { Authorization: `Bearer ${ScriptApp.getOAuthToken()}` },
+    muteHttpExceptions: true,
+  });
+
+  if (response.getResponseCode() >= 400) {
+    throw new Error(`Export PDF failed: ${response.getContentText()}`);
+  }
+
+  return response.getBlob().setName(fileName);
+}
+
 function findSheet_(ss, sheetId) {
   if (!sheetId) return null;
   return ss.getSheets().find((sheet) => sheet.getSheetId() === sheetId) || null;
@@ -89,13 +130,19 @@ function fillHeader_(sheet, payload, thaiMonth) {
   const schoolName = String(payload.schoolName || DEFAULT_SCHOOL_NAME);
   const classLevel = String(payload.classLevel || "");
   const academicYear = String(payload.academicYear || "");
+  const logoFileId = String(payload.logoFileId || "").trim();
 
-  sheet.getRange("A2:AH2").merge().setValue("แบบบันทึกการมาเรียนของนักเรียน");
-  sheet.getRange("A3:AH3").merge().setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
-  sheet.getRange("A4:AH4").merge().setValue(schoolName);
-  sheet.getRange("A5:AH5").merge().setValue(`เดือน ${thaiMonth}`);
+  if (logoFileId) {
+    sheet.setRowHeight(1, 48);
+    sheet.getRange(1, 19).setFormula(`=IMAGE("https://drive.google.com/uc?export=view&id=${logoFileId}",4,42,42)`);
+  }
 
-  sheet.getRange("A2:AH5")
+  sheet.getRange("A2:AL2").merge().setValue("แบบบันทึกการมาเรียนของนักเรียน");
+  sheet.getRange("A3:AL3").merge().setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
+  sheet.getRange("A4:AL4").merge().setValue(schoolName);
+  sheet.getRange("A5:AL5").merge().setValue(`เดือน ${thaiMonth}`);
+
+  sheet.getRange("A2:AL5")
     .setHorizontalAlignment("center")
     .setVerticalAlignment("middle")
     .setFontWeight("bold")
@@ -119,7 +166,10 @@ function fillTable_(sheet, payload) {
   tableRange.clearContent();
 
   const dateValues = Array.from({ length: 31 }, (_, index) => days.includes(index + 1) ? index + 1 : "");
+  sheet.getRange("C7:AG7").merge().setValue("วันที่");
+  sheet.getRange("AH7:AL7").merge().setValue("รวม (วัน)");
   sheet.getRange(8, HEADER_DATE_START_COLUMN, 1, 31).setValues([dateValues]);
+  sheet.getRange("AH8:AL8").setValues([["มา", "ขาด", "ลา", "สาย", "รวม"]]);
 
   const values = Array.from({ length: rowCount }, (_, index) => {
     const row = rows[index] || {};
@@ -130,6 +180,10 @@ function fillTable_(sheet, payload) {
       row.name || "",
       ...statusValues,
       row.presentCount || "",
+      row.absentCount || "",
+      row.leaveCount || "",
+      row.lateCount || "",
+      row.totalCount || "",
     ];
   });
 
@@ -143,6 +197,20 @@ function fillTable_(sheet, payload) {
     .setFontSize(12);
 
   fillSignatures_(sheet, payload, extraRows);
+}
+
+function fitSheet_(sheet) {
+  sheet.setColumnWidth(1, 36);
+  sheet.setColumnWidth(2, 170);
+  for (let column = 3; column <= 33; column += 1) {
+    sheet.setColumnWidth(column, 24);
+  }
+  for (let column = 34; column <= 38; column += 1) {
+    sheet.setColumnWidth(column, 34);
+  }
+  sheet.getRange(7, 1, sheet.getMaxRows() - 6, TOTAL_COLUMN)
+    .setWrap(false)
+    .setVerticalAlignment("middle");
 }
 
 function fillSignatures_(sheet, payload, extraRows) {

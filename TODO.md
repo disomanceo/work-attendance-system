@@ -19,7 +19,11 @@ Updated: 2026-07-15
   - [x] Updated the class report tab preview with the school logo/header and a total row similar to the template.
   - [x] Changed the footer `Sheet` and `PDF` buttons to call the template export API for the selected class tab.
   - [x] Ran `npm run build` after the template export update.
-  - [ ] Production export requires deployed Apps Script URL and matching env vars: `GAS_STUDENT_ATTENDANCE_REPORT_URL` and `GAS_STUDENT_ATTENDANCE_REPORT_SECRET`.
+  - [x] Updated the monthly class preview table to fit in one page without a horizontal scrollbar.
+  - [x] Added separate monthly totals for `มา`, `ขาด`, `ลา`, `สาย`, and `รวม`.
+  - [x] Added adviser/director signature names in the preview and generated Sheet/PDF.
+  - [x] Deployed the student attendance report Apps Script web app.
+  - [x] Added production Vercel env vars: `GAS_STUDENT_ATTENDANCE_REPORT_URL` and `GAS_STUDENT_ATTENDANCE_REPORT_SECRET`.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.

@@ -513,27 +513,42 @@
 
 .monthTableWrap {
   margin: 10px 14px 14px;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid #dbe3ee;
   border-radius: 8px;
 }
 
 .monthTable {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
+.monthNoCol {
+  width: 4%;
+}
+
+.monthNameCol {
+  width: 18%;
+}
+
+.monthDayCol {
+  width: 2%;
+}
+
+.monthSummaryCol {
+  width: 3.2%;
+}
+
 .monthTable th,
 .monthTable td {
-  min-width: 34px;
-  height: 32px;
+  min-width: 0;
+  height: 28px;
   border-right: 1px solid #dbe3ee;
   border-bottom: 1px solid #dbe3ee;
-  padding: 4px 5px;
+  padding: 3px 2px;
   color: #0b1736;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.15;
   text-align: center;
   vertical-align: middle;
@@ -546,28 +561,27 @@
 
 .monthTable th:first-child,
 .monthTable td:first-child {
-  min-width: 42px;
+  width: 4%;
 }
 
 .monthTable th:nth-child(2),
 .monthTable td:nth-child(2) {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  min-width: 220px;
-  max-width: 260px;
+  min-width: 0;
+  max-width: none;
   background: #ffffff;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .monthTable th:nth-child(2) {
-  z-index: 2;
   background: #f8fbff;
 }
 
 .monthTable th:last-child,
 .monthTable td:last-child {
-  min-width: 50px;
+  min-width: 0;
   font-weight: 950;
 }
 
@@ -579,6 +593,32 @@
 .monthTotalRow td {
   background: #eff6ff;
   font-weight: 950;
+}
+
+.monthSignatureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  padding: 14px 18px 18px;
+  color: #0b1736;
+  text-align: center;
+}
+
+.monthSignatureGrid p,
+.monthSignatureGrid strong {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.monthSignatureGrid p {
+  font-weight: 800;
+}
+
+.monthSignatureGrid strong {
+  display: block;
+  margin-top: 6px;
+  font-weight: 900;
 }
 
 .summaryScroller {
@@ -1187,22 +1227,22 @@
 
   .monthTable th,
   .monthTable td {
-    min-width: 26px;
+    min-width: 0;
     height: 26px;
-    padding: 3px 2px;
-    font-size: 9px;
+    padding: 2px 1px;
+    font-size: 8px;
   }
 
   .monthTable th:first-child,
   .monthTable td:first-child {
-    min-width: 30px;
+    min-width: 0;
   }
 
   .monthTable th:nth-child(2),
   .monthTable td:nth-child(2) {
-    min-width: 136px;
-    max-width: 150px;
-    font-size: 9px;
+    min-width: 0;
+    max-width: none;
+    font-size: 8px;
   }
 
   .summaryGrid {
@@ -1497,6 +1537,6 @@
   .monthTable th:nth-child(2),
   .monthTable td:nth-child(2) {
     position: static;
-    min-width: 120px;
+    min-width: 0;
   }
 }
