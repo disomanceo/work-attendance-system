@@ -36,6 +36,7 @@ Updated: 2026-07-15
   - [x] Changed printed student attendance exports to use simple paper marks (`✓`, `ข`, `ล`, `-`) instead of colored screen symbols.
   - [x] Replaced the student attendance PDF export path that required `UrlFetchApp.fetch` with Drive-based PDF export.
   - [x] Added post-export open/download buttons for generated Sheet/PDF files on the student attendance report page.
+  - [x] Re-aligned the generated student attendance Sheet/PDF to the real Google Sheet template layout (`A:AH`, one `รวม` column) instead of rebuilding a wider `A:AL` table.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.

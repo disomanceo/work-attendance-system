@@ -145,9 +145,9 @@ const STUDENT_ATTENDANCE_REPORT_CONFIG = {
   HEADER_DATE_START_COLUMN: 3,
   STUDENT_START_ROW: 9,
   TEMPLATE_STUDENT_ROWS: 12,
-  SIGNATURE_LINE_ROW: 23,
-  SIGNATURE_NAME_ROW: 25,
-  TOTAL_COLUMN: 38,
+  SIGNATURE_LINE_ROW: 22,
+  SIGNATURE_NAME_ROW: 24,
+  TOTAL_COLUMN: 34,
 };
 
 function verifyStudentAttendanceReportSecret_(secret) {
@@ -247,12 +247,12 @@ function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
     insertStudentAttendanceDriveImage_(sheet, logoFileId, 19, 1, 42, 42);
   }
 
-  setStudentAttendanceMergedValue_(sheet, "A2:AL2", "แบบบันทึกการมาเรียนของนักเรียน");
-  setStudentAttendanceMergedValue_(sheet, "A3:AL3", `ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
-  setStudentAttendanceMergedValue_(sheet, "A4:AL4", schoolName);
-  setStudentAttendanceMergedValue_(sheet, "A5:AL5", `เดือน ${thaiMonth}`);
+  sheet.getRange("A2").setValue("แบบบันทึกการมาเรียนของนักเรียน");
+  sheet.getRange("A3").setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
+  sheet.getRange("A4").setValue(schoolName);
+  sheet.getRange("A5").setValue(`เดือน ${thaiMonth}`);
 
-  sheet.getRange("A2:AL5")
+  sheet.getRange("A2:AH5")
     .setHorizontalAlignment("center")
     .setVerticalAlignment("middle")
     .setFontWeight("bold")
@@ -278,10 +278,9 @@ function fillStudentAttendanceTable_(sheet, payload) {
   tableRange.clearContent();
 
   const dateValues = Array.from({ length: 31 }, (_, index) => days.includes(index + 1) ? index + 1 : "");
-  setStudentAttendanceMergedValue_(sheet, "C7:AG7", "วันที่");
-  setStudentAttendanceMergedValue_(sheet, "AH7:AL7", "รวม (วัน)");
+  sheet.getRange("C7").setValue("วันที่");
   sheet.getRange(8, STUDENT_ATTENDANCE_REPORT_CONFIG.HEADER_DATE_START_COLUMN, 1, 31).setValues([dateValues]);
-  sheet.getRange("AH8:AL8").setValues([["มา", "ขาด", "ลา", "สาย", "รวม"]]);
+  sheet.getRange("AH8").setValue("รวม");
 
   const values = Array.from({ length: rowCount }, (_, index) => {
     const row = rows[index] || {};
@@ -292,10 +291,6 @@ function fillStudentAttendanceTable_(sheet, payload) {
       row.name || "",
       ...statusValues,
       row.presentCount || "",
-      row.absentCount || "",
-      row.leaveCount || "",
-      row.lateCount || "",
-      row.totalCount || "",
     ];
   });
 
@@ -319,9 +314,7 @@ function fitStudentAttendanceSheet_(sheet) {
   for (let column = 3; column <= 33; column += 1) {
     sheet.setColumnWidth(column, 24);
   }
-  for (let column = 34; column <= 38; column += 1) {
-    sheet.setColumnWidth(column, 34);
-  }
+  sheet.setColumnWidth(34, 34);
   sheet.getRange(7, 1, sheet.getMaxRows() - 6, STUDENT_ATTENDANCE_REPORT_CONFIG.TOTAL_COLUMN)
     .setWrap(false)
     .setVerticalAlignment("middle");
@@ -354,14 +347,14 @@ function fillStudentAttendanceSignatures_(sheet, payload, extraRows) {
     .setVerticalAlignment("middle");
   sheet.getRange(signatureLineRow, 3).setValue("ลงชื่อ........................................ครูประจำชั้น");
   sheet.getRange(signatureNameRow, 3).setValue(`(${adviserName || "........................................"})`);
-  sheet.getRange(signatureLineRow, 23).setValue("ลงชื่อ........................................ผู้อำนวยการโรงเรียน");
-  sheet.getRange(signatureNameRow, 23).setValue(`(${directorName})`);
+  sheet.getRange(signatureLineRow, 20).setValue("ลงชื่อ........................................ผู้อำนวยการโรงเรียน");
+  sheet.getRange(signatureNameRow, 20).setValue(`(${directorName})`);
 
   if (adviserSignatureFileId) {
     insertStudentAttendanceDriveImage_(sheet, adviserSignatureFileId, 9, signatureLineRow - 1, 150, 48);
   }
   if (directorSignatureFileId) {
-    insertStudentAttendanceDriveImage_(sheet, directorSignatureFileId, 29, signatureLineRow - 1, 150, 48);
+    insertStudentAttendanceDriveImage_(sheet, directorSignatureFileId, 25, signatureLineRow - 1, 150, 48);
   }
 }
 
