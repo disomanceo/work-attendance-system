@@ -13,6 +13,12 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance generated Sheet placement follow-up on 2026-07-15:
+  - [x] Added fallback writes for class/year and month rows when the template placeholders `ch`/`ps` are not found.
+  - [x] Added fallback writes for adviser/director names in the bottom signature name row when `tea`/`ceo` are not found.
+  - [x] Kept day numbers starting at `C5`.
+  - [x] Moved student data rows down to avoid overwriting the template table header.
+
 - Student attendance mobile signature/date follow-up on 2026-07-15:
   - [x] Confirmed the exported date numbers start at `C5` via `HEADER_DAY_ROW = 5` and `HEADER_DAY_START_COLUMN = 3`.
   - [x] Renamed the day-start column constant to make the `C5` template position explicit.

@@ -144,9 +144,15 @@ const STUDENT_ATTENDANCE_REPORT_CONFIG = {
   DEFAULT_SCHOOL_NAME: "โรงเรียนวัดไผ่มุ้ง",
   HEADER_DAY_ROW: 5,
   HEADER_DAY_START_COLUMN: 3,
-  STUDENT_START_ROW: 6,
+  STUDENT_START_ROW: 7,
   TEMPLATE_STUDENT_ROWS: 12,
   TOTAL_COLUMN: 34,
+  CLASS_YEAR_ROW: 2,
+  MONTH_ROW: 4,
+  ADVISER_NAME_ROW: 22,
+  ADVISER_NAME_COLUMN: 3,
+  DIRECTOR_NAME_ROW: 22,
+  DIRECTOR_NAME_COLUMN: 23,
 };
 
 function verifyStudentAttendanceReportSecret_(secret) {
@@ -250,11 +256,39 @@ function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
   const academicYear = String(payload.academicYear || "");
   const adviserName = String(payload.adviserName || "").trim();
   const directorName = String(payload.directorName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_DIRECTOR_NAME).trim();
+  const adviserDisplayName = adviserName || "........................................";
 
   replaceStudentAttendancePlaceholder_(sheet, "ch", classLevel);
   replaceStudentAttendancePlaceholder_(sheet, "ps", academicYear);
-  replaceStudentAttendancePlaceholder_(sheet, "tea", adviserName || "........................................");
+  replaceStudentAttendancePlaceholder_(sheet, "tea", adviserDisplayName);
   replaceStudentAttendancePlaceholder_(sheet, "ceo", directorName);
+  replaceStudentAttendancePlaceholder_(sheet, "(tea)", `(${adviserDisplayName})`);
+  replaceStudentAttendancePlaceholder_(sheet, "(ceo)", `(${directorName})`);
+
+  setStudentAttendanceMergedCellValue_(
+    sheet,
+    STUDENT_ATTENDANCE_REPORT_CONFIG.CLASS_YEAR_ROW,
+    1,
+    `ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`.trim()
+  );
+  setStudentAttendanceMergedCellValue_(
+    sheet,
+    STUDENT_ATTENDANCE_REPORT_CONFIG.MONTH_ROW,
+    1,
+    `เดือน ${thaiMonth}`.trim()
+  );
+  setStudentAttendanceSignatureName_(
+    sheet,
+    STUDENT_ATTENDANCE_REPORT_CONFIG.ADVISER_NAME_ROW,
+    STUDENT_ATTENDANCE_REPORT_CONFIG.ADVISER_NAME_COLUMN,
+    `(${adviserDisplayName})`
+  );
+  setStudentAttendanceSignatureName_(
+    sheet,
+    STUDENT_ATTENDANCE_REPORT_CONFIG.DIRECTOR_NAME_ROW,
+    STUDENT_ATTENDANCE_REPORT_CONFIG.DIRECTOR_NAME_COLUMN,
+    `(${directorName})`
+  );
 }
 
 function fillStudentAttendanceTable_(sheet, payload) {
@@ -296,6 +330,33 @@ function replaceStudentAttendancePlaceholder_(sheet, placeholder, value) {
     .createTextFinder(placeholder)
     .matchCase(true)
     .replaceAllWith(String(value || ""));
+}
+
+function setStudentAttendanceMergedCellValue_(sheet, row, column, value) {
+  const cell = sheet.getRange(row, column);
+  const mergedRanges = cell.getMergedRanges();
+  const target = mergedRanges.length > 0 ? mergedRanges[0] : cell;
+
+  target
+    .setValue(String(value || ""))
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
+}
+
+function setStudentAttendanceSignatureName_(sheet, row, column, value) {
+  const cell = sheet.getRange(row, column);
+  const mergedRanges = cell.getMergedRanges();
+  const target = mergedRanges.length > 0 ? mergedRanges[0] : cell;
+  const current = String(target.getDisplayValue() || "").trim();
+
+  if (current && !/[().]/.test(current) && current !== "tea" && current !== "ceo") {
+    return;
+  }
+
+  target
+    .setValue(String(value || ""))
+    .setHorizontalAlignment("center")
+    .setVerticalAlignment("middle");
 }
 
 function exportStudentAttendanceSheetPdf_(spreadsheetId, sheetId, fileName) {
