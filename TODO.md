@@ -587,3 +587,19 @@ Follow-up checks:
 
 - [ ] After deploy, confirm Vercel keeps the existing attendance notification cron at `30 1 * * *`.
 - [ ] Confirm the Telegram group receives a message at 08:30 only when at least one class level has not checked attendance.
+
+## Signed Smart Area assignment Telegram and 08:30 cron auth - 2026-07-15
+
+Release status:
+
+- [x] Added Telegram private notification after the signed Smart Area assignment save flow succeeds.
+- [x] Kept LINE notification behavior for signed Smart Area assignments unchanged.
+- [x] Confirmed `npm run build` passes after the signed assignment Telegram update.
+- [x] Confirmed Vercel production cron `/api/cron/attendance-line-report` is scheduled at `30 1 * * *`.
+- [x] Found the 08:30 production cron was reaching `/api/cron/attendance-line-report` but returning `401 Unauthorized`.
+- [x] Added `CRON_SECRET` to Vercel Production and redeployed production so Vercel Cron can authenticate.
+
+Follow-up checks:
+
+- [ ] On 2026-07-16, confirm the 08:30 Bangkok-time cron sends the attendance Telegram summary before the 09:00 fallback.
+- [ ] Sign and assign a Smart Area document to a Telegram-linked user and confirm the assignee receives a private Telegram message.

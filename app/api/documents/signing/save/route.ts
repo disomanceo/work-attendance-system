@@ -2,6 +2,7 @@ import { PDFDocument } from "pdf-lib";
 import { NextResponse } from "next/server";
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
 import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
+import { notifySmartAreaAssignmentsTelegram } from "@/lib/telegram/smart-area-workflow-notifications";
 
 type SaveBody = {
   bookId?: unknown;
@@ -456,6 +457,21 @@ async function handleSigningPost(request: Request) {
     });
   } catch (notifyError) {
     console.error("Smart Area signed assignment LINE notification error:", notifyError);
+  }
+
+  try {
+    await notifySmartAreaAssignmentsTelegram({
+      bookId,
+      actorProfileId: signer.id,
+      assignedByName:
+        signer.full_name ||
+        "\u0e1c\u0e39\u0e49\u0e2d\u0e33\u0e19\u0e27\u0e22\u0e01\u0e32\u0e23",
+    });
+  } catch (notifyError) {
+    console.error(
+      "Smart Area signed assignment Telegram notification error:",
+      notifyError,
+    );
   }
 
   return NextResponse.json({
