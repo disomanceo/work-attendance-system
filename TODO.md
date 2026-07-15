@@ -13,6 +13,14 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance monthly Sheet/PDF follow-up on 2026-07-15:
+  - [x] Wrote the month/year value to template row 4 and kept row 2 blank.
+  - [x] Wrote adviser/director names through existing merged template cells so the director name appears in the right signature area.
+  - [x] Removed late/`สาย` from export counts, marks, web table columns, mobile table columns, mobile cards, and summary totals.
+  - [x] Updated export result links so `เปิด Sheet` uses the same green visual style as the main `Sheet` button.
+  - [x] Updated mobile monthly class report with class/month info cards and four summary cards matching the requested direction.
+  - [x] Run `npm run build` after this follow-up.
+
 - Student attendance monthly Sheet/PDF template-only export revision on 2026-07-15:
   - [x] Removed Drive signature image insertion from the student attendance export payload and GAS fill path.
   - [x] Changed the export fill flow to preserve the source Sheet template structure, headers, table borders, widths, and styling.

@@ -86,7 +86,6 @@ type MonthlyStudentRow = {
   presentCount: number;
   absentCount: number;
   leaveCount: number;
-  lateCount: number;
   totalCount: number;
 };
 
@@ -233,21 +232,18 @@ function normalizeStatus(value: unknown): "present" | "leave" | "absent" {
 function statusLabel(value: unknown) {
   if (value === "absent") return "ขาด";
   if (value === "leave" || value === "sick" || value === "personal") return "ลา";
-  if (value === "late") return "สาย";
   return "มา";
 }
 
 function monthlyStatusMark(value: unknown) {
   if (value === "absent") return "×";
   if (value === "leave" || value === "sick" || value === "personal") return "!";
-  if (value === "late") return "ส";
   return "✓";
 }
 
 function statusToneFromMark(mark: string) {
   if (mark === "×") return "absent";
   if (mark === "!") return "leave";
-  if (mark === "ส") return "late";
   if (mark === "✓") return "present";
   return "";
 }
@@ -255,7 +251,7 @@ function statusToneFromMark(mark: string) {
 function StatusSymbol({ mark }: { mark: string }) {
   const tone = statusToneFromMark(mark);
   if (!tone) return null;
-  const symbol = tone === "present" ? "✓" : tone === "absent" ? "×" : tone === "leave" ? "!" : "ส";
+  const symbol = tone === "present" ? "✓" : tone === "absent" ? "×" : "!";
   return <span className={`${styles.statusSymbol} ${styles[tone]}`}>{symbol}</span>;
 }
 
@@ -265,8 +261,6 @@ function countMonthlyStatus(row: MonthlyStudentRow, value: unknown) {
     row.absentCount += 1;
   } else if (value === "leave" || value === "sick" || value === "personal") {
     row.leaveCount += 1;
-  } else if (value === "late") {
-    row.lateCount += 1;
   } else {
     row.presentCount += 1;
   }
@@ -453,7 +447,6 @@ export default function StudentDailyReportPage() {
             presentCount: 0,
             absentCount: 0,
             leaveCount: 0,
-            lateCount: 0,
             totalCount: 0,
           };
 
@@ -524,17 +517,16 @@ export default function StudentDailyReportPage() {
   }, [activeMonthlyReport]);
   const activeMonthlySummaryTotals = useMemo(() => {
     if (!activeMonthlyReport) {
-      return { present: 0, absent: 0, leave: 0, late: 0, total: 0 };
+      return { present: 0, absent: 0, leave: 0, total: 0 };
     }
     return activeMonthlyReport.rows.reduce(
       (result, row) => ({
         present: result.present + row.presentCount,
         absent: result.absent + row.absentCount,
         leave: result.leave + row.leaveCount,
-        late: result.late + row.lateCount,
         total: result.total + row.totalCount,
       }),
-      { present: 0, absent: 0, leave: 0, late: 0, total: 0 },
+      { present: 0, absent: 0, leave: 0, total: 0 },
     );
   }, [activeMonthlyReport]);
 
@@ -675,8 +667,8 @@ export default function StudentDailyReportPage() {
       <section className={styles.shell}>
         <header className={styles.header}>
           <div>
-            <h1>📅 รายงานการมาเรียนประจำวัน</h1>
-            <p>{formatThaiFullDate(date)}</p>
+            <h1>{activeTab === "summary" ? "📅 รายงานการมาเรียนประจำวัน" : "สรุปการมาเรียน"}</h1>
+            <p>{activeTab === "summary" ? formatThaiFullDate(date) : formatThaiMonth(selectedMonth)}</p>
           </div>
           <div className={styles.headerAside}>
             <label className={styles.dateFilter}>
@@ -876,6 +868,24 @@ export default function StudentDailyReportPage() {
               </div>
               <span>{monthlyLoading ? "กำลังโหลด..." : `${activeMonthlyReport?.rows.length ?? 0} คน`}</span>
             </div>
+            <div className={styles.mobileMonthInfo}>
+              <article>
+                <span>ชั้นเรียน</span>
+                <strong>{activeTab}</strong>
+              </article>
+              <article>
+                <span>เดือน</span>
+                <strong>{formatThaiMonth(selectedMonth)}</strong>
+              </article>
+            </div>
+            {activeMonthlyReport ? (
+              <div className={styles.mobileMonthlyStats}>
+                <article className={styles.green}><span>✓</span><strong>{activeMonthlySummaryTotals.present}</strong><small>มา</small></article>
+                <article className={styles.red}><span>×</span><strong>{activeMonthlySummaryTotals.absent}</strong><small>ขาด</small></article>
+                <article className={styles.orange}><span>!</span><strong>{activeMonthlySummaryTotals.leave}</strong><small>ลา</small></article>
+                <article className={styles.blue}><span>รวม</span><strong>{activeMonthlySummaryTotals.total}</strong><small>ครั้ง</small></article>
+              </div>
+            ) : null}
             <div className={styles.monthTemplateHeader}>
               <img
                 src="https://drive.google.com/thumbnail?id=1vxcGKLir_wVM0XelzgQbeR_2BXVTflui&sz=w120"
@@ -889,7 +899,6 @@ export default function StudentDailyReportPage() {
               <span><StatusSymbol mark="✓" /> มา</span>
               <span><StatusSymbol mark="×" /> ขาด</span>
               <span><StatusSymbol mark="!" /> ลา</span>
-              <span><StatusSymbol mark="ส" /> สาย</span>
               <span>ช่องว่าง = ยังไม่ได้เช็คชื่อ/ไม่มีข้อมูล</span>
             </div>
             <div className={styles.monthTableWrap}>
@@ -900,7 +909,7 @@ export default function StudentDailyReportPage() {
                   {(activeMonthlyReport?.days ?? Array.from({ length: 31 }, (_, index) => index + 1)).map((day) => (
                     <col key={`day-${day}`} className={styles.monthDayCol} />
                   ))}
-                  {["present", "absent", "leave", "late", "total"].map((key) => (
+                  {["present", "absent", "leave", "total"].map((key) => (
                     <col key={key} className={styles.monthSummaryCol} />
                   ))}
                 </colgroup>
@@ -909,7 +918,7 @@ export default function StudentDailyReportPage() {
                     <th rowSpan={2}>ที่</th>
                     <th rowSpan={2}>ชื่อ - สกุล</th>
                     <th colSpan={activeMonthlyReport?.days.length ?? 31}>วันที่</th>
-                    <th colSpan={5}>รวม (วัน)</th>
+                    <th colSpan={4}>รวม (วัน)</th>
                   </tr>
                   <tr>
                     {activeMonthlyReport?.days.map((day) => (
@@ -918,15 +927,14 @@ export default function StudentDailyReportPage() {
                     <th>มา</th>
                     <th>ขาด</th>
                     <th>ลา</th>
-                    <th>สาย</th>
                     <th>รวม</th>
                   </tr>
                 </thead>
                 <tbody>
                   {monthlyLoading && !activeMonthlyReport ? (
-                    <tr><td colSpan={38}>กำลังโหลดข้อมูลรายเดือน...</td></tr>
+                    <tr><td colSpan={37}>กำลังโหลดข้อมูลรายเดือน...</td></tr>
                   ) : !activeMonthlyReport || activeMonthlyReport.rows.length === 0 ? (
-                    <tr><td colSpan={38}>ยังไม่มีรายชื่อนักเรียนในชั้นนี้</td></tr>
+                    <tr><td colSpan={37}>ยังไม่มีรายชื่อนักเรียนในชั้นนี้</td></tr>
                   ) : (
                     <>
                       {activeMonthlyReport.rows.map((row) => (
@@ -941,7 +949,6 @@ export default function StudentDailyReportPage() {
                           <td>{row.presentCount}</td>
                           <td>{row.absentCount}</td>
                           <td>{row.leaveCount}</td>
-                          <td>{row.lateCount}</td>
                           <td>{row.totalCount}</td>
                         </tr>
                       ))}
@@ -953,7 +960,6 @@ export default function StudentDailyReportPage() {
                         <td>{activeMonthlySummaryTotals.present}</td>
                         <td>{activeMonthlySummaryTotals.absent}</td>
                         <td>{activeMonthlySummaryTotals.leave}</td>
-                        <td>{activeMonthlySummaryTotals.late}</td>
                         <td>{activeMonthlySummaryTotals.total}</td>
                       </tr>
                     </>
@@ -983,7 +989,7 @@ export default function StudentDailyReportPage() {
                         <th rowSpan={2}>ที่</th>
                         <th rowSpan={2}>ชื่อ - สกุล</th>
                         <th colSpan={activeMobileDays.length}>วันที่ ({formatThaiMonth(selectedMonth)})</th>
-                        <th colSpan={5}>รวม (วัน)</th>
+                        <th colSpan={4}>รวม (วัน)</th>
                       </tr>
                       <tr>
                         {activeMobileDays.map((day) => (
@@ -995,7 +1001,6 @@ export default function StudentDailyReportPage() {
                         <th>มา</th>
                         <th>ขาด</th>
                         <th>ลา</th>
-                        <th>สาย</th>
                         <th>รวม</th>
                       </tr>
                     </thead>
@@ -1012,7 +1017,6 @@ export default function StudentDailyReportPage() {
                           <td>{row.presentCount}</td>
                           <td>{row.absentCount}</td>
                           <td>{row.leaveCount}</td>
-                          <td>{row.lateCount}</td>
                           <td>{row.totalCount}</td>
                         </tr>
                       ))}
@@ -1039,7 +1043,6 @@ export default function StudentDailyReportPage() {
                       <div><dt>มา</dt><dd>{row.presentCount}</dd></div>
                       <div><dt>ขาด</dt><dd>{row.absentCount}</dd></div>
                       <div><dt>ลา</dt><dd>{row.leaveCount}</dd></div>
-                      <div><dt>สาย</dt><dd>{row.lateCount}</dd></div>
                       <div><dt>รวม</dt><dd>{row.totalCount}</dd></div>
                     </dl>
                   </article>

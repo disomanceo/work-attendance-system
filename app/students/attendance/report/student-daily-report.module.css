@@ -542,11 +542,6 @@
   padding-top: 5px;
 }
 
-.statusSymbol.late {
-  background: #2563eb;
-  font-size: 9px;
-}
-
 .monthTableWrap {
   margin: 10px 14px 14px;
   overflow: hidden;
@@ -638,6 +633,11 @@
 }
 
 .monthMobileReport {
+  display: none;
+}
+
+.mobileMonthInfo,
+.mobileMonthlyStats {
   display: none;
 }
 
@@ -1029,6 +1029,12 @@
   text-decoration: none;
 }
 
+.exportLinks a:first-child {
+  border-color: #059669;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #ffffff;
+}
+
 .footer {
   display: flex;
   justify-content: flex-end;
@@ -1054,8 +1060,20 @@
 }
 
 .footer button:first-child {
+  border-color: #059669;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #ffffff;
+}
+
+.footer button:nth-child(2) {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+}
+
+.footer button:nth-child(3) {
   border-color: #2563eb;
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: #ffffff;
 }
 
@@ -1277,6 +1295,98 @@
     font-size: 10px;
   }
 
+  .mobileMonthInfo {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .mobileMonthInfo article {
+    display: grid;
+    gap: 3px;
+    min-height: 74px;
+    align-content: center;
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 10px 12px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  }
+
+  .mobileMonthInfo span {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 850;
+  }
+
+  .mobileMonthInfo strong {
+    color: #0b1736;
+    font-size: 17px;
+    font-weight: 950;
+    line-height: 1.15;
+  }
+
+  .mobileMonthlyStats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 0 8px 8px;
+  }
+
+  .mobileMonthlyStats article {
+    display: grid;
+    min-height: 74px;
+    place-items: center;
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #0b1736;
+    padding: 7px 4px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  }
+
+  .mobileMonthlyStats span {
+    display: grid;
+    min-width: 26px;
+    height: 26px;
+    place-items: center;
+    border-radius: 999px;
+    color: #ffffff;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 950;
+  }
+
+  .mobileMonthlyStats strong {
+    font-size: 20px;
+    font-weight: 950;
+    line-height: 1;
+  }
+
+  .mobileMonthlyStats small {
+    color: #475569;
+    font-size: 10px;
+    font-weight: 850;
+  }
+
+  .mobileMonthlyStats .green span {
+    background: #16a34a;
+  }
+
+  .mobileMonthlyStats .red span {
+    background: #ef4444;
+  }
+
+  .mobileMonthlyStats .orange span {
+    border-radius: 6px;
+    background: #f97316;
+  }
+
+  .mobileMonthlyStats .blue span {
+    background: #2563eb;
+  }
+
   .monthLegend {
     gap: 4px;
     padding: 6px 8px 0;
@@ -1338,7 +1448,7 @@
   }
 
   .mobileMonthTable {
-    min-width: 760px;
+    min-width: 720px;
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
@@ -1469,7 +1579,7 @@
 
   .monthMobileCards dl {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     margin: 0;
     border-top: 1px solid #e5ebf3;
   }
@@ -1740,7 +1850,7 @@
 
   .footer {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
     margin-top: 5px;
     padding: 0;
@@ -1753,9 +1863,6 @@
     font-size: 9px;
   }
 
-  .footer button:last-child {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 380px) {

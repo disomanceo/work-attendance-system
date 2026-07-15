@@ -73,18 +73,15 @@ function isoDateForDay(month: string, day: number) {
 function statusMark(value: unknown) {
   if (value === "absent") return "×";
   if (value === "leave" || value === "sick" || value === "personal") return "!";
-  if (value === "late") return "ส";
   return "✓";
 }
 
-function countStatus(counts: { present: number; absent: number; leave: number; late: number; total: number }, value: unknown) {
+function countStatus(counts: { present: number; absent: number; leave: number; total: number }, value: unknown) {
   counts.total += 1;
   if (value === "absent") {
     counts.absent += 1;
   } else if (value === "leave" || value === "sick" || value === "personal") {
     counts.leave += 1;
-  } else if (value === "late") {
-    counts.late += 1;
   } else {
     counts.present += 1;
   }
@@ -93,7 +90,6 @@ function countStatus(counts: { present: number; absent: number; leave: number; l
 function printStatusMark(value: unknown) {
   if (value === "absent") return "ข";
   if (value === "leave" || value === "sick" || value === "personal") return "ล";
-  if (value === "late") return "-";
   return "✓";
 }
 
@@ -246,7 +242,7 @@ export async function POST(request: Request) {
 
   const sortedStudents = [...((students ?? []) as StudentRow[])].sort(compareStudents);
   const rows = sortedStudents.map((student, index) => {
-    const counts = { present: 0, absent: 0, leave: 0, late: 0, total: 0 };
+    const counts = { present: 0, absent: 0, leave: 0, total: 0 };
     const statuses = days.map((day) => {
       const status = recordMap.get(`${student.id}:${isoDateForDay(month, day)}`);
       if (!status) return "";
@@ -261,7 +257,6 @@ export async function POST(request: Request) {
       presentCount: counts.present,
       absentCount: counts.absent,
       leaveCount: counts.leave,
-      lateCount: counts.late,
       totalCount: counts.total,
     };
   });

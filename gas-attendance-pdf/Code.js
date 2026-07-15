@@ -146,7 +146,7 @@ const STUDENT_ATTENDANCE_REPORT_CONFIG = {
   STUDENT_START_ROW: 9,
   TEMPLATE_STUDENT_ROWS: 12,
   SIGNATURE_LINE_ROW: 22,
-  SIGNATURE_NAME_ROW: 24,
+  SIGNATURE_NAME_ROW: 23,
   TOTAL_COLUMN: 34,
 };
 
@@ -250,9 +250,9 @@ function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
   const classLevel = String(payload.classLevel || "");
   const academicYear = String(payload.academicYear || "");
 
-  sheet.getRange("A2").clearContent();
-  sheet.getRange("A3").setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
-  sheet.getRange("A5").setValue(`เดือน ${thaiMonth}`);
+  sheet.getRange("A2:AH2").clearContent();
+  setStudentAttendanceTemplateValue_(sheet, 3, 1, `ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
+  setStudentAttendanceTemplateValue_(sheet, 4, 1, `เดือน ${thaiMonth}`);
 }
 
 function fillStudentAttendanceTable_(sheet, payload) {
@@ -288,8 +288,20 @@ function fillStudentAttendanceSignatures_(sheet, payload) {
   const adviserName = String(payload.adviserName || "").trim();
   const directorName = String(payload.directorName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_DIRECTOR_NAME).trim();
 
-  sheet.getRange(signatureNameRow, 3).setValue(`(${adviserName || "........................................"})`);
-  sheet.getRange(signatureNameRow, 23).setValue(`(${directorName})`);
+  setStudentAttendanceTemplateValue_(sheet, signatureNameRow, 3, `(${adviserName || "........................................"})`);
+  setStudentAttendanceTemplateValue_(sheet, signatureNameRow, 23, `(${directorName})`);
+}
+
+function setStudentAttendanceTemplateValue_(sheet, row, column, value) {
+  const cell = sheet.getRange(row, column);
+  const mergedRanges = cell.getMergedRanges();
+
+  if (mergedRanges.length > 0) {
+    mergedRanges[0].setValue(value);
+    return;
+  }
+
+  cell.setValue(value);
 }
 
 function exportStudentAttendanceSheetPdf_(spreadsheetId, sheetId, fileName) {
