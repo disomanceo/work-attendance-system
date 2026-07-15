@@ -1,6 +1,6 @@
 # Work Attendance TODO
 
-Updated: 2026-07-14
+Updated: 2026-07-15
 
 ## Current rules
 
@@ -12,6 +12,12 @@ Updated: 2026-07-14
 - Keep fixes minimal and avoid unrelated modules.
 
 ## Latest findings
+
+- Student daily attendance report export button update on 2026-07-15:
+  - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.
+  - [x] Replaced the print button label with `PDF`.
+  - [x] Kept the existing CSV sheet export behavior and browser print/PDF behavior.
+  - [x] Ran `npm run build` after the Sheet/PDF button update.
 
 - Latest database rows imported at `2026-07-13T04:15-04:16Z` have no central page metadata:
   - `legacy_payload.smart_area_page` is empty.

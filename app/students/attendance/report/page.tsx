@@ -297,7 +297,7 @@ export default function StudentDailyReportPage() {
     },
   ] as const;
 
-  function exportExcel() {
+  function exportSheet() {
     const rows = [
       ["ระดับชั้น", "ทั้งหมด", "มาเรียน", "ขาดเรียน", "ลา", "% มาเรียน", "สถานะเช็คชื่อ"],
       ...reports.map((report) => [
@@ -317,7 +317,7 @@ export default function StudentDailyReportPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `student-daily-report-${date}.csv`;
+    link.download = `student-daily-report-sheet-${date}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -502,8 +502,8 @@ export default function StudentDailyReportPage() {
         </section>
 
         <footer className={styles.footer}>
-          <button type="button" onClick={exportExcel} disabled={reports.length === 0}>ส่งออก Excel</button>
-          <button type="button" onClick={() => window.print()}>พิมพ์</button>
+          <button type="button" onClick={exportSheet} disabled={reports.length === 0}>Sheet</button>
+          <button type="button" onClick={() => window.print()}>PDF</button>
           <button type="button" onClick={() => void loadReport()} disabled={loading}>รีเฟรชข้อมูล</button>
         </footer>
       </section>
