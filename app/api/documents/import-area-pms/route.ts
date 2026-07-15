@@ -564,8 +564,11 @@ async function upsertDocument(payload: ImportPayload) {
     return json({ ok: false, message: "Cannot check existing document" }, 500);
   }
 
+  const nextRegistrationNumber =
+    item.receiveNo || text(existing?.registration_number) || null;
+
   const bookValues = {
-    registration_number: item.receiveNo || null,
+    registration_number: nextRegistrationNumber,
     received_date: item.receivedDate,
     source_agency: item.sender || null,
     subject: item.subject,
@@ -617,7 +620,7 @@ async function upsertDocument(payload: ImportPayload) {
     message = "saved";
   } else {
     const comparable = {
-      registration_number: item.receiveNo || null,
+      registration_number: nextRegistrationNumber,
       received_date: item.receivedDate,
       source_agency: item.sender || null,
       subject: item.subject,

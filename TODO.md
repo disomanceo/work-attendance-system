@@ -28,6 +28,13 @@ Updated: 2026-07-14
   - `failed`: 0
 - The latest updated rows still have empty `documentNo`, empty `smart_area_page`, empty `source_page_url`, and empty `row_order`.
 - `origin/main` workflow script currently sends no `smartAreaPage`, no `sourcePageUrl`, and no `rowOrder` in the import payload, so the remote button import cannot match central page `165` until the fixed code is released.
+- Smart Area registration number check on 2026-07-15:
+  - [x] Confirmed the documents page reads `registrationNumber` from `smart_area_books.registration_number`.
+  - [x] Found one active Smart Area book on page 166 with a missing registration number: `legacy_smart_area_id=50228`.
+  - [x] Backfilled `legacy_smart_area_id=50228` from `registration_number=null` to `1330`.
+  - [x] Verified active Smart Area books now have zero missing `registration_number` values.
+  - [x] Updated the Smart Area import flow to preserve an existing `registration_number` when a later payload is missing `receiveNo`.
+  - [x] Ran `npm run build` successfully after the Smart Area registration number import guard.
 - The central URL `http://101.51.157.107/smartarea/index.php?option=book&task=main/receive&page=165` returns HTTP 200 but shows the login page without central credentials, so local direct comparison of page rows requires central login credentials.
 - After logging in and checking central page `165`, row `49880` maps as:
   - central page: `165`
