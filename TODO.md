@@ -13,6 +13,15 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance monthly Sheet/PDF template-only export revision on 2026-07-15:
+  - [x] Removed Drive signature image insertion from the student attendance export payload and GAS fill path.
+  - [x] Changed the export fill flow to preserve the source Sheet template structure, headers, table borders, widths, and styling.
+  - [x] Kept row 2 blank and only fills the class/year and month values needed for the selected class report.
+  - [x] Fills only the existing student table value area and the day numbers row; it no longer inserts rows or rewrites table headers.
+  - [x] Fills the bottom adviser/director name row only, using class adviser settings and active director/admin profile data.
+  - [x] Creates exports under `ปีการศึกษา <year>/<month>` and trashes existing files with the same Sheet/PDF names before creating replacements.
+  - [x] Run `npm run build` after this template-only export revision.
+
 - Student attendance monthly Sheet/PDF export fix on 2026-07-15:
   - [x] Changed the exported `ที่` column to sequential row numbers instead of `student_code`.
   - [x] Added numeric-aware student sorting before generating export rows.

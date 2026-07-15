@@ -198,16 +198,26 @@ function createStudentAttendanceMonthlyReport_(payload) {
 
   const month = String(payload.month || "");
   const classLevel = String(payload.classLevel || "");
+  const academicYear = String(payload.academicYear || "");
   const thaiMonth = formatStudentAttendanceThaiMonth_(month);
+  const monthName = studentAttendanceMonthName_(month);
   const fileName = `แบบบันทึกการมาเรียน ${classLevel} ${thaiMonth}`;
-  const folder = DriveApp.getFolderById(folderId);
+  const folder = getOrCreateStudentAttendanceMonthFolder_(
+    folderId,
+    academicYear,
+    monthName
+  );
+  const pdfName = `${fileName}.pdf`;
+
+  trashFilesByName_(folder, fileName);
+  trashFilesByName_(folder, pdfName);
+
   const copy = DriveApp.getFileById(templateId).makeCopy(fileName, folder);
   const ss = SpreadsheetApp.openById(copy.getId());
   const sheet = findStudentAttendanceSheet_(ss, Number(payload.templateSheetId)) || ss.getSheets()[0];
 
   fillStudentAttendanceHeader_(sheet, payload, thaiMonth);
   fillStudentAttendanceTable_(sheet, payload);
-  fitStudentAttendanceSheet_(sheet);
   SpreadsheetApp.flush();
 
   const sheetUrl = ss.getUrl();
@@ -215,7 +225,7 @@ function createStudentAttendanceMonthlyReport_(payload) {
   let pdfFileId = "";
 
   if (String(payload.format || "") === "pdf") {
-    const pdfBlob = exportStudentAttendanceSheetPdf_(ss.getId(), sheet.getSheetId(), `${fileName}.pdf`);
+    const pdfBlob = exportStudentAttendanceSheetPdf_(ss.getId(), sheet.getSheetId(), pdfName);
     const pdfFile = folder.createFile(pdfBlob);
     pdfUrl = pdfFile.getUrl();
     pdfFileId = pdfFile.getId();
@@ -237,46 +247,25 @@ function findStudentAttendanceSheet_(ss, sheetId) {
 }
 
 function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
-  const schoolName = String(payload.schoolName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_SCHOOL_NAME);
   const classLevel = String(payload.classLevel || "");
   const academicYear = String(payload.academicYear || "");
 
-  const title = "แบบบันทึกการมาเรียนของนักเรียน";
-  const firstTitle = String(sheet.getRange("A1").getDisplayValue() || "").trim();
-
-  if (firstTitle === title) {
-    sheet.getRange("A2").clearContent();
-  } else {
-    sheet.getRange("A2").setValue(title);
-  }
-
+  sheet.getRange("A2").clearContent();
   sheet.getRange("A3").setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
-  sheet.getRange("A4").setValue(schoolName);
   sheet.getRange("A5").setValue(`เดือน ${thaiMonth}`);
 }
 
 function fillStudentAttendanceTable_(sheet, payload) {
   const days = Array.isArray(payload.days) ? payload.days : [];
   const rows = Array.isArray(payload.rows) ? payload.rows : [];
-  const extraRows = Math.max(0, rows.length - STUDENT_ATTENDANCE_REPORT_CONFIG.TEMPLATE_STUDENT_ROWS);
   const startRow = STUDENT_ATTENDANCE_REPORT_CONFIG.STUDENT_START_ROW;
   const totalColumn = STUDENT_ATTENDANCE_REPORT_CONFIG.TOTAL_COLUMN;
-
-  if (extraRows > 0) {
-    sheet.insertRowsBefore(startRow + STUDENT_ATTENDANCE_REPORT_CONFIG.TEMPLATE_STUDENT_ROWS, extraRows);
-    const source = sheet.getRange(startRow + STUDENT_ATTENDANCE_REPORT_CONFIG.TEMPLATE_STUDENT_ROWS - 1, 1, 1, totalColumn);
-    const target = sheet.getRange(startRow + STUDENT_ATTENDANCE_REPORT_CONFIG.TEMPLATE_STUDENT_ROWS, 1, extraRows, totalColumn);
-    source.copyTo(target, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
-  }
-
-  const rowCount = Math.max(STUDENT_ATTENDANCE_REPORT_CONFIG.TEMPLATE_STUDENT_ROWS, rows.length);
+  const rowCount = STUDENT_ATTENDANCE_REPORT_CONFIG.TEMPLATE_STUDENT_ROWS;
   const tableRange = sheet.getRange(startRow, 1, rowCount, totalColumn);
   tableRange.clearContent();
 
   const dateValues = Array.from({ length: 31 }, (_, index) => days.includes(index + 1) ? index + 1 : "");
-  sheet.getRange("C7").setValue("วันที่");
   sheet.getRange(8, STUDENT_ATTENDANCE_REPORT_CONFIG.HEADER_DATE_START_COLUMN, 1, 31).setValues([dateValues]);
-  sheet.getRange("AH8").setValue("รวม");
 
   const values = Array.from({ length: rowCount }, (_, index) => {
     const row = rows[index] || {};
@@ -291,55 +280,16 @@ function fillStudentAttendanceTable_(sheet, payload) {
   });
 
   tableRange.setValues(values);
-  fillStudentAttendanceSignatures_(sheet, payload, extraRows);
+  fillStudentAttendanceSignatures_(sheet, payload);
 }
 
-function fitStudentAttendanceSheet_(sheet) {
-  return sheet;
-}
-
-function setStudentAttendanceMergedValue_(sheet, a1Notation, value) {
-  const range = sheet.getRange(a1Notation);
-  unmergeStudentAttendanceOverlaps_(range);
-  range.merge().setValue(value);
-}
-
-function unmergeStudentAttendanceOverlaps_(range) {
-  const mergedRanges = range.getMergedRanges();
-  mergedRanges.forEach((mergedRange) => {
-    mergedRange.breakApart();
-  });
-}
-
-function fillStudentAttendanceSignatures_(sheet, payload, extraRows) {
-  const signatureLineRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_LINE_ROW + extraRows;
-  const signatureNameRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_NAME_ROW + extraRows;
+function fillStudentAttendanceSignatures_(sheet, payload) {
+  const signatureNameRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_NAME_ROW;
   const adviserName = String(payload.adviserName || "").trim();
   const directorName = String(payload.directorName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_DIRECTOR_NAME).trim();
-  const adviserSignatureFileId = String(payload.adviserSignatureFileId || "").trim();
-  const directorSignatureFileId = String(payload.directorSignatureFileId || "").trim();
 
-  sheet.getRange(signatureLineRow, 3).setValue("ลงชื่อ........................................ครูประจำชั้น");
   sheet.getRange(signatureNameRow, 3).setValue(`(${adviserName || "........................................"})`);
-  sheet.getRange(signatureLineRow, 20).setValue("ลงชื่อ........................................ผู้อำนวยการโรงเรียน");
-  sheet.getRange(signatureNameRow, 20).setValue(`(${directorName})`);
-
-  if (adviserSignatureFileId) {
-    insertStudentAttendanceDriveImage_(sheet, adviserSignatureFileId, 9, signatureLineRow - 1, 150, 48);
-  }
-  if (directorSignatureFileId) {
-    insertStudentAttendanceDriveImage_(sheet, directorSignatureFileId, 26, signatureLineRow - 1, 150, 48);
-  }
-}
-
-function insertStudentAttendanceDriveImage_(sheet, fileId, column, row, width, height) {
-  try {
-    const blob = DriveApp.getFileById(fileId).getBlob();
-    const image = sheet.insertImage(blob, column, row);
-    image.setWidth(width).setHeight(height);
-  } catch (error) {
-    console.error(`Insert image failed ${fileId}: ${error && error.message ? error.message : error}`);
-  }
+  sheet.getRange(signatureNameRow, 23).setValue(`(${directorName})`);
 }
 
 function exportStudentAttendanceSheetPdf_(spreadsheetId, sheetId, fileName) {
@@ -354,6 +304,28 @@ function formatStudentAttendanceThaiMonth_(month) {
   const monthNumber = Number(parts[1]);
   const thaiYear = year ? year + 543 : "";
   return `${THAI_MONTHS[(monthNumber || 1) - 1]} พ.ศ. ${thaiYear}`;
+}
+
+function studentAttendanceMonthName_(month) {
+  const monthNumber = Number(String(month || "").split("-")[1]);
+  return THAI_MONTHS[(monthNumber || 1) - 1];
+}
+
+function getOrCreateStudentAttendanceMonthFolder_(rootFolderId, academicYear, monthName) {
+  const root = DriveApp.getFolderById(rootFolderId);
+  const yearName = `ปีการศึกษา ${academicYear || ""}`.trim();
+  const yearFolder = getOrCreateChildFolder_(root, yearName);
+  return getOrCreateChildFolder_(yearFolder, monthName || "ไม่ระบุเดือน");
+}
+
+function getOrCreateChildFolder_(parent, name) {
+  const folders = parent.getFoldersByName(name);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  return parent.createFolder(name);
 }
 
 function verifySecret_(e) {

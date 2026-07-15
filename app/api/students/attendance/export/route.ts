@@ -39,12 +39,11 @@ type AdviserProfileRow = {
   id: string;
   full_name?: string | null;
   phone?: string | null;
-  signature_file_id?: string | null;
+  role?: string | null;
 };
 
 type SignerInfo = {
   name: string;
-  signatureFileId: string;
 };
 
 const DEFAULT_TEMPLATE_ID = "1PzumW4--bM2HJyA-PEoYaFeGpBFPm3YkzpxaMCOSHlo";
@@ -143,7 +142,7 @@ async function loadAdviserSigners(adminClient: any, classLevel: string): Promise
 
   const { data: profiles } = await adminClient
     .from("profiles")
-    .select("id, full_name, phone, signature_file_id")
+    .select("id, full_name, phone, role")
     .in("id", ids);
 
   const profileMap = new Map(
@@ -151,7 +150,6 @@ async function loadAdviserSigners(adminClient: any, classLevel: string): Promise
       profile.id,
       {
         name: profile.full_name || profile.phone || profile.id,
-        signatureFileId: profile.signature_file_id || "",
       },
     ]),
   );
@@ -162,18 +160,18 @@ async function loadAdviserSigners(adminClient: any, classLevel: string): Promise
 async function loadDirectorSigner(adminClient: any): Promise<SignerInfo | null> {
   const { data } = await adminClient
     .from("profiles")
-    .select("id, full_name, phone, signature_file_id")
-    .eq("role", "director")
+    .select("id, full_name, phone, role")
+    .in("role", ["director", "admin"])
     .eq("account_status", "active")
-    .limit(1)
-    .maybeSingle();
+    .order("role", { ascending: false })
+    .limit(5);
 
-  const profile = data as AdviserProfileRow | null;
+  const profiles = (data ?? []) as AdviserProfileRow[];
+  const profile = profiles.find((row) => row.role === "director") || profiles[0] || null;
   if (!profile) return null;
 
   return {
     name: profile.full_name || profile.phone || DIRECTOR_NAME,
-    signatureFileId: profile.signature_file_id || "",
   };
 }
 
@@ -280,9 +278,7 @@ export async function POST(request: Request) {
       folderId: process.env.STUDENT_ATTENDANCE_EXPORT_FOLDER_ID || DEFAULT_FOLDER_ID,
       schoolName: SCHOOL_NAME,
       directorName: directorSigner?.name || DIRECTOR_NAME,
-      directorSignatureFileId: directorSigner?.signatureFileId || "",
       adviserName: adviserSigners.map((adviser) => adviser.name).join(", "),
-      adviserSignatureFileId: adviserSigners[0]?.signatureFileId || "",
       classLevel,
       month,
       academicYear: academicYear(month),
