@@ -183,6 +183,22 @@ function daysInMonth(value: string) {
   return Array.from({ length: total }, (_, index) => index + 1);
 }
 
+function monthWeekRanges(value: string) {
+  const days = daysInMonth(value);
+  const lastDay = days[days.length - 1] ?? 31;
+  return [
+    { start: 1, end: Math.min(7, lastDay) },
+    { start: 8, end: Math.min(14, lastDay) },
+    { start: 15, end: Math.min(21, lastDay) },
+    { start: 22, end: lastDay },
+  ].filter((range) => range.start <= range.end);
+}
+
+function shortThaiWeekday(month: string, day: number) {
+  const weekday = parseIsoDate(isoDateForDay(month, day)).getDay();
+  return ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."][weekday];
+}
+
 function isoDateForDay(month: string, day: number) {
   return `${month}-${String(day).padStart(2, "0")}`;
 }
@@ -311,6 +327,7 @@ export default function StudentDailyReportPage() {
   const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [exporting, setExporting] = useState<"" | "sheet" | "pdf">("");
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
+  const [mobileWeekStart, setMobileWeekStart] = useState(1);
   const [dutyTeacherNames, setDutyTeacherNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -477,6 +494,7 @@ export default function StudentDailyReportPage() {
 
   useEffect(() => {
     setExportResult(null);
+    setMobileWeekStart(1);
   }, [activeTab, selectedMonth]);
 
   const totals = useMemo(() => {
@@ -493,6 +511,11 @@ export default function StudentDailyReportPage() {
 
   const totalPresentPercent = percent(totals.present, totals.total);
   const activeMonthlyReport = activeTab === "summary" ? null : monthlyReports[`${activeTab}:${selectedMonth}`];
+  const mobileWeekRanges = useMemo(() => monthWeekRanges(selectedMonth), [selectedMonth]);
+  const activeMobileWeek = mobileWeekRanges.find((range) => range.start === mobileWeekStart) ?? mobileWeekRanges[0];
+  const activeMobileDays = activeMonthlyReport && activeMobileWeek
+    ? activeMonthlyReport.days.filter((day) => day >= activeMobileWeek.start && day <= activeMobileWeek.end)
+    : [];
   const activeMonthlyTotals = useMemo(() => {
     if (!activeMonthlyReport) return [];
     return activeMonthlyReport.days.map((day) =>
@@ -939,6 +962,64 @@ export default function StudentDailyReportPage() {
               </table>
             </div>
             {activeMonthlyReport && activeMonthlyReport.rows.length > 0 ? (
+              <>
+              <div className={styles.monthMobileReport}>
+                <div className={styles.mobileWeekTabs}>
+                  {mobileWeekRanges.map((range) => (
+                    <button
+                      key={range.start}
+                      type="button"
+                      className={range.start === mobileWeekStart ? styles.activeMobileWeek : ""}
+                      onClick={() => setMobileWeekStart(range.start)}
+                    >
+                      {range.start}-{range.end}
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.mobileMonthTableWrap}>
+                  <table className={styles.mobileMonthTable}>
+                    <thead>
+                      <tr>
+                        <th rowSpan={2}>ที่</th>
+                        <th rowSpan={2}>ชื่อ - สกุล</th>
+                        <th colSpan={activeMobileDays.length}>วันที่ ({formatThaiMonth(selectedMonth)})</th>
+                        <th colSpan={5}>รวม (วัน)</th>
+                      </tr>
+                      <tr>
+                        {activeMobileDays.map((day) => (
+                          <th key={day}>
+                            <span>{day}</span>
+                            <small>{shortThaiWeekday(selectedMonth, day)}</small>
+                          </th>
+                        ))}
+                        <th>มา</th>
+                        <th>ขาด</th>
+                        <th>ลา</th>
+                        <th>สาย</th>
+                        <th>รวม</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeMonthlyReport.rows.slice(0, 12).map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.no}</td>
+                          <td>{row.name}</td>
+                          {activeMobileDays.map((day) => (
+                            <td key={day}>
+                              <StatusSymbol mark={row.statuses[day] || ""} />
+                            </td>
+                          ))}
+                          <td>{row.presentCount}</td>
+                          <td>{row.absentCount}</td>
+                          <td>{row.leaveCount}</td>
+                          <td>{row.lateCount}</td>
+                          <td>{row.totalCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               <div className={styles.monthMobileCards}>
                 {activeMonthlyReport.rows.map((row) => (
                   <article key={row.id}>
@@ -964,6 +1045,7 @@ export default function StudentDailyReportPage() {
                   </article>
                 ))}
               </div>
+              </>
             ) : null}
             <div className={styles.monthSignatureGrid}>
               <div>

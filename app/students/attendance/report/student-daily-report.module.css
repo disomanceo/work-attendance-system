@@ -637,6 +637,10 @@
   display: none;
 }
 
+.monthMobileReport {
+  display: none;
+}
+
 .monthSignatureGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1287,6 +1291,113 @@
     display: none;
   }
 
+  .monthMobileReport {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .mobileWeekTabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mobileWeekTabs button {
+    min-height: 36px;
+    border: 1px solid #dbe3ee;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #0b1736;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 950;
+  }
+
+  .mobileWeekTabs .activeMobileWeek {
+    border-color: #059669;
+    background: #059669;
+    color: #ffffff;
+  }
+
+  .mobileMonthTableWrap {
+    overflow-x: auto;
+    border: 1px solid #dbe3ee;
+    border-radius: 8px;
+    background: #ffffff;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobileMonthTableWrap::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .mobileMonthTableWrap::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #9ca3af;
+  }
+
+  .mobileMonthTable {
+    min-width: 760px;
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .mobileMonthTable th,
+  .mobileMonthTable td {
+    height: 38px;
+    border-right: 1px solid #dbe3ee;
+    border-bottom: 1px solid #dbe3ee;
+    padding: 4px 3px;
+    color: #0b1736;
+    font-size: 12px;
+    font-weight: 850;
+    line-height: 1.15;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .mobileMonthTable th {
+    background: #f8fbff;
+    font-weight: 950;
+  }
+
+  .mobileMonthTable th:first-child,
+  .mobileMonthTable td:first-child {
+    width: 38px;
+  }
+
+  .mobileMonthTable th:nth-child(2),
+  .mobileMonthTable td:nth-child(2) {
+    width: 188px;
+    text-align: left;
+  }
+
+  .mobileMonthTable td:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 950;
+  }
+
+  .mobileMonthTable th span,
+  .mobileMonthTable th small {
+    display: block;
+  }
+
+  .mobileMonthTable th small {
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 900;
+  }
+
+  .monthMobileCards {
+    display: none;
+  }
+
+  /*
   .monthMobileCards {
     display: grid;
     gap: 8px;
@@ -1384,6 +1495,7 @@
   .monthMobileCards dd {
     color: #0b1736;
   }
+  */
 
   .monthTableWrap {
     margin: 6px 0 6px;

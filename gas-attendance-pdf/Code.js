@@ -240,23 +240,11 @@ function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
   const schoolName = String(payload.schoolName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_SCHOOL_NAME);
   const classLevel = String(payload.classLevel || "");
   const academicYear = String(payload.academicYear || "");
-  const logoFileId = String(payload.logoFileId || "").trim();
-
-  if (logoFileId) {
-    sheet.setRowHeight(1, 48);
-    insertStudentAttendanceDriveImage_(sheet, logoFileId, 19, 1, 42, 42);
-  }
 
   sheet.getRange("A2").setValue("แบบบันทึกการมาเรียนของนักเรียน");
   sheet.getRange("A3").setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
   sheet.getRange("A4").setValue(schoolName);
   sheet.getRange("A5").setValue(`เดือน ${thaiMonth}`);
-
-  sheet.getRange("A2:AH5")
-    .setHorizontalAlignment("center")
-    .setVerticalAlignment("middle")
-    .setFontWeight("bold")
-    .setFontSize(14);
 }
 
 function fillStudentAttendanceTable_(sheet, payload) {
@@ -295,29 +283,11 @@ function fillStudentAttendanceTable_(sheet, payload) {
   });
 
   tableRange.setValues(values);
-  tableRange
-    .setHorizontalAlignment("center")
-    .setVerticalAlignment("middle")
-    .setFontSize(11);
-  sheet.getRange(startRow, 2, rowCount, 1)
-    .setHorizontalAlignment("left")
-    .setFontSize(13)
-    .setFontWeight("bold");
-  styleStudentAttendanceStatusSymbols_(sheet, rowCount);
-
   fillStudentAttendanceSignatures_(sheet, payload, extraRows);
 }
 
 function fitStudentAttendanceSheet_(sheet) {
-  sheet.setColumnWidth(1, 36);
-  sheet.setColumnWidth(2, 170);
-  for (let column = 3; column <= 33; column += 1) {
-    sheet.setColumnWidth(column, 24);
-  }
-  sheet.setColumnWidth(34, 34);
-  sheet.getRange(7, 1, sheet.getMaxRows() - 6, STUDENT_ATTENDANCE_REPORT_CONFIG.TOTAL_COLUMN)
-    .setWrap(false)
-    .setVerticalAlignment("middle");
+  return sheet;
 }
 
 function setStudentAttendanceMergedValue_(sheet, a1Notation, value) {
@@ -336,34 +306,11 @@ function unmergeStudentAttendanceOverlaps_(range) {
 function fillStudentAttendanceSignatures_(sheet, payload, extraRows) {
   const signatureLineRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_LINE_ROW + extraRows;
   const signatureNameRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_NAME_ROW + extraRows;
-  const adviserName = String(payload.adviserName || "").trim();
-  const directorName = String(payload.directorName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_DIRECTOR_NAME).trim();
-  const adviserSignatureFileId = String(payload.adviserSignatureFileId || "").trim();
-  const directorSignatureFileId = String(payload.directorSignatureFileId || "").trim();
 
-  sheet.getRange(signatureLineRow, 1, 3, STUDENT_ATTENDANCE_REPORT_CONFIG.TOTAL_COLUMN)
-    .setFontSize(12)
-    .setHorizontalAlignment("center")
-    .setVerticalAlignment("middle");
   sheet.getRange(signatureLineRow, 3).setValue("ลงชื่อ........................................ครูประจำชั้น");
-  sheet.getRange(signatureNameRow, 3).setValue(`(${adviserName || "........................................"})`);
+  sheet.getRange(signatureNameRow, 3).setValue("(..........................................)");
   sheet.getRange(signatureLineRow, 20).setValue("ลงชื่อ........................................ผู้อำนวยการโรงเรียน");
-  sheet.getRange(signatureNameRow, 20).setValue(`(${directorName})`);
-
-  if (adviserSignatureFileId) {
-    insertStudentAttendanceDriveImage_(sheet, adviserSignatureFileId, 9, signatureLineRow - 1, 150, 48);
-  }
-  if (directorSignatureFileId) {
-    insertStudentAttendanceDriveImage_(sheet, directorSignatureFileId, 25, signatureLineRow - 1, 150, 48);
-  }
-}
-
-function styleStudentAttendanceStatusSymbols_(sheet, rowCount) {
-  const range = sheet.getRange(STUDENT_ATTENDANCE_REPORT_CONFIG.STUDENT_START_ROW, 3, rowCount, 31);
-  range
-    .setFontWeight("bold")
-    .setFontColor("#111827")
-    .setBackground("#ffffff");
+  sheet.getRange(signatureNameRow, 20).setValue("(..........................................)");
 }
 
 function insertStudentAttendanceDriveImage_(sheet, fileId, column, row, width, height) {

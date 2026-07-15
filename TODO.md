@@ -37,6 +37,8 @@ Updated: 2026-07-15
   - [x] Replaced the student attendance PDF export path that required `UrlFetchApp.fetch` with Drive-based PDF export.
   - [x] Added post-export open/download buttons for generated Sheet/PDF files on the student attendance report page.
   - [x] Re-aligned the generated student attendance Sheet/PDF to the real Google Sheet template layout (`A:AH`, one `รวม` column) instead of rebuilding a wider `A:AL` table.
+  - [x] Stopped student attendance exports from overriding template fonts, row/column sizing, logo placement, and signature images; the template now owns print styling.
+  - [x] Changed the mobile class monthly report from per-student cards to week-range table tabs (`1-7`, `8-14`, `15-21`, `22-end`) matching the requested mobile layout direction.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.

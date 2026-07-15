@@ -50,7 +50,6 @@ type SignerInfo = {
 const DEFAULT_TEMPLATE_ID = "1PzumW4--bM2HJyA-PEoYaFeGpBFPm3YkzpxaMCOSHlo";
 const DEFAULT_TEMPLATE_SHEET_ID = "995448101";
 const DEFAULT_FOLDER_ID = "1_m6s1SpEJXoatUM9kqgu9j3rE-sQEVmx";
-const DEFAULT_LOGO_FILE_ID = "1vxcGKLir_wVM0XelzgQbeR_2BXVTflui";
 const SCHOOL_NAME = "โรงเรียนวัดไผ่มุ้ง";
 const DIRECTOR_NAME = "นายสุธน พุทธรัตน์";
 
@@ -263,12 +262,9 @@ export async function POST(request: Request) {
       templateId: process.env.STUDENT_ATTENDANCE_TEMPLATE_ID || DEFAULT_TEMPLATE_ID,
       templateSheetId: Number(process.env.STUDENT_ATTENDANCE_TEMPLATE_SHEET_ID || DEFAULT_TEMPLATE_SHEET_ID),
       folderId: process.env.STUDENT_ATTENDANCE_EXPORT_FOLDER_ID || DEFAULT_FOLDER_ID,
-      logoFileId: process.env.STUDENT_ATTENDANCE_LOGO_FILE_ID || DEFAULT_LOGO_FILE_ID,
       schoolName: SCHOOL_NAME,
       directorName: directorSigner?.name || DIRECTOR_NAME,
-      directorSignatureFileId: directorSigner?.signatureFileId || "",
       adviserName: adviserSigners.map((adviser) => adviser.name).join(", "),
-      adviserSignatureFileId: adviserSigners.find((adviser) => adviser.signatureFileId)?.signatureFileId || "",
       classLevel,
       month,
       academicYear: academicYear(month),
