@@ -13,6 +13,13 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance generated Sheet/PDF placement follow-up on 2026-07-15:
+  - [x] Moved the date-number row to row 7 so attendance marks no longer appear in the 1-30/31 date row.
+  - [x] Moved student rows to start at row 8 so the first student no longer overwrites the table header/date row.
+  - [x] Moved adviser/director names to the lower parenthesis row and keeps the signature line row untouched for printing/signing.
+  - [x] Changed the generated PDF export URL to request landscape orientation.
+  - [x] Tightened the mobile weekly class table so the 1-7 day view fits without a horizontal scrollbar.
+
 - Student attendance generated Sheet placement follow-up on 2026-07-15:
   - [x] Added fallback writes for class/year and month rows when the template placeholders `ch`/`ps` are not found.
   - [x] Added fallback writes for adviser/director names in the bottom signature name row when `tea`/`ceo` are not found.

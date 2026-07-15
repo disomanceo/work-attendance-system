@@ -142,16 +142,16 @@ const STUDENT_ATTENDANCE_REPORT_CONFIG = {
   SECRET_PROPERTY: "STUDENT_ATTENDANCE_REPORT_SECRET",
   DEFAULT_DIRECTOR_NAME: "นายสุธน พุทธรัตน์",
   DEFAULT_SCHOOL_NAME: "โรงเรียนวัดไผ่มุ้ง",
-  HEADER_DAY_ROW: 5,
+  HEADER_DAY_ROW: 7,
   HEADER_DAY_START_COLUMN: 3,
-  STUDENT_START_ROW: 7,
+  STUDENT_START_ROW: 8,
   TEMPLATE_STUDENT_ROWS: 12,
   TOTAL_COLUMN: 34,
   CLASS_YEAR_ROW: 2,
   MONTH_ROW: 4,
-  ADVISER_NAME_ROW: 22,
+  ADVISER_NAME_ROW: 23,
   ADVISER_NAME_COLUMN: 3,
-  DIRECTOR_NAME_ROW: 22,
+  DIRECTOR_NAME_ROW: 23,
   DIRECTOR_NAME_COLUMN: 23,
 };
 
@@ -223,6 +223,7 @@ function createStudentAttendanceMonthlyReport_(payload) {
 
   fillStudentAttendanceHeader_(sheet, payload, thaiMonth);
   fillStudentAttendanceTable_(sheet, payload);
+  applyStudentAttendancePageSetup_(sheet);
   SpreadsheetApp.flush();
 
   const sheetUrl = ss.getUrl();
@@ -325,6 +326,34 @@ function fillStudentAttendanceTable_(sheet, payload) {
   tableRange.setValues(values);
 }
 
+function applyStudentAttendancePageSetup_(sheet) {
+  const spreadsheet = sheet.getParent();
+  const spreadsheetId = spreadsheet.getId();
+
+  try {
+    Sheets.Spreadsheets.batchUpdate(
+      {
+        requests: [
+          {
+            updateSheetProperties: {
+              properties: {
+                sheetId: sheet.getSheetId(),
+                pageSetup: {
+                  orientation: "LANDSCAPE",
+                },
+              },
+              fields: "pageSetup.orientation",
+            },
+          },
+        ],
+      },
+      spreadsheetId
+    );
+  } catch (error) {
+    console.warn(`Cannot update print orientation: ${error?.message || error}`);
+  }
+}
+
 function replaceStudentAttendancePlaceholder_(sheet, placeholder, value) {
   sheet
     .createTextFinder(placeholder)
@@ -360,9 +389,34 @@ function setStudentAttendanceSignatureName_(sheet, row, column, value) {
 }
 
 function exportStudentAttendanceSheetPdf_(spreadsheetId, sheetId, fileName) {
-  return DriveApp.getFileById(spreadsheetId)
-    .getAs(MimeType.PDF)
-    .setName(fileName);
+  const exportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?` + [
+    "format=pdf",
+    "portrait=false",
+    "fitw=true",
+    "size=A4",
+    "sheetnames=false",
+    "printtitle=false",
+    "pagenumbers=false",
+    "gridlines=false",
+    "fzr=false",
+    `gid=${sheetId}`,
+  ].join("&");
+
+  try {
+    return UrlFetchApp
+      .fetch(exportUrl, {
+        headers: {
+          Authorization: `Bearer ${ScriptApp.getOAuthToken()}`,
+        },
+      })
+      .getBlob()
+      .setName(fileName);
+  } catch (error) {
+    console.warn(`Landscape PDF export failed, falling back to Drive export: ${error?.message || error}`);
+    return DriveApp.getFileById(spreadsheetId)
+      .getAs(MimeType.PDF)
+      .setName(fileName);
+  }
 }
 
 function formatStudentAttendanceThaiMonth_(month) {
