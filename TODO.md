@@ -31,6 +31,7 @@ Updated: 2026-07-15
   - [x] Updated attendance marks to use green check, red cross, orange warning, and blue late symbols in the report preview.
   - [x] Added mobile-friendly student cards for monthly attendance instead of forcing the 38-column table onto small screens.
   - [x] Passed adviser/director signature file IDs to the Sheet/PDF export payload for Drive image insertion.
+  - [x] Fixed the generated Sheet/PDF merge-range failure by clearing overlapping merged ranges before rewriting header/table merged cells.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.

@@ -219,10 +219,10 @@ function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
     insertStudentAttendanceDriveImage_(sheet, logoFileId, 19, 1, 42, 42);
   }
 
-  sheet.getRange("A2:AL2").merge().setValue("แบบบันทึกการมาเรียนของนักเรียน");
-  sheet.getRange("A3:AL3").merge().setValue(`ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
-  sheet.getRange("A4:AL4").merge().setValue(schoolName);
-  sheet.getRange("A5:AL5").merge().setValue(`เดือน ${thaiMonth}`);
+  setStudentAttendanceMergedValue_(sheet, "A2:AL2", "แบบบันทึกการมาเรียนของนักเรียน");
+  setStudentAttendanceMergedValue_(sheet, "A3:AL3", `ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
+  setStudentAttendanceMergedValue_(sheet, "A4:AL4", schoolName);
+  setStudentAttendanceMergedValue_(sheet, "A5:AL5", `เดือน ${thaiMonth}`);
 
   sheet.getRange("A2:AL5")
     .setHorizontalAlignment("center")
@@ -250,8 +250,8 @@ function fillStudentAttendanceTable_(sheet, payload) {
   tableRange.clearContent();
 
   const dateValues = Array.from({ length: 31 }, (_, index) => days.includes(index + 1) ? index + 1 : "");
-  sheet.getRange("C7:AG7").merge().setValue("วันที่");
-  sheet.getRange("AH7:AL7").merge().setValue("รวม (วัน)");
+  setStudentAttendanceMergedValue_(sheet, "C7:AG7", "วันที่");
+  setStudentAttendanceMergedValue_(sheet, "AH7:AL7", "รวม (วัน)");
   sheet.getRange(8, STUDENT_ATTENDANCE_REPORT_CONFIG.HEADER_DATE_START_COLUMN, 1, 31).setValues([dateValues]);
   sheet.getRange("AH8:AL8").setValues([["มา", "ขาด", "ลา", "สาย", "รวม"]]);
 
@@ -297,6 +297,19 @@ function fitStudentAttendanceSheet_(sheet) {
   sheet.getRange(7, 1, sheet.getMaxRows() - 6, STUDENT_ATTENDANCE_REPORT_CONFIG.TOTAL_COLUMN)
     .setWrap(false)
     .setVerticalAlignment("middle");
+}
+
+function setStudentAttendanceMergedValue_(sheet, a1Notation, value) {
+  const range = sheet.getRange(a1Notation);
+  unmergeStudentAttendanceOverlaps_(range);
+  range.merge().setValue(value);
+}
+
+function unmergeStudentAttendanceOverlaps_(range) {
+  const mergedRanges = range.getMergedRanges();
+  mergedRanges.forEach((mergedRange) => {
+    mergedRange.breakApart();
+  });
 }
 
 function fillStudentAttendanceSignatures_(sheet, payload, extraRows) {
