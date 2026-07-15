@@ -464,6 +464,36 @@
   font-weight: 950;
 }
 
+.monthTemplateHeader {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid #dbe3ee;
+  background: #ffffff;
+  color: #0b1736;
+  text-align: center;
+}
+
+.monthTemplateHeader img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+}
+
+.monthTemplateHeader strong {
+  margin-top: 2px;
+  font-size: 17px;
+  font-weight: 950;
+  line-height: 1.18;
+}
+
+.monthTemplateHeader span {
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
 .monthLegend {
   display: flex;
   flex-wrap: wrap;
@@ -543,6 +573,11 @@
 
 .markedDay {
   color: #15803d !important;
+  font-weight: 950;
+}
+
+.monthTotalRow td {
+  background: #eff6ff;
   font-weight: 950;
 }
 

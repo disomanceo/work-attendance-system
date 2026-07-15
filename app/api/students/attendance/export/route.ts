@@ -1,0 +1,240 @@
+import { NextResponse } from "next/server";
+import { STUDENT_CLASS_LEVELS } from "@/lib/students/settings";
+import {
+  loadStudentAccess,
+  requireStudentAuth,
+  studentDataClassLevels,
+} from "@/lib/students/access";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+type AttendanceStatus = "present" | "late" | "leave" | "sick" | "personal" | "absent";
+
+type ExportRequest = {
+  classLevel?: unknown;
+  month?: unknown;
+  format?: unknown;
+};
+
+type StudentRow = {
+  id: string;
+  student_code?: string | null;
+  full_name?: string | null;
+};
+
+type AttendanceRow = {
+  student_id?: string | null;
+  attendance_date?: string | null;
+  status?: AttendanceStatus | string | null;
+};
+
+type ClassSettingRow = {
+  adviser_profile_id?: string | null;
+  adviser_profile_ids?: string[] | null;
+};
+
+type AdviserProfileRow = {
+  id: string;
+  full_name?: string | null;
+  phone?: string | null;
+};
+
+const DEFAULT_TEMPLATE_ID = "1PzumW4--bM2HJyA-PEoYaFeGpBFPm3YkzpxaMCOSHlo";
+const DEFAULT_TEMPLATE_SHEET_ID = "995448101";
+const DEFAULT_FOLDER_ID = "1_m6s1SpEJXoatUM9kqgu9j3rE-sQEVmx";
+const DEFAULT_LOGO_FILE_ID = "1vxcGKLir_wVM0XelzgQbeR_2BXVTflui";
+const SCHOOL_NAME = "โรงเรียนวัดไผ่มุ้ง";
+const DIRECTOR_NAME = "นายสุธน พุทธรัตน์";
+
+function text(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function isValidMonth(value: string) {
+  return /^\d{4}-\d{2}$/.test(value);
+}
+
+function daysInMonth(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const total = new Date(year, monthNumber, 0).getDate();
+  return Array.from({ length: total }, (_, index) => index + 1);
+}
+
+function isoDateForDay(month: string, day: number) {
+  return `${month}-${String(day).padStart(2, "0")}`;
+}
+
+function statusMark(value: unknown) {
+  if (value === "absent") return "ข";
+  if (value === "leave" || value === "sick" || value === "personal") return "ล";
+  if (value === "late") return "ส";
+  return "✓";
+}
+
+function isPresent(value: unknown) {
+  return value !== "absent" && value !== "leave" && value !== "sick" && value !== "personal";
+}
+
+function studentNo(student: StudentRow, index: number) {
+  return String(student.student_code || index + 1);
+}
+
+function academicYear(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const thaiYear = year + 543;
+  return monthNumber >= 5 ? thaiYear : thaiYear - 1;
+}
+
+async function loadAdviserNames(adminClient: any, classLevel: string) {
+  const { data: settings } = await adminClient
+    .from("student_class_settings")
+    .select("adviser_profile_id, adviser_profile_ids")
+    .eq("class_level", classLevel)
+    .eq("is_active", true);
+
+  const ids = Array.from(
+    new Set(
+      ((settings ?? []) as ClassSettingRow[]).flatMap((setting) => [
+        setting.adviser_profile_id,
+        ...(Array.isArray(setting.adviser_profile_ids) ? setting.adviser_profile_ids : []),
+      ]),
+    ),
+  ).filter((id): id is string => Boolean(id));
+
+  if (ids.length === 0) return [];
+
+  const { data: profiles } = await adminClient
+    .from("profiles")
+    .select("id, full_name, phone")
+    .in("id", ids);
+
+  const profileMap = new Map(
+    ((profiles ?? []) as AdviserProfileRow[]).map((profile) => [
+      profile.id,
+      profile.full_name || profile.phone || profile.id,
+    ]),
+  );
+
+  return ids.map((id) => profileMap.get(id)).filter((name): name is string => Boolean(name));
+}
+
+export async function POST(request: Request) {
+  const auth = await requireStudentAuth(request);
+  if (!auth.ok) return auth.response;
+
+  const body = (await request.json().catch(() => ({}))) as ExportRequest;
+  const classLevel = text(body.classLevel);
+  const month = text(body.month);
+  const format = text(body.format) === "pdf" ? "pdf" : "sheet";
+
+  if (!STUDENT_CLASS_LEVELS.includes(classLevel as any)) {
+    return NextResponse.json({ ok: false, message: "กรุณาเลือกชั้นเรียนก่อนส่งออก" }, { status: 400 });
+  }
+
+  if (!isValidMonth(month)) {
+    return NextResponse.json({ ok: false, message: "รูปแบบเดือนไม่ถูกต้อง" }, { status: 400 });
+  }
+
+  const access = await loadStudentAccess(auth.adminClient, auth.user.id, auth.profile);
+  if (!studentDataClassLevels(access).includes(classLevel)) {
+    return NextResponse.json({ ok: false, message: "คุณไม่มีสิทธิ์ส่งออกรายงานชั้นนี้" }, { status: 403 });
+  }
+
+  const gasUrl = process.env.GAS_STUDENT_ATTENDANCE_REPORT_URL?.trim();
+  const secret = process.env.GAS_STUDENT_ATTENDANCE_REPORT_SECRET?.trim();
+
+  if (!gasUrl || !secret) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "ยังไม่ได้ตั้งค่า GAS_STUDENT_ATTENDANCE_REPORT_URL หรือ GAS_STUDENT_ATTENDANCE_REPORT_SECRET สำหรับสร้าง Sheet/PDF",
+      },
+      { status: 500 },
+    );
+  }
+
+  const days = daysInMonth(month);
+  const startDate = isoDateForDay(month, 1);
+  const endDate = isoDateForDay(month, days.length);
+
+  const [{ data: students, error: studentsError }, { data: records, error: recordsError }, adviserNames] =
+    await Promise.all([
+      auth.adminClient
+        .from("students")
+        .select("id, student_code, full_name")
+        .eq("class_level", classLevel)
+        .eq("status", "active")
+        .order("student_code", { ascending: true }),
+      auth.adminClient
+        .from("student_attendance")
+        .select("student_id, attendance_date, status")
+        .eq("class_level", classLevel)
+        .gte("attendance_date", startDate)
+        .lte("attendance_date", endDate),
+      loadAdviserNames(auth.adminClient, classLevel),
+    ]);
+
+  if (studentsError || recordsError) {
+    console.error("Student attendance export load error:", studentsError || recordsError);
+    return NextResponse.json({ ok: false, message: "โหลดข้อมูลสำหรับส่งออกไม่สำเร็จ" }, { status: 500 });
+  }
+
+  const recordMap = new Map(
+    ((records ?? []) as AttendanceRow[]).map((record) => [
+      `${record.student_id}:${record.attendance_date}`,
+      record.status,
+    ]),
+  );
+
+  const rows = ((students ?? []) as StudentRow[]).map((student, index) => {
+    let presentCount = 0;
+    const statuses = days.map((day) => {
+      const status = recordMap.get(`${student.id}:${isoDateForDay(month, day)}`);
+      if (!status) return "";
+      if (isPresent(status)) presentCount += 1;
+      return statusMark(status);
+    });
+
+    return {
+      no: studentNo(student, index),
+      name: student.full_name || "",
+      statuses,
+      presentCount,
+    };
+  });
+
+  const response = await fetch(gasUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "studentAttendanceMonthlyReport",
+      secret,
+      format,
+      templateId: process.env.STUDENT_ATTENDANCE_TEMPLATE_ID || DEFAULT_TEMPLATE_ID,
+      templateSheetId: Number(process.env.STUDENT_ATTENDANCE_TEMPLATE_SHEET_ID || DEFAULT_TEMPLATE_SHEET_ID),
+      folderId: process.env.STUDENT_ATTENDANCE_EXPORT_FOLDER_ID || DEFAULT_FOLDER_ID,
+      logoFileId: process.env.STUDENT_ATTENDANCE_LOGO_FILE_ID || DEFAULT_LOGO_FILE_ID,
+      schoolName: SCHOOL_NAME,
+      directorName: DIRECTOR_NAME,
+      adviserName: adviserNames.join(", "),
+      classLevel,
+      month,
+      academicYear: academicYear(month),
+      days,
+      rows,
+    }),
+    cache: "no-store",
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.ok === false) {
+    return NextResponse.json(
+      { ok: false, message: result.message || "สร้างไฟล์รายงานไม่สำเร็จ" },
+      { status: response.ok ? 500 : response.status },
+    );
+  }
+
+  return NextResponse.json({ ok: true, ...result });
+}

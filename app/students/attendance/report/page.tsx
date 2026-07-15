@@ -46,6 +46,14 @@ type SettingsResponse = {
   error?: string;
 };
 
+type ExportResponse = {
+  ok?: boolean;
+  message?: string;
+  sheetUrl?: string;
+  pdfUrl?: string;
+  fileName?: string;
+};
+
 type ClassReport = {
   classLevel: string;
   total: number;
@@ -247,6 +255,7 @@ export default function StudentDailyReportPage() {
   const [reports, setReports] = useState<ClassReport[]>([]);
   const [monthlyReports, setMonthlyReports] = useState<Record<string, MonthlyClassReport>>({});
   const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [exporting, setExporting] = useState<"" | "sheet" | "pdf">("");
   const [dutyTeacherNames, setDutyTeacherNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -419,6 +428,12 @@ export default function StudentDailyReportPage() {
 
   const totalPresentPercent = percent(totals.present, totals.total);
   const activeMonthlyReport = activeTab === "summary" ? null : monthlyReports[`${activeTab}:${selectedMonth}`];
+  const activeMonthlyTotals = useMemo(() => {
+    if (!activeMonthlyReport) return [];
+    return activeMonthlyReport.days.map((day) =>
+      activeMonthlyReport.rows.reduce((count, row) => count + (row.statuses[day] ? 1 : 0), 0),
+    );
+  }, [activeMonthlyReport]);
 
   const summaryCards = [
     {
@@ -490,6 +505,56 @@ export default function StudentDailyReportPage() {
       : `student-daily-report-summary-${date}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function exportReport(format: "sheet" | "pdf") {
+    if (!activeMonthlyReport) {
+      setMessage("กรุณาเลือกแท็บชั้นเรียนก่อนสร้างไฟล์จากต้นแบบ");
+      return;
+    }
+
+    setExporting(format);
+    setMessage("");
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers = new Headers({
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      });
+      if (session?.access_token) {
+        headers.set("Authorization", `Bearer ${session.access_token}`);
+      }
+
+      const response = await fetch("/api/students/attendance/export", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          classLevel: activeMonthlyReport.classLevel,
+          month: activeMonthlyReport.month,
+          format,
+        }),
+        cache: "no-store",
+      });
+      const data = (await response.json()) as ExportResponse;
+
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.message || "สร้างไฟล์รายงานไม่สำเร็จ");
+      }
+
+      const url = format === "pdf" ? data.pdfUrl || data.sheetUrl : data.sheetUrl;
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+      setMessage(data.fileName ? `สร้างไฟล์ ${data.fileName} สำเร็จ` : "สร้างไฟล์รายงานสำเร็จ");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "สร้างไฟล์รายงานไม่สำเร็จ");
+    } finally {
+      setExporting("");
+    }
   }
 
   return (
@@ -698,6 +763,15 @@ export default function StudentDailyReportPage() {
               </div>
               <span>{monthlyLoading ? "กำลังโหลด..." : `${activeMonthlyReport?.rows.length ?? 0} คน`}</span>
             </div>
+            <div className={styles.monthTemplateHeader}>
+              <img
+                src="https://drive.google.com/uc?export=view&id=1vxcGKLir_wVM0XelzgQbeR_2BXVTflui"
+                alt=""
+              />
+              <strong>แบบบันทึกการมาเรียนของนักเรียน</strong>
+              <span>ชั้น {activeTab} / โรงเรียนวัดไผ่มุ้ง</span>
+              <span>เดือน {formatThaiMonth(selectedMonth)}</span>
+            </div>
             <div className={styles.monthLegend}>
               <span>✓ มา</span>
               <span>ส สาย</span>
@@ -722,18 +796,29 @@ export default function StudentDailyReportPage() {
                     <tr><td colSpan={34}>กำลังโหลดข้อมูลรายเดือน...</td></tr>
                   ) : !activeMonthlyReport || activeMonthlyReport.rows.length === 0 ? (
                     <tr><td colSpan={34}>ยังไม่มีรายชื่อนักเรียนในชั้นนี้</td></tr>
-                  ) : activeMonthlyReport.rows.map((row) => (
-                    <tr key={row.id}>
-                      <td>{row.no}</td>
-                      <td>{row.name}</td>
-                      {activeMonthlyReport.days.map((day) => (
-                        <td key={day} className={row.statuses[day] ? styles.markedDay : ""}>
-                          {row.statuses[day] || ""}
-                        </td>
+                  ) : (
+                    <>
+                      {activeMonthlyReport.rows.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.no}</td>
+                          <td>{row.name}</td>
+                          {activeMonthlyReport.days.map((day) => (
+                            <td key={day} className={row.statuses[day] ? styles.markedDay : ""}>
+                              {row.statuses[day] || ""}
+                            </td>
+                          ))}
+                          <td>{row.presentCount}</td>
+                        </tr>
                       ))}
-                      <td>{row.presentCount}</td>
-                    </tr>
-                  ))}
+                      <tr className={styles.monthTotalRow}>
+                        <td colSpan={2}>รวมทั้งหมด</td>
+                        {activeMonthlyTotals.map((total, index) => (
+                          <td key={activeMonthlyReport.days[index]}>{total}</td>
+                        ))}
+                        <td>{activeMonthlyReport.rows.reduce((sum, row) => sum + row.presentCount, 0)}</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -745,8 +830,12 @@ export default function StudentDailyReportPage() {
         </section>
 
         <footer className={styles.footer}>
-          <button type="button" onClick={exportSheet} disabled={activeTab !== "summary" && !activeMonthlyReport}>Sheet</button>
-          <button type="button" onClick={() => window.print()} disabled={activeTab !== "summary" && !activeMonthlyReport}>PDF</button>
+          <button type="button" onClick={() => void exportReport("sheet")} disabled={!activeMonthlyReport || Boolean(exporting)}>
+            {exporting === "sheet" ? "กำลังสร้าง..." : "Sheet"}
+          </button>
+          <button type="button" onClick={() => void exportReport("pdf")} disabled={!activeMonthlyReport || Boolean(exporting)}>
+            {exporting === "pdf" ? "กำลังสร้าง..." : "PDF"}
+          </button>
           <button type="button" onClick={() => void loadReport()} disabled={loading}>รีเฟรชข้อมูล</button>
         </footer>
       </section>
