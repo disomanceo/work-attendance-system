@@ -186,10 +186,10 @@ function monthWeekRanges(value: string) {
   const days = daysInMonth(value);
   const lastDay = days[days.length - 1] ?? 31;
   return [
-    { start: 1, end: Math.min(7, lastDay) },
-    { start: 8, end: Math.min(14, lastDay) },
-    { start: 15, end: Math.min(21, lastDay) },
-    { start: 22, end: lastDay },
+    { start: 1, end: Math.min(9, lastDay) },
+    { start: 10, end: Math.min(18, lastDay) },
+    { start: 19, end: Math.min(27, lastDay) },
+    { start: 28, end: lastDay },
   ].filter((range) => range.start <= range.end);
 }
 
@@ -989,6 +989,21 @@ export default function StudentDailyReportPage() {
                 </div>
                 <div className={styles.mobileMonthTableWrap}>
                   <table className={styles.mobileMonthTable}>
+                    <colgroup>
+                      <col className={styles.mobileMonthNoCol} />
+                      <col className={styles.mobileMonthNameCol} />
+                      {activeMobileDays.map((day) => (
+                        <col key={`mobile-day-${day}`} className={styles.mobileMonthDayCol} />
+                      ))}
+                      {showMobileSummaryColumns ? (
+                        <>
+                          <col className={styles.mobileMonthSummaryCol} />
+                          <col className={styles.mobileMonthSummaryCol} />
+                          <col className={styles.mobileMonthSummaryCol} />
+                          <col className={styles.mobileMonthSummaryCol} />
+                        </>
+                      ) : null}
+                    </colgroup>
                     <thead>
                       <tr>
                         <th rowSpan={2}>ที่</th>
@@ -1064,11 +1079,11 @@ export default function StudentDailyReportPage() {
               </>
             ) : null}
             <div className={styles.monthSignatureGrid}>
-              <div>
+              <div className={styles.monthSignatureAdviser}>
                 <p>ลงชื่อ........................................ครูประจำชั้น</p>
                 <strong>({activeMonthlyReport?.adviserNames.join(", ") || "........................................"})</strong>
               </div>
-              <div>
+              <div className={styles.monthSignatureDirector}>
                 <p>ลงชื่อ........................................ผู้อำนวยการโรงเรียน</p>
                 <strong>(นายสุธน พุทธรัตน์)</strong>
               </div>
@@ -1088,21 +1103,12 @@ export default function StudentDailyReportPage() {
             {exportResult.sheetDownloadUrl ? (
               <a href={exportResult.sheetDownloadUrl} target="_blank" rel="noreferrer">ดาวน์โหลด Sheet</a>
             ) : null}
-            {exportResult.pdfUrl ? (
-              <a href={exportResult.pdfUrl} target="_blank" rel="noreferrer">เปิด PDF</a>
-            ) : null}
-            {exportResult.pdfDownloadUrl ? (
-              <a href={exportResult.pdfDownloadUrl} target="_blank" rel="noreferrer">ดาวน์โหลด PDF</a>
-            ) : null}
           </section>
         ) : null}
 
         <footer className={styles.footer}>
           <button type="button" onClick={() => void exportReport("sheet")} disabled={!activeMonthlyReport || Boolean(exporting)}>
             {exporting === "sheet" ? "กำลังสร้าง..." : "Sheet"}
-          </button>
-          <button type="button" onClick={() => void exportReport("pdf")} disabled={!activeMonthlyReport || Boolean(exporting)}>
-            {exporting === "pdf" ? "กำลังสร้าง..." : "PDF"}
           </button>
           <button type="button" onClick={() => void loadReport()} disabled={loading}>รีเฟรชข้อมูล</button>
         </footer>

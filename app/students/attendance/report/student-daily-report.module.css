@@ -667,6 +667,14 @@
   font-weight: 900;
 }
 
+.monthSignatureAdviser strong {
+  transform: translateX(-4ch);
+}
+
+.monthSignatureDirector strong {
+  transform: translateX(-7ch);
+}
+
 .summaryScroller {
   margin-top: 10px;
 }
@@ -1447,6 +1455,22 @@
     table-layout: fixed;
   }
 
+  .mobileMonthNoCol {
+    width: 20px;
+  }
+
+  .mobileMonthNameCol {
+    width: 112px;
+  }
+
+  .mobileMonthDayCol {
+    width: auto;
+  }
+
+  .mobileMonthSummaryCol {
+    width: 26px;
+  }
+
   .mobileMonthTable th,
   .mobileMonthTable td {
     height: 30px;
@@ -1468,12 +1492,12 @@
 
   .mobileMonthTable th:first-child,
   .mobileMonthTable td:first-child {
-    width: 20px;
+    width: auto;
   }
 
   .mobileMonthTable th:nth-child(2),
   .mobileMonthTable td:nth-child(2) {
-    width: 112px;
+    width: auto;
     text-align: left;
   }
 

@@ -13,6 +13,13 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance web/mobile UI follow-up on 2026-07-15:
+  - [x] Removed the PDF button from the student attendance class report footer.
+  - [x] Removed generated PDF links from the export result area.
+  - [x] Shifted the adviser name left by `4ch` and director name left by `7ch` under the signature lines.
+  - [x] Changed mobile ranges to `1-9`, `10-18`, `19-27`, and `28-end`.
+  - [x] Added mobile table column sizing so date columns share the remaining width equally.
+
 - Student attendance signature/mobile table follow-up on 2026-07-15:
   - [x] Moved generated adviser/director names into the lower parenthesis row only.
   - [x] Kept the upper signature line blank for printed signing.
