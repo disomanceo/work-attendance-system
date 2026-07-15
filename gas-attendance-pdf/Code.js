@@ -102,6 +102,11 @@ function doPost(e) {
       String(e?.postData?.contents || "{}")
     );
 
+    if (payload.action === "setupStudentAttendanceReportSecret") {
+      verifySecretValue_(payload.dailySecret);
+      return jsonOutput_(setupStudentAttendanceReportSecret_(payload.studentSecret));
+    }
+
     if (payload.action === "studentAttendanceMonthlyReport") {
       verifyStudentAttendanceReportSecret_(payload.secret);
       return jsonOutput_(createStudentAttendanceMonthlyReport_(payload));
@@ -162,6 +167,26 @@ function verifyStudentAttendanceReportSecret_(secret) {
 function authorizeStudentAttendanceSpreadsheetScope() {
   SpreadsheetApp.openById("1PzumW4--bM2HJyA-PEoYaFeGpBFPm3YkzpxaMCOSHlo").getName();
   return "OK";
+}
+
+function setupStudentAttendanceReportSecret_(secret) {
+  const trimmed = String(secret || "").trim();
+
+  if (!trimmed) {
+    throw new Error("Missing STUDENT_ATTENDANCE_REPORT_SECRET");
+  }
+
+  PropertiesService
+    .getScriptProperties()
+    .setProperty(
+      STUDENT_ATTENDANCE_REPORT_CONFIG.SECRET_PROPERTY,
+      trimmed
+    );
+
+  return {
+    ok: true,
+    message: "ตั้งค่า STUDENT_ATTENDANCE_REPORT_SECRET เรียบร้อยแล้ว",
+  };
 }
 
 function createStudentAttendanceMonthlyReport_(payload) {

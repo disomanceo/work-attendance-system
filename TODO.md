@@ -32,6 +32,7 @@ Updated: 2026-07-15
   - [x] Added mobile-friendly student cards for monthly attendance instead of forcing the 38-column table onto small screens.
   - [x] Passed adviser/director signature file IDs to the Sheet/PDF export payload for Drive image insertion.
   - [x] Fixed the generated Sheet/PDF merge-range failure by clearing overlapping merged ranges before rewriting header/table merged cells.
+  - [x] Added a guarded GAS setup action to restore `STUDENT_ATTENDANCE_REPORT_SECRET` when a new Apps Script deployment has no student-report script property.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.
