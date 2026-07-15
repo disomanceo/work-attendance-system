@@ -630,6 +630,11 @@ Release status:
 - [x] Ran `npm run build` successfully.
 - [x] Fixed unchecked student attendance matching to use `class_level` like the daily student report and cron reminder, avoiding false unchecked classes from `class_room = "-"` vs empty saved attendance rooms.
 - [x] Ran `npm run build` successfully after the unchecked-class matching fix.
+- [x] Changed Telegram work attendance summary ordering to use check-in time first, with people who have not checked in listed after checked-in staff.
+- [x] Updated the director manual Telegram overview to send two messages in order: work attendance summary first, then the student attendance report.
+- [x] Changed the student Telegram report to show each active class level with the present count or `ยังไม่ได้เช็คชื่อ`.
+- [x] Moved the director/admin `ส่งสรุป` button to the profile card top-right on desktop while keeping it right-aligned under the position on mobile.
+- [x] Ran `npm run build` successfully after the manual Telegram overview and ordering updates.
 
 Follow-up checks:
 

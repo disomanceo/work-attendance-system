@@ -17,6 +17,20 @@ type ProfileRow = {
   account_status: string | null;
 };
 
+type StudentAttendanceStatus =
+  | "present"
+  | "late"
+  | "absent"
+  | "sick"
+  | "leave"
+  | "personal";
+
+type StudentClassReport = {
+  classLevel: string;
+  checked: boolean;
+  presentCount: number;
+};
+
 function adminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -108,7 +122,37 @@ function classLevelOf(row: { class_level?: unknown }) {
   return String(row.class_level ?? "").trim();
 }
 
-async function loadUncheckedClassLabels(
+function normalizeStudentStatus(value: unknown): "present" | "leave" | "absent" {
+  if (value === "absent") return "absent";
+  if (value === "leave" || value === "sick" || value === "personal") {
+    return "leave";
+  }
+  return "present";
+}
+
+function formatStudentReportDate(value: string) {
+  const date = new Date(`${value}T12:00:00+07:00`);
+  const weekday = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    weekday: "long",
+  }).format(date);
+  const day = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+  }).format(date);
+  const month = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    month: "short",
+  }).format(date);
+  const year = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+  }).format(date);
+
+  return `${weekday}ที่ ${day} ${month} ${year}`;
+}
+
+async function loadStudentClassReports(
   admin: ReturnType<typeof adminClient>,
   date: string,
 ) {
@@ -119,7 +163,7 @@ async function loadUncheckedClassLabels(
       .eq("status", "active"),
     admin
       .from("student_attendance")
-      .select("class_level")
+      .select("class_level, status")
       .eq("attendance_date", date),
   ]);
 
@@ -131,59 +175,142 @@ async function loadUncheckedClassLabels(
     );
   }
 
-  const activeClassLevels = new Set(
-    (studentsResult.data ?? [])
-      .map((row) => classLevelOf(row))
-      .filter(Boolean),
-  );
-  const checkedClassLevels = new Set(
-    (recordsResult.data ?? [])
-      .map((row) => classLevelOf(row))
-      .filter(Boolean),
-  );
+  const activeTotals = new Map<string, number>();
 
-  const configuredMissing = (STUDENT_CLASS_LEVELS as readonly string[]).filter(
+  for (const row of studentsResult.data ?? []) {
+    const classLevel = classLevelOf(row);
+
+    if (!classLevel) continue;
+
+    activeTotals.set(classLevel, (activeTotals.get(classLevel) ?? 0) + 1);
+  }
+
+  const recordTotals = new Map<string, number>();
+  const presentTotals = new Map<string, number>();
+
+  for (const row of recordsResult.data ?? []) {
+    const classLevel = classLevelOf(row);
+
+    if (!classLevel) continue;
+
+    recordTotals.set(classLevel, (recordTotals.get(classLevel) ?? 0) + 1);
+
+    if (
+      normalizeStudentStatus(
+        (row as { status?: StudentAttendanceStatus | string | null }).status,
+      ) === "present"
+    ) {
+      presentTotals.set(classLevel, (presentTotals.get(classLevel) ?? 0) + 1);
+    }
+  }
+
+  const configuredLevels = (STUDENT_CLASS_LEVELS as readonly string[]).filter(
     (classLevel) =>
-      activeClassLevels.has(classLevel) && !checkedClassLevels.has(classLevel),
+      activeTotals.has(classLevel) || recordTotals.has(classLevel),
   );
-  const extraMissing = Array.from(activeClassLevels)
+  const extraLevels = Array.from(activeTotals.keys())
     .filter(
       (classLevel) =>
-        !STUDENT_CLASS_LEVELS.some((level) => level === classLevel) &&
-        !checkedClassLevels.has(classLevel),
+        !STUDENT_CLASS_LEVELS.some((level) => level === classLevel),
     )
     .sort((left, right) => left.localeCompare(right, "th"));
 
-  return configuredMissing
-    .concat(extraMissing)
-    .sort((left, right) => {
-      const leftIndex = STUDENT_CLASS_LEVELS.findIndex(
-        (level) => level === left,
-      );
-      const rightIndex = STUDENT_CLASS_LEVELS.findIndex(
-        (level) => level === right,
-      );
-      return (
-        (leftIndex === -1 ? 999 : leftIndex) -
-          (rightIndex === -1 ? 999 : rightIndex) ||
-        left.localeCompare(right, "th")
-      );
-    })
-    .filter(Boolean);
+  return configuredLevels.concat(extraLevels).map((classLevel) => ({
+    classLevel,
+    checked: (recordTotals.get(classLevel) ?? 0) > 0,
+    presentCount: presentTotals.get(classLevel) ?? 0,
+  }));
 }
 
-function buildStudentSection(labels: string[]) {
-  if (labels.length === 0) {
-    return [
-      "<b>ห้องที่ยังไม่ได้เช็คชื่อนักเรียน</b>",
-      "เช็คชื่อครบทุกห้องแล้ว",
-    ].join("\n");
-  }
+function buildStudentReportMessage(date: string, reports: StudentClassReport[]) {
+  const rows =
+    reports.length > 0
+      ? reports.map((report, index) => {
+          const status = report.checked
+            ? `${report.presentCount.toLocaleString("th-TH")} คน`
+            : "ยังไม่ได้เช็คชื่อ";
+
+          return `${index + 1}. ${escapeHtml(report.classLevel)}    ${status}`;
+        })
+      : ["ไม่พบข้อมูลชั้นเรียน"];
 
   return [
-    "<b>ห้องที่ยังไม่ได้เช็คชื่อนักเรียน</b>",
-    ...labels.map((label, index) => `${index + 1}. ${escapeHtml(label)}`),
+    "<b>รายงานการมาเรียนของนักเรียน</b>",
+    escapeHtml(formatStudentReportDate(date)),
+    ...rows,
   ].join("\n");
+}
+
+function resultCount(results: PromiseSettledResult<unknown>[]) {
+  return results.filter((result) => result.status === "fulfilled").length;
+}
+
+function failedCount(results: PromiseSettledResult<unknown>[]) {
+  return results.length - resultCount(results);
+}
+
+function uncheckedClassLevels(reports: StudentClassReport[]) {
+  return reports
+    .filter((report) => !report.checked)
+    .map((report) => report.classLevel);
+}
+
+function logRejectedTelegramResults(
+  label: string,
+  chatIds: string[],
+  results: PromiseSettledResult<unknown>[],
+) {
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(
+        `Director overview ${label} failed for chat ${chatIds[index]}:`,
+        result.reason,
+      );
+    }
+  });
+}
+
+async function sendDirectorOverviewMessages(input: {
+  chatIds: string[];
+  attendanceSummary: string;
+  studentReport: string;
+  reportUrl: string;
+}) {
+  const attendanceResults = await Promise.allSettled(
+    input.chatIds.map((chatId) =>
+      sendTelegramMessage(chatId, input.attendanceSummary),
+    ),
+  );
+
+  logRejectedTelegramResults(
+    "attendance summary",
+    input.chatIds,
+    attendanceResults,
+  );
+
+  const studentResults = await Promise.allSettled(
+    input.chatIds.map((chatId) =>
+      sendTelegramMessage(chatId, input.studentReport, {
+        buttons: [
+          [
+            {
+              text: "เปิดรายงานนักเรียน",
+              url: input.reportUrl,
+            },
+          ],
+        ],
+      }),
+    ),
+  );
+
+  logRejectedTelegramResults("student report", input.chatIds, studentResults);
+
+  return {
+    attendanceSentCount: resultCount(attendanceResults),
+    attendanceFailedCount: failedCount(attendanceResults),
+    studentSentCount: resultCount(studentResults),
+    studentFailedCount: failedCount(studentResults),
+  };
 }
 
 async function getLastSent(admin: ReturnType<typeof adminClient>) {
@@ -282,38 +409,25 @@ export async function POST(request: Request) {
 
     const date = todayBangkok();
     const requestOrigin = new URL(request.url).origin;
-    const [attendanceSummary, uncheckedClasses] = await Promise.all([
+    const [attendanceSummary, studentReports] = await Promise.all([
       buildSummaryMessage(requestOrigin, date),
-      loadUncheckedClassLabels(auth.admin, date),
+      loadStudentClassReports(auth.admin, date),
     ]);
-    const message = [
+    const studentReport = buildStudentReportMessage(date, studentReports);
+    const sendResult = await sendDirectorOverviewMessages({
+      chatIds,
       attendanceSummary,
-      "",
-      buildStudentSection(uncheckedClasses),
-    ].join("\n");
-    const results = await Promise.allSettled(
-      chatIds.map((chatId) =>
-        sendTelegramMessage(chatId, message, {
-          buttons: [
-            [
-              {
-                text: "เปิดรายงานนักเรียน",
-                url: `${requestOrigin}/students/attendance/report`,
-              },
-            ],
-          ],
-        }),
-      ),
-    );
-    const sentCount = results.filter((result) => result.status === "fulfilled")
-      .length;
-    const failedCount = results.length - sentCount;
+      studentReport,
+      reportUrl: `${requestOrigin}/students/attendance/report`,
+    });
     const result = {
-      sent: sentCount > 0,
-      sentCount,
-      failedCount,
+      sent:
+        sendResult.attendanceSentCount > 0 &&
+        sendResult.studentSentCount > 0,
       totalChatIds: chatIds.length,
-      uncheckedClasses,
+      ...sendResult,
+      uncheckedClasses: uncheckedClassLevels(studentReports),
+      studentReports,
     };
     const bucket = Math.floor(now / COOLDOWN_MS);
 

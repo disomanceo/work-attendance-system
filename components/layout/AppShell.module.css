@@ -95,6 +95,7 @@
 }
 
 .userCard {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -133,6 +134,7 @@
 .userInfo {
   min-width: 0;
   flex: 1 1 auto;
+  padding-right: 72px;
 }
 
 .userInfo strong,
@@ -163,10 +165,13 @@
 }
 
 .overviewButton {
+  position: absolute;
+  top: 12px;
+  right: 12px;
   display: block;
   width: fit-content;
   min-height: 24px;
-  margin: 6px 0 0 auto;
+  margin: 0;
   padding: 3px 8px;
   border: 1px solid rgba(125, 211, 252, 0.34);
   border-radius: 8px;
@@ -356,6 +361,15 @@
 
   .sidebarScrollArea {
     padding-right: 2px;
+  }
+
+  .userInfo {
+    padding-right: 0;
+  }
+
+  .overviewButton {
+    position: static;
+    margin: 6px 0 0 auto;
   }
 
   .logoutButton {

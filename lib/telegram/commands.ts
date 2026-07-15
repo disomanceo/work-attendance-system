@@ -313,9 +313,24 @@ async function fetchDailyAttendance(
     officialDuties.map((duty) => duty.user_id)
   );
 
-  const sortedProfiles = [...profiles].sort((a, b) =>
-    a.full_name.localeCompare(b.full_name, "th")
-  );
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    const aRecord = attendanceByUser.get(a.id);
+    const bRecord = attendanceByUser.get(b.id);
+    const aCheckIn = aRecord?.check_in_at || "";
+    const bCheckIn = bRecord?.check_in_at || "";
+
+    if (aCheckIn && bCheckIn) {
+      return (
+        aCheckIn.localeCompare(bCheckIn) ||
+        a.full_name.localeCompare(b.full_name, "th")
+      );
+    }
+
+    if (aCheckIn) return -1;
+    if (bCheckIn) return 1;
+
+    return a.full_name.localeCompare(b.full_name, "th");
+  });
 
   const people = sortedProfiles.map((profile) => {
     const record = attendanceByUser.get(profile.id);
