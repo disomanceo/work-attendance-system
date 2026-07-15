@@ -142,11 +142,10 @@ const STUDENT_ATTENDANCE_REPORT_CONFIG = {
   SECRET_PROPERTY: "STUDENT_ATTENDANCE_REPORT_SECRET",
   DEFAULT_DIRECTOR_NAME: "นายสุธน พุทธรัตน์",
   DEFAULT_SCHOOL_NAME: "โรงเรียนวัดไผ่มุ้ง",
-  HEADER_DATE_START_COLUMN: 3,
-  STUDENT_START_ROW: 9,
+  HEADER_DAY_ROW: 5,
+  HEADER_DAY_START_COLUMN: 3,
+  STUDENT_START_ROW: 6,
   TEMPLATE_STUDENT_ROWS: 12,
-  SIGNATURE_LINE_ROW: 22,
-  SIGNATURE_NAME_ROW: 23,
   TOTAL_COLUMN: 34,
 };
 
@@ -249,10 +248,13 @@ function findStudentAttendanceSheet_(ss, sheetId) {
 function fillStudentAttendanceHeader_(sheet, payload, thaiMonth) {
   const classLevel = String(payload.classLevel || "");
   const academicYear = String(payload.academicYear || "");
+  const adviserName = String(payload.adviserName || "").trim();
+  const directorName = String(payload.directorName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_DIRECTOR_NAME).trim();
 
-  sheet.getRange("A2:AH2").clearContent();
-  setStudentAttendanceTemplateValue_(sheet, 3, 1, `ชั้น ${classLevel}    ปีการศึกษา ${academicYear}`);
-  setStudentAttendanceTemplateValue_(sheet, 4, 1, `เดือน ${thaiMonth}`);
+  replaceStudentAttendancePlaceholder_(sheet, "ch", classLevel);
+  replaceStudentAttendancePlaceholder_(sheet, "ps", academicYear);
+  replaceStudentAttendancePlaceholder_(sheet, "tea", adviserName || "........................................");
+  replaceStudentAttendancePlaceholder_(sheet, "ceo", directorName);
 }
 
 function fillStudentAttendanceTable_(sheet, payload) {
@@ -265,7 +267,14 @@ function fillStudentAttendanceTable_(sheet, payload) {
   tableRange.clearContent();
 
   const dateValues = Array.from({ length: 31 }, (_, index) => days.includes(index + 1) ? index + 1 : "");
-  sheet.getRange(8, STUDENT_ATTENDANCE_REPORT_CONFIG.HEADER_DATE_START_COLUMN, 1, 31).setValues([dateValues]);
+  sheet
+    .getRange(
+      STUDENT_ATTENDANCE_REPORT_CONFIG.HEADER_DAY_ROW,
+      STUDENT_ATTENDANCE_REPORT_CONFIG.HEADER_DAY_START_COLUMN,
+      1,
+      31
+    )
+    .setValues([dateValues]);
 
   const values = Array.from({ length: rowCount }, (_, index) => {
     const row = rows[index] || {};
@@ -280,28 +289,13 @@ function fillStudentAttendanceTable_(sheet, payload) {
   });
 
   tableRange.setValues(values);
-  fillStudentAttendanceSignatures_(sheet, payload);
 }
 
-function fillStudentAttendanceSignatures_(sheet, payload) {
-  const signatureNameRow = STUDENT_ATTENDANCE_REPORT_CONFIG.SIGNATURE_NAME_ROW;
-  const adviserName = String(payload.adviserName || "").trim();
-  const directorName = String(payload.directorName || STUDENT_ATTENDANCE_REPORT_CONFIG.DEFAULT_DIRECTOR_NAME).trim();
-
-  setStudentAttendanceTemplateValue_(sheet, signatureNameRow, 3, `(${adviserName || "........................................"})`);
-  setStudentAttendanceTemplateValue_(sheet, signatureNameRow, 23, `(${directorName})`);
-}
-
-function setStudentAttendanceTemplateValue_(sheet, row, column, value) {
-  const cell = sheet.getRange(row, column);
-  const mergedRanges = cell.getMergedRanges();
-
-  if (mergedRanges.length > 0) {
-    mergedRanges[0].setValue(value);
-    return;
-  }
-
-  cell.setValue(value);
+function replaceStudentAttendancePlaceholder_(sheet, placeholder, value) {
+  sheet
+    .createTextFinder(placeholder)
+    .matchCase(true)
+    .replaceAllWith(String(value || ""));
 }
 
 function exportStudentAttendanceSheetPdf_(spreadsheetId, sheetId, fileName) {

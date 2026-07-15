@@ -13,6 +13,21 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance mobile signature/date follow-up on 2026-07-15:
+  - [x] Confirmed the exported date numbers start at `C5` via `HEADER_DAY_ROW = 5` and `HEADER_DAY_START_COLUMN = 3`.
+  - [x] Renamed the day-start column constant to make the `C5` template position explicit.
+  - [x] Reduced mobile signature text size and weight.
+  - [x] Forced adviser/director signature names to stay on one line with ellipsis on mobile to avoid overlap.
+  - [x] Run `npm run build` after this mobile signature/date follow-up.
+
+- Student attendance template placeholder/mobile UI follow-up on 2026-07-15:
+  - [x] Changed the Sheet export to replace template placeholders `ch`, `ps`, `tea`, and `ceo` directly.
+  - [x] Updated the Sheet fill positions for the new template: day numbers on row 5 and student rows from row 6.
+  - [x] Removed manual signature-cell writes because adviser/director names now come from `tea` and `ceo` placeholders.
+  - [x] Lightened the mobile monthly report typography and narrowed the mobile month table for better balance.
+  - [x] Hid the duplicate template header on mobile.
+  - [x] Run `npm run build` after this placeholder/mobile UI follow-up.
+
 - Student attendance monthly Sheet/PDF follow-up on 2026-07-15:
   - [x] Wrote the month/year value to template row 4 and kept row 2 blank.
   - [x] Wrote adviser/director names through existing merged template cells so the director name appears in the right signature area.
