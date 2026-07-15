@@ -628,6 +628,8 @@ Release status:
 - [x] Added a 10-minute cooldown using notification logs to avoid repeated manual Telegram spam.
 - [x] The button uses the current session token and shows compact success/error/cooldown status text under the button.
 - [x] Ran `npm run build` successfully.
+- [x] Fixed unchecked student attendance matching to use `class_level` like the daily student report and cron reminder, avoiding false unchecked classes from `class_room = "-"` vs empty saved attendance rooms.
+- [x] Ran `npm run build` successfully after the unchecked-class matching fix.
 
 Follow-up checks:
 

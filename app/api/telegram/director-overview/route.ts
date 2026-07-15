@@ -104,16 +104,8 @@ async function requireDirector(request: Request) {
   return { ok: true as const, admin, profile: row };
 }
 
-function classKey(row: { class_level?: unknown; class_room?: unknown }) {
-  const level = String(row.class_level ?? "").trim();
-  const room = String(row.class_room ?? "").trim();
-  return `${level}\u0000${room}`;
-}
-
-function classLabel(key: string) {
-  const [level, room] = key.split("\u0000");
-  if (!level) return "";
-  return room ? `${level}/${room}` : level;
+function classLevelOf(row: { class_level?: unknown }) {
+  return String(row.class_level ?? "").trim();
 }
 
 async function loadUncheckedClassLabels(
@@ -123,11 +115,11 @@ async function loadUncheckedClassLabels(
   const [studentsResult, recordsResult] = await Promise.all([
     admin
       .from("students")
-      .select("class_level, class_room")
+      .select("class_level")
       .eq("status", "active"),
     admin
       .from("student_attendance")
-      .select("class_level, class_room")
+      .select("class_level")
       .eq("attendance_date", date),
   ]);
 
@@ -139,35 +131,44 @@ async function loadUncheckedClassLabels(
     );
   }
 
-  const activeKeys = new Set(
+  const activeClassLevels = new Set(
     (studentsResult.data ?? [])
-      .map((row) => classKey(row))
-      .filter((key) => key.split("\u0000")[0]),
+      .map((row) => classLevelOf(row))
+      .filter(Boolean),
   );
-  const checkedKeys = new Set(
+  const checkedClassLevels = new Set(
     (recordsResult.data ?? [])
-      .map((row) => classKey(row))
-      .filter((key) => key.split("\u0000")[0]),
+      .map((row) => classLevelOf(row))
+      .filter(Boolean),
   );
 
-  return Array.from(activeKeys)
-    .filter((key) => !checkedKeys.has(key))
+  const configuredMissing = (STUDENT_CLASS_LEVELS as readonly string[]).filter(
+    (classLevel) =>
+      activeClassLevels.has(classLevel) && !checkedClassLevels.has(classLevel),
+  );
+  const extraMissing = Array.from(activeClassLevels)
+    .filter(
+      (classLevel) =>
+        !STUDENT_CLASS_LEVELS.some((level) => level === classLevel) &&
+        !checkedClassLevels.has(classLevel),
+    )
+    .sort((left, right) => left.localeCompare(right, "th"));
+
+  return configuredMissing
+    .concat(extraMissing)
     .sort((left, right) => {
-      const leftLevel = left.split("\u0000")[0];
-      const rightLevel = right.split("\u0000")[0];
       const leftIndex = STUDENT_CLASS_LEVELS.findIndex(
-        (level) => level === leftLevel,
+        (level) => level === left,
       );
       const rightIndex = STUDENT_CLASS_LEVELS.findIndex(
-        (level) => level === rightLevel,
+        (level) => level === right,
       );
       return (
         (leftIndex === -1 ? 999 : leftIndex) -
           (rightIndex === -1 ? 999 : rightIndex) ||
-        classLabel(left).localeCompare(classLabel(right), "th")
+        left.localeCompare(right, "th")
       );
     })
-    .map(classLabel)
     .filter(Boolean);
 }
 
