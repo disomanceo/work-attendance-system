@@ -18,6 +18,12 @@ Updated: 2026-07-15
   - [x] Replaced the print button label with `PDF`.
   - [x] Kept the existing CSV sheet export behavior and browser print/PDF behavior.
   - [x] Ran `npm run build` after the Sheet/PDF button update.
+- Student daily attendance class-tab report update on 2026-07-15:
+  - [x] Added class tabs under the green daily report header from `อนุบาล 2` through `ป.6`.
+  - [x] Added a read-only per-class attendance report with student names and status counts.
+  - [x] Changed the footer `Sheet` export to use the currently selected class instead of the whole-school summary.
+  - [x] Changed the footer `PDF` print view to focus on the selected class report.
+  - [x] Ran `npm run build` after the class-tab report update.
 
 - Latest database rows imported at `2026-07-13T04:15-04:16Z` have no central page metadata:
   - `legacy_payload.smart_area_page` is empty.

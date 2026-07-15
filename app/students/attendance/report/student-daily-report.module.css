@@ -233,6 +233,186 @@
   font-weight: 800;
 }
 
+.classTabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+}
+
+.classTabs button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  border: 1px solid #d1fae5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #047857;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.classTabs button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.classTabs .activeClassTab {
+  border-color: #047857;
+  background: #047857;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(4, 120, 87, 0.18);
+}
+
+.classDetailCard {
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid #e8edf5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055);
+}
+
+.classDetailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5ebf3;
+  background: #f8fbff;
+}
+
+.classDetailHeader h2,
+.classDetailHeader p {
+  margin: 0;
+}
+
+.classDetailHeader h2 {
+  color: #0b1736;
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.classDetailHeader p {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.classDetailStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(58px, 1fr));
+  gap: 8px;
+  min-width: 300px;
+}
+
+.classDetailStats span {
+  display: grid;
+  min-height: 58px;
+  place-items: center;
+  gap: 2px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0b1736;
+}
+
+.classDetailStats strong {
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.classDetailStats small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.classStudentList {
+  margin: 12px 14px 14px;
+  overflow: hidden;
+  border: 1px solid #e5ebf3;
+  border-radius: 8px;
+}
+
+.classStudentHead,
+.classStudentRow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 120px;
+  align-items: center;
+}
+
+.classStudentHead {
+  background: #f8fbff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.classStudentHead span,
+.classStudentRow span,
+.classStudentRow strong,
+.classStudentRow em {
+  min-height: 38px;
+  border-right: 1px solid #e5ebf3;
+  border-bottom: 1px solid #e5ebf3;
+  padding: 9px 10px;
+}
+
+.classStudentHead span,
+.classStudentRow span,
+.classStudentRow em {
+  text-align: center;
+}
+
+.classStudentRow strong {
+  color: #0b1736;
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.classStudentRow em {
+  display: block;
+  align-self: stretch;
+  color: #64748b;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.classStudentRow .present {
+  color: #15803d;
+}
+
+.classStudentRow .leave {
+  color: #2563eb;
+}
+
+.classStudentRow .absent {
+  color: #dc2626;
+}
+
+.classStudentRow .unchecked {
+  color: #94a3b8;
+}
+
+.classStudentState {
+  padding: 16px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .summaryScroller {
   margin-top: 10px;
 }
@@ -706,6 +886,91 @@
     margin-top: 4px;
   }
 
+  .classTabs {
+    gap: 4px;
+    margin-top: 5px;
+    padding-bottom: 2px;
+  }
+
+  .classTabs button {
+    min-height: 28px;
+    border-radius: 7px;
+    padding: 0 8px;
+    font-size: 9.5px;
+  }
+
+  .classDetailCard {
+    margin-top: 4px;
+    border-radius: 10px;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.045);
+  }
+
+  .classDetailHeader {
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .classDetailHeader h2 {
+    font-size: 15.5px;
+  }
+
+  .classDetailHeader p {
+    font-size: 10.5px;
+  }
+
+  .classDetailStats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .classDetailStats span {
+    min-height: 42px;
+    border-radius: 8px;
+  }
+
+  .classDetailStats strong {
+    font-size: 14px;
+  }
+
+  .classDetailStats small {
+    font-size: 8.5px;
+  }
+
+  .classStudentList {
+    margin: 0 0 6px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .classStudentHead,
+  .classStudentRow {
+    grid-template-columns: 30px minmax(0, 1fr) 58px;
+  }
+
+  .classStudentHead {
+    font-size: 9px;
+  }
+
+  .classStudentHead span,
+  .classStudentRow span,
+  .classStudentRow strong,
+  .classStudentRow em {
+    min-height: 28px;
+    padding: 5px 3px;
+  }
+
+  .classStudentRow strong {
+    font-size: 10px;
+    font-weight: 650;
+  }
+
+  .classStudentRow em {
+    font-size: 9px;
+  }
+
   .summaryGrid {
     gap: 4px;
   }
@@ -950,6 +1215,10 @@
 @media print {
   .dateFilter,
   .dutyBox,
+  .classTabs,
+  .summaryScroller,
+  .reportCard,
+  .reportMeta,
   .footer {
     display: none;
   }
@@ -960,5 +1229,14 @@
 
   .shell {
     padding: 0;
+  }
+
+  .header {
+    box-shadow: none;
+  }
+
+  .classDetailCard {
+    border: 0;
+    box-shadow: none;
   }
 }

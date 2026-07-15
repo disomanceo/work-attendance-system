@@ -10,6 +10,11 @@ type AttendanceStatus = "present" | "late" | "leave" | "sick" | "personal" | "ab
 
 type AttendanceStudent = {
   id: string;
+  no?: number | string | null;
+  code?: string | null;
+  student_code?: string | null;
+  name?: string | null;
+  full_name?: string | null;
   status?: AttendanceStatus | string | null;
 };
 
@@ -50,6 +55,7 @@ type ClassReport = {
   checked: boolean;
   recordedByName: string;
   canRecord: boolean;
+  students: AttendanceStudent[];
 };
 
 const THAI_WEEKDAYS = [
@@ -143,6 +149,21 @@ function normalizeStatus(value: unknown): "present" | "leave" | "absent" {
   return "present";
 }
 
+function statusLabel(value: unknown) {
+  if (value === "absent") return "ขาด";
+  if (value === "leave" || value === "sick" || value === "personal") return "ลา";
+  if (value === "late") return "สาย";
+  return "มา";
+}
+
+function getStudentNo(student: AttendanceStudent, index: number) {
+  return String(student.no ?? index + 1);
+}
+
+function getStudentName(student: AttendanceStudent) {
+  return String(student.name || student.full_name || "ไม่ระบุชื่อ");
+}
+
 function shortTeacherName(value: string) {
   const firstName = value
     .split(",")[0]
@@ -177,12 +198,14 @@ function buildReport(classLevel: string, data: AttendanceResponse): ClassReport 
     checked,
     recordedByName: data.recordedByName ?? "",
     canRecord: Boolean(data.canRecord),
+    students,
   };
 }
 
 export default function StudentDailyReportPage() {
   const supabase = useMemo(() => createClient(), []);
   const [date, setDate] = useState(todayInputValue());
+  const [selectedClassLevel, setSelectedClassLevel] = useState<string>(STUDENT_CLASS_LEVELS[0] ?? "อนุบาล 2");
   const [reports, setReports] = useState<ClassReport[]>([]);
   const [dutyTeacherNames, setDutyTeacherNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,6 +275,13 @@ export default function StudentDailyReportPage() {
     void loadReport();
   }, [loadReport]);
 
+  useEffect(() => {
+    if (reports.length === 0) return;
+    if (!reports.some((report) => report.classLevel === selectedClassLevel)) {
+      setSelectedClassLevel(reports[0].classLevel);
+    }
+  }, [reports, selectedClassLevel]);
+
   const totals = useMemo(() => {
     return reports.reduce(
       (result, report) => ({
@@ -265,6 +295,7 @@ export default function StudentDailyReportPage() {
   }, [reports]);
 
   const totalPresentPercent = percent(totals.present, totals.total);
+  const selectedReport = reports.find((report) => report.classLevel === selectedClassLevel) ?? reports[0];
 
   const summaryCards = [
     {
@@ -298,26 +329,29 @@ export default function StudentDailyReportPage() {
   ] as const;
 
   function exportSheet() {
+    if (!selectedReport) return;
     const rows = [
-      ["ระดับชั้น", "ทั้งหมด", "มาเรียน", "ขาดเรียน", "ลา", "% มาเรียน", "สถานะเช็คชื่อ"],
-      ...reports.map((report) => [
-        report.classLevel,
-        String(report.total),
-        String(report.present),
-        String(report.absent),
-        String(report.leave),
-        formatPercent(percent(report.present, report.total)),
-        report.checked
-          ? `เช็คชื่อแล้ว${report.recordedByName ? ` (${report.recordedByName})` : ""}`
-          : "ยังไม่ได้เช็ค",
+      ["แบบบันทึกการมาเรียนของนักเรียน"],
+      [`ชั้น ${selectedReport.classLevel}`, `วันที่ ${formatThaiFullDate(date)}`],
+      ["โรงเรียนวัดไผ่มุ้ง"],
+      [],
+      ["ที่", "ชื่อ - สกุล", "สถานะ", "หมายเหตุ"],
+      ...selectedReport.students.map((student, index) => [
+        getStudentNo(student, index),
+        getStudentName(student),
+        selectedReport.checked ? statusLabel(student.status) : "ยังไม่ได้เช็คชื่อ",
+        "",
       ]),
+      [],
+      ["รวม", String(selectedReport.total), `มา ${selectedReport.present}`, `ขาด ${selectedReport.absent}`, `ลา ${selectedReport.leave}`],
+      ["ผู้บันทึก", selectedReport.recordedByName || "-"],
     ];
     const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `student-daily-report-sheet-${date}.csv`;
+    link.download = `student-attendance-${selectedReport.classLevel}-${date}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -343,6 +377,62 @@ export default function StudentDailyReportPage() {
         </header>
 
         {message ? <div className={styles.message}>{message}</div> : null}
+
+        <nav className={styles.classTabs} aria-label="เลือกชั้นเรียน">
+          {reports.length === 0 ? STUDENT_CLASS_LEVELS.map((level) => (
+            <button key={level} type="button" disabled>{level}</button>
+          )) : reports.map((report) => (
+            <button
+              key={report.classLevel}
+              type="button"
+              className={report.classLevel === selectedClassLevel ? styles.activeClassTab : ""}
+              onClick={() => setSelectedClassLevel(report.classLevel)}
+            >
+              {report.classLevel}
+            </button>
+          ))}
+        </nav>
+
+        {selectedReport ? (
+          <section className={styles.classDetailCard}>
+            <div className={styles.classDetailHeader}>
+              <div>
+                <h2>รายงานการมาเรียน {selectedReport.classLevel}</h2>
+                <p>{selectedReport.checked ? `เช็คชื่อแล้ว${selectedReport.recordedByName ? ` โดย ${selectedReport.recordedByName}` : ""}` : "ยังไม่ได้เช็คชื่อ"}</p>
+              </div>
+              <div className={styles.classDetailStats}>
+                <span><strong>{selectedReport.total}</strong><small>ทั้งหมด</small></span>
+                <span><strong>{selectedReport.checked ? selectedReport.present : "-"}</strong><small>มา</small></span>
+                <span><strong>{selectedReport.checked ? selectedReport.absent : "-"}</strong><small>ขาด</small></span>
+                <span><strong>{selectedReport.checked ? selectedReport.leave : "-"}</strong><small>ลา</small></span>
+              </div>
+            </div>
+
+            <div className={styles.classStudentList}>
+              <div className={styles.classStudentHead}>
+                <span>ที่</span>
+                <span>ชื่อ - สกุล</span>
+                <span>สถานะ</span>
+              </div>
+              {loading ? (
+                <div className={styles.classStudentState}>กำลังโหลดข้อมูล...</div>
+              ) : selectedReport.students.length === 0 ? (
+                <div className={styles.classStudentState}>ยังไม่มีรายชื่อนักเรียนในชั้นนี้</div>
+              ) : selectedReport.students.map((student, index) => {
+                const normalized = normalizeStatus(student.status);
+                return (
+                  <div key={student.id} className={styles.classStudentRow}>
+                    <span>{getStudentNo(student, index)}</span>
+                    <strong>{getStudentName(student)}</strong>
+                    <em className={selectedReport.checked ? styles[normalized] : styles.unchecked}>
+                      {selectedReport.checked ? statusLabel(student.status) : "ยังไม่ได้เช็ค"}
+                    </em>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         <section className={styles.summaryScroller} aria-label="สรุปภาพรวม">
           <div className={styles.summaryGrid}>
@@ -502,8 +592,8 @@ export default function StudentDailyReportPage() {
         </section>
 
         <footer className={styles.footer}>
-          <button type="button" onClick={exportSheet} disabled={reports.length === 0}>Sheet</button>
-          <button type="button" onClick={() => window.print()}>PDF</button>
+          <button type="button" onClick={exportSheet} disabled={!selectedReport}>Sheet</button>
+          <button type="button" onClick={() => window.print()} disabled={!selectedReport}>PDF</button>
           <button type="button" onClick={() => void loadReport()} disabled={loading}>รีเฟรชข้อมูล</button>
         </footer>
       </section>
