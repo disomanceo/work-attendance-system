@@ -603,3 +603,18 @@ Follow-up checks:
 
 - [ ] On 2026-07-16, confirm the 08:30 Bangkok-time cron sends the attendance Telegram summary before the 09:00 fallback.
 - [ ] Sign and assign a Smart Area document to a Telegram-linked user and confirm the assignee receives a private Telegram message.
+
+## Daily attendance PDF cron environment fix - 2026-07-15
+
+Release status:
+
+- [x] Confirmed Vercel production cron `/api/cron/attendance-daily-pdf` is scheduled at `15 12 * * *` (19:15 Bangkok time).
+- [x] Confirmed the daily PDF cron route requires `CRON_SECRET`, `GAS_DAILY_PDF_API_URL`, `GAS_DAILY_PDF_SECRET`, Supabase URL, and Supabase service role key.
+- [x] Found Vercel Production had `CRON_SECRET` and Supabase env vars, but was missing `GAS_DAILY_PDF_API_URL` and `GAS_DAILY_PDF_SECRET`.
+- [x] Added `GAS_DAILY_PDF_API_URL` and `GAS_DAILY_PDF_SECRET` to Vercel Production without quoted literal wrappers.
+- [x] Redeployed production so `/api/cron/attendance-daily-pdf` can read the new GAS daily PDF env vars.
+
+Follow-up checks:
+
+- [ ] After 19:15 Bangkok time on 2026-07-15, confirm `/api/cron/attendance-daily-pdf` returns success and creates the daily attendance PDF.
+- [ ] Confirm weekend/special-calendar daily PDFs are created when the cron runs and the GAS daily PDF env vars are present.
