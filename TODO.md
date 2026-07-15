@@ -33,6 +33,9 @@ Updated: 2026-07-15
   - [x] Passed adviser/director signature file IDs to the Sheet/PDF export payload for Drive image insertion.
   - [x] Fixed the generated Sheet/PDF merge-range failure by clearing overlapping merged ranges before rewriting header/table merged cells.
   - [x] Added a guarded GAS setup action to restore `STUDENT_ATTENDANCE_REPORT_SECRET` when a new Apps Script deployment has no student-report script property.
+  - [x] Changed printed student attendance exports to use simple paper marks (`✓`, `ข`, `ล`, `-`) instead of colored screen symbols.
+  - [x] Replaced the student attendance PDF export path that required `UrlFetchApp.fetch` with Drive-based PDF export.
+  - [x] Added post-export open/download buttons for generated Sheet/PDF files on the student attendance report page.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.

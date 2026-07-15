@@ -53,7 +53,17 @@ type ExportResponse = {
   message?: string;
   sheetUrl?: string;
   pdfUrl?: string;
+  pdfFileId?: string;
+  spreadsheetId?: string;
   fileName?: string;
+};
+
+type ExportResult = {
+  fileName: string;
+  sheetUrl: string;
+  sheetDownloadUrl: string;
+  pdfUrl: string;
+  pdfDownloadUrl: string;
 };
 
 type ClassReport = {
@@ -157,6 +167,14 @@ function formatThaiFullDate(value: string) {
 function formatThaiMonth(value: string) {
   const [year, month] = value.split("-").map(Number);
   return `${THAI_MONTHS_FULL[(month || 1) - 1]} ${year + 543}`;
+}
+
+function sheetDownloadUrl(spreadsheetId?: string) {
+  return spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx` : "";
+}
+
+function driveDownloadUrl(fileId?: string) {
+  return fileId ? `https://drive.google.com/uc?export=download&id=${fileId}` : "";
 }
 
 function daysInMonth(value: string) {
@@ -292,6 +310,7 @@ export default function StudentDailyReportPage() {
   const [monthlyReports, setMonthlyReports] = useState<Record<string, MonthlyClassReport>>({});
   const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [exporting, setExporting] = useState<"" | "sheet" | "pdf">("");
+  const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [dutyTeacherNames, setDutyTeacherNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -456,6 +475,10 @@ export default function StudentDailyReportPage() {
     void loadMonthlyClassReport(activeTab);
   }, [activeTab, loadMonthlyClassReport]);
 
+  useEffect(() => {
+    setExportResult(null);
+  }, [activeTab, selectedMonth]);
+
   const totals = useMemo(() => {
     return reports.reduce(
       (result, report) => ({
@@ -572,6 +595,7 @@ export default function StudentDailyReportPage() {
 
     setExporting(format);
     setMessage("");
+    setExportResult(null);
 
     try {
       const {
@@ -602,7 +626,16 @@ export default function StudentDailyReportPage() {
         throw new Error(data.message || "สร้างไฟล์รายงานไม่สำเร็จ");
       }
 
-      const url = format === "pdf" ? data.pdfUrl || data.sheetUrl : data.sheetUrl;
+      const nextResult = {
+        fileName: data.fileName || "",
+        sheetUrl: data.sheetUrl || "",
+        sheetDownloadUrl: sheetDownloadUrl(data.spreadsheetId),
+        pdfUrl: data.pdfUrl || "",
+        pdfDownloadUrl: driveDownloadUrl(data.pdfFileId),
+      };
+      setExportResult(nextResult);
+
+      const url = format === "pdf" ? nextResult.pdfUrl || nextResult.sheetUrl : nextResult.sheetUrl;
       if (url) {
         window.open(url, "_blank", "noopener,noreferrer");
       }
@@ -948,6 +981,23 @@ export default function StudentDailyReportPage() {
         <section className={styles.reportMeta}>
           <p>ⓘ ข้อมูล ณ วันที่ {date} เวลา {new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit" }).format(new Date())} น.</p>
         </section>
+
+        {exportResult ? (
+          <section className={styles.exportLinks} aria-label="ไฟล์รายงานที่สร้างแล้ว">
+            {exportResult.sheetUrl ? (
+              <a href={exportResult.sheetUrl} target="_blank" rel="noreferrer">เปิด Sheet</a>
+            ) : null}
+            {exportResult.sheetDownloadUrl ? (
+              <a href={exportResult.sheetDownloadUrl} target="_blank" rel="noreferrer">ดาวน์โหลด Sheet</a>
+            ) : null}
+            {exportResult.pdfUrl ? (
+              <a href={exportResult.pdfUrl} target="_blank" rel="noreferrer">เปิด PDF</a>
+            ) : null}
+            {exportResult.pdfDownloadUrl ? (
+              <a href={exportResult.pdfDownloadUrl} target="_blank" rel="noreferrer">ดาวน์โหลด PDF</a>
+            ) : null}
+          </section>
+        ) : null}
 
         <footer className={styles.footer}>
           <button type="button" onClick={() => void exportReport("sheet")} disabled={!activeMonthlyReport || Boolean(exporting)}>

@@ -92,6 +92,13 @@ function countStatus(counts: { present: number; absent: number; leave: number; l
   }
 }
 
+function printStatusMark(value: unknown) {
+  if (value === "absent") return "ข";
+  if (value === "leave" || value === "sick" || value === "personal") return "ล";
+  if (value === "late") return "-";
+  return "✓";
+}
+
 function studentNo(student: StudentRow, index: number) {
   return String(student.student_code || index + 1);
 }
@@ -231,7 +238,7 @@ export async function POST(request: Request) {
       const status = recordMap.get(`${student.id}:${isoDateForDay(month, day)}`);
       if (!status) return "";
       countStatus(counts, status);
-      return statusMark(status);
+      return printStatusMark(status);
     });
 
     return {

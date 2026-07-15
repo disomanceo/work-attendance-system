@@ -1002,6 +1002,29 @@
   margin: 0;
 }
 
+.exportLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 16px 0;
+}
+
+.exportLinks a {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #047857;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .footer {
   display: flex;
   justify-content: flex-end;
@@ -1587,6 +1610,20 @@
 
   .reportMeta {
     display: none;
+  }
+
+  .exportLinks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    padding: 0;
+  }
+
+  .exportLinks a {
+    min-height: 30px;
+    border-radius: 7px;
+    padding: 0 8px;
+    font-size: 9px;
   }
 
   .footer {

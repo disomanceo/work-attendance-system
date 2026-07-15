@@ -212,11 +212,13 @@ function createStudentAttendanceMonthlyReport_(payload) {
 
   const sheetUrl = ss.getUrl();
   let pdfUrl = "";
+  let pdfFileId = "";
 
   if (String(payload.format || "") === "pdf") {
     const pdfBlob = exportStudentAttendanceSheetPdf_(ss.getId(), sheet.getSheetId(), `${fileName}.pdf`);
     const pdfFile = folder.createFile(pdfBlob);
     pdfUrl = pdfFile.getUrl();
+    pdfFileId = pdfFile.getId();
   }
 
   return {
@@ -224,6 +226,7 @@ function createStudentAttendanceMonthlyReport_(payload) {
     fileName,
     sheetUrl,
     pdfUrl,
+    pdfFileId,
     spreadsheetId: ss.getId(),
   };
 }
@@ -364,25 +367,10 @@ function fillStudentAttendanceSignatures_(sheet, payload, extraRows) {
 
 function styleStudentAttendanceStatusSymbols_(sheet, rowCount) {
   const range = sheet.getRange(STUDENT_ATTENDANCE_REPORT_CONFIG.STUDENT_START_ROW, 3, rowCount, 31);
-  const values = range.getValues();
-  const colors = [];
-  const backgrounds = [];
-
-  values.forEach((row) => {
-    colors.push(row.map((value) => value ? "#ffffff" : "#0b1736"));
-    backgrounds.push(row.map((value) => {
-      if (value === "✓") return "#16a34a";
-      if (value === "×") return "#ef4444";
-      if (value === "!") return "#f97316";
-      if (value === "ส") return "#2563eb";
-      return "#ffffff";
-    }));
-  });
-
   range
     .setFontWeight("bold")
-    .setFontColors(colors)
-    .setBackgrounds(backgrounds);
+    .setFontColor("#111827")
+    .setBackground("#ffffff");
 }
 
 function insertStudentAttendanceDriveImage_(sheet, fileId, column, row, width, height) {
@@ -396,37 +384,9 @@ function insertStudentAttendanceDriveImage_(sheet, fileId, column, row, width, h
 }
 
 function exportStudentAttendanceSheetPdf_(spreadsheetId, sheetId, fileName) {
-  const params = {
-    format: "pdf",
-    gid: sheetId,
-    size: "A4",
-    portrait: "false",
-    fitw: "true",
-    scale: "4",
-    sheetnames: "false",
-    printtitle: "false",
-    pagenumbers: "false",
-    gridlines: "false",
-    fzr: "false",
-    top_margin: "0.25",
-    bottom_margin: "0.25",
-    left_margin: "0.15",
-    right_margin: "0.15",
-  };
-  const query = Object.keys(params)
-    .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`)
-    .join("&");
-  const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?${query}`;
-  const response = UrlFetchApp.fetch(url, {
-    headers: { Authorization: `Bearer ${ScriptApp.getOAuthToken()}` },
-    muteHttpExceptions: true,
-  });
-
-  if (response.getResponseCode() >= 400) {
-    throw new Error(`Export PDF failed: ${response.getContentText()}`);
-  }
-
-  return response.getBlob().setName(fileName);
+  return DriveApp.getFileById(spreadsheetId)
+    .getAs(MimeType.PDF)
+    .setName(fileName);
 }
 
 function formatStudentAttendanceThaiMonth_(month) {
