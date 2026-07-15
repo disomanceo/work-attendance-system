@@ -13,6 +13,12 @@ Updated: 2026-07-15
 
 ## Latest findings
 
+- Student attendance signature/mobile table follow-up on 2026-07-15:
+  - [x] Moved generated adviser/director names into the lower parenthesis row only.
+  - [x] Kept the upper signature line blank for printed signing.
+  - [x] Shows mobile summary columns only on the final week range (`22-end`).
+  - [x] Allows full student names on mobile instead of truncating with ellipsis.
+
 - Student attendance generated Sheet/PDF placement follow-up on 2026-07-15:
   - [x] Moved the date-number row to row 7 so attendance marks no longer appear in the 1-30/31 date row.
   - [x] Moved student rows to start at row 8 so the first student no longer overwrites the table header/date row.

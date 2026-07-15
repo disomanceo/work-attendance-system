@@ -509,6 +509,11 @@ export default function StudentDailyReportPage() {
   const activeMobileDays = activeMonthlyReport && activeMobileWeek
     ? activeMonthlyReport.days.filter((day) => day >= activeMobileWeek.start && day <= activeMobileWeek.end)
     : [];
+  const showMobileSummaryColumns = Boolean(
+    activeMonthlyReport &&
+    activeMobileWeek &&
+    activeMobileWeek.end >= activeMonthlyReport.days[activeMonthlyReport.days.length - 1],
+  );
   const activeMonthlyTotals = useMemo(() => {
     if (!activeMonthlyReport) return [];
     return activeMonthlyReport.days.map((day) =>
@@ -989,7 +994,7 @@ export default function StudentDailyReportPage() {
                         <th rowSpan={2}>ที่</th>
                         <th rowSpan={2}>ชื่อ - สกุล</th>
                         <th colSpan={activeMobileDays.length}>วันที่ ({formatThaiMonth(selectedMonth)})</th>
-                        <th colSpan={4}>รวม (วัน)</th>
+                        {showMobileSummaryColumns ? <th colSpan={4}>รวม (วัน)</th> : null}
                       </tr>
                       <tr>
                         {activeMobileDays.map((day) => (
@@ -998,10 +1003,14 @@ export default function StudentDailyReportPage() {
                             <small>{shortThaiWeekday(selectedMonth, day)}</small>
                           </th>
                         ))}
-                        <th>มา</th>
-                        <th>ขาด</th>
-                        <th>ลา</th>
-                        <th>รวม</th>
+                        {showMobileSummaryColumns ? (
+                          <>
+                            <th>มา</th>
+                            <th>ขาด</th>
+                            <th>ลา</th>
+                            <th>รวม</th>
+                          </>
+                        ) : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -1014,10 +1023,14 @@ export default function StudentDailyReportPage() {
                               <StatusSymbol mark={row.statuses[day] || ""} />
                             </td>
                           ))}
-                          <td>{row.presentCount}</td>
-                          <td>{row.absentCount}</td>
-                          <td>{row.leaveCount}</td>
-                          <td>{row.totalCount}</td>
+                          {showMobileSummaryColumns ? (
+                            <>
+                              <td>{row.presentCount}</td>
+                              <td>{row.absentCount}</td>
+                              <td>{row.leaveCount}</td>
+                              <td>{row.totalCount}</td>
+                            </>
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>

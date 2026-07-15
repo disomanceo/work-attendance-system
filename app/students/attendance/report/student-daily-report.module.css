@@ -1468,19 +1468,19 @@
 
   .mobileMonthTable th:first-child,
   .mobileMonthTable td:first-child {
-    width: 22px;
+    width: 20px;
   }
 
   .mobileMonthTable th:nth-child(2),
   .mobileMonthTable td:nth-child(2) {
-    width: 92px;
+    width: 112px;
     text-align: left;
   }
 
   .mobileMonthTable td:nth-child(2) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
     font-weight: 400;
   }
 
