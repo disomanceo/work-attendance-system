@@ -24,6 +24,8 @@ Updated: 2026-07-15
   - [x] Added adviser/director signature names in the preview and generated Sheet/PDF.
   - [x] Deployed the student attendance report Apps Script web app.
   - [x] Added production Vercel env vars: `GAS_STUDENT_ATTENDANCE_REPORT_URL` and `GAS_STUDENT_ATTENDANCE_REPORT_SECRET`.
+  - [x] Added the same production env vars to the `pm-coming` Vercel project after the Sheet/PDF buttons showed missing GAS env there.
+  - [x] Redeployed `pm-coming` production so the newly added GAS env vars are loaded at runtime.
 
 - Student daily attendance report export button update on 2026-07-15:
   - [x] Replaced the old `ส่งออก Excel` footer button label with `Sheet`.
