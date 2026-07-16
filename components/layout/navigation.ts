@@ -36,6 +36,13 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value === "/attendance",
     },
     {
+      label: "Dashboard",
+      icon: "▦",
+      href: "/dashboard",
+      section: "home",
+      match: (value) => value === "/dashboard",
+    },
+    {
       label: "การลงเวลาปฏิบัติงาน",
       icon: "◷",
       href: reportHref,

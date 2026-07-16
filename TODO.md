@@ -13,6 +13,32 @@ Updated: 2026-07-16
 
 ## Latest findings
 
+- Dashboard page addition on 2026-07-16:
+  - [x] Kept `/attendance` as the existing work check-in home page.
+  - [x] Added a separate `/dashboard` page wrapped in the existing `AppShell`.
+  - [x] Added a `Dashboard` sidebar menu item immediately after the home item.
+  - [x] Added `/api/dashboard/daily-overview` using existing staff attendance, student attendance, and Smart Area document tables.
+  - [x] Added a compact date picker on the Dashboard header.
+  - [x] Kept the three Dashboard summary cards in one desktop row with smaller card metrics.
+  - [x] Tightened the Dashboard grid so the three main cards stay in one desktop row.
+  - [x] Removed classroom slash labels from the student class summary.
+  - [x] Reordered student attendance metrics to show present, absent, leave, and total.
+  - [x] Changed the student class summary to show present, absent, leave, and total per class.
+  - [x] Grouped unacknowledged document people into one row per person with profile fallback and document counts.
+  - [x] Added unacknowledged document age counts for 1 day, 2 days, and 3+ days.
+  - [x] Changed the document dashboard to show red unacknowledged, blue in-progress, and green done counts per assigned teacher.
+  - [x] Added Dashboard section tabs for staff attendance, student attendance, and official documents.
+  - [x] Added document status legend for red unacknowledged, blue in-progress, and green done.
+  - [x] Hid teachers whose assigned document work is fully done from the document list.
+  - [x] Colored per-class student counts by status: present green, absent red, leave orange, and total blue.
+  - [x] Centered per-class student counts in their status columns.
+  - [x] Nudged per-class student counts slightly left for visual alignment.
+  - [x] Removed pending-day text and trailing total badges from document teacher rows.
+  - [x] Kept mobile staff attendance metrics in two rows of three cards.
+  - [x] Compacted today's highlight cards to one or two tight rows per alert.
+  - [x] Run `npm.cmd run build` after the Dashboard page addition.
+  - [ ] Verify `/dashboard` with a real signed-in account and confirm the daily totals match production data.
+
 - Announcement workflow follow-up on 2026-07-16:
   - [x] Added the `/announcements` module using the order workflow pattern.
   - [x] Added annual Buddhist-year running numbers without document-number control.
