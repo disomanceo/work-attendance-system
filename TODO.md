@@ -802,3 +802,21 @@ Follow-up checks:
 - [ ] Sign in as director/admin and confirm the small `ส่งสรุป` button appears under the profile position.
 - [ ] Press `ส่งสรุป` and confirm Telegram receives the attendance summary followed by unchecked student rooms/classes.
 - [ ] Press again within 10 minutes and confirm the UI shows the cooldown message.
+
+## Document assignment signing and director display fixes - 2026-07-16
+
+Release status:
+
+- [x] Fixed signed Smart Area assignment saves so retained assignee tasks refresh assignment notes, read state, and LINE notification dedupe before resending.
+- [x] Improved the signing page save button validation so missing file, assignee, text, or signature states show a clear message instead of failing silently.
+- [x] Changed signing uploads to send only the selected page of a PDF, with a compressed preview-PDF fallback when the selected page is still too large.
+- [x] Kept original attached documents unchanged; the signed assignment file is generated separately.
+- [x] Added shared person display helpers so director Suthon is shown as `ผอ.สุธน` instead of `ครูสุธน` across documents, signing, orders, announcements, review popups, and student duty/report displays.
+- [x] Ran `npx tsc --noEmit`, `npm run lint`, and `npm run build` successfully.
+- [x] Pushed and deployed production to Vercel.
+
+Follow-up checks:
+
+- [ ] Test signing a large multi-page PDF and confirm the saved signed file contains only the selected page.
+- [ ] Confirm assignment save creates/updates the signed file and sends the assignee notification.
+- [ ] Confirm `ครูสุธน` no longer appears in document responsibility views and shows as `ผอ.สุธน`.
