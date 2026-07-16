@@ -589,7 +589,10 @@ if (result.signer?.signatureFileId) {
 
     context2d.clearRect(0, 0, overlay.width, overlay.height);
 
-    if (showInstructionText && instructionText.trim()) {
+    const shouldStampInstructionText =
+      (showInstructionText || !showSignature) && instructionText.trim();
+
+    if (shouldStampInstructionText) {
 
       context2d.font = `700 ${fontSize}px "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif`;
 
@@ -597,7 +600,11 @@ if (result.signer?.signatureFileId) {
 
       context2d.textBaseline = "top";
 
-      const lines = wrapText(context2d, instructionText.trim(), Math.max(120, overlay.width - textPosition.x - 30));
+      const lines = wrapText(
+        context2d,
+        instructionText.trim(),
+        Math.max(120, overlay.width - textPosition.x - 30),
+      );
 
       const lineHeight = fontSize * 1.45;
 
@@ -652,7 +659,30 @@ if (result.signer?.signatureFileId) {
 
 
   async function saveSignedDocument() {
-    if (!context?.book || !selectedFileBase64 || !hasPreview) return;
+    if (!context?.book) {
+      setMessage("ไม่พบข้อมูลหนังสือ กรุณาเปิดหน้าลงนามใหม่อีกครั้ง");
+      return;
+    }
+
+    if (!selectedFileBase64 || !hasPreview) {
+      setMessage("กรุณาแนบไฟล์ PDF หรือรูปภาพที่จะใช้ลงนามก่อนบันทึก");
+      return;
+    }
+
+    if (selectedAssigneeIds.length === 0) {
+      setMessage("กรุณาเลือกผู้รับมอบหมายอย่างน้อย 1 คน");
+      return;
+    }
+
+    if (showSignature && !signatureUrl) {
+      setMessage("ไม่พบไฟล์ลายเซ็น กรุณาซ่อนลายเซ็นหรือเพิ่มลายเซ็นในโปรไฟล์ก่อนบันทึก");
+      return;
+    }
+
+    if (!showSignature && !instructionText.trim()) {
+      setMessage("กรุณาพิมพ์ข้อความสั่งการ หรือเพิ่มลายเซ็นก่อนบันทึก");
+      return;
+    }
 
     setSaving(true);
     setMessage("");
@@ -673,7 +703,7 @@ if (result.signer?.signatureFileId) {
           "ไฟล์รวมมีขนาดใหญ่เกิน 4 MB กรุณาลดขนาดไฟล์ก่อนบันทึกลงนาม",
         );
       }
-const response = await fetch("/api/documents/signing/save", {
+      const response = await fetch("/api/documents/signing/save", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -960,12 +990,7 @@ const response = await fetch("/api/documents/signing/save", {
               className={styles.topSaveButton}
               onClick={() => void saveSignedDocument()}
               disabled={
-                saving ||
-                !hasPreview ||
-                !selectedFileBase64 ||
-                !signatureUrl ||
-                !showSignature ||
-                selectedAssigneeIds.length === 0
+                saving
               }
             >
               {saving ? "กำลังบันทึก..." : "บันทึก"}
