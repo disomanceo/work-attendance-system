@@ -53,6 +53,11 @@ type Position = {
   x: number;
   y: number;
 };
+
+const SIGNING_PAYLOAD_LIMIT_BYTES = 4.2 * 1024 * 1024;
+const SIGNING_PAYLOAD_OVERHEAD_BYTES = 8192;
+const SIGNING_RASTER_JPEG_QUALITY = 0.82;
+
 function formatStampedAssignmentDate(value: Date) {
 
   return new Intl.DateTimeFormat("th-TH", {
@@ -280,6 +285,119 @@ export default function DocumentSigningPage() {
     return window.btoa(binary);
   }
 
+  async function canvasToJpegBuffer(canvas: HTMLCanvasElement) {
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => {
+          if (result) {
+            resolve(result);
+          } else {
+            reject(new Error("ไม่สามารถบีบอัดหน้าที่เลือกได้"));
+          }
+        },
+        "image/jpeg",
+        SIGNING_RASTER_JPEG_QUALITY,
+      );
+    });
+
+    return blob.arrayBuffer();
+  }
+
+  async function buildRasterizedSigningPdfBase64() {
+    const canvas = canvasRef.current;
+    if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
+      throw new Error("ไม่พบหน้าตัวอย่างเอกสารสำหรับลดขนาดไฟล์");
+    }
+
+    const { PDFDocument } = await import("pdf-lib");
+    const imageBytes = await canvasToJpegBuffer(canvas);
+    const pdf = await PDFDocument.create();
+    const image = await pdf.embedJpg(imageBytes);
+    const page = pdf.addPage([canvas.width, canvas.height]);
+
+    page.drawImage(image, {
+      x: 0,
+      y: 0,
+      width: canvas.width,
+      height: canvas.height,
+    });
+
+    const pdfBytes = await pdf.save({ useObjectStreams: true });
+    const pdfBuffer = pdfBytes.buffer.slice(
+      pdfBytes.byteOffset,
+      pdfBytes.byteOffset + pdfBytes.byteLength,
+    ) as ArrayBuffer;
+
+    return arrayBufferToBase64(pdfBuffer);
+  }
+
+  async function buildSigningSourcePayload(maxSourceBase64Length: number) {
+    const sourceBytes = sourceBytesRef.current;
+
+    if (!sourceBytes || !selectedFileBase64) {
+      throw new Error("กรุณาแนบไฟล์ PDF หรือรูปภาพที่จะใช้ลงนามก่อนบันทึก");
+    }
+
+    const isPdf =
+      selectedFileMimeType.toLowerCase().includes("pdf") ||
+      selectedFileName.toLowerCase().endsWith(".pdf");
+
+    if (!isPdf) {
+      const originalPayload = {
+        base64: selectedFileBase64,
+        fileName: selectedFileName,
+        mimeType: selectedFileMimeType,
+        pageNumber: 1,
+      };
+
+      if (originalPayload.base64.length <= maxSourceBase64Length) {
+        return originalPayload;
+      }
+
+      return {
+        base64: await buildRasterizedSigningPdfBase64(),
+        fileName: `${selectedFileName.replace(/\.[^.]+$/i, "") || "document"}-compressed.pdf`,
+        mimeType: "application/pdf",
+        pageNumber: 1,
+      };
+    }
+
+    const { PDFDocument } = await import("pdf-lib");
+    const sourcePdf = await PDFDocument.load(sourceBytes.slice(0));
+    const pageIndex = Math.min(
+      Math.max(Math.floor(pageNumber) - 1, 0),
+      sourcePdf.getPageCount() - 1,
+    );
+    const outputPdf = await PDFDocument.create();
+    const [selectedPage] = await outputPdf.copyPages(sourcePdf, [pageIndex]);
+    outputPdf.addPage(selectedPage);
+
+    const onePageBytes = await outputPdf.save({ useObjectStreams: true });
+    const onePageBuffer = onePageBytes.buffer.slice(
+      onePageBytes.byteOffset,
+      onePageBytes.byteOffset + onePageBytes.byteLength,
+    ) as ArrayBuffer;
+    const baseName = selectedFileName.replace(/\.pdf$/i, "");
+
+    const onePageBase64 = arrayBufferToBase64(onePageBuffer);
+
+    if (onePageBase64.length <= maxSourceBase64Length) {
+      return {
+        base64: onePageBase64,
+        fileName: `${baseName || "document"}-page-${pageIndex + 1}.pdf`,
+        mimeType: "application/pdf",
+        pageNumber: 1,
+      };
+    }
+
+    return {
+      base64: await buildRasterizedSigningPdfBase64(),
+      fileName: `${baseName || "document"}-page-${pageIndex + 1}.pdf`,
+      mimeType: "application/pdf",
+      pageNumber: 1,
+    };
+  }
+
   function setDefaultPlacement(width: number, height: number) {
     setTextPosition({
       x: Math.max(20, Math.round(width * 0.1)),
@@ -308,7 +426,7 @@ export default function DocumentSigningPage() {
       }
 
       const sourceBytes = await file.arrayBuffer();
-      sourceBytesRef.current = sourceBytes;
+      sourceBytesRef.current = sourceBytes.slice(0);
       setSelectedFileName(file.name);
       setSelectedFileMimeType(
         mimeType || (isPdf ? "application/pdf" : "image/jpeg"),
@@ -327,7 +445,7 @@ export default function DocumentSigningPage() {
         ).toString();
 
         const pdfDocument = await pdfjs.getDocument({
-          data: new Uint8Array(sourceBytes),
+          data: new Uint8Array(sourceBytes.slice(0)),
         }).promise;
 
         pdfDocumentRef.current = pdfDocument;
@@ -692,15 +810,22 @@ if (result.signer?.signatureFileId) {
       if (!accessToken) return;
 
       const overlayBase64 = await createOverlayBase64();
+      const maxSourceBase64Length =
+        SIGNING_PAYLOAD_LIMIT_BYTES -
+        overlayBase64.length -
+        SIGNING_PAYLOAD_OVERHEAD_BYTES;
+      const signingSource = await buildSigningSourcePayload(
+        maxSourceBase64Length,
+      );
 
-      
       const estimatedPayloadBytes =
-        Math.ceil((selectedFileBase64.length * 3) / 4) +
-        Math.ceil((overlayBase64.length * 3) / 4);
+        signingSource.base64.length +
+        overlayBase64.length +
+        SIGNING_PAYLOAD_OVERHEAD_BYTES;
 
-      if (estimatedPayloadBytes > 4 * 1024 * 1024) {
+      if (estimatedPayloadBytes > SIGNING_PAYLOAD_LIMIT_BYTES) {
         throw new Error(
-          "ไฟล์รวมมีขนาดใหญ่เกิน 4 MB กรุณาลดขนาดไฟล์ก่อนบันทึกลงนาม",
+          "ไฟล์หน้าที่เลือกยังมีขนาดใหญ่เกิน 4 MB กรุณาลดขนาดไฟล์ก่อนบันทึกลงนาม",
         );
       }
       const response = await fetch("/api/documents/signing/save", {
@@ -712,12 +837,12 @@ if (result.signer?.signatureFileId) {
         body: JSON.stringify({
           bookId: context.book.id,
           sourceAttachmentId: context.sourceAttachment?.id || "",
-          sourceFileName: selectedFileName,
-          sourceMimeType: selectedFileMimeType,
-          sourceFileBase64: selectedFileBase64,
+          sourceFileName: signingSource.fileName,
+          sourceMimeType: signingSource.mimeType,
+          sourceFileBase64: signingSource.base64,
           assigneeIds: selectedAssigneeIds,
           assignmentNote: instructionText,
-          pageNumber,
+          pageNumber: signingSource.pageNumber,
           overlayBase64,
         }),
       });
