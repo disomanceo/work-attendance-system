@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import {
+  requireSmartAreaUser,
+  isSmartAreaManagerRole,
+} from "@/lib/smart-area/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -108,8 +111,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const isManager =
-    auth.profile.role === "admin" || auth.profile.role === "director";
+  const isManager = isSmartAreaManagerRole(auth.profile.role);
 
   if (!isManager) {
     return NextResponse.json(

@@ -123,9 +123,7 @@ function getWordDownloadUrl(order: OrderItem) {
 
   if (!fileId) return order.docx_file_url ?? "#";
 
-  return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(
-    fileId
-  )}&confirm=t`;
+  return `/api/orders/files/${encodeURIComponent(fileId)}/download`;
 }
 
 export default function OrdersPage() {

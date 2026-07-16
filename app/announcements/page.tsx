@@ -123,9 +123,7 @@ function getWordDownloadUrl(announcement: AnnouncementItem) {
 
   if (!fileId) return announcement.docx_file_url ?? "#";
 
-  return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(
-    fileId
-  )}&confirm=t`;
+  return `/api/announcements/files/${encodeURIComponent(fileId)}/download`;
 }
 
 export default function AnnouncementsPage() {

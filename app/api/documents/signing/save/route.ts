@@ -1,6 +1,9 @@
 import { PDFDocument } from "pdf-lib";
 import { NextResponse } from "next/server";
-import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import {
+  requireSmartAreaUser,
+  isSmartAreaManagerRole,
+} from "@/lib/smart-area/auth";
 import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
 import { notifySmartAreaAssignmentsTelegram } from "@/lib/telegram/smart-area-workflow-notifications";
 
@@ -88,8 +91,7 @@ async function handleSigningPost(request: Request) {
     );
   }
 
-  const isManager =
-    auth.profile.role === "admin" || auth.profile.role === "director";
+  const isManager = isSmartAreaManagerRole(auth.profile.role);
 
   if (!isManager) {
     return NextResponse.json(
