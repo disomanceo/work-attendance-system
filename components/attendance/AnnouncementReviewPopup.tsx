@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeDirectorDisplayName } from "@/lib/person-display";
 import styles from "./AnnouncementReviewPopup.module.css";
 
 type AnnouncementItem = {
@@ -413,7 +414,11 @@ export default function AnnouncementReviewPopup({ role }: Props) {
 
                     <div>
                       <dt>ผู้รับผิดชอบ</dt>
-                      <dd>{current.responsible_name_snapshot}</dd>
+                      <dd>
+                        {normalizeDirectorDisplayName({
+                          name: current.responsible_name_snapshot,
+                        })}
+                      </dd>
                     </div>
 
                     {isRevision && (

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { compactPersonDisplayName } from "@/lib/person-display";
 import { getCachedProfileAssetUrl } from "@/lib/profile-image-cache";
 import styles from "./page.module.css";
 
@@ -73,24 +74,6 @@ function formatStampedAssignmentDate(value: Date) {
 }
 
 
-
-function compactThaiName(value: string) {
-  const normalized = String(value || "").trim().replace(/\s+/g, " ");
-  if (!normalized) return "-";
-
-  const parts = normalized.split(" ");
-  if (parts.length === 1) return parts[0];
-
-  if (
-    ["นาย", "นาง", "นางสาว", "น.ส.", "ดร.", "ว่าที่ร้อยตรี"].includes(
-      parts[0],
-    )
-  ) {
-    return `${parts[0]}${parts[1] || ""}`;
-  }
-
-  return parts[0];
-}
 
 export default function DocumentSigningPage() {
   const router = useRouter();
@@ -1178,7 +1161,13 @@ if (result.signer?.signatureFileId) {
                       }}
                     />
                     <span>
-                      <strong>{compactThaiName(person.fullName)}</strong>
+                      <strong>
+                        {compactPersonDisplayName({
+                          name: person.fullName,
+                          role: person.role,
+                          position: person.position,
+                        })}
+                      </strong>
                     </span>
                   </label>
                 );

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeDirectorDisplayName } from "@/lib/person-display";
 import styles from "./orders.module.css";
 
 type Profile = {
@@ -575,7 +576,11 @@ export default function OrdersPage() {
             <option value="">ผู้รับผิดชอบทั้งหมด</option>
             {profiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
-                {profile.full_name}
+                {normalizeDirectorDisplayName({
+                  name: profile.full_name,
+                  role: profile.role,
+                  position: profile.position,
+                })}
               </option>
             ))}
           </select>
@@ -629,7 +634,11 @@ export default function OrdersPage() {
                         )}
                     </td>
                     <td>{formatThaiDate(order.order_date)}</td>
-                    <td>{order.responsible_name_snapshot}</td>
+                    <td>
+                      {normalizeDirectorDisplayName({
+                        name: order.responsible_name_snapshot,
+                      })}
+                    </td>
                     <td>{renderFiles(order)}</td>
                     <td>
                       <span
@@ -665,7 +674,9 @@ export default function OrdersPage() {
               <div className={styles.mobileSubject}>{order.subject}</div>
               <div className={styles.mobileMeta}>
                 {formatThaiDate(order.order_date)} ·{" "}
-                {order.responsible_name_snapshot}
+                {normalizeDirectorDisplayName({
+                  name: order.responsible_name_snapshot,
+                })}
                 <br />
                 อัปเดตล่าสุด {formatThaiDateTime(order.updated_at)}
               </div>
@@ -813,7 +824,11 @@ export default function OrdersPage() {
                     <option value="">เลือกผู้รับผิดชอบ</option>
                     {profiles.map((profile) => (
                       <option key={profile.id} value={profile.id}>
-                        {profile.full_name}
+                        {normalizeDirectorDisplayName({
+                          name: profile.full_name,
+                          role: profile.role,
+                          position: profile.position,
+                        })}
                       </option>
                     ))}
                   </select>

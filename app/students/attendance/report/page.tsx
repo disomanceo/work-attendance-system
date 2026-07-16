@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { compactPersonDisplayName } from "@/lib/person-display";
 import { STUDENT_CLASS_LEVELS } from "@/lib/students/settings";
 import styles from "./student-daily-report.module.css";
 
@@ -275,6 +276,9 @@ function getStudentName(student: AttendanceStudent) {
 }
 
 function shortTeacherName(value: string) {
+  const displayName = compactPersonDisplayName({ name: value });
+  if (displayName !== "-") return displayName;
+
   const firstName = value
     .split(",")[0]
     ?.trim()

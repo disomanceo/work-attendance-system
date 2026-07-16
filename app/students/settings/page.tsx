@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { compactPersonDisplayName } from "@/lib/person-display";
 import {
   STUDENT_CLASS_LEVELS,
   STUDENT_WORK_PERMISSION_KEYS,
@@ -84,6 +85,13 @@ function displayName(profile?: Profile) {
   return profile.full_name || profile.phone || profile.id;
 }
 function teacherChipName(profile?: Profile) {
+  const compactName = compactPersonDisplayName({
+    name: profile?.full_name || profile?.phone || profile?.id,
+    role: profile?.role,
+    position: profile?.position,
+  });
+  if (compactName !== "-") return compactName;
+
   const name = displayName(profile).trim();
   if (!name || name === "-") return "-";
   const cleanName = name.replace(/^(นาย|นางสาว|นาง|ครู)\s*/u, "").trim();

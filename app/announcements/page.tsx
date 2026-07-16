@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeDirectorDisplayName } from "@/lib/person-display";
 import styles from "./announcements.module.css";
 
 type Profile = {
@@ -576,7 +577,11 @@ export default function AnnouncementsPage() {
             <option value="">ผู้รับผิดชอบทั้งหมด</option>
             {profiles.map((profile) => (
               <option key={profile.id} value={profile.id}>
-                {profile.full_name}
+                {normalizeDirectorDisplayName({
+                  name: profile.full_name,
+                  role: profile.role,
+                  position: profile.position,
+                })}
               </option>
             ))}
           </select>
@@ -630,7 +635,11 @@ export default function AnnouncementsPage() {
                         )}
                     </td>
                     <td>{formatThaiDate(announcement.announcement_date)}</td>
-                    <td>{announcement.responsible_name_snapshot}</td>
+                    <td>
+                      {normalizeDirectorDisplayName({
+                        name: announcement.responsible_name_snapshot,
+                      })}
+                    </td>
                     <td>{renderFiles(announcement)}</td>
                     <td>
                       <span
@@ -666,7 +675,9 @@ export default function AnnouncementsPage() {
               <div className={styles.mobileSubject}>{announcement.subject}</div>
               <div className={styles.mobileMeta}>
                 {formatThaiDate(announcement.announcement_date)} ·{" "}
-                {announcement.responsible_name_snapshot}
+                {normalizeDirectorDisplayName({
+                  name: announcement.responsible_name_snapshot,
+                })}
                 <br />
                 อัปเดตล่าสุด {formatThaiDateTime(announcement.updated_at)}
               </div>
@@ -814,7 +825,11 @@ export default function AnnouncementsPage() {
                     <option value="">เลือกผู้รับผิดชอบ</option>
                     {profiles.map((profile) => (
                       <option key={profile.id} value={profile.id}>
-                        {profile.full_name}
+                        {normalizeDirectorDisplayName({
+                          name: profile.full_name,
+                          role: profile.role,
+                          position: profile.position,
+                        })}
                       </option>
                     ))}
                   </select>

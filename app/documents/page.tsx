@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, useRef, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { compactPersonDisplayName } from "@/lib/person-display";
 import styles from "./page.module.css";
 import SmartAreaImportButton from "./components/SmartAreaImportButton";
 
@@ -209,6 +210,9 @@ function registrationDisplay(value: string) {
 }
 
 function shortThaiName(value: string) {
+  const displayName = compactPersonDisplayName({ name: value });
+  if (displayName !== "-") return displayName;
+
   const trimmed = String(value || "").trim();
   if (!trimmed) return "-";
 
@@ -222,7 +226,7 @@ function shortThaiName(value: string) {
 function responsibleDisplayName(value: string) {
   const name = shortThaiName(value);
   if (!name || name === "-") return "";
-  return name.startsWith("\u0e04\u0e23\u0e39") ? name : "\u0e04\u0e23\u0e39" + name;
+  return name;
 }
 
 
@@ -1417,7 +1421,11 @@ export default function DocumentsPage() {
     return assignees
       .map((person) => ({
         id: person.id,
-        name: shortThaiName(person.fullName),
+        name: compactPersonDisplayName({
+          name: person.fullName,
+          role: person.role,
+          position: person.position,
+        }),
         fullName: person.fullName,
         count: pendingByAssignee.get(person.id) || 0,
       }))
