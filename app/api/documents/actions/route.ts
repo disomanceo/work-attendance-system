@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireSmartAreaUser } from "@/lib/smart-area/auth";
+import {
+  requireSmartAreaUser,
+  isSmartAreaManagerRole,
+} from "@/lib/smart-area/auth";
 import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
 import { notifySmartAreaAssignmentsTelegram } from "@/lib/telegram/smart-area-workflow-notifications";
 
@@ -49,9 +52,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const isManager =
-    auth.profile.role === "admin" || auth.profile.role === "director";
-  const isClerk = auth.profile.work_permissions.includes("smart_area.clerk");
+  const isManager = isSmartAreaManagerRole(auth.profile.role);
+  const isClerk = auth.canManageAll && !isManager;
 
   if (action === "submit") {
     const { data, error } = await auth.admin.rpc(
