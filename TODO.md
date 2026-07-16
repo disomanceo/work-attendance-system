@@ -820,3 +820,129 @@ Follow-up checks:
 - [ ] Test signing a large multi-page PDF and confirm the saved signed file contains only the selected page.
 - [ ] Confirm assignment save creates/updates the signed file and sends the assignee notification.
 - [ ] Confirm `ครูสุธน` no longer appears in document responsibility views and shows as `ผอ.สุธน`.
+
+## School library menu start - 2026-07-16
+
+Release status:
+
+- [x] Added the `คลังงานโรงเรียน` sidebar menu item above `ข้อมูลส่วนตัว`.
+- [x] Pointed the new menu item to `/school-library`.
+- [x] Added an AppShell-wrapped placeholder page for `/school-library` so the new menu does not open a missing route.
+
+Follow-up checks:
+
+- [x] Build after the menu addition.
+- [ ] Open the sidebar and confirm `คลังงานโรงเรียน` appears directly above `ข้อมูลส่วนตัว`.
+
+## School library UI and Firebase/Drive direction - 2026-07-16
+
+Release status:
+
+- [x] Built the first usable `/school-library` UI following the attached reference layout.
+- [x] Added search, category cards, filters, recent document list, popular keywords, and an add-document form.
+- [x] Kept document records in page state for this first step and prepared fields for Firebase/Firestore metadata.
+- [x] Added Google Drive URL validation and used the provided Drive folder as the default document location.
+- [x] Did not add Firebase dependency yet because project configuration and credentials are not present in the repo.
+
+Next step:
+
+- [ ] Add Firebase configuration after project credentials are provided.
+- [ ] Move document reads/writes from local page state to Firestore.
+- [ ] Decide whether Google Drive file upload will use an existing Apps Script flow or a new Drive API service account flow.
+- [x] Run build after the UI update.
+
+## School library Firebase wiring - 2026-07-16
+
+Release status:
+
+- [x] Installed the Firebase Web SDK with `npm.cmd install firebase`.
+- [x] Added a Firebase client helper that reads `NEXT_PUBLIC_FIREBASE_*` values from `.env.local`.
+- [x] Added Firestore helpers for the `schoolLibraryDocuments` collection.
+- [x] Updated `/school-library` to load documents from Firestore when Firebase config exists.
+- [x] Updated the add-document form to write metadata to Firestore when Firebase config exists.
+- [x] Kept fallback sample data when Firebase is not configured yet.
+- [x] Added `docs/school-library-firebase.md` with setup steps and required env names.
+- [x] Ran `npm.cmd run build` successfully after Firebase wiring.
+
+Next step:
+
+- [ ] Create/register the Firebase Web app in Firebase Console.
+- [x] Create a Firestore database.
+- [x] Add the Firebase Web config values to `.env.local`.
+- [ ] Restart the local dev server after editing `.env.local`.
+- [ ] Add one document from `/school-library` and confirm it appears in Firestore collection `schoolLibraryDocuments`.
+
+## School library Firebase local config - 2026-07-16
+
+Release status:
+
+- [x] Added the Firebase Web app config from Firebase Console to local `.env.local`.
+- [x] Added `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` to the setup note for completeness.
+- [x] Documented the local Firebase project id `savedocument-bb8ad` and collection `schoolLibraryDocuments`.
+
+Next step:
+
+- [x] In Firebase Console, create Firestore Database for project `savedocument-bb8ad`.
+- [ ] Restart the local Next.js dev server so `.env.local` is reloaded.
+- [x] Test adding a document from `/school-library` and confirm it appears in Firestore.
+
+## School library local file upload flow - 2026-07-16
+
+Release status:
+
+- [x] Changed the add-document form from Drive URL entry to local file selection.
+- [x] Removed manual file-type selection from the form.
+- [x] Added automatic file type detection for PDF, Word, and other Drive files.
+- [x] Added `/api/school-library/upload` to upload selected files through a dedicated Google Apps Script web app.
+- [x] Added `gas-school-library` Apps Script source for uploading files into the provided Google Drive folder.
+- [x] Extended Firestore document metadata with Drive file id, file name, MIME type, and file size.
+- [x] Updated setup docs with `SCHOOL_LIBRARY_DRIVE_GAS_URL` and `SCHOOL_LIBRARY_DRIVE_GAS_SECRET`.
+- [x] Removed the shared Drive upload fallback after testing showed the deployed profile/student-photo Apps Script is image-only and rejects document files with a JPG/PNG/WEBP validation message.
+- [x] Made document titles and uploaded file names clickable so users can open the saved Drive file directly from the list.
+- [x] Changed new school library documents to use the logged-in profile name as the owner.
+- [x] Changed school library status display to `พร้อมใช้`.
+- [x] Replaced the class/subject table column with file size and tightened document rows.
+- [x] Expanded school library search to include title, real file name, subcategory/description, owner, year, file type, status, keywords, Drive file id, Drive URL, MIME type, and file size.
+- [x] Added a delete action limited to the uploading user or `director`, with Drive deletion routed through Apps Script.
+
+Next step:
+
+- [x] Create/deploy the `gas-school-library` Apps Script web app for document uploads.
+- [x] Add `SCHOOL_LIBRARY_DRIVE_GAS_URL` and `SCHOOL_LIBRARY_DRIVE_GAS_SECRET` to `.env.local` after deploying the dedicated Apps Script.
+- [x] Smoke-tested the Apps Script endpoint with the configured secret; it returned `Unknown action`, confirming the URL is reachable and the secret matches without creating a Drive file.
+- [ ] Restart `npm.cmd run dev` and test uploading a local file from `/school-library`.
+- [ ] Redeploy the `gas-school-library` Apps Script so the new `deleteSchoolLibraryFile` action is available.
+- [x] Added `gas-school-library/.clasp.json` for script id `1Nv0avSZXUhFhKw1h-hOW27TJK6Id82pgGDxLqm7Hc7ft3rkkMSTl9p1E`.
+- [x] Pushed `gas-school-library` source to Apps Script with `npx.cmd @google/clasp push --force`.
+- [x] Tried updating the existing web app deployment `AKfycbyuarmxdn-5NL-3-lc69IMNuZ1fXgOKVLN9EqVsM1D-q_UG3UGxx4oiT-dYhaE_wsrQ` to version `2` with clasp after approval.
+- [x] Rolled the deployment back to version `1` after `/exec` returned 404, restoring the working upload endpoint.
+- [x] Updated the Apps Script web app deployment from the Apps Script UI so it remains a Web app and includes the pushed `deleteSchoolLibraryFile` source.
+- [x] Verified the active Web app deployment is `AKfycbyuarmxdn-5NL-3-lc69IMNuZ1fXgOKVLN9EqVsM1D-q_UG3UGxx4oiT-dYhaE_wsrQ @3`.
+- [x] Verified `deleteSchoolLibraryFile` responds with `Missing fileId` when tested with an empty file id, confirming the delete action is deployed without deleting a real file.
+- [x] Removed the three-dot open-file action beside the delete button; document/file names remain clickable.
+- [x] Removed the grade-level filter from the school library filter bar.
+- [x] Changed the academic-year filter to use years found in existing records, falling back to the current Buddhist year when no records exist.
+- [x] Added clearer delete feedback with status text and browser alerts for permission, missing file id, success, and errors.
+- [x] Added delete fallback to extract the Drive file id from `driveUrl` when older Firestore records do not have `driveFileId`.
+- [x] Changed popular search terms to come from actual local search usage stored in `localStorage`, recorded on Enter/blur/click, and displayed as a single compact row.
+- [x] Allowed school library rows without a Drive file id to be removed from Firestore/list metadata only, without attempting Drive deletion.
+- [x] Renamed the owner filter option from `ผู้จัดทำทั้งหมด` to `ครูและบุคลากรทั้งหมด`.
+- [x] Changed the owner filter choices to load active teacher/personnel names from `profiles`, with document-owner fallback if profiles cannot load.
+- [x] Auto-filled the add-document title from the selected file name, truncated to a safe length.
+- [x] Removed subcategory, grade level, and subject fields from the add-document modal.
+- [x] Limited the latest documents list to the first 10 filtered records.
+- [x] Simplified the document-name column to one clickable title only.
+- [x] Made PDF/image titles open in browser while Word/Excel/other file titles use a Drive download URL when a file id is available.
+- [x] Added the `วุฒิบัตร-ใบประกาศ` school library category and Drive folder mapping.
+- [x] Changed the school library category summary to five compact single-row cards.
+- [x] Tightened the latest document rows for a denser list.
+- [ ] Test deleting a file as the uploader and as director, then confirm other users do not see the delete button.
+- [x] Run build after the local file upload update.
+
+## School library category rename - 2026-07-16
+
+Release status:
+
+- [x] Updated the four displayed school library categories to: แผนงานและโครงการ, การจัดการเรียนการสอน, แบบฟอร์มต่างๆ, ผลงานและรางวัล.
+- [x] Updated the Google Apps Script category folder mapping to use the same four category names.
+- [x] Run build after category rename.

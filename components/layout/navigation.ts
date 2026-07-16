@@ -139,6 +139,13 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/documents"),
     },
     {
+      label: "คลังงานโรงเรียน",
+      icon: "□",
+      href: "/school-library",
+      section: "account",
+      match: (value) => value.startsWith("/school-library"),
+    },
+    {
       label: "ข้อมูลส่วนตัว",
       icon: "♙",
       href: "/account/profile",
