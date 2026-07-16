@@ -73,6 +73,13 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/orders"),
     },
     {
+      label: "ประกาศ",
+      icon: "▣",
+      href: "/announcements",
+      section: "personnel",
+      match: (value) => value.startsWith("/announcements"),
+    },
+    {
       label: "โครงการ / กิจกรรม",
       icon: "▦",
       href: "/budget/projects",

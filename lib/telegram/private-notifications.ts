@@ -29,7 +29,11 @@ type NotificationEvent =
   | "order.submitted"
   | "order.resubmitted"
   | "order.approved"
-  | "order.revision";
+  | "order.revision"
+  | "announcement.submitted"
+  | "announcement.resubmitted"
+  | "announcement.approved"
+  | "announcement.revision";
 
 type NotifyProfilesInput = {
   event: NotificationEvent;
@@ -180,6 +184,20 @@ function buildNotificationButtons(input: NotifyProfilesInput) {
     input.event === "order.acknowledged"
   ) {
     return [[{ text: "เปิดรายการคำสั่ง", url: `${baseUrl}/orders` }]];
+  }
+
+  if (
+    input.event === "announcement.submitted" ||
+    input.event === "announcement.resubmitted"
+  ) {
+    return [[{ text: "เปิดพิจารณาประกาศ", url: `${baseUrl}/announcements` }]];
+  }
+
+  if (
+    input.event === "announcement.approved" ||
+    input.event === "announcement.revision"
+  ) {
+    return [[{ text: "เปิดรายการประกาศ", url: `${baseUrl}/announcements` }]];
   }
 
   return undefined;

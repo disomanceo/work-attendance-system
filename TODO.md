@@ -1,6 +1,6 @@
 # Work Attendance TODO
 
-Updated: 2026-07-15
+Updated: 2026-07-16
 
 ## Current rules
 
@@ -12,6 +12,18 @@ Updated: 2026-07-15
 - Keep fixes minimal and avoid unrelated modules.
 
 ## Latest findings
+
+- Announcement workflow follow-up on 2026-07-16:
+  - [x] Added the `/announcements` module using the order workflow pattern.
+  - [x] Added annual Buddhist-year running numbers without document-number control.
+  - [x] Added Word/PDF attachment support through the existing GAS file workflow.
+  - [x] Added director review, return-for-revision, approval, homepage popup, and Telegram private notification wiring.
+  - [x] Added Supabase migration for `announcement_documents` and `announcement_document_logs`.
+  - [x] Replaced remaining order wording in the announcement page, filters, buttons, and submit/review dialogs.
+  - [x] Updated GAS file naming for announcements to `ddMMyyประกาศเรื่อง...` under the same order root folder with an announcement subfolder.
+  - [ ] Apply the new Supabase migration before using the module in production.
+  - [ ] Verify the UI in browser after migration, especially Thai labels and the brown-gold theme.
+  - [ ] Deploy the updated GAS project before testing announcement file folder/name behavior in Google Drive.
 
 - Student attendance web/mobile UI follow-up on 2026-07-15:
   - [x] Removed the PDF button from the student attendance class report footer.

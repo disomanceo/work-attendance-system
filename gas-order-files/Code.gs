@@ -33,7 +33,7 @@ function doPost(e) {
 }
 
 function uploadOrderFile_(body) {
-  const folder = getKindFolder_(body.buddhistYear, body.fileKind);
+  const folder = getKindFolder_(body.buddhistYear, body.fileKind, body.documentType);
   const blob = Utilities.newBlob(
     Utilities.base64Decode(body.base64),
     body.mimeType,
@@ -105,14 +105,18 @@ function deleteOrderFiles_(body) {
   };
 }
 
-function getKindFolder_(year, kind) {
+function getKindFolder_(year, kind, documentType) {
   if (!ORDER_ROOT_FOLDER_ID) {
     throw new Error("ยังไม่ได้ตั้งค่า ORDER_ROOT_FOLDER_ID");
   }
 
   const root = DriveApp.getFolderById(ORDER_ROOT_FOLDER_ID);
   const yearFolder = getOrCreateFolder_(root, String(year));
-  return getOrCreateFolder_(yearFolder, String(kind).toUpperCase());
+  const type = String(documentType || "").toUpperCase();
+  const baseFolder = type === "ANNOUNCEMENT"
+    ? getOrCreateFolder_(yearFolder, "ประกาศ")
+    : yearFolder;
+  return getOrCreateFolder_(baseFolder, String(kind).toUpperCase());
 }
 
 function getOrCreateFolder_(parent, name) {
@@ -124,6 +128,18 @@ function buildFileName_(body) {
   const extension = String(body.fileKind).toUpperCase() === "DOCX"
     ? ".docx"
     : ".pdf";
+
+  if (String(body.documentType || "").toUpperCase() === "ANNOUNCEMENT") {
+    const datePrefix = formatAnnouncementDatePrefix_(body.announcementDate);
+    const safeAnnouncementSubject = String(body.subject || "ประกาศ")
+      .replace(/[<>:"\/\\|?*\n\r]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120);
+
+    return datePrefix + "ประกาศเรื่อง" + safeAnnouncementSubject + extension;
+  }
+
   const safeNumber = String(body.orderNumber || "DRAFT").replace(/[\/\\]/g, "-");
   const safeSubject = String(body.subject || "คำสั่ง")
     .replace(/[<>:"\/\\|?*\n\r]/g, " ")
@@ -132,6 +148,18 @@ function buildFileName_(body) {
     .slice(0, 120);
 
   return "คำสั่งที่ " + safeNumber + " " + safeSubject + extension;
+}
+
+function formatAnnouncementDatePrefix_(value) {
+  const text = String(value || "");
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    return Utilities.formatDate(new Date(), "Asia/Bangkok", "ddMMyy");
+  }
+
+  const buddhistYearShort = String(Number(match[1]) + 543).slice(-2);
+  return match[3] + match[2] + buddhistYearShort;
 }
 
 function fileResponse_(file) {

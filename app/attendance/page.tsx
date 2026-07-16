@@ -9,6 +9,7 @@ import styles from "./attendance.module.css";
 import LeaveReviewPopup from "@/components/attendance/LeaveReviewPopup";
 import OfficialDutyReviewPopup from "@/components/attendance/OfficialDutyReviewPopup";
 import OrderReviewPopup from "@/components/attendance/OrderReviewPopup";
+import AnnouncementReviewPopup from "@/components/attendance/AnnouncementReviewPopup";
 import RequestResultPopup from "@/components/attendance/RequestResultPopup";
 import SmartAreaAssignmentPopup from "@/components/attendance/SmartAreaAssignmentPopup";
 import SmartAreaImportButton from "@/app/documents/components/SmartAreaImportButton";
@@ -1749,6 +1750,7 @@ schoolName: settings?.school_name ?? null,
       <LeaveReviewPopup role={profile.role} />
       <OfficialDutyReviewPopup role={profile.role} />
       <OrderReviewPopup role={profile.role} />
+      <AnnouncementReviewPopup role={profile.role} />
       <RequestResultPopup role={profile.role} />
     </main>
   );
