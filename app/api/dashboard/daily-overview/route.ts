@@ -11,6 +11,8 @@ type StaffProfile = {
   role: string | null;
   account_status: string | null;
   profile_image_file_id: string | null;
+  alternate_workplace: string | null;
+  count_as_present_when_no_checkin: boolean | null;
 };
 
 type AttendanceRecord = {
@@ -42,6 +44,11 @@ type StudentAttendanceRow = {
   class_level: string | null;
   class_room: string | null;
   status: string | null;
+};
+
+type StudentClassInfo = {
+  classLevel: string;
+  classRoom: string;
 };
 
 type SmartAreaTask = {
@@ -134,6 +141,13 @@ function normalizeStudentStatus(value: string | null) {
   return "present";
 }
 
+function countsAsPresentWithoutCheckIn(profile: StaffProfile) {
+  return Boolean(
+    profile.count_as_present_when_no_checkin &&
+      profile.alternate_workplace?.trim(),
+  );
+}
+
 async function requireActiveUser(request: Request) {
   const config = getConfig();
 
@@ -219,7 +233,9 @@ export async function GET(request: Request) {
     ] = await Promise.all([
       auth.admin
         .from("profiles")
-        .select("id, full_name, position, role, account_status, profile_image_file_id")
+        .select(
+          "id, full_name, position, role, account_status, profile_image_file_id, alternate_workplace, count_as_present_when_no_checkin",
+        )
         .eq("account_status", "active")
         .order("full_name", { ascending: true }),
       auth.admin
@@ -334,7 +350,8 @@ export async function GET(request: Request) {
     const staffSummary = {
       total: profiles.length,
       checkedIn: profiles.filter((profile) =>
-        Boolean(attendanceByUser.get(profile.id)?.check_in_at),
+        Boolean(attendanceByUser.get(profile.id)?.check_in_at) ||
+        countsAsPresentWithoutCheckIn(profile),
       ).length,
       late: profiles.filter(
         (profile) => attendanceByUser.get(profile.id)?.check_in_status === "late",
@@ -345,19 +362,23 @@ export async function GET(request: Request) {
         (profile) =>
           !attendanceByUser.get(profile.id)?.check_in_at &&
           !leaveByUser.has(profile.id) &&
-          !dutyByUser.has(profile.id),
+          !dutyByUser.has(profile.id) &&
+          !countsAsPresentWithoutCheckIn(profile),
       ).length,
       leaveOrDutyPeople,
     };
 
     const activeClassKeys = new Set<string>();
+    const studentClassById = new Map<string, StudentClassInfo>();
     const studentTotals = new Map<string, number>();
     students.forEach((student) => {
       const level = String(student.class_level || "").trim();
       if (!level) return;
-      const key = classKey(level, student.class_room);
+      const room = String(student.class_room ?? "").trim();
+      const key = classKey(level, room);
       activeClassKeys.add(key);
       studentTotals.set(key, (studentTotals.get(key) ?? 0) + 1);
+      studentClassById.set(student.id, { classLevel: level, classRoom: room });
     });
 
     const recordTotals = new Map<string, number>();
@@ -370,9 +391,14 @@ export async function GET(request: Request) {
     let absent = 0;
 
     studentAttendance.forEach((record) => {
-      const level = String(record.class_level || "").trim();
+      const studentClass = record.student_id
+        ? studentClassById.get(String(record.student_id))
+        : undefined;
+      const level = String(record.class_level || studentClass?.classLevel || "").trim();
       if (!level) return;
-      const key = classKey(level, record.class_room);
+      const room =
+        String(record.class_room ?? "").trim() || studentClass?.classRoom || "";
+      const key = classKey(level, room);
       const status = normalizeStudentStatus(record.status);
       const counts = studentClassCounts.get(key) ?? {
         present: 0,

@@ -23,7 +23,7 @@ export async function POST(
 
     if (!isOrderManager(auth.profile.role)) {
       return NextResponse.json(
-        { ok: false, message: "เน€เธเธเธฒเธฐ เธเธญ. เธซเธฃเธทเธญ Admin เน€เธ—เนเธฒเธเธฑเนเธ" },
+        { ok: false, message: "เฉพาะ ผอ. หรือ Admin เท่านั้น" },
         { status: 403 }
       );
     }
@@ -35,7 +35,7 @@ export async function POST(
 
     if (!["approve", "return"].includes(action)) {
       return NextResponse.json(
-        { ok: false, message: "เธเธณเธชเธฑเนเธเธ”เธณเน€เธเธดเธเธเธฒเธฃเนเธกเนเธ–เธนเธเธ•เนเธญเธ" },
+        { ok: false, message: "คำสั่งดำเนินการไม่ถูกต้อง" },
         { status: 400 }
       );
     }
@@ -44,7 +44,7 @@ export async function POST(
       return NextResponse.json(
         {
           ok: false,
-          message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธ—เธตเนเธ•เนเธญเธเนเธเนเนเธเธญเธขเนเธฒเธเธเนเธญเธข 3 เธ•เธฑเธงเธญเธฑเธเธฉเธฃ",
+          message: "กรุณาระบุรายละเอียดที่ต้องแก้ไขอย่างน้อย 3 ตัวอักษร",
         },
         { status: 400 }
       );
@@ -58,7 +58,7 @@ export async function POST(
 
     if (loadError || !current) {
       return NextResponse.json(
-        { ok: false, message: "เนเธกเนเธเธเธฃเธฒเธขเธเธฒเธฃเธเธณเธชเธฑเนเธ" },
+        { ok: false, message: "ไม่พบรายการคำสั่ง" },
         { status: 404 }
       );
     }
@@ -67,7 +67,7 @@ export async function POST(
       return NextResponse.json(
         {
           ok: false,
-          message: "เธเธดเธเธฒเธฃเธ“เธฒเนเธ”เนเน€เธเธเธฒเธฐเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธฃเธญเธญเธเธธเธกเธฑเธ•เธด",
+          message: "พิจารณาได้เฉพาะรายการที่รออนุมัติ",
         },
         { status: 409 }
       );
@@ -107,7 +107,7 @@ export async function POST(
 
     if (saveError || !saved) {
       throw new Error(
-        saveError?.message || "เธเธฑเธเธ—เธถเธเธเธฅเธเธฒเธฃเธเธดเธเธฒเธฃเธ“เธฒเนเธกเนเธชเธณเน€เธฃเนเธ"
+        saveError?.message || "บันทึกผลการพิจารณาไม่สำเร็จ"
       );
     }
 
@@ -145,8 +145,8 @@ export async function POST(
       order: saved,
       message:
         action === "approve"
-          ? "เธญเธเธธเธกเธฑเธ•เธดเธเธณเธชเธฑเนเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง"
-          : `เธชเนเธเธเธฅเธฑเธเนเธเนเนเธ เธเธฃเธฑเนเธเธ—เธตเน ${nextRevision} เนเธฅเนเธง`,
+          ? "อนุมัติคำสั่งเรียบร้อยแล้ว"
+          : `ส่งกลับแก้ไข ครั้งที่ ${nextRevision} แล้ว`,
     });
   } catch (error) {
     return NextResponse.json(
@@ -155,7 +155,7 @@ export async function POST(
         message:
           error instanceof Error
             ? error.message
-            : "เธเธดเธเธฒเธฃเธ“เธฒเธเธณเธชเธฑเนเธเนเธกเนเธชเธณเน€เธฃเนเธ",
+            : "พิจารณาคำสั่งไม่สำเร็จ",
       },
       { status: 500 }
     );

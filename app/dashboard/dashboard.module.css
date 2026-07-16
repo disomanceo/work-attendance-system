@@ -511,7 +511,7 @@
 
 .classRow {
   display: grid;
-  grid-template-columns: minmax(52px, 1fr) repeat(4, minmax(26px, auto));
+  grid-template-columns: minmax(58px, 1.25fr) repeat(4, minmax(38px, 1fr));
   align-items: center;
   gap: 6px;
   min-height: 30px;
@@ -532,7 +532,13 @@
 .classRow strong {
   color: #2b4030;
   text-align: center;
-  transform: translateX(-1ch);
+}
+
+.classRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .classPresent {

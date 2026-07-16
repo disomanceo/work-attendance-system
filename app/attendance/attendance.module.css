@@ -1139,6 +1139,53 @@
   box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.13);
 }
 
+.latePermissionOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.latePermissionOptions legend {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  padding: 0;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.latePermissionOptions label {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.latePermissionOptions label:has(input:checked) {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #c2410c;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.latePermissionOptions input {
+  width: 16px;
+  height: 16px;
+  accent-color: #f97316;
+}
+
 .lateReasonMeta {
   display: flex;
   min-height: 28px;
@@ -1213,6 +1260,10 @@
   }
 
   .lateReasonActions {
+    grid-template-columns: 1fr;
+  }
+
+  .latePermissionOptions {
     grid-template-columns: 1fr;
   }
 

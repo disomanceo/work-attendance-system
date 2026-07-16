@@ -107,10 +107,12 @@ function percent(value: number, total: number) {
 }
 
 function formatPercent(value: number) {
+  if (value === 0) return "-";
   return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
 }
 
 function numberText(value: number) {
+  if (value === 0) return "-";
   return value.toLocaleString("th-TH");
 }
 

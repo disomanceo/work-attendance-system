@@ -62,6 +62,8 @@ type PendingCheckIn = {
   distance: number;
 };
 
+type LatePermissionStatus = "requested" | "not_requested";
+
 type TodayLeave = {
   id: string;
   leave_type: "sick" | "personal" | "official_duty" | string;
@@ -364,6 +366,8 @@ export default function AttendancePage() {
   const [lateReasonOpen, setLateReasonOpen] = useState(false);
   const [lateReason, setLateReason] = useState("");
   const [lateReasonError, setLateReasonError] = useState("");
+  const [latePermissionStatus, setLatePermissionStatus] =
+    useState<LatePermissionStatus>("not_requested");
   const [overviewSending, setOverviewSending] = useState(false);
   const [overviewMessage, setOverviewMessage] = useState("");
   const [pendingCheckIn, setPendingCheckIn] =
@@ -987,6 +991,7 @@ schoolName: settings?.school_name ?? null,
         setPendingCheckIn(pending);
         setLateReason("");
         setLateReasonError("");
+        setLatePermissionStatus("not_requested");
         setLateReasonOpen(true);
         return;
       }
@@ -1087,6 +1092,7 @@ schoolName: settings?.school_name ?? null,
     setLateReasonOpen(false);
     setLateReason("");
     setLateReasonError("");
+    setLatePermissionStatus("not_requested");
     setPendingCheckIn(null);
   }
 
@@ -1122,11 +1128,13 @@ schoolName: settings?.school_name ?? null,
     try {
       await saveCheckIn(
         pendingCheckIn,
-        normalizedReason
+        normalizedReason,
+        latePermissionStatus === "requested" ? "normal" : "late"
       );
 
       setLateReasonOpen(false);
       setLateReason("");
+      setLatePermissionStatus("not_requested");
       setPendingCheckIn(null);
     } catch (error) {
       console.error("Late check-in error:", error);
@@ -1699,6 +1707,32 @@ schoolName: settings?.school_name ?? null,
                 placeholder="เช่น รถติดจากอุบัติเหตุระหว่างเดินทาง"
               />
             </label>
+
+            <fieldset className={styles.latePermissionOptions}>
+              <legend>การขออนุญาต</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="latePermissionStatus"
+                  value="requested"
+                  checked={latePermissionStatus === "requested"}
+                  onChange={() => setLatePermissionStatus("requested")}
+                  disabled={processing}
+                />
+                <span>ขออนุญาต</span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="latePermissionStatus"
+                  value="not_requested"
+                  checked={latePermissionStatus === "not_requested"}
+                  onChange={() => setLatePermissionStatus("not_requested")}
+                  disabled={processing}
+                />
+                <span>ไม่ได้ขออนุญาต</span>
+              </label>
+            </fieldset>
 
             <div className={styles.lateReasonMeta}>
               <small
