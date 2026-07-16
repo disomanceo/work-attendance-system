@@ -4,6 +4,7 @@ import {
   requireSmartAreaUser,
   isSmartAreaManagerRole,
 } from "@/lib/smart-area/auth";
+import { refreshSmartAreaAssignmentDelivery } from "@/lib/smart-area/assignment-postprocess";
 import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
 import { notifySmartAreaAssignmentsTelegram } from "@/lib/telegram/smart-area-workflow-notifications";
 
@@ -451,6 +452,14 @@ async function handleSigningPost(request: Request) {
       { status: 500 },
     );
   }
+
+  await refreshSmartAreaAssignmentDelivery({
+    admin: auth.admin,
+    bookId,
+    actorId: signer.id,
+    assigneeIds,
+    assignmentNote,
+  });
 
   try {
     await notifySmartAreaAssignments({

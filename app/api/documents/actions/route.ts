@@ -3,6 +3,7 @@ import {
   requireSmartAreaUser,
   isSmartAreaManagerRole,
 } from "@/lib/smart-area/auth";
+import { refreshSmartAreaAssignmentDelivery } from "@/lib/smart-area/assignment-postprocess";
 import { notifySmartAreaAssignments } from "@/lib/line/smart-area-notifications";
 import { notifySmartAreaAssignmentsTelegram } from "@/lib/telegram/smart-area-workflow-notifications";
 
@@ -104,6 +105,14 @@ export async function POST(request: Request) {
     }
 
     const result = Array.isArray(data) ? data[0] : null;
+
+    await refreshSmartAreaAssignmentDelivery({
+      admin: auth.admin,
+      bookId,
+      actorId: auth.profile.id,
+      assigneeIds,
+      assignmentNote: note,
+    });
 
     const notifications = await Promise.allSettled([
       notifySmartAreaAssignments({
