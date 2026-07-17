@@ -946,3 +946,247 @@ Release status:
 - [x] Updated the four displayed school library categories to: แผนงานและโครงการ, การจัดการเรียนการสอน, แบบฟอร์มต่างๆ, ผลงานและรางวัล.
 - [x] Updated the Google Apps Script category folder mapping to use the same four category names.
 - [x] Run build after category rename.
+
+## Local Git metadata path reset - 2026-07-17
+
+Release status:
+
+- [x] Confirmed the active workspace path is `D:\work-attendance-main`.
+- [x] Replaced the worktree pointer with a standalone `.git` directory inside `D:\work-attendance-main`.
+- [x] Confirmed `git rev-parse --git-dir` returns `.git`.
+- [x] Confirmed `git rev-parse --git-common-dir` returns `.git`.
+- [x] Confirmed local `main` still points to commit `4014e38`.
+- [x] Kept the old worktree pointer as `.git.worktree-pointer.backup` and did not delete backup files.
+- [x] Did not run `git add`, `git reset`, or deploy.
+
+Follow-up checks:
+
+- [x] Run build after this metadata update.
+
+## School library sample mode fix - 2026-07-17
+
+Release status:
+
+- [x] Confirmed `.env.local` does not currently include `NEXT_PUBLIC_FIREBASE_*`, so `/school-library` should run in sample-data mode.
+- [x] Fixed the add-document flow so sample mode does not require a Supabase session, Firebase, or Google Drive upload.
+- [x] New sample-mode documents are added to the current page state with selected file metadata only.
+- [x] Allowed sample-mode rows to be removed locally without calling the production delete API.
+- [x] Confirmed `npm.cmd run build` succeeds.
+- [x] Confirmed `http://localhost:3000/school-library` returns `200 OK` and renders the Firebase sample-mode notice plus sample documents.
+- [x] Did not run `git add`, `git reset`, or deploy.
+
+Follow-up checks:
+
+- [ ] Re-test add/delete in a real browser after browser automation is available; `agent-browser` was not installed in this terminal session.
+
+## Local dev server recovery - 2026-07-17
+
+Release status:
+
+- [x] Confirmed `npm.cmd run dev` failed because a stale Next.js dev process held `.next\dev\lock`.
+- [x] Stopped only the stuck Node process reported by Next.js for the local dev server.
+- [x] Confirmed the stale lock was released automatically after the stuck process stopped.
+- [x] Restarted `npm.cmd run dev` successfully.
+- [x] Confirmed the active local URL is `http://localhost:3000`.
+- [x] Confirmed `http://localhost:3000/school-library` returns `200 OK`.
+- [x] Confirmed `http://127.0.0.1:3000/school-library` returns `200 OK`.
+- [x] Did not run `git add`, `git reset`, or deploy.
+
+## School library preview and Firebase config check - 2026-07-17
+
+Release status:
+
+- [x] Confirmed local `.env.local` has Supabase values but no `NEXT_PUBLIC_FIREBASE_*` values, so Firestore writes cannot run yet.
+- [x] Confirmed local `.env.local` has no `SCHOOL_LIBRARY_DRIVE_GAS_URL` or `SCHOOL_LIBRARY_DRIVE_GAS_SECRET`, so real Drive uploads cannot run yet.
+- [x] Changed browser-viewable Drive files to open with `https://drive.google.com/file/d/<fileId>/preview` when a Drive file id is available.
+- [x] Changed sample mode so selected PDF/image files get a local `blob:` preview URL and can be opened during the current browser session.
+- [x] Revoke local `blob:` preview URLs when sample rows are deleted.
+- [x] Confirmed `npm.cmd run build` succeeds.
+- [x] Confirmed `http://localhost:3000/school-library` returns `200 OK` after the preview update.
+- [x] Did not run `git add`, `git reset`, or deploy.
+
+Follow-up checks:
+
+- [ ] Add `NEXT_PUBLIC_FIREBASE_*` and `SCHOOL_LIBRARY_DRIVE_GAS_*` to `.env.local`, restart `npm.cmd run dev`, then confirm a real upload creates one Drive file and one Firestore document.
+
+## School library env source investigation - 2026-07-17
+
+Release status:
+
+- [x] Confirmed Vercel project link points to `pm-coming` (`prj_mriTS53sAKwF0N5vTHwy2jrC2qDB`).
+- [x] Confirmed Vercel CLI is installed.
+- [x] Ran `vercel env ls` for the linked project; no Firebase or school-library env keys were listed.
+- [x] Tried Firebase Hosting `https://savedocument-bb8ad.firebaseapp.com/__/firebase/init.json`; it returned Site Not Found, so Firebase Web config cannot be recovered from Hosting.
+- [x] Confirmed Firebase CLI is not installed in this terminal environment.
+- [x] Searched repo and backup folders for `NEXT_PUBLIC_FIREBASE_*` and `SCHOOL_LIBRARY_DRIVE_GAS_*`; no usable values were found.
+- [x] Confirmed the Apps Script deployment id is mentioned in TODO, but the matching secret is not available locally.
+- [x] Added the provided Firebase Web config to local `.env.local`.
+- [x] Confirmed the local dev server reloaded `.env.local` and `/school-library` now enters Firebase load mode.
+- [x] Pulled Vercel production, preview, and development env vars into temporary files to check for `SCHOOL_LIBRARY_DRIVE_GAS_*`; those keys were not present.
+- [x] Removed the temporary Vercel env check files after inspection.
+- [x] Confirmed `npx.cmd @google/clasp --version` works (`3.3.0`).
+- [x] Added `SCHOOL_LIBRARY_DRIVE_GAS_URL` and `SCHOOL_LIBRARY_DRIVE_GAS_SECRET` to local `.env.local` from the provided Apps Script web app values.
+- [x] Added `SCHOOL_LIBRARY_DRIVE_GAS_URL` and `SCHOOL_LIBRARY_DRIVE_GAS_SECRET` to Vercel production, preview, and development.
+- [x] Verified the Apps Script endpoint and secret by calling `deleteSchoolLibraryFile` with an empty file id; it returned `Missing fileId` instead of `Unauthorized`.
+- [x] Confirmed `npm.cmd run build` succeeds after adding Firebase and GAS env values.
+- [x] Confirmed `http://localhost:3000/school-library` returns `200 OK` after local env reload.
+- [x] Did not run `git add`, `git reset`, or deploy.
+
+Blocked:
+
+- [x] Firebase Web app config was provided and added locally.
+- [x] Apps Script values were provided, added locally, added to Vercel env, and endpoint auth was verified.
+- [ ] Test one real school-library upload in the browser and confirm one Drive file plus one Firestore document are created.
+
+## School library category consolidation - 2026-07-17
+
+Release status:
+
+- [x] Confirmed workspace path is `D:\work-attendance-main`.
+- [x] Confirmed current branch is `main`.
+- [x] Checked `git status --short` before edits and did not touch unrelated untracked files, backup folders, or `_install-*` folders.
+- [x] Read the real school-library page, styles, Firestore mapping, upload API, and GAS category label code before changing category behavior.
+- [x] Checked existing Firestore category usage before changing values; found 3 existing documents using legacy `lesson-plan`.
+- [x] Did not create a data migration or modify existing Firestore documents.
+- [x] Added one shared school-library category source with exactly 6 major categories.
+- [x] Normalized legacy category values on read so old `lesson-plan` data appears under `การจัดการเรียนรู้`.
+- [x] Updated the upload API and GAS category labels to use the same 6 category names while keeping legacy label compatibility.
+- [x] Updated the category card layout to 3 columns on desktop, adaptive tablet columns, and 2 columns on mobile without horizontal scrolling.
+- [x] Kept search, filters, add-document controls, and existing document actions in place.
+- [x] Confirmed local `/school-library` returns `200 OK` and includes all 6 category labels plus `ทั้งหมด`.
+- [x] Confirmed `npm.cmd run lint -- --quiet` succeeds.
+- [x] Confirmed `npm.cmd run build` succeeds.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Follow-up adjustment:
+
+- [x] Reduced the school-library category card height, padding, icon size, and text size.
+- [x] Changed mobile category cards to 3 columns so the 6 categories fit in 2 rows.
+- [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the card-size adjustment.
+- [x] Confirmed `npm.cmd run build` succeeds after the card-size adjustment.
+- [x] Confirmed local `/school-library` still returns `200 OK` after the card-size adjustment.
+
+Multi-file and file-size adjustment:
+
+- [x] Added file count and total size display to all 6 category cards.
+- [x] Changed the recent-documents table column to `ไฟล์ / ขนาด` and show file count plus file size per document.
+- [x] Changed the personnel filter to load all readable `profiles` names and merge them with existing document owners.
+- [x] Changed the add-document modal to support selecting multiple files.
+- [x] Allowed selecting additional files later without clearing the existing selected-file queue.
+- [x] Added a selected-file queue with total file count, total size, per-file type/size, and remove buttons.
+- [x] Added save progress text for multi-file uploads (`กำลังบันทึกไฟล์ x/y`).
+- [x] Kept the existing upload API unchanged and save each selected file as one school-library document.
+- [x] Confirmed local `/school-library` includes `ไฟล์ / ขนาด`, `ไฟล์ •`, `เรื่อง`, and `ครูและบุคลากรทั้งหมด`.
+- [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the multi-file adjustment.
+- [x] Confirmed `npm.cmd run build` succeeds after the multi-file adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Typography adjustment:
+
+- [x] Changed the school-library page font stack to prefer `Anuphan`.
+- [x] Reduced non-heading text weights to normal weight.
+- [x] Kept only page headings, section headings, category names, and table headers visually bold.
+- [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the typography adjustment.
+- [x] Confirmed `npm.cmd run build` succeeds after the typography adjustment.
+- [x] Confirmed local `/school-library` still returns `200 OK` after the typography adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+File icon adjustment:
+
+- [x] Replaced the school-library document icon label logic so it uses `fileName`, `mimeType`, and fallback `fileType`.
+- [x] Added icon labels for PDF, image files, Word, Excel, PowerPoint, video, audio, archive, text/code, and unknown file extensions.
+- [x] Reduced the file badge size in the recent-documents list.
+- [x] Added separate badge colors for PDF, image, Word, Excel, PowerPoint, video, audio, archive, text/code, and generic files.
+- [x] Updated the add-document selected-file queue to show the same detected file type labels.
+- [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the file icon adjustment.
+- [x] Confirmed `npm.cmd run build` succeeds after the file icon adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Document-set adjustment:
+
+- [x] Changed multi-file upload metadata so selected files are saved as one school-library document set instead of separate document rows.
+- [x] Added `files[]` metadata for each file in a document set while keeping single-file legacy fields for backward compatibility.
+- [x] Updated Firestore mapping to read `files[]` and keep old one-file documents working without a migration.
+- [x] Updated file count, total size, search, primary preview URL, and delete behavior to use all files in a document set.
+- [x] Updated delete behavior so a document set can delete all available Drive file ids before removing the single metadata document.
+- [x] Kept personnel filtering backed by readable `profiles` names plus existing document owners.
+- [x] Reduced mobile category cards to a compact two-line layout.
+- [x] Changed mobile filters to stay in one row across the screen.
+- [x] Clamped displayed document titles to at most two lines.
+- [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the document-set adjustment.
+- [x] Confirmed `npm.cmd run build` succeeds after the document-set adjustment.
+- [x] Confirmed local `/school-library` still returns `200 OK` after the document-set adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Mobile compact layout adjustment:
+
+- [x] Added distinct background and border colors for each school-library category card.
+- [x] Reduced mobile category cards further and kept category text readable without ellipsis.
+- [x] Reduced mobile category text sizes and kept each card to a compact two-line layout.
+- [x] Reduced mobile filter height and font size so all three filters fit in one row.
+- [x] Changed mobile document rows to a compact two-row layout.
+- [x] Hid secondary mobile row details that caused document rows to grow too tall.
+- [x] Kept document titles clamped to two lines without forced word breaking.
+- [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the mobile compact layout adjustment.
+- [x] Confirmed `npm.cmd run build` succeeds after the mobile compact layout adjustment.
+- [x] Confirmed local `/school-library` still returns `200 OK` after the mobile compact layout adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Document tree and edit adjustment:
+
+- [x] Restored mobile category-card count display while keeping the compact 2-row category layout.
+- [x] Added expandable document-set rows so a multi-file topic can show child files as a tree.
+- [x] Added per-child file links with detected file badges and file sizes.
+- [x] Added an edit button for each school-library document row.
+- [x] Allowed editing document-set metadata and appending more files to the existing `files[]` list.
+- [x] Added Firestore update support for school-library document metadata.
+- [x] Confirm `npm.cmd run lint -- --quiet` succeeds after the document tree/edit adjustment.
+- [x] Confirm `npm.cmd run build` succeeds after the document tree/edit adjustment.
+- [x] Confirm local `/school-library` still returns `200 OK` after the document tree/edit adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+School library card color and personnel dropdown adjustment:
+
+- [x] Confirmed the school-library page had been loading personnel names directly from client-side `profiles`, which can be incomplete when Supabase RLS limits readable rows.
+- [x] Added a school-library profiles API that validates the current session and loads active personnel through the server-side Supabase service role.
+- [x] Updated the school-library personnel dropdown to load active teacher/personnel names from the new API with document-owner fallback.
+- [x] Changed the 6 category cards to use distinct tone colors.
+- [x] Added subtle card patterns using CSS gradients without adding dependencies.
+- [x] Confirm `npm.cmd run lint -- --quiet` succeeds after the card color/personnel dropdown adjustment.
+- [x] Confirm `npm.cmd run build` succeeds after the card color/personnel dropdown adjustment.
+- [x] Confirm local `/school-library` still returns `200 OK` after the card color/personnel dropdown adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+School library hover and child-file management adjustment:
+
+- [x] Added a light hover highlight for document rows and file rows.
+- [x] Added delete buttons to child files inside expanded document-set trees.
+- [x] Added existing-file visibility inside the edit modal for both single files and document sets.
+- [x] Added delete controls for existing files inside the edit modal.
+- [x] Updated child-file deletion to remove the file from the document set metadata and sync Firestore when configured.
+- [x] Kept whole-document delete behavior when the last remaining file is removed.
+- [x] Updated category pills in the document list to follow each category card color.
+- [x] Increased visual separation between the 6 category card colors.
+- [x] Confirm `npm.cmd run lint -- --quiet` succeeds after the hover/child-file adjustment.
+- [x] Confirm `npm.cmd run build` succeeds after the hover/child-file adjustment.
+- [x] Confirm local `/school-library` still returns `200 OK` after the hover/child-file adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+School library personnel dropdown verification:
+
+- [x] Queried Supabase `profiles` directly and confirmed there are 12 named profiles.
+- [x] Confirmed 1 named profile is marked as deleted with `phone = deleted:*`, leaving 11 current school personnel records for the dropdown.
+- [x] Updated `/api/school-library/profiles` to return all current named personnel, not only `account_status = active`.
+- [x] Kept the API protected by requiring the current requester to be an active profile.
+- [x] Filtered deleted-marker profiles on the server and stripped phone numbers from the API response.
+- [x] Updated the school-library page to retry loading personnel when Supabase auth session becomes available.
+- [x] Confirm unauthenticated `/api/school-library/profiles` does not expose personnel data.
+- [x] Confirm `npm.cmd run lint -- --quiet` succeeds after personnel dropdown verification.
+- [x] Confirm `npm.cmd run build` succeeds after personnel dropdown verification.
+- [x] Confirm local `/school-library` still returns `200 OK` after personnel dropdown verification.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Follow-up checks:
+
+- [ ] Test the category card filtering interactively in a browser after browser automation is available.
+- [ ] If the school wants legacy Firestore category values rewritten permanently, create a reviewed migration plan first.

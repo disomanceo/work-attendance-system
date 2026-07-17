@@ -7,18 +7,30 @@ import {
   isSchoolLibraryFirebaseConfigured,
   listSchoolLibraryDocuments,
   type NewSchoolLibraryDocument,
+  updateSchoolLibraryDocument,
 } from "@/lib/school-library/firestore";
+import {
+  DEFAULT_SCHOOL_LIBRARY_CATEGORY,
+  SCHOOL_LIBRARY_CATEGORIES,
+  type SchoolLibraryCategory,
+} from "@/lib/school-library/categories";
 import { createClient } from "@/lib/supabase/client";
 import styles from "./school-library.module.css";
 
-type LibraryCategory =
-  | "lesson-plan"
-  | "operation-plan"
-  | "research"
-  | "forms"
-  | "certificates";
+type LibraryCategory = SchoolLibraryCategory;
 
 type LibraryStatus = "reviewed" | "approved" | "draft" | "ready";
+
+type LibraryFileType = "PDF" | "DOCX" | "DRIVE";
+
+type LibraryDocumentFile = {
+  driveUrl: string;
+  driveFileId?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  fileType: LibraryFileType;
+};
 
 type LibraryDocument = {
   id: string;
@@ -29,7 +41,7 @@ type LibraryDocument = {
   gradeLevel: string;
   subject: string;
   academicYear: string;
-  fileType: "PDF" | "DOCX" | "DRIVE";
+  fileType: LibraryFileType;
   status: LibraryStatus;
   updatedAt: string;
   keywords: string[];
@@ -38,6 +50,7 @@ type LibraryDocument = {
   fileName?: string;
   mimeType?: string;
   fileSize?: number;
+  files?: LibraryDocumentFile[];
   uploadedByUserId?: string;
   uploadedByName?: string;
 };
@@ -61,6 +74,9 @@ type CurrentProfile = {
 type PersonnelOption = {
   id: string;
   full_name: string;
+  position?: string | null;
+  role?: string | null;
+  account_status?: string | null;
 };
 
 type SearchStat = {
@@ -72,25 +88,15 @@ type SearchStat = {
 const DRIVE_FOLDER_URL =
   "https://drive.google.com/drive/u/0/folders/1oqa3etlgk5LtqDLRY2SJn1mDinPL0_lJ";
 const SEARCH_HISTORY_KEY = "school-library-search-history";
+const MAX_UPLOAD_FILE_SIZE = 30 * 1024 * 1024;
 
-const CATEGORIES: Array<{
-  id: LibraryCategory;
-  label: string;
-  icon: string;
-  tone: "green" | "mint" | "purple" | "orange" | "blue";
-}> = [
-  { id: "lesson-plan", label: "แผนงานและโครงการ", icon: "▤", tone: "green" },
-  { id: "operation-plan", label: "การจัดการเรียนการสอน", icon: "☑", tone: "mint" },
-  { id: "forms", label: "แบบฟอร์มต่างๆ", icon: "▧", tone: "orange" },
-  { id: "research", label: "ผลงานและรางวัล", icon: "⌬", tone: "purple" },
-  { id: "certificates", label: "วุฒิบัตร-ใบประกาศ", icon: "☆", tone: "blue" },
-];
+const CATEGORIES = SCHOOL_LIBRARY_CATEGORIES;
 
 const INITIAL_DOCUMENTS: LibraryDocument[] = [
   {
     id: "doc-1",
     title: "แผนการจัดการเรียนรู้ วิชาคณิตศาสตร์ ป.4",
-    category: "lesson-plan",
+    category: "learning-management",
     subcategory: "แผนการจัดการเรียนรู้",
     owner: "ครูมนัสศรี",
     gradeLevel: "ป.4",
@@ -105,7 +111,7 @@ const INITIAL_DOCUMENTS: LibraryDocument[] = [
   {
     id: "doc-2",
     title: "วิจัยการพัฒนาทักษะการอ่านออกเขียนได้",
-    category: "research",
+    category: "innovation-works",
     subcategory: "วิจัยในชั้นเรียน",
     owner: "ครูบุษรา",
     gradeLevel: "ป.3",
@@ -120,7 +126,7 @@ const INITIAL_DOCUMENTS: LibraryDocument[] = [
   {
     id: "doc-3",
     title: "โครงการส่งเสริมสุขภาพนักเรียน",
-    category: "operation-plan",
+    category: "administration-planning",
     subcategory: "โครงการ",
     owner: "ครูณัฐกฤตา",
     gradeLevel: "ทั้งโรงเรียน",
@@ -136,7 +142,7 @@ const INITIAL_DOCUMENTS: LibraryDocument[] = [
 
 const EMPTY_DRAFT: DraftDocument = {
   title: "",
-  category: "lesson-plan",
+  category: DEFAULT_SCHOOL_LIBRARY_CATEGORY,
   subcategory: "",
   gradeLevel: "",
   subject: "",
@@ -144,14 +150,47 @@ const EMPTY_DRAFT: DraftDocument = {
   keywords: "",
 };
 
-function statusLabel(status: LibraryStatus) {
+function statusLabel(_status: LibraryStatus) {
   return "พร้อมใช้";
 }
 
-function fileIcon(fileType: LibraryDocument["fileType"]) {
-  if (fileType === "PDF") return "PDF";
-  if (fileType === "DOCX") return "W";
-  return "▶";
+function fileExtensionOf(name = "") {
+  const cleanName = name.split(/[?#]/)[0] || "";
+  const dotIndex = cleanName.lastIndexOf(".");
+  return dotIndex >= 0 ? cleanName.slice(dotIndex + 1).trim().toLowerCase() : "";
+}
+
+function fileKindOf(input: {
+  fileName?: string;
+  mimeType?: string;
+  fileType?: LibraryDocument["fileType"];
+}) {
+  const extension = fileExtensionOf(input.fileName);
+  const mimeType = (input.mimeType || "").toLowerCase();
+
+  if (extension === "pdf" || mimeType === "application/pdf" || input.fileType === "PDF") return "pdf";
+  if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "heic", "heif", "avif", "ico"].includes(extension) || mimeType.startsWith("image/")) return "image";
+  if (["doc", "docx", "docm", "dot", "dotx", "rtf", "odt", "pages"].includes(extension) || mimeType.includes("word") || mimeType.includes("officedocument.wordprocessingml")) return "word";
+  if (["xls", "xlsx", "xlsm", "xlsb", "csv", "tsv", "ods", "numbers"].includes(extension) || mimeType.includes("excel") || mimeType.includes("spreadsheet") || mimeType.includes("csv")) return "excel";
+  if (["ppt", "pptx", "pptm", "pps", "ppsx", "odp", "key"].includes(extension) || mimeType.includes("powerpoint") || mimeType.includes("presentation")) return "powerpoint";
+  if (["mp4", "mov", "avi", "mkv", "webm", "wmv", "m4v", "mpeg", "mpg", "3gp"].includes(extension) || mimeType.startsWith("video/")) return "video";
+  if (["mp3", "wav", "m4a", "aac", "ogg", "flac", "wma", "aiff"].includes(extension) || mimeType.startsWith("audio/")) return "audio";
+  if (["zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "xz", "iso"].includes(extension) || mimeType.includes("zip") || mimeType.includes("compressed")) return "archive";
+  if (["txt", "md", "json", "xml", "html", "htm", "css", "js", "ts", "yaml", "yml", "log"].includes(extension) || mimeType.startsWith("text/")) return "text";
+
+  return "file";
+}
+
+function fileIconLabel(kind: ReturnType<typeof fileKindOf>, fileName?: string) {
+  const extension = fileExtensionOf(fileName).toUpperCase();
+  if (kind === "image") return extension && extension.length <= 4 ? extension : "IMG";
+  if (kind === "word") return "DOC";
+  if (kind === "excel") return "XLS";
+  if (kind === "powerpoint") return "PPT";
+  if (kind === "archive") return "ZIP";
+  if (kind === "text") return "TXT";
+  if (kind === "file") return extension && extension.length <= 4 ? extension : "FILE";
+  return kind.toUpperCase();
 }
 
 function inferFileTypeFromFile(file: File | null): LibraryDocument["fileType"] {
@@ -172,17 +211,108 @@ function inferFileTypeFromFile(file: File | null): LibraryDocument["fileType"] {
   return "DRIVE";
 }
 
+function selectedFileTypeLabel(files: File[]) {
+  if (files.length === 0) return "FILE";
+
+  const types = Array.from(
+    new Set(
+      files.map((file) =>
+        fileIconLabel(
+          fileKindOf({
+            fileName: file.name,
+            mimeType: file.type,
+            fileType: inferFileTypeFromFile(file),
+          }),
+          file.name,
+        ),
+      ),
+    ),
+  );
+  return types.length === 1 ? types[0] : "หลายประเภท";
+}
+
 function formatFileSize(size: number) {
+  if (size >= 1024 * 1024 * 1024) return `${(size / 1024 / 1024 / 1024).toFixed(1)} GB`;
   if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
   if (size >= 1024) return `${Math.round(size / 1024)} KB`;
   return `${size} bytes`;
 }
 
-function driveFileIdOf(document: LibraryDocument) {
-  const directId = document.driveFileId?.trim();
+function documentFileCount(document: LibraryDocument) {
+  return documentFilesOf(document).length;
+}
+
+function documentFileSizeLabel(document: LibraryDocument) {
+  const files = documentFilesOf(document);
+  const count = files.length || 1;
+  const totalSize = files.reduce((total, file) => total + (file.fileSize || 0), 0);
+  const size = totalSize > 0 ? formatFileSize(totalSize) : "-";
+  return `${count} ไฟล์ • ${size}`;
+}
+
+function documentInputWithFiles(
+  document: LibraryDocument,
+  files: LibraryDocumentFile[],
+): NewSchoolLibraryDocument & { updatedAt: string } {
+  const primaryFile = files[0];
+  const totalFileSize = files.reduce((total, file) => total + (file.fileSize || 0), 0);
+
+  return {
+    title: document.title,
+    category: document.category,
+    subcategory: document.subcategory,
+    owner: document.owner,
+    gradeLevel: document.gradeLevel,
+    subject: document.subject,
+    academicYear: document.academicYear,
+    fileType: primaryFile?.fileType || "DRIVE",
+    status: document.status,
+    updatedAt: "วันนี้",
+    keywords: document.keywords,
+    driveUrl: primaryFile?.driveUrl || DRIVE_FOLDER_URL,
+    driveFileId: primaryFile?.driveFileId || "",
+    fileName:
+      files.length === 1
+        ? primaryFile?.fileName || document.fileName || document.title
+        : `${files.length} ไฟล์ในชุดเอกสาร`,
+    mimeType: primaryFile?.mimeType || "",
+    fileSize: totalFileSize || undefined,
+    files,
+    uploadedByUserId: document.uploadedByUserId,
+    uploadedByName: document.uploadedByName,
+  };
+}
+
+function fileIdentity(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+function documentFilesOf(document: LibraryDocument): LibraryDocumentFile[] {
+  if (document.files?.length) return document.files;
+
+  if (!document.fileName && !document.driveUrl && !document.driveFileId) return [];
+
+  return [
+    {
+      driveUrl: document.driveUrl,
+      driveFileId: document.driveFileId,
+      fileName: document.fileName,
+      mimeType: document.mimeType,
+      fileSize: document.fileSize,
+      fileType: document.fileType,
+    },
+  ];
+}
+
+function primaryDocumentFile(document: LibraryDocument) {
+  return documentFilesOf(document)[0];
+}
+
+function driveFileIdOf(file: Pick<LibraryDocumentFile, "driveFileId" | "driveUrl">) {
+  const directId = file.driveFileId?.trim();
   if (directId) return directId;
 
-  const url = document.driveUrl || "";
+  const url = file.driveUrl || "";
   const filePathMatch = url.match(/\/file\/d\/([^/?#]+)/);
   if (filePathMatch?.[1]) return decodeURIComponent(filePathMatch[1]);
 
@@ -194,18 +324,64 @@ function driveFileIdOf(document: LibraryDocument) {
   }
 }
 
+function driveFileIdsOf(document: LibraryDocument) {
+  return documentFilesOf(document)
+    .map((file) => driveFileIdOf(file))
+    .filter(Boolean);
+}
+
 function shouldOpenInBrowser(document: LibraryDocument) {
-  const mimeType = (document.mimeType || "").toLowerCase();
-  return document.fileType === "PDF" || mimeType === "application/pdf" || mimeType.startsWith("image/");
+  const file = primaryDocumentFile(document);
+  return shouldOpenDocumentFileInBrowser(
+    file || {
+      driveUrl: document.driveUrl,
+      driveFileId: document.driveFileId,
+      fileName: document.fileName,
+      mimeType: document.mimeType,
+      fileSize: document.fileSize,
+      fileType: document.fileType,
+    },
+  );
+}
+
+function shouldOpenDocumentFileInBrowser(file: LibraryDocumentFile) {
+  const mimeType = (file.mimeType || "").toLowerCase();
+  return file.fileType === "PDF" || mimeType === "application/pdf" || mimeType.startsWith("image/");
+}
+
+function shouldOpenFileInBrowser(file: File) {
+  return file.type === "application/pdf" || file.type.startsWith("image/");
 }
 
 function documentAccessUrl(document: LibraryDocument) {
-  if (shouldOpenInBrowser(document)) return document.driveUrl;
+  const file = primaryDocumentFile(document);
+  if (file) return documentFileAccessUrl(file);
 
-  const fileId = driveFileIdOf(document);
+  const fallbackFile: LibraryDocumentFile = {
+    driveUrl: document.driveUrl,
+    driveFileId: document.driveFileId,
+    fileName: document.fileName,
+    mimeType: document.mimeType,
+    fileSize: document.fileSize,
+    fileType: document.fileType,
+  };
+  return documentFileAccessUrl(fallbackFile);
+}
+
+function documentFileAccessUrl(file: LibraryDocumentFile) {
+  const driveUrl = file.driveUrl || DRIVE_FOLDER_URL;
+  const fileId = driveFileIdOf(file);
+  if (driveUrl.startsWith("blob:")) return driveUrl;
+
+  if (shouldOpenDocumentFileInBrowser(file)) {
+    return fileId
+      ? `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`
+      : driveUrl;
+  }
+
   return fileId
     ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`
-    : document.driveUrl;
+    : driveUrl;
 }
 
 function normalizeSearchTerm(value: string) {
@@ -255,7 +431,9 @@ function canDeleteDocument(
   document: LibraryDocument,
   profile: CurrentProfile | null,
   currentUserId: string,
+  sampleMode = false,
 ) {
+  if (sampleMode) return true;
   if (profile?.role === "director") return true;
   return !!document.uploadedByUserId && !!currentUserId && document.uploadedByUserId === currentUserId;
 }
@@ -270,7 +448,9 @@ export default function SchoolLibraryPage() {
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
   const [draft, setDraft] = useState<DraftDocument>(EMPTY_DRAFT);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [editingDocument, setEditingDocument] = useState<LibraryDocument | null>(null);
+  const [expandedDocumentIds, setExpandedDocumentIds] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [formError, setFormError] = useState("");
   const [currentProfile, setCurrentProfile] = useState<CurrentProfile | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -321,29 +501,57 @@ export default function SchoolLibraryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadPersonnelOptions() {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .eq("account_status", "active")
-        .order("full_name", { ascending: true });
+    async function loadPersonnelOptions(accessToken?: string) {
+      if (!accessToken) return;
 
-      if (cancelled || !data) return;
+      const response = await fetch("/api/school-library/profiles", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const result = (await response.json()) as {
+        ok?: boolean;
+        profiles?: PersonnelOption[];
+        message?: string;
+      };
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "โหลดรายชื่อครูและบุคลากรไม่สำเร็จ");
+      }
+
+      if (cancelled || !result.profiles) return;
 
       setPersonnelOptions(
-        data
+        result.profiles
           .map((item) => ({
             id: String(item.id || ""),
             full_name: String(item.full_name || "").trim(),
+            position: item.position || null,
+            role: item.role || null,
+            account_status: item.account_status || null,
           }))
           .filter((item) => item.id && item.full_name),
       );
     }
 
-    void loadPersonnelOptions();
+    async function loadFromCurrentSession() {
+      const { data: sessionData } = await supabase.auth.getSession();
+      await loadPersonnelOptions(sessionData.session?.access_token);
+    }
+
+    void loadFromCurrentSession().catch((error) => {
+      console.error("Load school library personnel options error:", error);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void loadPersonnelOptions(session?.access_token).catch((error) => {
+        console.error("Reload school library personnel options error:", error);
+      });
+    });
 
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, [supabase]);
 
@@ -388,12 +596,51 @@ export default function SchoolLibraryPage() {
   }, [firebaseConfigured]);
 
   const owners = useMemo(
-    () =>
-      personnelOptions.length > 0
-        ? personnelOptions.map((person) => person.full_name)
-        : Array.from(new Set(documents.map((document) => document.owner))).filter(Boolean),
+    () => {
+      const names = [
+        ...personnelOptions.map((person) => person.full_name),
+        ...documents.map((document) => document.owner),
+      ];
+
+      return Array.from(new Set(names.filter(Boolean))).sort((left, right) =>
+        left.localeCompare(right, "th"),
+      );
+    },
     [documents, personnelOptions],
   );
+
+  const selectedFilesTotalSize = useMemo(
+    () => selectedFiles.reduce((total, file) => total + file.size, 0),
+    [selectedFiles],
+  );
+
+  const categoryStats = useMemo(() => {
+    return CATEGORIES.reduce(
+      (stats, category) => {
+        const categoryDocuments = documents.filter(
+          (document) => document.category === category.id,
+        );
+
+        stats[category.id] = {
+          documentCount: categoryDocuments.length,
+          fileCount: categoryDocuments.reduce(
+            (total, document) => total + (documentFileCount(document) || 1),
+            0,
+          ),
+          totalSize: categoryDocuments.reduce(
+            (total, document) => total + (document.fileSize || 0),
+            0,
+          ),
+        };
+
+        return stats;
+      },
+      {} as Record<
+        LibraryCategory,
+        { documentCount: number; fileCount: number; totalSize: number }
+      >,
+    );
+  }, [documents]);
 
   const academicYears = useMemo(
     () => {
@@ -423,6 +670,11 @@ export default function SchoolLibraryPage() {
       const searchable = [
         document.title,
         document.fileName,
+        ...documentFilesOf(document).flatMap((file) => [
+          file.fileName,
+          file.mimeType,
+          file.fileSize ? formatFileSize(file.fileSize) : "",
+        ]),
         document.subcategory,
         document.owner,
         document.uploadedByName,
@@ -494,6 +746,163 @@ export default function SchoolLibraryPage() {
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function resetDocumentForm() {
+    setFormOpen(false);
+    setDraft(EMPTY_DRAFT);
+    setEditingDocument(null);
+    setSelectedFiles([]);
+    setFormError("");
+  }
+
+  function openCreateDocumentForm() {
+    setDraft(EMPTY_DRAFT);
+    setEditingDocument(null);
+    setSelectedFiles([]);
+    setFormError("");
+    setFormOpen(true);
+  }
+
+  function openEditDocumentForm(document: LibraryDocument) {
+    setDraft({
+      title: document.title,
+      category: document.category,
+      subcategory: document.subcategory,
+      gradeLevel: document.gradeLevel,
+      subject: document.subject,
+      academicYear: document.academicYear,
+      keywords: document.keywords.join(", "),
+    });
+    setEditingDocument(document);
+    setSelectedFiles([]);
+    setFormError("");
+    setFormOpen(true);
+  }
+
+  function toggleDocumentTree(documentId: string) {
+    setExpandedDocumentIds((current) =>
+      current.includes(documentId)
+        ? current.filter((id) => id !== documentId)
+        : [...current, documentId],
+    );
+  }
+
+  async function handleDeleteDocumentFile(document: LibraryDocument, fileIndex: number) {
+    if (!canDeleteDocument(document, currentProfile, currentUserId, !firebaseConfigured)) {
+      const message = "ลบได้เฉพาะผู้ที่อัปโหลดไฟล์หรือ ผอ. เท่านั้น";
+      setDatabaseMessage(message);
+      window.alert(message);
+      return;
+    }
+
+    const files = documentFilesOf(document);
+    const targetFile = files[fileIndex];
+    if (!targetFile) return;
+
+    if (files.length <= 1) {
+      await handleDeleteDocument(document);
+      resetDocumentForm();
+      return;
+    }
+
+    const fileLabel = targetFile.fileName || `ไฟล์ที่ ${fileIndex + 1}`;
+    const confirmed = window.confirm(`ต้องการลบไฟล์ "${fileLabel}" ออกจากชุดเอกสารนี้ใช่ไหม`);
+    if (!confirmed) return;
+
+    const deletingKey = `${document.id}:${fileIndex}`;
+    setDeletingDocumentId(deletingKey);
+    setDatabaseMessage(`กำลังลบไฟล์ ${fileLabel}...`);
+
+    try {
+      const driveFileId = driveFileIdOf(targetFile);
+      if (driveFileId && firebaseConfigured) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        if (!accessToken) throw new Error("กรุณาเข้าสู่ระบบใหม่");
+
+        const response = await fetch("/api/school-library/delete", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            driveFileId,
+            uploadedByUserId: document.uploadedByUserId || "",
+          }),
+        });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || "ลบไฟล์ไม่สำเร็จ");
+        }
+      }
+
+      if (targetFile.driveUrl.startsWith("blob:")) URL.revokeObjectURL(targetFile.driveUrl);
+
+      const remainingFiles = files.filter((_, index) => index !== fileIndex);
+      const updatedInput = documentInputWithFiles(document, remainingFiles);
+      const savedDocument = firebaseConfigured
+        ? await updateSchoolLibraryDocument(document.id, updatedInput)
+        : { ...updatedInput, id: document.id };
+
+      setDocuments((current) =>
+        current.map((item) => (item.id === document.id ? savedDocument : item)),
+      );
+      setEditingDocument((current) =>
+        current?.id === document.id ? savedDocument : current,
+      );
+      setDatabaseMessage(`ลบไฟล์ ${fileLabel} ออกจากชุดเอกสารแล้ว`);
+    } catch (error) {
+      console.error("Delete school library child file error:", error);
+      const message = error instanceof Error ? error.message : "ลบไฟล์ไม่สำเร็จ";
+      setDatabaseMessage(message);
+      window.alert(message);
+    } finally {
+      setDeletingDocumentId("");
+    }
+  }
+
+  function addSelectedFiles(fileList: FileList | null) {
+    const incomingFiles = Array.from(fileList || []);
+    if (incomingFiles.length === 0) return;
+
+    const validFiles = incomingFiles.filter((file) => file.size <= MAX_UPLOAD_FILE_SIZE);
+    const rejectedFile = incomingFiles.find((file) => file.size > MAX_UPLOAD_FILE_SIZE);
+
+    if (rejectedFile) {
+      setFormError(`ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน 30 MB`);
+    } else {
+      setFormError("");
+    }
+
+    if (validFiles.length === 0) return;
+
+    setSelectedFiles((current) => {
+      const existing = new Set(current.map(fileIdentity));
+      const nextFiles = [
+        ...current,
+        ...validFiles.filter((file) => !existing.has(fileIdentity(file))),
+      ];
+
+      if (!draft.title.trim() && current.length === 0 && nextFiles[0]) {
+        setDraft((currentDraft) => ({
+          ...currentDraft,
+          title: titleFromFileName(nextFiles[0].name),
+        }));
+      }
+
+      return nextFiles;
+    });
+  }
+
+  function removeSelectedFile(file: File) {
+    setSelectedFiles((current) =>
+      current.filter((item) => fileIdentity(item) !== fileIdentity(file)),
+    );
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
@@ -503,82 +912,154 @@ export default function SchoolLibraryPage() {
       return;
     }
 
-    if (!selectedFile) {
+    const existingFiles = editingDocument ? documentFilesOf(editingDocument) : [];
+
+    if (!editingDocument && selectedFiles.length === 0) {
       setFormError("กรุณาเลือกไฟล์จากเครื่อง");
       return;
     }
 
-    if (selectedFile.size > 30 * 1024 * 1024) {
-      setFormError("ไฟล์ต้องมีขนาดไม่เกิน 30 MB");
+    if (editingDocument && existingFiles.length === 0 && selectedFiles.length === 0) {
+      setFormError("กรุณาเลือกไฟล์จากเครื่อง");
+      return;
+    }
+
+    const oversizedFile = selectedFiles.find((file) => file.size > MAX_UPLOAD_FILE_SIZE);
+    if (oversizedFile) {
+      setFormError(`ไฟล์ ${oversizedFile.name} ต้องมีขนาดไม่เกิน 30 MB`);
       return;
     }
 
     setSavingDocument(true);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
       const uploaderName = profileName(currentProfile);
-      if (!accessToken) throw new Error("กรุณาเข้าสู่ระบบใหม่");
+      let sessionUserId = currentUserId;
+      let accessToken = "";
+      const uploadedFiles: LibraryDocumentFile[] = [];
+      const baseTitle = draft.title.trim();
 
-      const uploadData = new FormData();
-      uploadData.append("file", selectedFile);
-      uploadData.append("title", draft.title.trim());
-      uploadData.append("category", draft.category);
-      uploadData.append("academicYear", draft.academicYear.trim() || "2569");
-
-      const uploadResponse = await fetch("/api/school-library/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${accessToken}` },
-        body: uploadData,
-      });
-      const uploadResult = await uploadResponse.json();
-
-      if (!uploadResponse.ok || !uploadResult.ok) {
-        throw new Error(uploadResult.message || "อัปโหลดไฟล์ไป Google Drive ไม่สำเร็จ");
+      if (firebaseConfigured) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        accessToken = session?.access_token || "";
+        sessionUserId = session?.user.id || currentUserId;
+        if (!accessToken) throw new Error("กรุณาเข้าสู่ระบบใหม่");
       }
 
+      for (const [fileIndex, selectedFile] of selectedFiles.entries()) {
+        setDatabaseMessage(
+          `กำลังบันทึกไฟล์ ${fileIndex + 1}/${selectedFiles.length}: ${selectedFile.name}`,
+        );
+
+        let uploadResult: {
+          ok?: boolean;
+          message?: string;
+          fileType?: LibraryDocument["fileType"];
+          fileUrl?: string;
+          fileId?: string;
+          fileName?: string;
+          mimeType?: string;
+          fileSize?: number;
+        } = {};
+        const localPreviewUrl =
+          !firebaseConfigured && shouldOpenFileInBrowser(selectedFile)
+            ? URL.createObjectURL(selectedFile)
+            : "";
+
+        if (firebaseConfigured) {
+          const uploadData = new FormData();
+          uploadData.append("file", selectedFile);
+          uploadData.append(
+            "title",
+            selectedFiles.length === 1
+              ? baseTitle
+              : `${baseTitle} - ${titleFromFileName(selectedFile.name)}`,
+          );
+          uploadData.append("category", draft.category);
+          uploadData.append("academicYear", draft.academicYear.trim() || "2569");
+
+          const uploadResponse = await fetch("/api/school-library/upload", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}` },
+            body: uploadData,
+          });
+          uploadResult = await uploadResponse.json();
+
+          if (!uploadResponse.ok || !uploadResult.ok) {
+            throw new Error(uploadResult.message || "อัปโหลดไฟล์ไป Google Drive ไม่สำเร็จ");
+          }
+        }
+
+        uploadedFiles.push({
+          driveUrl: uploadResult.fileUrl || localPreviewUrl || DRIVE_FOLDER_URL,
+          driveFileId: uploadResult.fileId || "",
+          fileName: uploadResult.fileName || selectedFile.name,
+          mimeType: uploadResult.mimeType || selectedFile.type,
+          fileSize: uploadResult.fileSize || selectedFile.size,
+          fileType: uploadResult.fileType || inferFileTypeFromFile(selectedFile),
+        });
+      }
+
+      const mergedFiles = [...existingFiles, ...uploadedFiles];
+      const primaryFile = mergedFiles[0];
+      const totalFileSize = mergedFiles.reduce(
+        (total, file) => total + (file.fileSize || 0),
+        0,
+      );
       const newDocument: NewSchoolLibraryDocument & { updatedAt: string } = {
-        title: draft.title.trim(),
+        title: baseTitle,
         category: draft.category,
         subcategory: draft.subcategory.trim() || "เอกสารทั่วไป",
         owner: uploaderName,
         gradeLevel: draft.gradeLevel.trim() || "ทั้งโรงเรียน",
         subject: draft.subject.trim() || "-",
         academicYear: draft.academicYear.trim() || "2569",
-        fileType: uploadResult.fileType || inferFileTypeFromFile(selectedFile),
+        fileType: primaryFile?.fileType || "DRIVE",
         status: "ready",
         updatedAt: "วันนี้",
         keywords: draft.keywords
           .split(",")
           .map((keyword) => keyword.trim())
           .filter(Boolean),
-        driveUrl: uploadResult.fileUrl || DRIVE_FOLDER_URL,
-        driveFileId: uploadResult.fileId || "",
-        fileName: uploadResult.fileName || selectedFile.name,
-        mimeType: uploadResult.mimeType || selectedFile.type,
-        fileSize: uploadResult.fileSize || selectedFile.size,
-        uploadedByUserId: currentProfile?.id || session.user.id,
+        driveUrl: primaryFile?.driveUrl || DRIVE_FOLDER_URL,
+        driveFileId: primaryFile?.driveFileId || "",
+        fileName:
+          mergedFiles.length === 1
+            ? primaryFile?.fileName || selectedFiles[0]?.name || ""
+            : `${mergedFiles.length} ไฟล์ในชุดเอกสาร`,
+        mimeType: primaryFile?.mimeType || "",
+        fileSize: totalFileSize || undefined,
+        files: mergedFiles,
+        uploadedByUserId: currentProfile?.id || sessionUserId || "local-sample-user",
         uploadedByName: uploaderName,
       };
 
-      if (firebaseConfigured) {
-        const savedDocument = await createSchoolLibraryDocument(newDocument);
-        setDocuments((current) => [savedDocument, ...current]);
-        setDatabaseMessage("บันทึกเอกสารลง Firebase แล้ว");
-      } else {
-        setDocuments((current) => [
-          { ...newDocument, id: `doc-${Date.now()}` },
-          ...current,
-        ]);
-        setDatabaseMessage("ยังไม่ได้ตั้งค่า Firebase รายการนี้จึงบันทึกเฉพาะบนหน้าเว็บชั่วคราว");
-      }
+      const savedDocument = editingDocument
+        ? firebaseConfigured
+          ? await updateSchoolLibraryDocument(editingDocument.id, newDocument)
+          : { ...newDocument, id: editingDocument.id }
+        : firebaseConfigured
+          ? await createSchoolLibraryDocument(newDocument)
+          : { ...newDocument, id: `doc-set-${Date.now()}` };
 
-      setDraft(EMPTY_DRAFT);
-      setSelectedFile(null);
-      setFormOpen(false);
+      setDocuments((current) =>
+        editingDocument
+          ? current.map((item) => (item.id === editingDocument.id ? savedDocument : item))
+          : [savedDocument, ...current],
+      );
+      setExpandedDocumentIds((current) =>
+        current.includes(savedDocument.id) ? current : [savedDocument.id, ...current],
+      );
+      setDatabaseMessage(
+        editingDocument
+          ? `ปรับปรุงชุดเอกสาร ${mergedFiles.length} ไฟล์แล้ว`
+          : firebaseConfigured
+            ? `บันทึกชุดเอกสาร ${mergedFiles.length} ไฟล์ลง Firebase แล้ว`
+            : `บันทึกชุดเอกสาร ${mergedFiles.length} ไฟล์เฉพาะบนหน้าเว็บชั่วคราว`,
+      );
+      resetDocumentForm();
     } catch (error) {
       console.error("Save school library document error:", error);
       setFormError(
@@ -592,16 +1073,16 @@ export default function SchoolLibraryPage() {
   }
 
   async function handleDeleteDocument(document: LibraryDocument) {
-    if (!canDeleteDocument(document, currentProfile, currentUserId)) {
+    if (!canDeleteDocument(document, currentProfile, currentUserId, !firebaseConfigured)) {
       const message = "ลบได้เฉพาะผู้ที่อัปโหลดไฟล์หรือ ผอ. เท่านั้น";
       setDatabaseMessage(message);
       window.alert(message);
       return;
     }
 
-    const driveFileId = driveFileIdOf(document);
+    const driveFileIds = driveFileIdsOf(document);
 
-    if (!driveFileId) {
+    if (driveFileIds.length === 0) {
       const confirmed = window.confirm(
         `รายการ "${document.title}" ไม่มี Drive file id ต้องการลบเฉพาะรายการออกจากคลังใช่ไหม`,
       );
@@ -615,7 +1096,11 @@ export default function SchoolLibraryPage() {
           await deleteSchoolLibraryDocument(document.id);
         }
 
+        documentFilesOf(document).forEach((file) => {
+          if (file.driveUrl.startsWith("blob:")) URL.revokeObjectURL(file.driveUrl);
+        });
         setDocuments((current) => current.filter((item) => item.id !== document.id));
+        setEditingDocument((current) => (current?.id === document.id ? null : current));
         setDatabaseMessage("ลบรายการออกจากคลังแล้ว แต่ไม่ได้ลบไฟล์ใน Drive เพราะไม่มี Drive file id");
         window.alert("ลบรายการออกจากคลังแล้ว");
       } catch (error) {
@@ -642,28 +1127,34 @@ export default function SchoolLibraryPage() {
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error("กรุณาเข้าสู่ระบบใหม่");
 
-      const response = await fetch("/api/school-library/delete", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          driveFileId,
-          uploadedByUserId: document.uploadedByUserId || "",
-        }),
-      });
-      const result = await response.json();
+      for (const driveFileId of driveFileIds) {
+        const response = await fetch("/api/school-library/delete", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            driveFileId,
+            uploadedByUserId: document.uploadedByUserId || "",
+          }),
+        });
+        const result = await response.json();
 
-      if (!response.ok || !result.ok) {
-        throw new Error(result.message || "ลบไฟล์ไม่สำเร็จ");
+        if (!response.ok || !result.ok) {
+          throw new Error(result.message || "ลบไฟล์ไม่สำเร็จ");
+        }
       }
 
       if (firebaseConfigured) {
         await deleteSchoolLibraryDocument(document.id);
       }
 
+      documentFilesOf(document).forEach((file) => {
+        if (file.driveUrl.startsWith("blob:")) URL.revokeObjectURL(file.driveUrl);
+      });
       setDocuments((current) => current.filter((item) => item.id !== document.id));
+      setEditingDocument((current) => (current?.id === document.id ? null : current));
       setDatabaseMessage("ลบไฟล์ออกจากคลังงานแล้ว");
       window.alert("ลบไฟล์ออกจากคลังงานแล้ว");
     } catch (error) {
@@ -687,7 +1178,7 @@ export default function SchoolLibraryPage() {
           <button
             type="button"
             className={styles.primaryButton}
-            onClick={() => setFormOpen(true)}
+            onClick={openCreateDocumentForm}
           >
             <span aria-hidden="true">＋</span>
             เพิ่มเอกสาร
@@ -719,6 +1210,7 @@ export default function SchoolLibraryPage() {
         <section className={styles.categoryGrid} aria-label="หมวดเอกสารหลัก">
           {CATEGORIES.map((category) => {
             const count = documents.filter((document) => document.category === category.id).length;
+            const stats = categoryStats[category.id];
             const active = selectedCategory === category.id;
 
             return (
@@ -730,9 +1222,16 @@ export default function SchoolLibraryPage() {
                 }`}
                 onClick={() => setSelectedCategory(active ? "all" : category.id)}
               >
-                <span aria-hidden="true">{category.icon}</span>
+                <span className={styles.categoryIcon} aria-hidden="true">{category.icon}</span>
                 <b>{category.label}</b>
-                <strong>{count}</strong>
+                <small>{category.description}</small>
+                <span className={styles.categoryCount}>
+                  <strong>{stats?.documentCount ?? count}</strong>
+                  <span>เรื่อง</span>
+                </span>
+                <span className={styles.categoryMeta}>
+                  {stats?.fileCount ?? count} ไฟล์ • {formatFileSize(stats?.totalSize ?? 0)}
+                </span>
               </button>
             );
           })}
@@ -758,7 +1257,7 @@ export default function SchoolLibraryPage() {
                 setSelectedCategory(event.target.value as LibraryCategory | "all")
               }
             >
-              <option value="all">หมวดงานทั้งหมด</option>
+              <option value="all">ทั้งหมด</option>
               {CATEGORIES.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.label}
@@ -795,7 +1294,7 @@ export default function SchoolLibraryPage() {
                 <span>ชื่อเอกสาร</span>
                 <span>หมวดงาน</span>
                 <span>ผู้จัดทำ</span>
-                <span>ขนาดไฟล์</span>
+                <span>ไฟล์ / ขนาด</span>
                 <span>แก้ไขล่าสุด</span>
                 <span>สถานะ</span>
               </div>
@@ -804,34 +1303,63 @@ export default function SchoolLibraryPage() {
                   const category = CATEGORIES.find((item) => item.id === document.category);
                   const accessUrl = documentAccessUrl(document);
                   const opensInBrowser = shouldOpenInBrowser(document);
+                  const files = documentFilesOf(document);
+                  const isDocumentSet = files.length > 1;
+                  const expanded = expandedDocumentIds.includes(document.id);
+                  const primaryFile = primaryDocumentFile(document);
+                  const fileKind = fileKindOf(primaryFile || document);
 
                   return (
                     <article className={styles.documentRow} key={document.id}>
                       <div className={styles.documentTitle}>
-                        <span className={`${styles.fileBadge} ${styles[document.fileType.toLowerCase()]}`}>
-                          {fileIcon(document.fileType)}
+                        <span className={`${styles.fileBadge} ${styles[fileKind]}`}>
+                          {fileIconLabel(fileKind, primaryFile?.fileName || document.fileName || document.title)}
                         </span>
                         <div>
-                          <a
-                            className={styles.documentLink}
-                            href={accessUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={!opensInBrowser || undefined}
-                          >
-                            {document.title}
-                          </a>
+                          {isDocumentSet ? (
+                            <button
+                              type="button"
+                              className={styles.documentLinkButton}
+                              onClick={() => toggleDocumentTree(document.id)}
+                              aria-expanded={expanded}
+                            >
+                              {document.title}
+                            </button>
+                          ) : (
+                            <a
+                              className={styles.documentLink}
+                              href={accessUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              download={!opensInBrowser || undefined}
+                            >
+                              {document.title}
+                            </a>
+                          )}
                         </div>
                       </div>
-                      <span className={styles.categoryPill}>{category?.label}</span>
+                      <span
+                        className={`${styles.categoryPill} ${
+                          category ? styles[`${category.tone}Pill`] : ""
+                        }`}
+                      >
+                        {category?.label}
+                      </span>
                       <span>{document.owner}</span>
-                      <span>{document.fileSize ? formatFileSize(document.fileSize) : "-"}</span>
+                      <span>{documentFileSizeLabel(document)}</span>
                       <span>{document.updatedAt}</span>
                       <div className={styles.rowActions}>
                         <span className={`${styles.statusPill} ${styles.ready}`}>
                           {statusLabel(document.status)}
                         </span>
-                        {canDeleteDocument(document, currentProfile, currentUserId) && (
+                        <button
+                          type="button"
+                          className={styles.editButton}
+                          onClick={() => openEditDocumentForm(document)}
+                        >
+                          แก้ไข
+                        </button>
+                        {canDeleteDocument(document, currentProfile, currentUserId, !firebaseConfigured) && (
                           <button
                             type="button"
                             className={styles.deleteButton}
@@ -843,6 +1371,49 @@ export default function SchoolLibraryPage() {
                           </button>
                         )}
                       </div>
+                      {isDocumentSet && expanded && (
+                        <div className={styles.fileTree}>
+                          {files.map((file, fileIndex) => {
+                            const childKind = fileKindOf(file);
+                            const childUrl = documentFileAccessUrl(file);
+                            const childOpensInBrowser = shouldOpenDocumentFileInBrowser(file);
+
+                            return (
+                              <div
+                                className={styles.fileTreeItem}
+                                key={`${file.fileName || file.driveUrl}-${fileIndex}`}
+                              >
+                                <span
+                                  className={`${styles.fileBadge} ${styles[childKind]}`}
+                                  aria-hidden="true"
+                                >
+                                  {fileIconLabel(childKind, file.fileName)}
+                                </span>
+                                <a
+                                  href={childUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download={!childOpensInBrowser || undefined}
+                                >
+                                  {file.fileName || `ไฟล์ที่ ${fileIndex + 1}`}
+                                </a>
+                                <small>{file.fileSize ? formatFileSize(file.fileSize) : "-"}</small>
+                                {canDeleteDocument(document, currentProfile, currentUserId, !firebaseConfigured) && (
+                                  <button
+                                    type="button"
+                                    className={styles.fileTreeDeleteButton}
+                                    onClick={() => void handleDeleteDocumentFile(document, fileIndex)}
+                                    disabled={deletingDocumentId === `${document.id}:${fileIndex}`}
+                                    aria-label="ลบไฟล์ย่อย"
+                                  >
+                                    {deletingDocumentId === `${document.id}:${fileIndex}` ? "..." : "ลบ"}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </article>
                   );
                 })}
@@ -877,8 +1448,12 @@ export default function SchoolLibraryPage() {
         <div className={styles.modalBackdrop} role="presentation">
           <form className={styles.modal} onSubmit={handleSubmit}>
             <div className={styles.modalHeader}>
-              <h2>เพิ่มเอกสาร</h2>
-              <button type="button" onClick={() => setFormOpen(false)} aria-label="ปิด">
+              <h2>{editingDocument ? "แก้ไขชุดเอกสาร" : "เพิ่มเอกสาร"}</h2>
+              <button
+                type="button"
+                onClick={resetDocumentForm}
+                aria-label="ปิด"
+              >
                 ×
               </button>
             </div>
@@ -919,8 +1494,14 @@ export default function SchoolLibraryPage() {
               </label>
               <div className={styles.detectedFileType}>
                 <span>ประเภทไฟล์</span>
-                <strong>{inferFileTypeFromFile(selectedFile)}</strong>
-                <small>ระบบคำนวณจากไฟล์ที่เลือกให้อัตโนมัติ</small>
+                <strong>{selectedFileTypeLabel(selectedFiles)}</strong>
+                <small>
+                  {selectedFiles.length > 0
+                    ? `${selectedFiles.length} ไฟล์ • รวม ${formatFileSize(selectedFilesTotalSize)}`
+                    : editingDocument
+                      ? `${documentFilesOf(editingDocument).length} ไฟล์เดิม • เลือกไฟล์เพิ่มได้`
+                    : "ระบบคำนวณจากไฟล์ที่เลือกให้อัตโนมัติ"}
+                </small>
               </div>
             </div>
             <label>
@@ -935,45 +1516,108 @@ export default function SchoolLibraryPage() {
               ไฟล์เอกสาร
               <input
                 type="file"
+                multiple
                 onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
-                  const previousFileTitle = selectedFile
-                    ? titleFromFileName(selectedFile.name)
-                    : "";
-                  setSelectedFile(file);
-                  if (file) {
-                    const nextTitle = titleFromFileName(file.name);
-                    setDraft((current) =>
-                      !current.title.trim() || current.title.trim() === previousFileTitle
-                        ? { ...current, title: nextTitle }
-                        : current,
-                    );
-                  }
+                  addSelectedFiles(event.target.files);
+                  event.currentTarget.value = "";
                 }}
-                required
+                required={!editingDocument && selectedFiles.length === 0}
               />
-              {selectedFile ? (
+              {selectedFiles.length > 0 ? (
                 <span>
-                  {selectedFile.name} · {formatFileSize(selectedFile.size)}
+                  เลือกแล้ว {selectedFiles.length} ไฟล์ • รวม {formatFileSize(selectedFilesTotalSize)} • เลือกไฟล์เพิ่มได้
                 </span>
               ) : (
                 <span>เลือกไฟล์จากเครื่อง ระบบจะอัปโหลดเข้า Google Drive ให้</span>
               )}
             </label>
 
+            {editingDocument && documentFilesOf(editingDocument).length > 0 && (
+              <div className={`${styles.selectedFilesPanel} ${styles.existingFilesPanel}`} aria-live="polite">
+                <div>
+                  <strong>ไฟล์เดิมในชุดเอกสาร</strong>
+                  <span>{documentFileSizeLabel(editingDocument)}</span>
+                </div>
+                <ul>
+                  {documentFilesOf(editingDocument).map((file, fileIndex) => {
+                    const existingKind = fileKindOf(file);
+                    const existingUrl = documentFileAccessUrl(file);
+                    const existingOpensInBrowser = shouldOpenDocumentFileInBrowser(file);
+
+                    return (
+                      <li key={`${file.fileName || file.driveUrl}-${fileIndex}`}>
+                        <span>
+                          <a
+                            href={existingUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={!existingOpensInBrowser || undefined}
+                          >
+                            {file.fileName || `ไฟล์ที่ ${fileIndex + 1}`}
+                          </a>
+                          <small>
+                            {fileIconLabel(existingKind, file.fileName)} •{" "}
+                            {file.fileSize ? formatFileSize(file.fileSize) : "-"}
+                          </small>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteDocumentFile(editingDocument, fileIndex)}
+                          disabled={deletingDocumentId === `${editingDocument.id}:${fileIndex}`}
+                        >
+                          {deletingDocumentId === `${editingDocument.id}:${fileIndex}` ? "..." : "ลบ"}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {selectedFiles.length > 0 && (
+              <div className={styles.selectedFilesPanel} aria-live="polite">
+                <div>
+                  <strong>ไฟล์ที่รอบันทึก</strong>
+                  <span>{selectedFiles.length} ไฟล์ • {formatFileSize(selectedFilesTotalSize)}</span>
+                </div>
+                <ul>
+                  {selectedFiles.map((file) => (
+                    <li key={fileIdentity(file)}>
+                      <span>
+                        {file.name}
+                        <small>
+                          {fileIconLabel(
+                            fileKindOf({
+                              fileName: file.name,
+                              mimeType: file.type,
+                              fileType: inferFileTypeFromFile(file),
+                            }),
+                            file.name,
+                          )} • {formatFileSize(file.size)}
+                        </small>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeSelectedFile(file)}
+                        aria-label={`ลบ ${file.name}`}
+                      >
+                        ลบ
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className={styles.modalActions}>
               <button
                 type="button"
-                onClick={() => {
-                  setFormOpen(false);
-                  setSelectedFile(null);
-                  setFormError("");
-                }}
+                onClick={resetDocumentForm}
               >
                 ยกเลิก
               </button>
               <button type="submit" disabled={savingDocument}>
-                {savingDocument ? "กำลังบันทึก..." : "บันทึก"}
+                {savingDocument ? "กำลังบันทึก..." : editingDocument ? "บันทึกการแก้ไข" : "บันทึก"}
               </button>
             </div>
           </form>

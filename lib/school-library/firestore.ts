@@ -8,19 +8,26 @@ import {
   query,
   serverTimestamp,
   Timestamp,
+  updateDoc,
 } from "firebase/firestore";
 import { getFirebaseClient, isFirebaseConfigured } from "@/lib/firebase/client";
-
-export type SchoolLibraryCategory =
-  | "lesson-plan"
-  | "operation-plan"
-  | "research"
-  | "forms"
-  | "certificates";
+import {
+  normalizeSchoolLibraryCategory,
+  type SchoolLibraryCategory,
+} from "@/lib/school-library/categories";
 
 export type SchoolLibraryStatus = "reviewed" | "approved" | "draft" | "ready";
 
 export type SchoolLibraryFileType = "PDF" | "DOCX" | "DRIVE";
+
+export type SchoolLibraryDocumentFile = {
+  driveUrl: string;
+  driveFileId?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  fileType: SchoolLibraryFileType;
+};
 
 export type SchoolLibraryDocument = {
   id: string;
@@ -40,6 +47,7 @@ export type SchoolLibraryDocument = {
   fileName?: string;
   mimeType?: string;
   fileSize?: number;
+  files?: SchoolLibraryDocumentFile[];
   uploadedByUserId?: string;
   uploadedByName?: string;
 };
@@ -75,11 +83,40 @@ function arrayText(value: unknown) {
     : [];
 }
 
+function mapFile(value: unknown): SchoolLibraryDocumentFile | null {
+  if (!value || typeof value !== "object") return null;
+
+  const data = value as Record<string, unknown>;
+  const driveUrl = text(data.driveUrl);
+  const driveFileId = text(data.driveFileId);
+  const fileName = text(data.fileName);
+  if (!driveUrl && !driveFileId && !fileName) return null;
+
+  return {
+    driveUrl,
+    driveFileId,
+    fileName,
+    mimeType: text(data.mimeType),
+    fileSize: typeof data.fileSize === "number" ? data.fileSize : undefined,
+    fileType: text(data.fileType, "DRIVE") as SchoolLibraryFileType,
+  };
+}
+
+function arrayFiles(value: unknown) {
+  return Array.isArray(value)
+    ? value
+        .map((item) => mapFile(item))
+        .filter((item): item is SchoolLibraryDocumentFile => Boolean(item))
+    : [];
+}
+
 function mapDocument(id: string, data: Record<string, unknown>): SchoolLibraryDocument {
+  const files = arrayFiles(data.files);
+
   return {
     id,
     title: text(data.title, "ไม่มีชื่อเอกสาร"),
-    category: text(data.category, "lesson-plan") as SchoolLibraryCategory,
+    category: normalizeSchoolLibraryCategory(data.category),
     subcategory: text(data.subcategory, "เอกสารทั่วไป"),
     owner: text(data.owner, "ไม่ระบุผู้จัดทำ"),
     gradeLevel: text(data.gradeLevel, "ทั้งโรงเรียน"),
@@ -94,6 +131,7 @@ function mapDocument(id: string, data: Record<string, unknown>): SchoolLibraryDo
     fileName: text(data.fileName),
     mimeType: text(data.mimeType),
     fileSize: typeof data.fileSize === "number" ? data.fileSize : undefined,
+    files,
     uploadedByUserId: text(data.uploadedByUserId),
     uploadedByName: text(data.uploadedByName),
   };
@@ -130,6 +168,25 @@ export async function createSchoolLibraryDocument(input: NewSchoolLibraryDocumen
   return {
     ...input,
     id: reference.id,
+    updatedAt: "วันนี้",
+  };
+}
+
+export async function updateSchoolLibraryDocument(
+  documentId: string,
+  input: NewSchoolLibraryDocument,
+) {
+  const client = getFirebaseClient();
+  if (!client) throw new Error("Firebase is not configured");
+
+  await updateDoc(doc(client.db, COLLECTION_NAME, documentId), {
+    ...input,
+    updatedAt: serverTimestamp(),
+  });
+
+  return {
+    ...input,
+    id: documentId,
     updatedAt: "วันนี้",
   };
 }

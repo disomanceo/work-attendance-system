@@ -4,6 +4,7 @@ import {
   callSchoolLibraryDriveGas,
   getSchoolLibraryDriveConfig,
 } from "@/lib/school-library/drive-gas";
+import { normalizeSchoolLibraryCategory } from "@/lib/school-library/categories";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file");
     const title = String(formData.get("title") || "").trim();
-    const category = String(formData.get("category") || "").trim();
+    const category = normalizeSchoolLibraryCategory(formData.get("category"));
     const academicYear = String(formData.get("academicYear") || "").trim();
 
     if (!(file instanceof File) || file.size === 0) {

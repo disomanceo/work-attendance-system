@@ -78,11 +78,12 @@ function getOrCreateFolder_(parent, name) {
 
 function categoryLabel_(category) {
   const value = String(category || "");
-  if (value === "lesson-plan") return "แผนงานและโครงการ";
-  if (value === "operation-plan") return "การจัดการเรียนการสอน";
-  if (value === "forms") return "แบบฟอร์มต่างๆ";
-  if (value === "research") return "ผลงานและรางวัล";
-  if (value === "certificates") return "วุฒิบัตร-ใบประกาศ";
+  if (value === "administration-planning" || value === "operation-plan") return "บริหารและแผนงาน";
+  if (value === "learning-management" || value === "lesson-plan") return "การจัดการเรียนรู้";
+  if (value === "innovation-works" || value === "research" || value === "certificates") return "ผลงานและนวัตกรรม";
+  if (value === "activities-pr") return "กิจกรรมและประชาสัมพันธ์";
+  if (value === "support-donation") return "การสนับสนุนและบริจาค";
+  if (value === "central-forms" || value === "forms") return "แบบฟอร์มและเอกสารกลาง";
   return "อื่น ๆ";
 }
 
