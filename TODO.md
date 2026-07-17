@@ -1197,6 +1197,16 @@ School library file proxy download:
 - [x] Confirm local `/school-library` still returns `200 OK` after school-library proxy download.
 - [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
 
+School library wide layout adjustment:
+
+- [x] Expanded the school-library workspace max width from 1240px to 1520px for desktop screens.
+- [x] Reduced outer desktop horizontal padding slightly so the content uses more available screen width.
+- [x] Kept mobile layout overrides unchanged to avoid horizontal overflow.
+- [x] Confirm `npm.cmd run lint -- --quiet` succeeds after the wide layout adjustment.
+- [x] Confirm `npm.cmd run build` succeeds after the wide layout adjustment.
+- [x] Confirm local `/school-library` still returns `200 OK` after the wide layout adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
 Follow-up checks:
 
 - [ ] Test the category card filtering interactively in a browser after browser automation is available.

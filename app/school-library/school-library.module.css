@@ -2,7 +2,7 @@
 
 .page {
   min-height: 100svh;
-  padding: 18px;
+  padding: 18px 14px;
   color: #18281d;
   font-family: "Anuphan", "Noto Sans Thai", "Leelawadee UI", Tahoma, Arial, sans-serif;
   font-weight: 400;
@@ -23,7 +23,7 @@
 }
 
 .workspace {
-  width: min(1240px, 100%);
+  width: min(1520px, 100%);
   margin: 0 auto;
   padding: 28px 30px 24px;
   border: 1px solid rgba(190, 211, 195, 0.78);
