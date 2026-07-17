@@ -1186,6 +1186,17 @@ School library personnel dropdown verification:
 - [x] Confirm local `/school-library` still returns `200 OK` after personnel dropdown verification.
 - [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
 
+School library file proxy download:
+
+- [x] Added a generic Google Drive download helper that can proxy binary files and export Google Docs/Sheets/Slides when needed.
+- [x] Added `/api/school-library/files/[fileId]/download` for school-library file downloads.
+- [x] Changed non-preview school-library file links to use the local proxy route instead of direct `drive.google.com/uc` links.
+- [x] Kept PDF and image files on Drive preview links for in-browser viewing.
+- [x] Confirm `npm.cmd run lint -- --quiet` succeeds after school-library proxy download.
+- [x] Confirm `npm.cmd run build` succeeds after school-library proxy download.
+- [x] Confirm local `/school-library` still returns `200 OK` after school-library proxy download.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
 Follow-up checks:
 
 - [ ] Test the category card filtering interactively in a browser after browser automation is available.

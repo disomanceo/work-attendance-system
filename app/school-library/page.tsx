@@ -380,7 +380,9 @@ function documentFileAccessUrl(file: LibraryDocumentFile) {
   }
 
   return fileId
-    ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`
+    ? `/api/school-library/files/${encodeURIComponent(fileId)}/download?name=${encodeURIComponent(
+        file.fileName || "school-library-file",
+      )}&mime=${encodeURIComponent(file.mimeType || "")}`
     : driveUrl;
 }
 
