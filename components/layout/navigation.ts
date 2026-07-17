@@ -87,6 +87,13 @@ export function getAppNavigationItems(role: string): AppNavigationItem[] {
       match: (value) => value.startsWith("/announcements"),
     },
     {
+      label: "นิเทศการสอน",
+      icon: "▥",
+      href: "/teaching-supervision",
+      section: "personnel",
+      match: (value) => value.startsWith("/teaching-supervision"),
+    },
+    {
       label: "โครงการ / กิจกรรม",
       icon: "▦",
       href: "/budget/projects",

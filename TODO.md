@@ -13,6 +13,96 @@ Updated: 2026-07-16
 
 ## Latest findings
 
+- Teaching supervision module on 2026-07-17:
+  - [x] Added `/teaching-supervision` under the existing `AppShell`.
+  - [x] Added the sidebar menu item immediately after `/announcements`.
+  - [x] Added the 100-point rubric with six weighted sections and selectable 5-1 ratings.
+  - [x] Added live section totals, total percentage, average rating, and quality level.
+  - [x] Added teacher/supervisor dropdowns from active Supabase `profiles`.
+  - [x] Added draft/completed save flow using Firebase Firestore when configured.
+  - [x] Kept evidence images as local previews and Firestore metadata only.
+  - [x] Added server-side Google Drive upload APIs for inspection images.
+  - [x] Added server-side PDF upload API and client-side report capture flow.
+  - [x] Added server-side Google Drive file delete API.
+  - [x] Switched the page font to Anuphan and tightened mobile typography.
+  - [x] Switched teaching supervision Drive integration from Service Account to Apps Script.
+  - [x] Added `TEACHING_SUPERVISION_DRIVE_GAS_*` to `.env.local`.
+  - [x] Added teaching supervision actions to the existing `gas-school-library` Apps Script.
+  - [x] Redeployed the existing school-library Web App deployment to version 6 with teaching supervision actions.
+  - [x] Verified GAS can upload a tiny test image to Drive and delete it immediately.
+  - [x] Changed the teaching-supervision landing tab to show all available teachers/personnel first.
+  - [x] Changed assessment entry so a teacher is selected from the first tab before opening the assessment form.
+  - [x] Added homeroom class lookup from `student_class_settings` and auto-fills class level for homeroom teachers.
+  - [x] Added `ปฐมวัย` as the learning area for kindergarten/homeroom early-childhood teachers and auto-fills the subject as `กิจกรรมปฐมวัย`.
+  - [x] After saving a completed inspection, reset the form and selection state, then show the saved result on the summary/report tab.
+  - [x] Added the summary/report tab output from the latest saved assessment so PDF generation can use the saved snapshot.
+  - [x] Confirmed `npm.cmd run lint` succeeds after the tab-flow adjustment.
+  - [x] Confirmed `npm.cmd run build` succeeds after the tab-flow adjustment.
+  - [x] Changed the first teaching-supervision tab to a compact inspection list table matching the requested overview direction.
+  - [x] Added filters for search, position, status, semester, learning area, and inspection round.
+  - [x] Added Firestore read support for completed teaching inspections so the overview can show saved scores/status.
+  - [x] Changed the action column to one primary action: `เริ่มการนิเทศ`, `ผลการนิเทศ`, or disabled `รอการนิเทศ` based on role and status.
+  - [x] Kept regular teachers in view-only mode for saved results; director/admin can open a saved result and edit it from the summary tab.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the teaching-supervision overview update.
+  - [x] Confirmed `npm.cmd run build` succeeds after the teaching-supervision overview update.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the overview update.
+  - [x] Added teacher profile photos to the teaching-supervision overview table immediately after the sequence column.
+  - [x] Excluded director/admin profiles from the inspected-teacher overview and inspected-teacher dropdown while keeping them available as supervisors.
+  - [x] Removed the top back button and the `สร้างการนิเทศใหม่` button from the teaching-supervision page.
+  - [x] Tightened the overview table row spacing and changed the `ผลการนิเทศ` action button to green.
+  - [x] Changed the summary/report tab into a print-style inspection report form with teacher info, section scores, notes, and signature lines.
+  - [x] Updated PDF export on the summary tab to capture only the print-style report content.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the profile-photo/report-form adjustment.
+  - [x] Confirmed `npm.cmd run build` succeeds after the profile-photo/report-form adjustment.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the profile-photo/report-form adjustment.
+  - [x] Changed mobile teaching-supervision filters to fit into two compact rows including the reset button.
+  - [x] Replaced the mobile inspection table with compact teacher cards so each teacher fits on screen without horizontal scrolling.
+  - [x] Added a collapsible mobile action bar for the assessment page so evidence uploads are not blocked by fixed buttons.
+  - [x] Moved the PDF button next to the review/summary button in the assessment action bar.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the mobile UI adjustment.
+  - [x] Confirmed `npm.cmd run build` succeeds after the mobile UI adjustment.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the mobile UI adjustment.
+  - [x] Kept the mobile overview summary counts on one compact line without word wrapping.
+  - [x] Hid the inspected-teacher select field on mobile because the teacher is selected from the first tab.
+  - [x] Compacted the mobile teacher-type radio controls so `ครูประจำชั้น` and `ครูกลุ่มสาระ` stay on one line.
+  - [x] Changed mobile assessment form fields to a tighter two-column layout with smaller input text.
+  - [x] Changed mobile rubric rating buttons `5 4 3 2 1` to compact circular buttons with tighter row spacing.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the compact mobile assessment adjustment.
+  - [x] Confirmed `npm.cmd run build` succeeds after the compact mobile assessment adjustment.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the compact mobile assessment adjustment.
+  - [x] Added print and PDF icon buttons after the `ผลการนิเทศ` action in the teaching-supervision overview.
+  - [x] Made overview print actions switch to the selected report and print only the print-style report form.
+  - [x] Made overview PDF actions switch to the selected report and export only the print-style report form.
+  - [x] Reduced the report notes and signature text sizes in the summary report.
+  - [x] Added the inspected teacher position under the teacher signature name.
+  - [x] Changed the director signature label to `ผู้อำนวยการโรงเรียนวัดไผ่มุ้ง`.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the print/PDF action adjustment.
+  - [x] Confirmed `npm.cmd run build` succeeds after the print/PDF action adjustment.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the print/PDF action adjustment.
+  - [x] Removed the overview print icon action.
+  - [x] Changed the overview PDF action to open the saved Drive PDF file instead of opening the web report page.
+  - [x] Kept `ผลการนิเทศ` as the web report action.
+  - [x] Changed completed inspection save so `บันทึกผลการนิเทศ` saves the web data, generates/uploads the PDF, stores the PDF metadata, shows `บันทึกเรียบร้อยแล้ว`, and returns to the first tab automatically.
+  - [x] Removed the assessment footer buttons for draft, back, review summary, and manual PDF generation so the final save button handles the complete flow.
+  - [x] Changed the right signature label in the web report to `ผู้นิเทศ` while keeping the director name and position line below it.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the automatic PDF-save flow.
+  - [x] Confirmed `npm.cmd run build` succeeds after the automatic PDF-save flow.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the automatic PDF-save flow.
+  - [x] Kept saved/completed inspections editable only from the web report action and only for director/admin users.
+  - [x] Removed the summary/report buttons for choosing the next teacher and manually creating a PDF.
+  - [x] Added a director/admin-only `ลบการนิเทศครั้งนี้` button beside the completed-save button on the assessment page.
+  - [x] Added Firestore delete support for teaching inspections and deletes related Drive files when available.
+  - [x] Changed PDF generation to pass the existing Drive PDF file id so Apps Script trashes the previous report before writing the new one.
+  - [x] Preserved existing PDF metadata while editing an inspection so regenerated PDFs replace the previous report instead of creating multiple active reports.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the edit/delete/single-PDF adjustment.
+  - [x] Confirmed `npm.cmd run build` succeeds after the edit/delete/single-PDF adjustment.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the edit/delete/single-PDF adjustment.
+  - [x] Repaired Thai mojibake text in the teaching-supervision page, GAS script, and TODO notes, then confirmed no mojibake markers remain in the related files.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the Thai text repair.
+  - [x] Confirmed `npm.cmd run build` succeeds after the Thai text repair.
+  - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the Thai text repair.
+  - [ ] Verify Firestore security rules for `teaching_inspections` before production use.
+
 - Dashboard page addition on 2026-07-16:
   - [x] Kept `/attendance` as the existing work check-in home page.
   - [x] Added a separate `/dashboard` page wrapped in the existing `AppShell`.
