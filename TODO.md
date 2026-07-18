@@ -1323,6 +1323,11 @@ Order notification and acknowledgment flow:
 - [x] Reused the existing Telegram order workflow events for assigned and acknowledged notifications.
 - [x] Updated the order registry actions to show notify/acknowledge controls and all recipient status chips without hiding names.
 - [x] Added a Dashboard orders card for unacknowledged order notifications.
+- [x] Locked already-notified teachers in the notify popup and kept their acknowledgment history intact.
+- [x] Limited follow-up notifications to newly added teachers only.
+- [x] Added an orders menu badge for unacknowledged order counts.
+- [x] Added a dismissible Dashboard popup with later/read-order actions for pending order acknowledgments.
+- [x] Compacted the order notify teacher picker so selected names and teacher options use less mobile screen space.
 - [x] Confirm `npm.cmd run build` succeeds after the order notification flow.
 - [x] Did not run `git reset`, `git clean`, commit, push, or deploy.
 

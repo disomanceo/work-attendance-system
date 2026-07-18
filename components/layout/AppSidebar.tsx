@@ -37,6 +37,11 @@ type SidebarDocumentsResponse = {
   books?: SidebarBook[];
 };
 
+type SidebarOrderCountResponse = {
+  ok?: boolean;
+  count?: number;
+};
+
 const MODULES: Array<{
   key: ModuleKey;
   label: string;
@@ -84,6 +89,7 @@ export default function AppSidebar({
 }: AppSidebarProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const [newDocumentCount, setNewDocumentCount] = useState(0);
+  const [pendingOrderCount, setPendingOrderCount] = useState(0);
   const supabase = useMemo(() => createClient(), []);
 
   const loadNewDocumentCount = useCallback(async () => {
@@ -120,6 +126,33 @@ export default function AppSidebar({
       ).length;
 
       setNewDocumentCount(count);
+    } catch {
+      // Keep the previous badge value when the request is temporarily unavailable.
+    }
+  }, [supabase]);
+
+  const loadPendingOrderCount = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setPendingOrderCount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/orders/pending-acknowledgements", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+      const result = (await response.json()) as SidebarOrderCountResponse;
+
+      if (!response.ok || !result.ok) return;
+
+      setPendingOrderCount(Number(result.count || 0));
     } catch {
       // Keep the previous badge value when the request is temporarily unavailable.
     }
@@ -171,19 +204,23 @@ export default function AppSidebar({
 
   useEffect(() => {
     void loadNewDocumentCount();
+    void loadPendingOrderCount();
 
     const handleUpdate = () => {
       void loadNewDocumentCount();
+      void loadPendingOrderCount();
     };
 
     window.addEventListener("smart-area-documents-updated", handleUpdate);
+    window.addEventListener("order-acknowledgements-updated", handleUpdate);
     window.addEventListener("focus", handleUpdate);
 
     return () => {
       window.removeEventListener("smart-area-documents-updated", handleUpdate);
+      window.removeEventListener("order-acknowledgements-updated", handleUpdate);
       window.removeEventListener("focus", handleUpdate);
     };
-  }, [loadNewDocumentCount, pathname]);
+  }, [loadNewDocumentCount, loadPendingOrderCount, pathname]);
 
   function toggleModule(key: ModuleKey) {
     setExpandedModule((current) => (current === key ? null : key));
@@ -259,6 +296,7 @@ export default function AppSidebar({
                   onToggle={() => toggleModule(module.key)}
                   onNavigate={onNavigate}
                   newDocumentCount={newDocumentCount}
+                  pendingOrderCount={pendingOrderCount}
                 />
               );
             })}
@@ -310,6 +348,7 @@ function ModuleGroup({
   onToggle,
   onNavigate,
   newDocumentCount,
+  pendingOrderCount,
 }: {
   collapsed: boolean;
   label: string;
@@ -322,6 +361,7 @@ function ModuleGroup({
   onToggle: () => void;
   onNavigate: (href: string) => void;
   newDocumentCount: number;
+  pendingOrderCount: number;
 }) {
   if (items.length === 0) return null;
 
@@ -363,6 +403,7 @@ function ModuleGroup({
             onNavigate={onNavigate}
             nested
             newDocumentCount={newDocumentCount}
+            pendingOrderCount={pendingOrderCount}
           />
         </div>
       )}
@@ -405,6 +446,7 @@ function MenuItems({
   onNavigate,
   nested = false,
   newDocumentCount = 0,
+  pendingOrderCount = 0,
 }: {
   collapsed: boolean;
   items: AppNavigationItem[];
@@ -412,6 +454,7 @@ function MenuItems({
   onNavigate: (href: string) => void;
   nested?: boolean;
   newDocumentCount?: number;
+  pendingOrderCount?: number;
 }) {
   if (items.length === 0) return null;
 
@@ -471,6 +514,27 @@ function MenuItems({
                 }}
               >
                 {newDocumentCount > 99 ? "99+" : newDocumentCount}
+              </span>
+            )}
+            {item.href === "/orders" && pendingOrderCount > 0 && (
+              <span
+                aria-label={`คำสั่งที่ต้องรับทราบ ${pendingOrderCount} เรื่อง`}
+                style={{
+                  display: "inline-grid",
+                  minWidth: 20,
+                  height: 20,
+                  marginLeft: "auto",
+                  placeItems: "center",
+                  borderRadius: 999,
+                  padding: "0 6px",
+                  background: "#f59e0b",
+                  color: "#ffffff",
+                  fontSize: 11,
+                  fontWeight: 900,
+                  lineHeight: 1,
+                }}
+              >
+                {pendingOrderCount > 99 ? "99+" : pendingOrderCount}
               </span>
             )}
           </button>

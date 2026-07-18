@@ -479,6 +479,7 @@ export default function OrdersPage() {
         ),
       );
       showMessage(result.message || "แจ้งคำสั่งแล้ว");
+      window.dispatchEvent(new Event("order-acknowledgements-updated"));
       setNotifyOrder(null);
       setNotifySelectedIds([]);
       setNotifySearch("");
@@ -516,6 +517,7 @@ export default function OrdersPage() {
         ),
       );
       showMessage(result.message || "รับทราบคำสั่งแล้ว");
+      window.dispatchEvent(new Event("order-acknowledgements-updated"));
     } catch (error) {
       showMessage(
         error instanceof Error ? error.message : "รับทราบคำสั่งไม่สำเร็จ",
@@ -1096,6 +1098,16 @@ export default function OrdersPage() {
           <section className={`${styles.modal} ${styles.notifyModal}`}>
             <h2>แจ้งคำสั่ง {notifyOrder.order_number}</h2>
             <p className={styles.modalLead}>{notifyOrder.subject}</p>
+            {(() => {
+              const existingRecipientIds = new Set(
+                orderRecipients(notifyOrder).map((recipient) => recipient.profile_id),
+              );
+              const newSelectedCount = notifySelectedIds.filter(
+                (profileId) => !existingRecipientIds.has(profileId),
+              ).length;
+
+              return (
+                <>
 
             <div className={styles.notifySearchBox}>
               <input
@@ -1119,41 +1131,65 @@ export default function OrdersPage() {
                     )
                     .filter((profile): profile is Profile => Boolean(profile))
                     .map((profile) => (
-                      <span className={styles.recipientPending} key={profile.id}>
-                        <i aria-hidden="true">!</i>
+                      <span
+                        className={
+                          existingRecipientIds.has(profile.id)
+                            ? styles.recipientDone
+                            : styles.recipientPending
+                        }
+                        key={profile.id}
+                      >
+                        <i aria-hidden="true">
+                          {existingRecipientIds.has(profile.id) ? "✓" : "!"}
+                        </i>
                         ครู{teacherShortName(profile.full_name)}
                       </span>
                     ))}
                 </div>
               )}
+              <small className={styles.notifyHistoryNote}>
+                รายชื่อที่แจ้งแล้วจะยังอยู่ในประวัติ ไม่ลบออกจากคำสั่ง
+              </small>
             </div>
 
             <div className={styles.notifyList}>
-              {filteredNotifyProfiles.map((profile) => (
-                <label className={styles.notifyOption} key={profile.id}>
-                  <input
-                    type="checkbox"
-                    checked={notifySelectedIds.includes(profile.id)}
-                    onChange={() =>
-                      setNotifySelectedIds((current) =>
-                        current.includes(profile.id)
-                          ? current.filter((id) => id !== profile.id)
-                          : [...current, profile.id],
-                      )
-                    }
-                  />
-                  <span>
-                    <strong>{profile.full_name}</strong>
-                    <small>{profile.position || profile.role || "-"}</small>
-                  </span>
-                </label>
-              ))}
+              {filteredNotifyProfiles.map((profile) => {
+                const alreadyNotified = existingRecipientIds.has(profile.id);
+                return (
+                  <label
+                    className={`${styles.notifyOption} ${
+                      alreadyNotified ? styles.notifyOptionLocked : ""
+                    }`}
+                    key={profile.id}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={
+                        alreadyNotified || notifySelectedIds.includes(profile.id)
+                      }
+                      disabled={alreadyNotified}
+                      onChange={() =>
+                        setNotifySelectedIds((current) =>
+                          current.includes(profile.id)
+                            ? current.filter((id) => id !== profile.id)
+                            : [...current, profile.id],
+                        )
+                      }
+                    />
+                    <span>
+                      <strong>{profile.full_name}</strong>
+                      <small>{profile.position || profile.role || "-"}</small>
+                    </span>
+                    {alreadyNotified && <em>แจ้งแล้ว</em>}
+                  </label>
+                );
+              })}
             </div>
 
-            <div className={styles.modalActions}>
+            <div className={`${styles.modalActions} ${styles.notifyModalActions}`}>
               <button
                 type="button"
-                className={styles.secondary}
+                className={`${styles.secondary} ${styles.notifyModalButton}`}
                 disabled={notifying}
                 onClick={() => {
                   setNotifyOrder(null);
@@ -1165,13 +1201,20 @@ export default function OrdersPage() {
               </button>
               <button
                 type="button"
-                className={styles.notifyButton}
-                disabled={notifying || notifySelectedIds.length === 0}
+                className={`${styles.notifyButton} ${styles.notifyModalButton}`}
+                disabled={notifying || newSelectedCount === 0}
                 onClick={() => void notifyRecipients()}
               >
-                {notifying ? "กำลังส่ง..." : "ส่งแจ้งเตือน"}
+                {notifying
+                  ? "กำลังส่ง..."
+                  : existingRecipientIds.size > 0
+                    ? "ส่งแจ้งเตือนเพิ่ม"
+                    : "ส่งแจ้งเตือน"}
               </button>
             </div>
+                </>
+              );
+            })()}
           </section>
         </div>
       )}

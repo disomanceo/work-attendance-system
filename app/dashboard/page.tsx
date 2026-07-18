@@ -141,6 +141,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [dismissedOrderAlertKey, setDismissedOrderAlertKey] = useState("");
 
   const loadOverview = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
@@ -192,6 +193,19 @@ export default function DashboardPage() {
   useEffect(() => {
     void loadOverview("initial");
   }, [loadOverview]);
+
+  const orderAlertKey = useMemo(() => {
+    if (!overview || overview.orders.unacknowledged <= 0) return "";
+    const ids = overview.orders.items.map((item) => item.id || item.name).join(",");
+    return `orders:${overview.orders.unacknowledged}:${ids}`;
+  }, [overview]);
+
+  useEffect(() => {
+    if (!orderAlertKey) return;
+    setDismissedOrderAlertKey(
+      window.sessionStorage.getItem("dismissedOrderAlertKey") || "",
+    );
+  }, [orderAlertKey]);
 
   const staffPercent = overview
     ? percent(overview.staff.checkedIn, overview.staff.total)
@@ -395,6 +409,54 @@ export default function DashboardPage() {
             </section>
           )}
         </>
+      )}
+
+      {overview && orderAlertKey && dismissedOrderAlertKey !== orderAlertKey && (
+        <section
+          className={styles.orderAlertPopup}
+          aria-label="คำสั่งที่ต้องรับทราบ"
+        >
+          <button
+            type="button"
+            className={styles.orderAlertClose}
+            aria-label="ปิดแจ้งเตือนคำสั่ง"
+            onClick={() => {
+              window.sessionStorage.setItem(
+                "dismissedOrderAlertKey",
+                orderAlertKey,
+              );
+              setDismissedOrderAlertKey(orderAlertKey);
+            }}
+          >
+            ×
+          </button>
+          <strong>มีคำสั่งที่ต้องรับทราบ</strong>
+          <p>
+            คุณมีคำสั่งที่ยังไม่รับทราบ {overview.orders.unacknowledged.toLocaleString("th-TH")} เรื่อง
+          </p>
+          <div className={styles.orderAlertActions}>
+            <button
+              type="button"
+              className={styles.orderAlertLater}
+              onClick={() => {
+                window.sessionStorage.setItem(
+                  "dismissedOrderAlertKey",
+                  orderAlertKey,
+                );
+                setDismissedOrderAlertKey(orderAlertKey);
+              }}
+            >
+              อ่านภายหลัง
+            </button>
+            <button
+              type="button"
+              className={styles.orderAlertOpen}
+              onClick={() => router.push("/orders")}
+            >
+              เปิดอ่านคำสั่ง
+            </button>
+          </div>
+        </section>
       )}
     </main>
   );

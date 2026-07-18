@@ -95,8 +95,26 @@ export async function POST(
       );
     }
 
+    const { data: existingRecipients, error: existingError } = await auth.admin
+      .from("order_document_recipients")
+      .select("profile_id")
+      .eq("order_document_id", id);
+
+    if (existingError) {
+      throw new Error(existingError.message);
+    }
+
+    const existingProfileIds = new Set(
+      (existingRecipients ?? [])
+        .map((recipient) => String(recipient.profile_id || "").trim())
+        .filter(Boolean),
+    );
+    const newProfileRows = profileRows.filter(
+      (profile) => !existingProfileIds.has(profile.id),
+    );
+
     const now = new Date().toISOString();
-    const rows = profileRows.map((profile) => ({
+    const rows = newProfileRows.map((profile) => ({
       order_document_id: id,
       profile_id: profile.id,
       recipient_name_snapshot: profile.full_name,
@@ -105,36 +123,40 @@ export async function POST(
       notified_at: now,
     }));
 
-    const { error: saveError } = await auth.admin
-      .from("order_document_recipients")
-      .upsert(rows, { onConflict: "order_document_id,profile_id" });
+    if (rows.length > 0) {
+      const { error: saveError } = await auth.admin
+        .from("order_document_recipients")
+        .upsert(rows, { onConflict: "order_document_id,profile_id" });
 
-    if (saveError) {
-      throw new Error(saveError.message);
+      if (saveError) {
+        throw new Error(saveError.message);
+      }
     }
 
-    await auth.admin.from("order_document_logs").insert({
-      order_document_id: id,
-      actor_id: auth.profile.id,
-      action: "NOTIFY_RECIPIENTS",
-      from_status: order.status,
-      to_status: order.status,
-      revision_number: Number(order.revision_count || 0),
-      note: `แจ้งคำสั่งให้ครู ${profileRows.length} คน`,
-    });
+    if (newProfileRows.length > 0) {
+      await auth.admin.from("order_document_logs").insert({
+        order_document_id: id,
+        actor_id: auth.profile.id,
+        action: "NOTIFY_RECIPIENTS",
+        from_status: order.status,
+        to_status: order.status,
+        revision_number: Number(order.revision_count || 0),
+        note: `แจ้งคำสั่งให้ครูเพิ่ม ${newProfileRows.length} คน`,
+      });
 
-    await notifyOrderAssignedTelegram({
-      orderId: id,
-      recipientProfileIds: profileRows.map((profile) => profile.id),
-      actorProfileId: auth.profile.id,
-      actorName: auth.profile.full_name,
-      orderNumber: order.order_number,
-      subject: order.subject,
-      orderDate: order.order_date,
-      pdfFileUrl: order.pdf_file_url || null,
-    }).catch((telegramError) => {
-      console.error("Telegram order assigned notification error:", telegramError);
-    });
+      await notifyOrderAssignedTelegram({
+        orderId: id,
+        recipientProfileIds: newProfileRows.map((profile) => profile.id),
+        actorProfileId: auth.profile.id,
+        actorName: auth.profile.full_name,
+        orderNumber: order.order_number,
+        subject: order.subject,
+        orderDate: order.order_date,
+        pdfFileUrl: order.pdf_file_url || null,
+      }).catch((telegramError) => {
+        console.error("Telegram order assigned notification error:", telegramError);
+      });
+    }
 
     const { data: recipients, error: recipientsError } = await auth.admin
       .from("order_document_recipients")
@@ -149,7 +171,10 @@ export async function POST(
     return NextResponse.json({
       ok: true,
       recipients: recipients ?? [],
-      message: `แจ้งคำสั่งให้ครู ${profileRows.length} คนแล้ว`,
+      message:
+        newProfileRows.length > 0
+          ? `แจ้งคำสั่งให้ครูเพิ่ม ${newProfileRows.length} คนแล้ว`
+          : "ไม่มีรายชื่อใหม่ที่ต้องส่งแจ้งเตือน",
     });
   } catch (error) {
     return NextResponse.json(
