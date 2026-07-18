@@ -91,6 +91,7 @@ export async function GET(request: Request) {
             id,
             assignee_id,
             assignee_name_snapshot,
+            requires_training_report,
             status,
             is_active
           )
@@ -179,6 +180,7 @@ export async function GET(request: Request) {
           id: item.id,
           assigneeId: item.assignee_id,
           assigneeName: item.assignee_name_snapshot || "",
+          requiresTrainingReport: item.requires_training_report === true,
           status: item.status,
         })),
     },

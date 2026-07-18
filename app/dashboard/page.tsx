@@ -5,6 +5,10 @@ import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { getCachedProfileImageUrl } from "@/lib/profile-image-cache";
 import { createClient } from "@/lib/supabase/client";
+import type {
+  TrainingReport,
+  TrainingReportSourceTask,
+} from "@/lib/training-reports/types";
 import styles from "./dashboard.module.css";
 
 type PersonPreview = {
@@ -15,6 +19,7 @@ type PersonPreview = {
   initials: string;
   imageFileId?: string;
   count?: number;
+  trainingHours?: number;
   statusCounts?: {
     unacknowledged: number;
     inProgress: number;
@@ -82,7 +87,26 @@ type DailyOverview = {
   highlights: Highlight[];
 };
 
-type DashboardTab = "staff" | "students" | "documents" | "orders";
+type TrainingDashboard = {
+  topics: number;
+  assigned: number;
+  pending: number;
+  submitted: number;
+  hours: number;
+  people: PersonPreview[];
+};
+
+type TrainingReportsResponse = {
+  ok: boolean;
+  reports?: TrainingReport[];
+};
+
+type TrainingTasksResponse = {
+  ok: boolean;
+  tasks?: TrainingReportSourceTask[];
+};
+
+type DashboardTab = "staff" | "students" | "documents" | "orders" | "training";
 
 function formatThaiDate(value: string) {
   if (!value) return "วันนี้";
@@ -122,6 +146,24 @@ function numberText(value: number) {
   return value.toLocaleString("th-TH");
 }
 
+function initials(value: string) {
+  return value
+    .split(/\s+/)
+    .map((part) => part.trim().charAt(0))
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function trainingBookNumber(task: TrainingReportSourceTask) {
+  return task.documentNumber || task.registrationNumber || task.bookId || "-";
+}
+
+function trainingTopicKey(task: TrainingReportSourceTask) {
+  return task.bookId || `${trainingBookNumber(task)}:${task.subject}`;
+}
+
 function todayInputValue() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Bangkok",
@@ -138,10 +180,135 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<DashboardTab>("staff");
   const [accessToken, setAccessToken] = useState("");
   const [overview, setOverview] = useState<DailyOverview | null>(null);
+  const [training, setTraining] = useState<TrainingDashboard>({
+    topics: 0,
+    assigned: 0,
+    pending: 0,
+    submitted: 0,
+    hours: 0,
+    people: [],
+  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [dismissedOrderAlertKey, setDismissedOrderAlertKey] = useState("");
+
+  const loadTrainingDashboard = useCallback(async (token: string) => {
+    try {
+      const [reportsResponse, tasksResponse] = await Promise.all([
+        fetch("/api/training-reports", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        }),
+        fetch("/api/training-reports/source-tasks", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        }),
+      ]);
+      const reportsResult = (await reportsResponse.json()) as TrainingReportsResponse;
+      const tasksResult = (await tasksResponse.json()) as TrainingTasksResponse;
+
+      if (
+        !reportsResponse.ok ||
+        !tasksResponse.ok ||
+        !reportsResult.ok ||
+        !tasksResult.ok
+      ) {
+        return;
+      }
+
+      const reports = reportsResult.reports ?? [];
+      const tasks = tasksResult.tasks ?? [];
+      const reportByTaskId = new Map<string, TrainingReport>();
+
+      for (const report of reports) {
+        if (!report.sourceAssignmentId) continue;
+        const current = reportByTaskId.get(report.sourceAssignmentId);
+        if (!current || report.updatedAt.localeCompare(current.updatedAt) > 0) {
+          reportByTaskId.set(report.sourceAssignmentId, report);
+        }
+      }
+
+      const topicKeys = new Set(tasks.map(trainingTopicKey));
+      const submittedReports = reports.filter((report) => report.status === "submitted");
+      const submittedTaskIds = new Set(
+        submittedReports.map((report) => report.sourceAssignmentId),
+      );
+      const peopleMap = new Map<
+        string,
+        {
+          name: string;
+          assignedTopics: Set<string>;
+          pending: number;
+          draft: number;
+          submitted: number;
+          hours: number;
+          imageFileId?: string;
+        }
+      >();
+
+      for (const task of tasks) {
+        const key = task.assigneeId || task.assigneeName;
+        if (!key) continue;
+        const current =
+          peopleMap.get(key) ??
+          {
+            name: task.assigneeName || "ไม่ระบุชื่อ",
+            assignedTopics: new Set<string>(),
+            pending: 0,
+            draft: 0,
+            submitted: 0,
+            hours: 0,
+            imageFileId: task.assigneeImageFileId,
+          };
+        current.assignedTopics.add(trainingTopicKey(task));
+        if (task.assigneeImageFileId) current.imageFileId = task.assigneeImageFileId;
+        const report = reportByTaskId.get(task.taskId);
+        if (report?.status === "submitted") {
+          current.submitted += 1;
+          current.hours += Number(report.hours || 0);
+        } else if (report?.status === "draft") {
+          current.draft += 1;
+        } else if (report?.status !== "not_attended") {
+          current.pending += 1;
+        }
+        peopleMap.set(key, current);
+      }
+
+      const people = Array.from(peopleMap.values())
+        .map((person) => ({
+          name: person.name,
+          initials: initials(person.name),
+          imageFileId: person.imageFileId,
+          trainingHours: person.hours,
+          statusCounts: {
+            unacknowledged: person.pending,
+            inProgress: person.draft,
+            done: person.submitted,
+          },
+          label: `อบรม ${person.assignedTopics.size.toLocaleString(
+            "th-TH",
+          )} เรื่อง · รายงาน ${person.submitted.toLocaleString(
+            "th-TH",
+          )} เรื่อง · ${person.hours.toLocaleString("th-TH")} ชม.`,
+        }))
+        .sort((left, right) => left.name.localeCompare(right.name, "th"));
+
+      setTraining({
+        topics: topicKeys.size,
+        assigned: tasks.length,
+        pending: tasks.filter((task) => !submittedTaskIds.has(task.taskId)).length,
+        submitted: submittedReports.length,
+        hours: submittedReports.reduce(
+          (sum, report) => sum + Number(report.hours || 0),
+          0,
+        ),
+        people,
+      });
+    } catch {
+      // Keep the dashboard available even if the optional training summary is unavailable.
+    }
+  }, []);
 
   const loadOverview = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
@@ -175,6 +342,7 @@ export default function DashboardPage() {
         }
 
         setOverview(result);
+        void loadTrainingDashboard(session.access_token);
       } catch (loadError) {
         console.error("Load daily dashboard error:", loadError);
         setError(
@@ -187,7 +355,7 @@ export default function DashboardPage() {
         setRefreshing(false);
       }
     },
-    [router, selectedDate, supabase],
+    [loadTrainingDashboard, router, selectedDate, supabase],
   );
 
   useEffect(() => {
@@ -266,18 +434,55 @@ export default function DashboardPage() {
         <>
           <nav className={styles.sectionTabs} aria-label="เลือกส่วน Dashboard">
             {[
-              { id: "staff", label: "การลงเวลาครู" },
-              { id: "students", label: "สถิตินักเรียนวันนี้" },
-              { id: "documents", label: "หนังสือราชการ" },
-              { id: "orders", label: "คำสั่ง" },
+              {
+                id: "staff",
+                label: "การลงเวลาครู",
+                shortLabel: "ครู",
+                icon: "◷",
+                tone: styles.sectionTabGreen,
+              },
+              {
+                id: "students",
+                label: "สถิตินักเรียนวันนี้",
+                shortLabel: "นักเรียน",
+                icon: "●",
+                tone: styles.sectionTabBlue,
+              },
+              {
+                id: "documents",
+                label: "หนังสือราชการ",
+                shortLabel: "หนังสือ",
+                icon: "▣",
+                tone: styles.sectionTabPurple,
+              },
+              {
+                id: "orders",
+                label: "คำสั่ง",
+                shortLabel: "คำสั่ง",
+                icon: "!",
+                tone: styles.sectionTabOrange,
+              },
+              {
+                id: "training",
+                label: "ประชุม/อบรม",
+                shortLabel: "อบรม",
+                icon: "◇",
+                tone: styles.sectionTabCyan,
+              },
             ].map((tab) => (
               <button
                 type="button"
                 key={tab.id}
-                className={activeTab === tab.id ? styles.sectionTabActive : ""}
+                className={`${styles.sectionTabButton} ${tab.tone} ${
+                  activeTab === tab.id ? styles.sectionTabActive : ""
+                }`}
                 onClick={() => setActiveTab(tab.id as DashboardTab)}
               >
-                {tab.label}
+                <span className={styles.sectionTabIcon} aria-hidden="true">
+                  <small>{tab.shortLabel}</small>
+                  {tab.icon}
+                </span>
+                <span className={styles.sectionTabLabel}>{tab.label}</span>
               </button>
             ))}
           </nav>
@@ -383,6 +588,34 @@ export default function DashboardPage() {
                 emptyText="ไม่มีคำสั่งที่ต้องรับทราบ"
                 people={overview.orders.items}
                 accessToken={accessToken}
+              />
+            </article>
+
+            <article
+              className={styles.summaryCard}
+              data-active={activeTab === "training"}
+            >
+              <CardHeader
+                icon="◇"
+                title="รายการงานประชุม/อบรม"
+                href="/documents/training-reports"
+              />
+              <div className={`${styles.metricGrid} ${styles.metricGridThree}`}>
+                <Metric label="เรื่องอบรม" value={training.topics} tone="blue" suffix="เรื่อง" />
+                <Metric label="มอบหมาย" value={training.assigned} tone="gray" suffix="คน" />
+                <Metric label="รายงานแล้ว" value={training.submitted} tone="green" suffix="เรื่อง" />
+              </div>
+              <div className={styles.documentLegend}>
+                <span className={styles.legendOrange}><i />ยังไม่รายงาน</span>
+                <span className={styles.legendBlue}><i />บันทึกร่าง</span>
+                <span className={styles.legendGreen}><i />รายงานแล้ว</span>
+              </div>
+              <PersonList
+                title="สรุปครูประชุม/อบรม"
+                emptyText="ยังไม่มีรายการประชุม/อบรม"
+                people={training.people}
+                accessToken={accessToken}
+                variant="training"
               />
             </article>
           </section>
@@ -529,7 +762,7 @@ function PersonList({
   emptyText: string;
   people: PersonPreview[];
   accessToken: string;
-  variant?: "default" | "document";
+  variant?: "default" | "document" | "training";
 }) {
   return (
     <div className={styles.peopleBlock}>
@@ -545,6 +778,8 @@ function PersonList({
                 <strong>{person.name}</strong>
                 {variant === "document" ? (
                   <DocumentStatusLine counts={person.statusCounts} />
+                ) : variant === "training" ? (
+                  <TrainingStatusLine counts={person.statusCounts} />
                 ) : (
                   <small>{person.label || person.note || "รอดำเนินการ"}</small>
                 )}
@@ -552,9 +787,13 @@ function PersonList({
                   <small className={styles.personDetail}>{person.note}</small>
                 )}
               </div>
-              {variant !== "document" && (
+              {variant === "training" ? (
+                <span className={styles.trainingHourBadge}>
+                  {numberText(person.trainingHours ?? 0)}
+                </span>
+              ) : variant !== "document" ? (
                 <i />
-              )}
+              ) : null}
             </div>
           ))}
         </div>
@@ -592,6 +831,49 @@ function DocumentStatusLine({
 
   if (items.length === 0) {
     return <small>ไม่มีงานที่ได้รับ</small>;
+  }
+
+  return (
+    <div className={styles.documentStatusLine}>
+      {items.map((item) => (
+        <span className={item.className} key={item.label}>
+          <i />
+          {numberText(item.value)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function TrainingStatusLine({
+  counts,
+}: {
+  counts?: {
+    unacknowledged: number;
+    inProgress: number;
+    done: number;
+  };
+}) {
+  const items = [
+    {
+      label: "ยังไม่รายงาน",
+      value: counts?.unacknowledged ?? 0,
+      className: styles.statusBadgeOrange,
+    },
+    {
+      label: "บันทึกร่าง",
+      value: counts?.inProgress ?? 0,
+      className: styles.statusBadgeBlue,
+    },
+    {
+      label: "รายงานแล้ว",
+      value: counts?.done ?? 0,
+      className: styles.statusBadgeGreen,
+    },
+  ].filter((item) => item.value > 0);
+
+  if (items.length === 0) {
+    return <small>ไม่มีงานค้าง</small>;
   }
 
   return (

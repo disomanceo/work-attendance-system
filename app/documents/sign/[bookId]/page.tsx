@@ -26,6 +26,7 @@ type ContextResponse = {
       assigneeId: string | null;
       assigneeName: string;
       status: string;
+      requiresTrainingReport?: boolean;
     }>;
   };
   sourceAttachment?: {
@@ -92,6 +93,7 @@ export default function DocumentSigningPage() {
 
   const [context, setContext] = useState<ContextResponse | null>(null);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+  const [requiresTrainingReport, setRequiresTrainingReport] = useState(false);
   const [instructionText, setInstructionText] = useState("มอบหมายให้");
   const [fontSize, setFontSize] = useState(18);
   const [pageNumber, setPageNumber] = useState(1);
@@ -565,6 +567,9 @@ setSelectedAssigneeIds(
         setInstructionText(
           result.book.directorNote || "มอบหมายให้",
         );
+        setRequiresTrainingReport(
+          (result.book.tasks ?? []).some((task) => task.requiresTrainingReport),
+        );
 if (result.signer?.signatureFileId) {
           const cachedSignatureUrl = await getCachedProfileAssetUrl(
             "signature",
@@ -825,6 +830,7 @@ if (result.signer?.signatureFileId) {
           sourceFileBase64: signingSource.base64,
           assigneeIds: selectedAssigneeIds,
           assignmentNote: instructionText,
+          requiresTrainingReport,
           pageNumber: signingSource.pageNumber,
           overlayBase64,
         }),
@@ -1185,6 +1191,23 @@ if (result.signer?.signatureFileId) {
               }}
               placeholder="พิมพ์ข้อความที่ต้องการวางบนเอกสาร"
             />
+
+            <label className={styles.trainingReportToggle}>
+              <input
+                type="checkbox"
+                checked={requiresTrainingReport}
+                onChange={(event) => {
+                  setRequiresTrainingReport(event.target.checked);
+                  setIsDirty(true);
+                }}
+              />
+              <span>
+                <strong>ต้องส่งรายงานผลการประชุม/อบรม</strong>
+                <small>
+                  ส่งงานนี้ไปหน้า รายงานผลการประชุม/อบรม พร้อมข้อมูลหนังสือและผู้รับมอบหมาย
+                </small>
+              </span>
+            </label>
 
             <label className={styles.controlField}>
               <span>ขนาดข้อความ</span>

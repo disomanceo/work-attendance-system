@@ -12,6 +12,7 @@ type TaskItem = {
   assigneeId: string | null;
   assigneeName: string;
   status: string;
+  requiresTrainingReport?: boolean;
   assignmentOpenedAt: string;
   assignmentAcknowledgedAt: string;
 };
@@ -603,6 +604,7 @@ export default function DocumentsPage() {
   const [editingBook, setEditingBook] = useState<BookItem | null>(null);
   const [selectedBook, setSelectedBook] = useState<BookItem | null>(null);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+  const [requiresTrainingReport, setRequiresTrainingReport] = useState(false);
   const [actionNote, setActionNote] = useState("");
   const [message, setMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -1357,6 +1359,9 @@ export default function DocumentsPage() {
         .map((task) => task.assigneeId)
         .filter((id): id is string => Boolean(id)),
     );
+    setRequiresTrainingReport(
+      book.tasks.some((task) => task.requiresTrainingReport),
+    );
     setActionNote(book.directorNote || "");
     setMessage("");
     setSuccessMessage("");
@@ -1380,6 +1385,7 @@ export default function DocumentsPage() {
         bookId: editingBook.id,
         assigneeIds: selectedAssigneeIds,
         note: actionNote.trim(),
+        requiresTrainingReport,
       },
       `assign:${editingBook.id}`,
     );
@@ -1387,6 +1393,7 @@ export default function DocumentsPage() {
     if (ok) {
       setEditingBook(null);
       setSelectedAssigneeIds([]);
+      setRequiresTrainingReport(false);
       setActionNote("");
     }
   }
@@ -3042,6 +3049,23 @@ export default function DocumentsPage() {
                 onChange={(event) => setActionNote(event.target.value)}
                 placeholder="เช่น มอบหมายให้ดำเนินการและรายงานผล"
               />
+            </label>
+
+            <label className={styles.trainingReportToggle}>
+              <input
+                type="checkbox"
+                checked={requiresTrainingReport}
+                onChange={(event) =>
+                  setRequiresTrainingReport(event.target.checked)
+                }
+              />
+              <span>
+                <strong>ต้องส่งรายงานผลการประชุม/อบรม</strong>
+                <small>
+                  ระบบจะส่งงานนี้ไปหน้า รายงานผลการประชุม/อบรม พร้อมเลขหนังสือ
+                  เรื่อง และผู้รับมอบหมายให้อัตโนมัติ
+                </small>
+              </span>
             </label>
 
             <div className={styles.modalActions}>

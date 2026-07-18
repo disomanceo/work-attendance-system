@@ -182,31 +182,128 @@
 
 .sectionTabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
   margin-bottom: 12px;
 }
 
-.sectionTabs button {
-  min-height: 38px;
-  border: 1px solid #c9ddcd;
+.sectionTabButton {
+  --tab-color: #087a2e;
+  --tab-bg: #ecfdf3;
+  --tab-border: #bbf7d0;
+  display: grid;
+  min-width: 0;
+  min-height: 76px;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 8px 5px;
+  border: 1px solid var(--tab-border);
   border-radius: 8px;
-  color: #31553a;
+  color: var(--tab-color);
   background: #ffffff;
-  font-size: 13px;
   font-weight: 900;
+  box-shadow: 0 10px 20px rgba(31, 64, 55, 0.08);
   cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.sectionTabButton:hover {
+  transform: translateY(-1px);
+  border-color: var(--tab-color);
+  background: var(--tab-bg);
+  box-shadow: 0 14px 26px rgba(31, 64, 55, 0.12);
+}
+
+.sectionTabIcon {
+  position: relative;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  background: var(--tab-color);
+  font-size: 19px;
+  line-height: 1;
+  box-shadow: 0 0 0 5px var(--tab-bg);
+}
+
+.sectionTabIcon small {
+  position: absolute;
+  top: -8px;
+  max-width: 54px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: var(--tab-color);
+  background: #ffffff;
+  font-size: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.sectionTabLabel {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: #244135;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sectionTabs .sectionTabActive {
-  border-color: #087a2e;
-  color: #ffffff;
-  background: #087a2e;
+  border-color: var(--tab-color);
+  background: var(--tab-bg);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--tab-color) 22%, transparent),
+    0 14px 28px rgba(31, 64, 55, 0.14);
+}
+
+.sectionTabs .sectionTabActive .sectionTabLabel {
+  color: var(--tab-color);
+}
+
+.sectionTabGreen {
+  --tab-color: #16a34a;
+  --tab-bg: #dcfce7;
+  --tab-border: #bbf7d0;
+}
+
+.sectionTabBlue {
+  --tab-color: #2563eb;
+  --tab-bg: #dbeafe;
+  --tab-border: #bfdbfe;
+}
+
+.sectionTabPurple {
+  --tab-color: #7c3aed;
+  --tab-bg: #ede9fe;
+  --tab-border: #ddd6fe;
+}
+
+.sectionTabOrange {
+  --tab-color: #f97316;
+  --tab-bg: #ffedd5;
+  --tab-border: #fed7aa;
+}
+
+.sectionTabCyan {
+  --tab-color: #0891b2;
+  --tab-bg: #cffafe;
+  --tab-border: #a5f3fc;
 }
 
 .cardGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -517,6 +614,10 @@
   background: #2563eb;
 }
 
+.statusBadgeOrange {
+  background: #f97316;
+}
+
 .statusBadgeGreen {
   background: #16a34a;
 }
@@ -563,6 +664,15 @@
   background: #2563eb;
 }
 
+.legendOrange {
+  color: #c2410c;
+  background: #ffedd5;
+}
+
+.legendOrange i {
+  background: #f97316;
+}
+
 .legendGreen {
   color: #15803d;
   background: #dcfce7;
@@ -570,6 +680,20 @@
 
 .legendGreen i {
   background: #16a34a;
+}
+
+.trainingHourBadge {
+  display: grid;
+  min-width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 0 0 3px #dbeafe;
 }
 
 .classSummaryHeader {
@@ -838,7 +962,31 @@
   }
 
   .sectionTabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .sectionTabButton {
+    min-height: 62px;
+    gap: 5px;
+    padding: 7px 2px 5px;
+  }
+
+  .sectionTabIcon {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    box-shadow: 0 0 0 3px var(--tab-bg);
+  }
+
+  .sectionTabIcon small {
+    top: -7px;
+    padding: 1px 4px;
+    font-size: 7px;
+  }
+
+  .sectionTabLabel {
+    font-size: 9px;
   }
 
   .donut {

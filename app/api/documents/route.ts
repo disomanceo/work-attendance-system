@@ -149,6 +149,7 @@ export async function GET(request: Request) {
         assignee_id,
         assignee_name_snapshot,
         status,
+        requires_training_report,
         assignment_opened_at,
         assignment_acknowledged_at,
         is_active
@@ -239,6 +240,7 @@ export async function GET(request: Request) {
         assigneeId: task.assignee_id,
         assigneeName: task.assignee_name_snapshot || "",
         status: task.status,
+        requiresTrainingReport: task.requires_training_report === true,
         assignmentOpenedAt: task.assignment_opened_at || "",
         assignmentAcknowledgedAt: task.assignment_acknowledged_at || "",
       })),

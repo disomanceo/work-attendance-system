@@ -12,6 +12,7 @@ import OrderReviewPopup from "@/components/attendance/OrderReviewPopup";
 import AnnouncementReviewPopup from "@/components/attendance/AnnouncementReviewPopup";
 import RequestResultPopup from "@/components/attendance/RequestResultPopup";
 import SmartAreaAssignmentPopup from "@/components/attendance/SmartAreaAssignmentPopup";
+import TrainingReportAssignmentPopup from "@/components/attendance/TrainingReportAssignmentPopup";
 import SmartAreaImportButton from "@/app/documents/components/SmartAreaImportButton";
 
 type Profile = {
@@ -1779,6 +1780,7 @@ schoolName: settings?.school_name ?? null,
         </div>
       )}      <SmartAreaImportButton autoOnly />
       <SmartAreaAssignmentPopup />
+      <TrainingReportAssignmentPopup />
 
 
       <LeaveReviewPopup role={profile.role} />

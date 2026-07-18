@@ -13,6 +13,71 @@ Updated: 2026-07-18
 
 ## Latest findings
 
+- Training reports module on 2026-07-18:
+  - [x] Added `/documents/training-reports` as a mobile-first page for meeting/training reports.
+  - [x] Added a sidebar menu item under the official documents module.
+  - [x] Added `/api/training-reports` with Supabase-authenticated access and Firestore storage for this module only.
+  - [x] Added `/api/training-reports/source-tasks` to read Smart Area document assignments that require training reports.
+  - [x] Added the `requires_training_report` flag to `smart_area_tasks` through Supabase migration `20260718114500_add_smart_area_training_report_flag.sql`.
+  - [x] Applied the Supabase migration to the live Supabase project.
+  - [x] Added the “ต้องส่งรายงานผลการประชุม/อบรม” checkbox to director/admin assignment flows.
+  - [x] Linked flagged assignments into `/documents/training-reports` with the subject, book number, and assignee filled automatically.
+  - [x] Redesigned `/documents/training-reports` as a dashboard-style, mobile-first report work page.
+  - [x] Added a pending training-report badge to the sidebar menu.
+  - [x] Added the attendance-home popup and floating notification button for assigned training reports.
+  - [x] Added Drive upload through Apps Script using `2569/<book-number>/<teacher-name>/` folders.
+  - [x] Added Apps Script PDF generation from submitted report form data.
+  - [x] Added `gas-training-reports/` Apps Script source and setup notes in `docs/training-reports-firebase-gas.md`.
+  - [x] Deployed the dedicated `gas-training-reports` Apps Script Web App and pointed local env to it.
+  - [x] Set the dedicated Apps Script properties for the training report Drive root folder and secret.
+  - [x] Removed temporary training report actions from the shared `gas-school-library` endpoint after the dedicated Web App worked.
+  - [x] Limited training-report notification badge and attendance-home popup to the signed-in assignee only.
+  - [x] Changed the training-report page and submit modal to a blue/cyan theme.
+  - [x] Removed objective, due date, and application fields from the training-report submit form.
+  - [x] Changed report image attachments to four fixed slots: two training photos, certificate photo, and registration photo.
+  - [x] Allowed submitting training reports even when the four image slots are not all filled.
+  - [x] Updated Apps Script PDF generation to include the four image slots and omit removed report sections.
+  - [x] Switched the training-report page, submit modal, and attendance-home training-report popup to Anuphan.
+  - [x] Compacted the mobile training-report summary cards into a two-column layout.
+  - [x] Kept mobile training-report filters in a single compact row.
+  - [x] Tightened mobile report rows so the subject is bold and details are lighter, with fewer lines per item.
+  - [x] Made the submit-report modal header non-sticky and kept the three bottom action buttons sticky on one row.
+  - [x] Kept assignee, document date, and report action cells on one line in the desktop training-report table.
+  - [x] Grouped training-report assignments by document/book so one meeting/training topic appears as one row.
+  - [x] Showed compact assignee status marks in the grouped row: orange pending, green submitted, and gray not attended.
+  - [x] Showed the submit button only for the signed-in assignee when their own report is still open.
+  - [x] Showed submitted PDF links for all assignees in the grouped row.
+  - [x] Added a `not_attended` report status and a sticky footer button for `ไม่เข้าประชุม-อบรม`.
+  - [x] Kept the four submit-report footer buttons in one row on mobile.
+  - [x] Renamed grouped training-report assignees to `ผู้อบรม` and displayed compact teacher names.
+  - [x] Added 20-item pagination with previous/next controls to the training-report table.
+  - [x] Added date sort filtering for newest/oldest training-report rows.
+  - [x] Made the four status cards clickable filters.
+  - [x] Centered training-report table headers and linked the subject to the original official document.
+  - [x] Removed the training-report year selector until historical years exist.
+  - [x] Changed the subject link highlight to appear only on hover/focus.
+  - [x] Renamed the training-report assignee column to `ผู้ประชุม/อบรม`.
+  - [x] Tightened compact teacher-name chips and widened the training-report content area.
+  - [x] Added a Dashboard tab/card for meeting/training work with topic, report, and training-hour summaries.
+  - [x] Updated the Dashboard meeting/training tab with orange, blue, and green status indicators plus a legend.
+  - [x] Changed Dashboard meeting/training people rows to use profile photos and a blue accumulated-hour badge.
+  - [x] Removed the total-hours metric card from the Dashboard meeting/training tab.
+  - [x] Changed the five Dashboard section tabs into one-row colorful shortcut buttons with compact icon labels.
+  - [x] Added a distinct blue draft marker (`◇`) for draft training reports.
+  - [x] Changed the Dashboard orders tab to show latest approved order recipients, not only unacknowledged items.
+  - [x] Confirmed `npm.cmd run build` succeeds after the module addition.
+  - [x] Confirmed `npm.cmd run build` succeeds after the training-report assignment and popup updates.
+  - [x] Confirmed `npm.cmd run build` succeeds after the blue/cyan report page and fixed image-slot update.
+  - [x] Confirmed `npm.cmd run build` succeeds after the mobile compact layout and Anuphan update.
+  - [x] Confirmed `npm.cmd run build` succeeds after grouped training-report rows and the not-attended action.
+  - [x] Confirmed `npm.cmd run build` succeeds after training-report pagination, date sorting, and linked subjects.
+  - [x] Confirmed `npm.cmd run build` succeeds after the training-report layout polish and Dashboard training tab.
+  - [x] Confirmed `npm.cmd run build` succeeds after the draft marker and Dashboard orders data adjustment.
+  - [x] Confirmed `npm.cmd run build` succeeds after the Dashboard meeting/training status and hour-badge polish.
+  - [x] Confirmed `npm.cmd run build` succeeds after the Dashboard shortcut-tab redesign.
+  - [ ] Add the new Firebase config values to the deployed environment before production use.
+  - [ ] Verify a real training report upload against the dedicated Apps Script endpoint after Firebase rules are ready.
+
 - Teaching supervision module on 2026-07-17:
   - [x] Added `/teaching-supervision` under the existing `AppShell`.
   - [x] Added the sidebar menu item immediately after `/announcements`.

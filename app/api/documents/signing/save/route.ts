@@ -16,6 +16,7 @@ type SaveBody = {
   sourceFileBase64?: unknown;
   assigneeIds?: unknown;
   assignmentNote?: unknown;
+  requiresTrainingReport?: unknown;
   pageNumber?: unknown;
   overlayBase64?: unknown;
 };
@@ -109,6 +110,7 @@ async function handleSigningPost(request: Request) {
   const sourceFileBase64 = text(body?.sourceFileBase64);
   const assigneeIds = stringArray(body?.assigneeIds);
   const assignmentNote = text(body?.assignmentNote);
+  const requiresTrainingReport = body?.requiresTrainingReport === true;
   const requestedPageNumber = Number(body?.pageNumber || 1);
   const overlayBase64 = text(body?.overlayBase64);
 
@@ -460,6 +462,23 @@ async function handleSigningPost(request: Request) {
     assigneeIds,
     assignmentNote,
   });
+
+  const { error: trainingReportFlagError } = await auth.admin
+    .from("smart_area_tasks")
+    .update({
+      requires_training_report: requiresTrainingReport,
+      updated_by: signer.id,
+    })
+    .eq("book_id", bookId)
+    .eq("is_active", true)
+    .in("assignee_id", assigneeIds);
+
+  if (trainingReportFlagError) {
+    console.error(
+      "Update signed assignment training report requirement error:",
+      trainingReportFlagError,
+    );
+  }
 
   try {
     await notifySmartAreaAssignments({

@@ -694,21 +694,29 @@ export async function GET(request: Request) {
     const unacknowledgedOrderRecipients = activeOrderRecipients.filter(
       (recipient) => !recipient.acknowledged_at,
     );
+    const latestOrderRecipients = [...activeOrderRecipients].sort((left, right) => {
+      const leftOrder = orderFromRecipient(left);
+      const rightOrder = orderFromRecipient(right);
+      return String(rightOrder?.order_date || "").localeCompare(
+        String(leftOrder?.order_date || ""),
+      );
+    });
     const orderSummary = {
       assigned: activeOrderRecipients.length,
       unacknowledged: unacknowledgedOrderRecipients.length,
       acknowledged:
         activeOrderRecipients.length - unacknowledgedOrderRecipients.length,
-      items: unacknowledgedOrderRecipients.slice(0, 6).map((recipient) => {
+      items: latestOrderRecipients.slice(0, 8).map((recipient) => {
         const order = orderFromRecipient(recipient);
         const title = order?.order_number
           ? `${order.order_number} ${order.subject || ""}`.trim()
           : order?.subject || "คำสั่งที่ต้องรับทราบ";
+        const acknowledged = Boolean(recipient.acknowledged_at);
         return {
           id: order?.id || recipient.id,
           name: title,
           label: order?.order_date ? thaiDateShort(order.order_date) : "",
-          note: "ยังไม่รับทราบ",
+          note: acknowledged ? "รับทราบแล้ว" : "ยังไม่รับทราบ",
           initials: "คส",
         };
       }),

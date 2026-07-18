@@ -42,6 +42,15 @@ type SidebarOrderCountResponse = {
   count?: number;
 };
 
+type SidebarTrainingReportTask = {
+  status?: string;
+};
+
+type SidebarTrainingReportTasksResponse = {
+  ok?: boolean;
+  tasks?: SidebarTrainingReportTask[];
+};
+
 const MODULES: Array<{
   key: ModuleKey;
   label: string;
@@ -90,6 +99,7 @@ export default function AppSidebar({
   const [imageFailed, setImageFailed] = useState(false);
   const [newDocumentCount, setNewDocumentCount] = useState(0);
   const [pendingOrderCount, setPendingOrderCount] = useState(0);
+  const [pendingTrainingReportCount, setPendingTrainingReportCount] = useState(0);
   const supabase = useMemo(() => createClient(), []);
 
   const loadNewDocumentCount = useCallback(async () => {
@@ -158,6 +168,35 @@ export default function AppSidebar({
     }
   }, [supabase]);
 
+  const loadPendingTrainingReportCount = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setPendingTrainingReportCount(0);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/training-reports/source-tasks?scope=mine", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+      const result = (await response.json()) as SidebarTrainingReportTasksResponse;
+
+      if (!response.ok || !result.ok) return;
+
+      setPendingTrainingReportCount(
+        (result.tasks ?? []).filter((task) => task.status !== "done").length,
+      );
+    } catch {
+      // Keep the previous badge value when the request is temporarily unavailable.
+    }
+  }, [supabase]);
+
   const activeModule = useMemo<ModuleKey | null>(() => {
     const activeItem = items.find((item) => item.match(pathname));
     if (
@@ -205,22 +244,31 @@ export default function AppSidebar({
   useEffect(() => {
     void loadNewDocumentCount();
     void loadPendingOrderCount();
+    void loadPendingTrainingReportCount();
 
     const handleUpdate = () => {
       void loadNewDocumentCount();
       void loadPendingOrderCount();
+      void loadPendingTrainingReportCount();
     };
 
     window.addEventListener("smart-area-documents-updated", handleUpdate);
     window.addEventListener("order-acknowledgements-updated", handleUpdate);
+    window.addEventListener("training-reports-updated", handleUpdate);
     window.addEventListener("focus", handleUpdate);
 
     return () => {
       window.removeEventListener("smart-area-documents-updated", handleUpdate);
       window.removeEventListener("order-acknowledgements-updated", handleUpdate);
+      window.removeEventListener("training-reports-updated", handleUpdate);
       window.removeEventListener("focus", handleUpdate);
     };
-  }, [loadNewDocumentCount, loadPendingOrderCount, pathname]);
+  }, [
+    loadNewDocumentCount,
+    loadPendingOrderCount,
+    loadPendingTrainingReportCount,
+    pathname,
+  ]);
 
   function toggleModule(key: ModuleKey) {
     setExpandedModule((current) => (current === key ? null : key));
@@ -297,6 +345,7 @@ export default function AppSidebar({
                   onNavigate={onNavigate}
                   newDocumentCount={newDocumentCount}
                   pendingOrderCount={pendingOrderCount}
+                  pendingTrainingReportCount={pendingTrainingReportCount}
                 />
               );
             })}
@@ -349,6 +398,7 @@ function ModuleGroup({
   onNavigate,
   newDocumentCount,
   pendingOrderCount,
+  pendingTrainingReportCount,
 }: {
   collapsed: boolean;
   label: string;
@@ -362,6 +412,7 @@ function ModuleGroup({
   onNavigate: (href: string) => void;
   newDocumentCount: number;
   pendingOrderCount: number;
+  pendingTrainingReportCount: number;
 }) {
   if (items.length === 0) return null;
 
@@ -404,6 +455,7 @@ function ModuleGroup({
             nested
             newDocumentCount={newDocumentCount}
             pendingOrderCount={pendingOrderCount}
+            pendingTrainingReportCount={pendingTrainingReportCount}
           />
         </div>
       )}
@@ -447,6 +499,7 @@ function MenuItems({
   nested = false,
   newDocumentCount = 0,
   pendingOrderCount = 0,
+  pendingTrainingReportCount = 0,
 }: {
   collapsed: boolean;
   items: AppNavigationItem[];
@@ -455,6 +508,7 @@ function MenuItems({
   nested?: boolean;
   newDocumentCount?: number;
   pendingOrderCount?: number;
+  pendingTrainingReportCount?: number;
 }) {
   if (items.length === 0) return null;
 
@@ -537,6 +591,30 @@ function MenuItems({
                 {pendingOrderCount > 99 ? "99+" : pendingOrderCount}
               </span>
             )}
+            {item.href === "/documents/training-reports" &&
+              pendingTrainingReportCount > 0 && (
+                <span
+                  aria-label={`งานรายงานผลที่ต้องส่ง ${pendingTrainingReportCount} รายการ`}
+                  style={{
+                    display: "inline-grid",
+                    minWidth: 20,
+                    height: 20,
+                    marginLeft: "auto",
+                    placeItems: "center",
+                    borderRadius: 999,
+                    padding: "0 6px",
+                    background: "#dc2626",
+                    color: "#ffffff",
+                    fontSize: 11,
+                    fontWeight: 900,
+                    lineHeight: 1,
+                  }}
+                >
+                  {pendingTrainingReportCount > 99
+                    ? "99+"
+                    : pendingTrainingReportCount}
+                </span>
+              )}
           </button>
         );
       })}

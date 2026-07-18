@@ -12,6 +12,7 @@ type ActionBody = {
   bookId?: unknown;
   assigneeIds?: unknown;
   note?: unknown;
+  requiresTrainingReport?: unknown;
 };
 
 function text(value: unknown) {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
   const bookId = text(body?.bookId);
   const note = text(body?.note);
   const assigneeIds = stringArray(body?.assigneeIds);
+  const requiresTrainingReport = body?.requiresTrainingReport === true;
 
   if (!bookId) {
     return NextResponse.json(
@@ -113,6 +115,23 @@ export async function POST(request: Request) {
       assigneeIds,
       assignmentNote: note,
     });
+
+    const { error: trainingReportFlagError } = await auth.admin
+      .from("smart_area_tasks")
+      .update({
+        requires_training_report: requiresTrainingReport,
+        updated_by: auth.profile.id,
+      })
+      .eq("book_id", bookId)
+      .eq("is_active", true)
+      .in("assignee_id", assigneeIds);
+
+    if (trainingReportFlagError) {
+      console.error(
+        "Update Smart Area training report requirement error:",
+        trainingReportFlagError,
+      );
+    }
 
     const notifications = await Promise.allSettled([
       notifySmartAreaAssignments({
