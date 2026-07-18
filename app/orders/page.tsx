@@ -574,8 +574,8 @@ export default function OrdersPage() {
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
-              width="18"
-              height="18"
+              width="22"
+              height="22"
             >
               <path
                 fill="currentColor"
@@ -597,8 +597,8 @@ export default function OrdersPage() {
             <svg
               aria-hidden="true"
               viewBox="0 0 24 24"
-              width="18"
-              height="18"
+              width="22"
+              height="22"
             >
               <path
                 fill="currentColor"
@@ -667,11 +667,47 @@ export default function OrdersPage() {
     );
   }
 
+  function renderNotifiedStatusControl(order: OrderItem) {
+    const recipients = orderRecipients(order);
+
+    if (!canManageAll || order.status !== "APPROVED" || recipients.length === 0) {
+      return null;
+    }
+
+    return (
+      <button
+        type="button"
+        className={styles.notifiedButton}
+        onClick={() => openNotify(order)}
+      >
+        ✓ แจ้งครูแล้ว
+      </button>
+    );
+  }
+
+  function renderDeleteButton(order: OrderItem, className = "") {
+    if (!canDelete(order)) return null;
+
+    return (
+      <button
+        type="button"
+        className={`${styles.deleteButton} ${className}`}
+        title="ลบคำสั่ง"
+        aria-label="ลบคำสั่ง"
+        disabled={deletingId === order.id}
+        onClick={() => void deleteOrder(order)}
+      >
+        {deletingId === order.id ? "…" : "×"}
+      </button>
+    );
+  }
+
   function renderActions(order: OrderItem) {
     const recipients = orderRecipients(order);
 
     return (
       <div className={styles.manageCell}>
+        {renderRecipientChips(order)}
         <div className={styles.actions}>
           {canManageAll && order.status === "PENDING" && (
             <button
@@ -686,17 +722,13 @@ export default function OrdersPage() {
             </button>
           )}
 
-          {canManageAll && order.status === "APPROVED" && (
+          {canManageAll && order.status === "APPROVED" && recipients.length === 0 && (
             <button
               type="button"
-              className={
-                recipients.length > 0
-                  ? styles.notifiedButton
-                  : styles.notifyButton
-              }
+              className={styles.notifyButton}
               onClick={() => openNotify(order)}
             >
-              {recipients.length > 0 ? "แจ้งครูแล้ว" : "แจ้งคำสั่ง"}
+              แจ้งคำสั่ง
             </button>
           )}
 
@@ -715,20 +747,8 @@ export default function OrdersPage() {
             </button>
           )}
 
-          {canDelete(order) && (
-            <button
-              type="button"
-              className={styles.deleteButton}
-              title="ลบคำสั่ง"
-              aria-label="ลบคำสั่ง"
-              disabled={deletingId === order.id}
-              onClick={() => void deleteOrder(order)}
-            >
-              {deletingId === order.id ? "…" : "×"}
-            </button>
-          )}
+          {renderDeleteButton(order)}
         </div>
-        {renderRecipientChips(order)}
       </div>
     );
   }
@@ -849,6 +869,7 @@ export default function OrdersPage() {
                         >
                           {statusLabel(order.status)}
                         </span>
+                        {renderNotifiedStatusControl(order)}
                         {renderAcknowledgementControl(order)}
                       </div>
                     </td>
@@ -874,6 +895,8 @@ export default function OrdersPage() {
                   >
                     {statusLabel(order.status)}
                   </span>
+                  {renderNotifiedStatusControl(order)}
+                  {renderDeleteButton(order, styles.mobileDeleteButton)}
                   {renderAcknowledgementControl(order)}
                 </div>
               </div>
