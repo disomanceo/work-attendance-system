@@ -18,6 +18,11 @@ type OrderItem = {
   updated_at: string;
   docx_file_url: string | null;
   pdf_file_url: string | null;
+  order_document_recipients?: {
+    id: string;
+    profile_id: string;
+    acknowledged_at: string | null;
+  }[];
 };
 
 type Props = {
@@ -41,6 +46,16 @@ function formatThaiDate(value: string) {
 
 function getNotificationKey(order: OrderItem) {
   return `${order.id}:${order.status}:${order.updated_at}`;
+}
+
+function hasPendingAcknowledgement(order: OrderItem, profileId: string) {
+  return (
+    order.status === "APPROVED" &&
+    (order.order_document_recipients ?? []).some(
+      (recipient) =>
+        recipient.profile_id === profileId && !recipient.acknowledged_at,
+    )
+  );
 }
 
 async function loadSeenRecords(token: string, keys: string[]) {
@@ -108,10 +123,6 @@ export default function OrderReviewPopup({ role }: Props) {
           sort: isManager ? "number_desc" : "updated_desc",
         });
 
-        if (isStaffUser) {
-          params.set("responsibleId", userId);
-        }
-
         const response = await fetch(`/api/orders?${params.toString()}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -137,8 +148,9 @@ export default function OrderReviewPopup({ role }: Props) {
 
             if (isStaffUser) {
               return (
-                order.status === "REVISION" ||
-                order.status === "APPROVED"
+                (order.status === "REVISION" &&
+                  order.responsible_user_id === userId) ||
+                hasPendingAcknowledgement(order, userId)
               );
             }
 
@@ -149,10 +161,14 @@ export default function OrderReviewPopup({ role }: Props) {
         if (isStaffUser) {
           const seenRecords = await loadSeenRecords(
             token,
-            notificationItems.map(getNotificationKey)
+            notificationItems
+              .filter((order) => !hasPendingAcknowledgement(order, userId))
+              .map(getNotificationKey)
           );
           notificationItems = notificationItems.filter(
-            (order) => !seenRecords[getNotificationKey(order)]?.seenAt
+            (order) =>
+              hasPendingAcknowledgement(order, userId) ||
+              !seenRecords[getNotificationKey(order)]?.seenAt
           );
         }
 
@@ -170,17 +186,26 @@ export default function OrderReviewPopup({ role }: Props) {
 
         const newest = notificationItems[0];
         const notificationKey = getNotificationKey(newest);
+        const pendingAcknowledgement = hasPendingAcknowledgement(newest, userId);
 
         const storageKey = isManager
           ? "director_last_seen_pending_order"
+          : pendingAcknowledgement
+            ? `staff_session_dismissed_order_ack:${userId}`
           : `staff_last_seen_order_result:${userId}`;
 
-        const lastSeenKey = window.localStorage.getItem(storageKey);
+        const lastSeenKey = pendingAcknowledgement
+          ? window.sessionStorage.getItem(storageKey)
+          : window.localStorage.getItem(storageKey);
 
         if (notificationKey !== lastSeenKey) {
           setCurrentIndex(0);
           setOpen(true);
-          window.localStorage.setItem(storageKey, notificationKey);
+          if (pendingAcknowledgement) {
+            window.sessionStorage.setItem(storageKey, notificationKey);
+          } else {
+            window.localStorage.setItem(storageKey, notificationKey);
+          }
         }
       } catch (error) {
         setErrorMessage(
@@ -217,6 +242,17 @@ export default function OrderReviewPopup({ role }: Props) {
           void loadNotifications(true);
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "order_document_recipients",
+        },
+        () => {
+          void loadNotifications(true);
+        }
+      )
       .subscribe();
 
     const timer = window.setInterval(() => {
@@ -241,8 +277,9 @@ export default function OrderReviewPopup({ role }: Props) {
     if (!current || !isStaffUser) return;
 
     try {
-      const { token } = await getSessionData();
+      const { token, userId } = await getSessionData();
       if (!token) return;
+      if (hasPendingAcknowledgement(current, userId)) return;
 
       await fetch("/api/notifications/seen", {
         method: "POST",
@@ -276,6 +313,10 @@ export default function OrderReviewPopup({ role }: Props) {
 
   async function closeCurrent() {
     setOpen(false);
+    if (current && isStaffUser) {
+      const { userId } = await getSessionData();
+      if (hasPendingAcknowledgement(current, userId)) return;
+    }
     await markCurrentSeen();
   }
 
@@ -291,16 +332,22 @@ export default function OrderReviewPopup({ role }: Props) {
   }
 
   function getFloatingIcon() {
+    if (items.some((order) => order.status === "APPROVED")) return "🔔";
     if (items[0]?.status === "REVISION") return "✏️";
     if (items[0]?.status === "APPROVED") return "✅";
     return "🔔";
   }
 
   function getFloatingLabel() {
+    if (isStaffUser && items.some((order) => order.status === "APPROVED")) {
+      return "คำสั่งต้องรับทราบ";
+    }
+
     return isManager ? "คำสั่งรอพิจารณา" : "ผลพิจารณาคำสั่ง";
   }
 
   function getHeaderTitle() {
+    if (isApproved && isStaffUser) return "มีคำสั่งที่ต้องรับทราบ";
     if (isPending) return "มีคำสั่งใหม่รอพิจารณา";
     if (isRevision) return "คำสั่งถูกส่งกลับให้แก้ไข";
     if (isApproved) return "คำสั่งได้รับการอนุมัติแล้ว";
@@ -315,6 +362,7 @@ export default function OrderReviewPopup({ role }: Props) {
   }
 
   function getPrimaryButtonLabel() {
+    if (isApproved && isStaffUser) return "เปิดอ่านคำสั่ง";
     if (isPending) return "ไปพิจารณาคำสั่ง";
     if (isRevision) return "ไปแก้ไขคำสั่ง";
     return "ดูรายละเอียดคำสั่ง";
@@ -453,7 +501,9 @@ export default function OrderReviewPopup({ role }: Props) {
                     className={styles.secondary}
                     onClick={closeCurrent}
                   >
-                    {isPending ? "ไว้ภายหลัง" : "ปิด"}
+                    {isPending || (isApproved && isStaffUser)
+                      ? "ไว้ภายหลัง"
+                      : "ปิด"}
                   </button>
 
                   {items.length > 1 && (

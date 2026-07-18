@@ -582,7 +582,6 @@ export default function OrdersPage() {
                 d="M4 3h10l6 6v12H4V3Zm9 1.8V10h5.2L13 4.8ZM7 13l1.2 5h1.7l1-3.3L12 18h1.7l1.3-5h-1.6l-.7 3.2-1-3.2h-1.5l-1 3.2-.7-3.2H7Z"
               />
             </svg>
-            <span>Word</span>
           </a>
         )}
 
@@ -606,7 +605,6 @@ export default function OrdersPage() {
                 d="M4 3h10l6 6v12H4V3Zm9 1.8V10h5.2L13 4.8ZM7 13v5h1.5v-1.5h.8c1.5 0 2.5-.7 2.5-1.8 0-1.2-.9-1.7-2.5-1.7H7Zm1.5 1.2h.7c.7 0 1 .2 1 .6 0 .4-.3.6-1 .6h-.7v-1.2Zm4.1-1.2v5h2.1c1.8 0 2.9-.9 2.9-2.5S16.5 13 14.7 13h-2.1Zm1.5 1.2h.5c.9 0 1.4.4 1.4 1.3 0 .9-.5 1.3-1.4 1.3h-.5v-2.6Z"
               />
             </svg>
-            <span>PDF</span>
           </a>
         )}
 
@@ -644,12 +642,33 @@ export default function OrdersPage() {
     );
   }
 
-  function renderActions(order: OrderItem) {
+  function renderAcknowledgementControl(order: OrderItem) {
     const recipients = orderRecipients(order);
     const currentRecipient = currentProfile
       ? recipients.find((recipient) => recipient.profile_id === currentProfile.id)
       : undefined;
     const currentAcknowledged = Boolean(currentRecipient?.acknowledged_at);
+
+    if (!currentRecipient) {
+      return null;
+    }
+
+    return currentAcknowledged ? (
+      <span className={styles.ackDone}>✓ รับทราบแล้ว</span>
+    ) : (
+      <button
+        type="button"
+        className={styles.ackButton}
+        disabled={acknowledgingId === order.id}
+        onClick={() => void acknowledgeOrder(order)}
+      >
+        {acknowledgingId === order.id ? "..." : "รับทราบ"}
+      </button>
+    );
+  }
+
+  function renderActions(order: OrderItem) {
+    const recipients = orderRecipients(order);
 
     return (
       <div className={styles.manageCell}>
@@ -680,20 +699,6 @@ export default function OrdersPage() {
               {recipients.length > 0 ? "แจ้งครูแล้ว" : "แจ้งคำสั่ง"}
             </button>
           )}
-
-          {currentRecipient &&
-            (currentAcknowledged ? (
-              <span className={styles.ackDone}>✓ รับทราบแล้ว</span>
-            ) : (
-              <button
-                type="button"
-                className={styles.ackButton}
-                disabled={acknowledgingId === order.id}
-                onClick={() => void acknowledgeOrder(order)}
-              >
-                {acknowledgingId === order.id ? "..." : "รับทราบ"}
-              </button>
-            ))}
 
           {canEdit(order) && (
             <button
@@ -836,13 +841,16 @@ export default function OrdersPage() {
                     </td>
                     <td>{renderFiles(order)}</td>
                     <td>
-                      <span
-                        className={`${styles.status} ${statusClass(
-                          order.status
-                        )}`}
-                      >
-                        {statusLabel(order.status)}
-                      </span>
+                      <div className={styles.statusStack}>
+                        <span
+                          className={`${styles.status} ${statusClass(
+                            order.status
+                          )}`}
+                        >
+                          {statusLabel(order.status)}
+                        </span>
+                        {renderAcknowledgementControl(order)}
+                      </div>
                     </td>
                     <td>{renderActions(order)}</td>
                   </tr>
@@ -860,11 +868,14 @@ export default function OrdersPage() {
             <article className={styles.mobileCard} key={order.id}>
               <div className={styles.mobileTop}>
                 <strong>{order.order_number || "ฉบับร่าง"}</strong>
-                <span
-                  className={`${styles.status} ${statusClass(order.status)}`}
-                >
-                  {statusLabel(order.status)}
-                </span>
+                <div className={styles.mobileStatusStack}>
+                  <span
+                    className={`${styles.status} ${statusClass(order.status)}`}
+                  >
+                    {statusLabel(order.status)}
+                  </span>
+                  {renderAcknowledgementControl(order)}
+                </div>
               </div>
               <div className={styles.mobileSubject}>{order.subject}</div>
               <div className={styles.mobileMeta}>
@@ -1096,6 +1107,19 @@ export default function OrdersPage() {
       {notifyOrder && (
         <div className={styles.overlay}>
           <section className={`${styles.modal} ${styles.notifyModal}`}>
+            <button
+              type="button"
+              className={styles.modalCloseButton}
+              disabled={notifying}
+              onClick={() => {
+                setNotifyOrder(null);
+                setNotifySelectedIds([]);
+                setNotifySearch("");
+              }}
+              aria-label="ปิด"
+            >
+              ×
+            </button>
             <h2>แจ้งคำสั่ง {notifyOrder.order_number}</h2>
             <p className={styles.modalLead}>{notifyOrder.subject}</p>
             {(() => {

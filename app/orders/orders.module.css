@@ -123,7 +123,7 @@
 .table th {
   background: #f7f2fc;
   color: #6d5582;
-  text-align: left;
+  text-align: center;
   padding: 13px 12px;
   font-size: 13px;
   border-bottom: 1px solid #e4d9f0;
@@ -135,13 +135,17 @@
   border-bottom: 1px solid #f0e9f6;
 }
 
-.numberColumn { width: 110px; }
+.table td:nth-child(2) {
+  padding-left: 6px;
+}
+
+.numberColumn { width: 92px; }
 .subjectColumn { width: auto; }
 .dateColumn { width: 135px; }
 .ownerColumn { width: 180px; }
-.fileColumn { width: 150px; }
-.statusColumn { width: 125px; }
-.actionColumn { width: 230px; }
+.fileColumn { width: 76px; }
+.statusColumn { width: 170px; }
+.actionColumn { width: 210px; }
 
 .subject {
   font-weight: 700;
@@ -159,6 +163,7 @@
 .files {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 7px;
 }
 
@@ -173,22 +178,24 @@
 
 .manageCell {
   display: grid;
-  justify-items: end;
+  justify-items: stretch;
   gap: 7px;
 }
 
 .fileButton {
   display: inline-flex;
   text-decoration: none;
-  padding: 7px 9px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
   font-size: 12px;
   font-weight: 700;
-  background: #edf4fb;
   color: #135c9c;
 }
 
 .status {
   display: inline-flex;
+  white-space: nowrap;
   border-radius: 999px;
   padding: 6px 9px;
   font-size: 12px;
@@ -198,7 +205,19 @@
 .statusDraft { background: #edf1f5; color: #586b7a; }
 .statusPending { background: #fff2d5; color: #9a6500; }
 .statusRevision { background: #ffe2e2; color: #b22f2f; }
-.statusApproved { background: #dcf8e7; color: #177743; }
+.statusApproved { background: transparent; color: #177743; }
+
+.statusStack,
+.mobileStatusStack {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.mobileStatusStack {
+  justify-content: flex-end;
+}
 
 .reviewButton,
 .updateButton,
@@ -245,8 +264,13 @@
 }
 
 .ackButton {
-  background: #fff7ed;
-  color: #c65b08;
+  height: 28px;
+  min-height: 28px;
+  background: #2563eb;
+  color: #fff;
+  border: 1px solid #1d4ed8;
+  border-radius: 999px;
+  box-shadow: 0 7px 14px rgba(37, 99, 235, .16);
 }
 
 .ackDone {
@@ -265,39 +289,37 @@
 .recipientChips {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
+  justify-content: flex-start;
+  gap: 3px;
+  width: 100%;
   max-width: 100%;
 }
 
 .recipientChips span {
   display: inline-flex;
-  min-height: 22px;
+  min-height: 18px;
   align-items: center;
-  gap: 4px;
-  border-radius: 999px;
-  font-size: 10.5px;
+  gap: 3px;
+  font-size: 9px;
   font-weight: 700;
   line-height: 1;
-  padding: 3px 6px;
+  padding: 1px 2px;
   white-space: nowrap;
 }
 
 .recipientChips i {
   display: inline-grid;
-  width: 15px;
-  height: 15px;
+  width: 12px;
+  height: 12px;
   place-items: center;
   border-radius: 999px;
   color: #fff;
-  font-size: 10px;
+  font-size: 8px;
   font-style: normal;
   line-height: 1;
 }
 
 .recipientPending {
-  border: 1px solid #fed7aa;
-  background: #fff7ed;
   color: #b45309;
 }
 
@@ -306,8 +328,6 @@
 }
 
 .recipientDone {
-  border: 1px solid #bbf7d0;
-  background: #f0fdf4;
   color: #15803d;
 }
 
@@ -391,10 +411,33 @@
 }
 
 .modal {
+  position: relative;
   width: min(700px, 100%);
   max-height: calc(100vh - 36px);
   overflow: auto;
   padding: 22px;
+}
+
+.modalCloseButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: #f7f1fb;
+  color: #5f3496;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modalCloseButton:disabled {
+  opacity: .55;
+  cursor: wait;
 }
 
 .modal h2 {
@@ -561,6 +604,7 @@
   padding: 10px 9px;
   font-size: 12px;
   font-weight: 600;
+  text-align: center;
 }
 
 .table td {
@@ -571,8 +615,12 @@
   font-weight: 400;
 }
 
+.table td:nth-child(2) {
+  padding-left: 5px;
+}
+
 .numberColumn {
-  width: 100px;
+  width: 86px;
 }
 
 .dateColumn {
@@ -584,15 +632,15 @@
 }
 
 .fileColumn {
-  width: 120px;
+  width: 66px;
 }
 
 .statusColumn {
-  width: 110px;
+  width: 165px;
 }
 
 .actionColumn {
-  width: 240px;
+  width: 210px;
 }
 
 .subject {
@@ -610,15 +658,17 @@
 .files {
   gap: 5px;
   align-items: center;
+  justify-content: center;
 }
 
 .fileButton {
   gap: 5px;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
+  width: 32px;
+  min-width: 32px;
   min-height: 30px;
-  padding: 5px 7px;
+  padding: 5px;
   border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
@@ -629,12 +679,10 @@
 }
 
 .wordFileButton {
-  background: #e8f1ff;
   color: #185abd;
 }
 
 .pdfFileButton {
-  background: #fff0f0;
   color: #c62828;
 }
 
@@ -657,8 +705,7 @@
 .updateButton,
 .deleteButton,
 .notifyButton,
-.notifiedButton,
-.ackButton {
+.notifiedButton {
   height: 30px;
   min-height: 30px;
   border-radius: 7px;
@@ -666,12 +713,23 @@
   font-weight: 600;
 }
 
+.ackButton {
+  height: 26px;
+  min-height: 26px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .reviewButton,
 .updateButton,
 .notifyButton,
-.notifiedButton,
-.ackButton {
+.notifiedButton {
   padding: 0 9px;
+}
+
+.ackButton {
+  padding: 0 10px;
 }
 
 .deleteButton {
@@ -815,6 +873,10 @@
 
 .notifyModal {
   width: min(560px, 100%);
+}
+
+.notifyModal h2 {
+  padding-right: 38px;
 }
 
 .notifyModalActions {
@@ -968,7 +1030,13 @@
     padding: 14px;
   }
 
+  .modalCloseButton {
+    top: 8px;
+    right: 8px;
+  }
+
   .notifyModal h2 {
+    padding-right: 36px;
     margin-bottom: 9px;
     font-size: 17px;
   }
