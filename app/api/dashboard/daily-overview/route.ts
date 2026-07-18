@@ -46,6 +46,11 @@ type StudentAttendanceRow = {
   status: string | null;
 };
 
+type WorkCalendarDay = {
+  work_date: string | null;
+  day_type: "PUBLIC_HOLIDAY" | "SCHOOL_HOLIDAY" | "SPECIAL_WORKDAY" | null;
+};
+
 type StudentClassInfo = {
   classLevel: string;
   classRoom: string;
@@ -118,6 +123,23 @@ function todayBangkok() {
 
 function isValidDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function isWeekend(value: string) {
+  const date = new Date(`${value}T12:00:00+07:00`);
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function isWorkingDay(value: string, calendarDay?: WorkCalendarDay | null) {
+  if (calendarDay?.day_type === "SPECIAL_WORKDAY") return true;
+  if (
+    calendarDay?.day_type === "PUBLIC_HOLIDAY" ||
+    calendarDay?.day_type === "SCHOOL_HOLIDAY"
+  ) {
+    return false;
+  }
+  return !isWeekend(value);
 }
 
 function displayName(profile: StaffProfile) {
@@ -260,6 +282,28 @@ export async function GET(request: Request) {
     const requestedDate = url.searchParams.get("date")?.trim() || "";
     const date = isValidDate(requestedDate) ? requestedDate : todayBangkok();
     const overdueBefore = addDays(date, -3);
+    const canViewAllOrders = ["admin", "director"].includes(
+      String(auth.profile.role || ""),
+    );
+    const orderRecipientsQuery = auth.admin
+      .from("order_document_recipients")
+      .select(
+        `
+          id,
+          profile_id,
+          acknowledged_at,
+          notified_at,
+          order_documents (
+            id,
+            order_number,
+            subject,
+            order_date,
+            status
+          )
+        `,
+      )
+      .order("notified_at", { ascending: false })
+      .limit(canViewAllOrders ? 200 : 30);
 
     const [
       profilesResult,
@@ -270,6 +314,7 @@ export async function GET(request: Request) {
       studentAttendanceResult,
       booksResult,
       orderRecipientsResult,
+      workCalendarResult,
     ] = await Promise.all([
       auth.admin
         .from("profiles")
@@ -325,26 +370,14 @@ export async function GET(request: Request) {
         .eq("is_active", true)
         .order("received_date", { ascending: false, nullsFirst: false })
         .limit(100),
+      canViewAllOrders
+        ? orderRecipientsQuery
+        : orderRecipientsQuery.eq("profile_id", auth.profile.id),
       auth.admin
-        .from("order_document_recipients")
-        .select(
-          `
-            id,
-            profile_id,
-            acknowledged_at,
-            notified_at,
-            order_documents (
-              id,
-              order_number,
-              subject,
-              order_date,
-              status
-            )
-          `,
-        )
-        .eq("profile_id", auth.profile.id)
-        .order("notified_at", { ascending: false })
-        .limit(30),
+        .from("work_calendar_days")
+        .select("work_date, day_type")
+        .eq("work_date", date)
+        .maybeSingle(),
     ]);
 
     const firstError =
@@ -355,7 +388,8 @@ export async function GET(request: Request) {
       studentsResult.error ||
       studentAttendanceResult.error ||
       booksResult.error ||
-      orderRecipientsResult.error;
+      orderRecipientsResult.error ||
+      workCalendarResult.error;
 
     if (firstError) {
       console.error("Daily dashboard load error:", firstError);
@@ -376,6 +410,9 @@ export async function GET(request: Request) {
     const books = (booksResult.data ?? []) as SmartAreaBook[];
     const orderRecipients =
       (orderRecipientsResult.data ?? []) as unknown as OrderRecipientRow[];
+    const workCalendarDay =
+      (workCalendarResult.data ?? null) as WorkCalendarDay | null;
+    const workingDay = isWorkingDay(date, workCalendarDay);
 
     const attendanceByUser = new Map(
       attendance
@@ -414,7 +451,7 @@ export async function GET(request: Request) {
       total: profiles.length,
       checkedIn: profiles.filter((profile) =>
         Boolean(attendanceByUser.get(profile.id)?.check_in_at) ||
-        countsAsPresentWithoutCheckIn(profile),
+        (workingDay && countsAsPresentWithoutCheckIn(profile)),
       ).length,
       late: profiles.filter(
         (profile) => attendanceByUser.get(profile.id)?.check_in_status === "late",
@@ -423,10 +460,11 @@ export async function GET(request: Request) {
       officialDuty: profiles.filter((profile) => dutyByUser.has(profile.id)).length,
       notCheckedIn: profiles.filter(
         (profile) =>
+          workingDay &&
           !attendanceByUser.get(profile.id)?.check_in_at &&
           !leaveByUser.has(profile.id) &&
           !dutyByUser.has(profile.id) &&
-          !countsAsPresentWithoutCheckIn(profile),
+          !(workingDay && countsAsPresentWithoutCheckIn(profile)),
       ).length,
       leaveOrDutyPeople,
     };

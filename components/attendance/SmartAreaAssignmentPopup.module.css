@@ -451,21 +451,21 @@
 }
 
 /* SMART_AREA_ASSIGNMENT_INSTRUCTION_DATE_V1 */
-.popup { display:grid !important; grid-template-rows:auto auto auto minmax(0,1fr) auto; width:min(460px,100%) !important; height:auto !important; max-height:calc(100dvh - 24px) !important; gap:9px !important; overflow:hidden !important; padding:16px 20px 18px !important; }
+.popup { display:grid !important; grid-template-rows:auto auto auto auto auto; width:min(460px,100%) !important; height:auto !important; max-height:calc(100dvh - 24px) !important; gap:9px !important; overflow-y:auto !important; overscroll-behavior:contain; padding:16px 20px 18px !important; }
 .topBar { min-height:38px !important; justify-content:space-between !important; }
 .topBarSummary { display:flex; min-width:0; align-items:center; gap:8px; }
 .position { min-height:30px !important; padding:4px 10px !important; font-size:12px !important; white-space:nowrap; }
 .assignmentTitle { min-width:0; overflow:hidden; color:#166534; font-size:14px; font-weight:900; line-height:1.25; text-overflow:ellipsis; white-space:nowrap; }
 .navigation { position:static !important; min-height:34px !important; justify-content:flex-end !important; gap:6px !important; margin:0 !important; }
 .arrowButton { width:34px !important; min-width:34px !important; height:34px !important; min-height:34px !important; font-size:22px !important; }
-.subject { min-height:0 !important; max-height:116px; gap:3px !important; margin:0 !important; padding:10px 12px !important; }
-.subject strong { font-size:15px !important; line-height:1.4 !important; -webkit-line-clamp:4 !important; }
-.instructionBox { display:grid; min-height:0; align-content:start; gap:1px; overflow:hidden; border:1px solid #bfdbfe; border-radius:14px; padding:10px 12px; background:#eff6ff; }
+.subject { min-height:0 !important; max-height:none; gap:3px !important; margin:0 !important; padding:10px 12px !important; }
+.subject strong { display:block !important; overflow:visible !important; font-size:15px !important; line-height:1.4 !important; -webkit-line-clamp:unset !important; }
+.instructionBox { display:grid; min-height:0; align-content:start; gap:1px; overflow:visible; border:1px solid #bfdbfe; border-radius:14px; padding:10px 12px; background:#eff6ff; }
 .instructionLabel { margin-bottom:2px; color:#475569; font-size:11px; font-weight:800; line-height:1.2; }
-.instructionText { display:-webkit-box; margin:0; overflow:hidden; color:#1d4ed8; font-weight:700; white-space:pre-wrap; overflow-wrap:anywhere; -webkit-box-orient:vertical; }
-.instructionLarge { font-size:16px; line-height:1.42; -webkit-line-clamp:6; }
-.instructionMedium { font-size:14px; line-height:1.35; -webkit-line-clamp:7; }
-.instructionSmall { font-size:12px; line-height:1.28; -webkit-line-clamp:9; }
+.instructionText { display:block; margin:0; overflow:visible; color:#1d4ed8; font-weight:700; white-space:pre-wrap; overflow-wrap:anywhere; -webkit-box-orient:vertical; }
+.instructionLarge { font-size:16px; line-height:1.42; -webkit-line-clamp:unset; }
+.instructionMedium { font-size:14px; line-height:1.35; -webkit-line-clamp:unset; }
+.instructionSmall { font-size:12px; line-height:1.28; -webkit-line-clamp:unset; }
 .instructionDate { display:block; margin-top:0; color:#2563eb; font-size:11px; font-weight:700; line-height:1.2; text-align:left; }
 .actions { margin-top:0 !important; padding-top:2px !important; }
 @media (max-width:640px) {
@@ -476,11 +476,11 @@
   .closeButton { width:34px !important; height:34px !important; font-size:24px !important; }
   .navigation { min-height:30px !important; }
   .arrowButton { width:30px !important; min-width:30px !important; height:30px !important; min-height:30px !important; font-size:20px !important; }
-  .subject { max-height:100px; padding:8px 10px !important; }
-  .subject strong { font-size:14px !important; line-height:1.32 !important; -webkit-line-clamp:4 !important; }
+  .subject { max-height:none; padding:8px 10px !important; }
+  .subject strong { font-size:14px !important; line-height:1.32 !important; -webkit-line-clamp:unset !important; }
   .instructionBox { padding:8px 10px; }
-  .instructionLarge { font-size:15px; line-height:1.35; -webkit-line-clamp:6; }
-  .instructionMedium { font-size:13px; line-height:1.3; -webkit-line-clamp:7; }
-  .instructionSmall { font-size:11px; line-height:1.22; -webkit-line-clamp:9; }
+  .instructionLarge { font-size:15px; line-height:1.35; -webkit-line-clamp:unset; }
+  .instructionMedium { font-size:13px; line-height:1.3; -webkit-line-clamp:unset; }
+  .instructionSmall { font-size:11px; line-height:1.22; -webkit-line-clamp:unset; }
   .primary,.secondary { min-height:44px !important; padding:8px 10px !important; }
 }

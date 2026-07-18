@@ -713,6 +713,7 @@
 }
 
 .photoBox {
+  position: relative;
   display: grid;
   aspect-ratio: 4 / 3;
   place-items: center;
@@ -733,6 +734,30 @@
 .photoBox b {
   font-size: 12px;
   line-height: 1.25;
+}
+
+.photoRemoveButton {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(239, 68, 68, 0.75);
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(220, 38, 38, 0.92);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.22);
+  cursor: pointer;
+}
+
+.photoRemoveButton:hover,
+.photoRemoveButton:focus-visible {
+  background: #b91c1c;
 }
 
 .photoSlot small {

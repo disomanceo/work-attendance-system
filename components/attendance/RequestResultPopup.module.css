@@ -56,7 +56,9 @@
 
 .modal {
   width: min(520px, 100%);
-  overflow: hidden;
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 22px;
   background: #ffffff;

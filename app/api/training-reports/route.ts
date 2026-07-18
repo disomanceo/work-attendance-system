@@ -13,6 +13,7 @@ import {
 import { requireSmartAreaUser } from "@/lib/smart-area/auth";
 import {
   getTrainingReportFirebaseClient,
+  isTrainingReportFirebaseConfigured,
   TRAINING_REPORTS_COLLECTION,
 } from "@/lib/training-reports/firebase";
 import {
@@ -102,6 +103,16 @@ function arrayAttachments(value: unknown): TrainingReportAttachment[] {
   return attachments;
 }
 
+function parseExistingAttachments(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.trim()) return [];
+
+  try {
+    return arrayAttachments(JSON.parse(value));
+  } catch {
+    return [];
+  }
+}
+
 function mapReport(id: string, data: Record<string, unknown>): TrainingReport {
   return {
     id,
@@ -168,6 +179,17 @@ export async function GET(request: Request) {
         { ok: false, reports: [], message: auth.message },
         { status: auth.status },
       );
+    }
+
+    if (!isTrainingReportFirebaseConfigured()) {
+      return NextResponse.json({
+        ok: true,
+        reports: [],
+        currentProfile: auth.profile,
+        canManageAll: auth.canManageAll,
+        warning:
+          "ยังไม่ได้ตั้งค่า Firebase สำหรับโมดูลรายงานผลการประชุม/อบรม",
+      });
     }
 
     const { db } = getTrainingReportFirebaseClient();
@@ -258,6 +280,9 @@ export async function POST(request: Request) {
       trainingStartDate || dueDate || new Date().toISOString().slice(0, 10),
     );
     const uploadedAt = isoNow();
+    const existingPhotos = parseExistingAttachments(
+      form.get("existingPhotoAttachments"),
+    ).filter((attachment) => attachment.attachmentKind === "photo");
     const photoUploads = PHOTO_SLOTS.map((slot) => {
       const file = form.get(`photoSlot${slot.slotIndex}`);
       return file instanceof File && file.size > 0 ? { ...slot, file } : null;
@@ -295,6 +320,15 @@ export async function POST(request: Request) {
         };
       }),
     );
+    const uploadedPhotoSlots = new Set(
+      uploadedPhotos.map((photo) => photo.slotIndex).filter(Boolean),
+    );
+    const retainedPhotos = existingPhotos.filter(
+      (photo) => photo.slotIndex && !uploadedPhotoSlots.has(photo.slotIndex),
+    );
+    const finalPhotos = [...retainedPhotos, ...uploadedPhotos].sort(
+      (left, right) => (left.slotIndex || 0) - (right.slotIndex || 0),
+    );
 
     const generatedPdf =
       status === "submitted"
@@ -315,7 +349,7 @@ export async function POST(request: Request) {
             benefits,
             application,
             suggestions,
-            photoSlots: uploadedPhotos
+            photoSlots: finalPhotos
               .filter((photo) => photo.fileId)
               .map((photo) => ({
                 slotIndex: photo.slotIndex || 0,
@@ -347,7 +381,7 @@ export async function POST(request: Request) {
       ...(generatedPdf
         ? [{ ...generatedPdf, attachmentKind: "pdf" as const, uploadedAt }]
         : []),
-      ...uploadedPhotos,
+      ...finalPhotos,
       ...uploadedAttachments,
     ];
 

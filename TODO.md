@@ -63,6 +63,13 @@ Updated: 2026-07-18
   - [x] Changed Dashboard meeting/training people rows to use profile photos and a blue accumulated-hour badge.
   - [x] Removed the total-hours metric card from the Dashboard meeting/training tab.
   - [x] Changed the five Dashboard section tabs into one-row colorful shortcut buttons with compact icon labels.
+  - [x] Kept uploaded training-report draft photos when reopening/saving drafts and allowed each photo slot to be removed or replaced.
+  - [x] Added an acknowledge action inside official-document detail views before the director sign/assign button when the current user has an assigned task.
+  - [x] Compacted the official-document workflow line in desktop detail view so the subject has more room.
+  - [x] Stopped the Dashboard staff summary from counting alternate-workplace auto-present users on weekends and configured holidays.
+  - [x] Updated Dashboard order counts so director/admin sees overall acknowledged and unacknowledged recipient totals.
+  - [x] Changed the Dashboard training-hour badge to a blue outline style.
+  - [x] Expanded the Orders and Announcements pages to use the full available content width.
   - [x] Added a distinct blue draft marker (`◇`) for draft training reports.
   - [x] Changed the Dashboard orders tab to show latest approved order recipients, not only unacknowledged items.
   - [x] Confirmed `npm.cmd run build` succeeds after the module addition.
@@ -75,6 +82,8 @@ Updated: 2026-07-18
   - [x] Confirmed `npm.cmd run build` succeeds after the draft marker and Dashboard orders data adjustment.
   - [x] Confirmed `npm.cmd run build` succeeds after the Dashboard meeting/training status and hour-badge polish.
   - [x] Confirmed `npm.cmd run build` succeeds after the Dashboard shortcut-tab redesign.
+  - [x] Confirmed `npm.cmd run build` succeeds after draft-photo persistence and official-document detail acknowledgement updates.
+  - [x] Confirmed `npm.cmd run build` succeeds after Dashboard holiday/order count fixes and width polish.
   - [ ] Add the new Firebase config values to the deployed environment before production use.
   - [ ] Verify a real training report upload against the dedicated Apps Script endpoint after Firebase rules are ready.
 
@@ -1395,6 +1404,26 @@ Order notification and acknowledgment flow:
 - [x] Compacted the order notify teacher picker so selected names and teacher options use less mobile screen space.
 - [x] Confirm `npm.cmd run build` succeeds after the order notification flow.
 - [x] Did not run `git reset`, `git clean`, commit, push, or deploy.
+
+Attendance home notification popup text fit:
+
+- [x] Allowed the training-report assignment popup to scroll on small screens instead of clipping long assignment notes.
+- [x] Removed forced line clamps from training-report popup subject, recipient, date, and assignment-note text.
+- [x] Updated order, announcement, request-result, and smart-area assignment popups to keep long content readable within the screen.
+- [x] Made training-report loading return an empty list with a warning when Firebase is not configured instead of blocking the page.
+- [x] Confirm `npm.cmd run build` succeeds after the notification popup text-fit adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Training report environment setup:
+
+- [x] Added local `.env.local` values for `TRAINING_REPORT_FIREBASE_*`, `GAS_TRAINING_REPORT_URL`, `GAS_TRAINING_REPORT_SECRET`, and `TRAINING_REPORT_DRIVE_ROOT_FOLDER_ID`.
+- [x] Added the same training-report environment values to Vercel for Production, Preview, and Development.
+- [x] Normalized `GAS_TRAINING_REPORT_SECRET` after Vercel warned that the first value had surrounding quotes.
+- [x] Verified the deployed GAS web app accepts the current `GAS_TRAINING_REPORT_SECRET`.
+- [x] Confirmed the website sends `TRAINING_REPORT_DRIVE_ROOT_FOLDER_ID` to GAS on upload/PDF requests, so Drive root selection does not depend on a GAS script property.
+- [x] Used a temporary deployed setup endpoint to populate GAS `TRAINING_REPORT_ROOT_FOLDER_ID` and `TRAINING_REPORT_DRIVE_SECRET`, then redeployed the normal GAS source to version 10.
+- [x] Confirm `npm.cmd run build` succeeds after the training-report environment setup.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
 
 Follow-up checks:
 

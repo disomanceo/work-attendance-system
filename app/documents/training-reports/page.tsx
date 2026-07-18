@@ -5,6 +5,7 @@ import { compactPersonDisplayName } from "@/lib/person-display";
 import { createClient } from "@/lib/supabase/client";
 import type {
   TrainingReport,
+  TrainingReportAttachment,
   TrainingReportSourceTask,
 } from "@/lib/training-reports/types";
 import styles from "./training-reports.module.css";
@@ -93,6 +94,8 @@ const PHOTO_SLOTS = [
 
 const emptyPhotoFiles = () => Array<File | null>(PHOTO_SLOTS.length).fill(null);
 const emptyPhotoPreviews = () => Array<string>(PHOTO_SLOTS.length).fill("");
+const emptyPhotoAttachments = () =>
+  Array<TrainingReportAttachment | null>(PHOTO_SLOTS.length).fill(null);
 const PAGE_SIZE = 20;
 
 const emptyForm: FormState = {
@@ -162,6 +165,24 @@ function reportPdf(report: TrainingReport | null) {
   );
 }
 
+function reportPhotos(report: TrainingReport | null) {
+  const photos = emptyPhotoAttachments();
+  if (!report) return photos;
+
+  for (const attachment of report.attachments) {
+    if (attachment.attachmentKind !== "photo") continue;
+    const index = (attachment.slotIndex || 0) - 1;
+    if (index < 0 || index >= photos.length) continue;
+    photos[index] = attachment;
+  }
+
+  return photos;
+}
+
+function isObjectPreview(url: string) {
+  return url.startsWith("blob:");
+}
+
 function canSubmitOwnReport(row: GroupedReportRow) {
   return Boolean(
     row.currentUserRow &&
@@ -223,6 +244,8 @@ export default function TrainingReportsPage() {
   const [photoPreviews, setPhotoPreviews] = useState<string[]>(
     emptyPhotoPreviews,
   );
+  const [photoAttachments, setPhotoAttachments] =
+    useState<Array<TrainingReportAttachment | null>>(emptyPhotoAttachments);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -295,7 +318,7 @@ export default function TrainingReportsPage() {
   useEffect(() => {
     return () => {
       photoPreviews.forEach((url) => {
-        if (url) URL.revokeObjectURL(url);
+        if (isObjectPreview(url)) URL.revokeObjectURL(url);
       });
     };
   }, [photoPreviews]);
@@ -457,11 +480,12 @@ export default function TrainingReportsPage() {
   function resetPhotoSlots() {
     setPhotoPreviews((current) => {
       current.forEach((url) => {
-        if (url) URL.revokeObjectURL(url);
+        if (isObjectPreview(url)) URL.revokeObjectURL(url);
       });
       return emptyPhotoPreviews();
     });
     setPhotoFiles(emptyPhotoFiles());
+    setPhotoAttachments(emptyPhotoAttachments());
   }
 
   function updatePhotoSlot(index: number, file: File | null) {
@@ -472,10 +496,31 @@ export default function TrainingReportsPage() {
     });
     setPhotoPreviews((current) => {
       const next = [...current];
-      if (next[index]) URL.revokeObjectURL(next[index]);
+      if (isObjectPreview(next[index])) URL.revokeObjectURL(next[index]);
       next[index] = file ? URL.createObjectURL(file) : "";
       return next;
     });
+    setPhotoAttachments((current) => {
+      const next = [...current];
+      next[index] = null;
+      return next;
+    });
+  }
+
+  function loadExistingPhotos(report: TrainingReport | null) {
+    const photos = reportPhotos(report);
+    setPhotoAttachments(photos);
+    setPhotoFiles(emptyPhotoFiles());
+    setPhotoPreviews((current) => {
+      current.forEach((url) => {
+        if (isObjectPreview(url)) URL.revokeObjectURL(url);
+      });
+      return photos.map((photo) => photo?.fileUrl || "");
+    });
+  }
+
+  function removePhotoSlot(index: number) {
+    updatePhotoSlot(index, null);
   }
 
   function openReportForm(row?: ReportRow) {
@@ -483,6 +528,7 @@ export default function TrainingReportsPage() {
     setError("");
     resetPhotoSlots();
     setForm(row ? createFormFromTask(row.task, row.report) : emptyForm);
+    if (row) loadExistingPhotos(row.report);
     setFormOpen(true);
   }
 
@@ -504,6 +550,10 @@ export default function TrainingReportsPage() {
       const payload = new FormData();
       Object.entries(form).forEach(([key, value]) => payload.append(key, value));
       payload.set("status", nextStatus);
+      payload.set(
+        "existingPhotoAttachments",
+        JSON.stringify(photoAttachments.filter(Boolean)),
+      );
       photoFiles.forEach((file, index) => {
         if (file) payload.append(`photoSlot${index + 1}`, file);
       });
@@ -984,8 +1034,23 @@ export default function TrainingReportsPage() {
                       />
                       <span className={styles.photoBox}>
                         {photoPreviews[index] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={photoPreviews[index]} alt={slot.label} />
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={photoPreviews[index]} alt={slot.label} />
+                            <button
+                              type="button"
+                              className={styles.photoRemoveButton}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                removePhotoSlot(index);
+                              }}
+                              aria-label={`ลบ${slot.label} ${slot.slotIndex}`}
+                              title="ลบรูป"
+                            >
+                              ×
+                            </button>
+                          </>
                         ) : (
                           <b>{slot.label}</b>
                         )}

@@ -3516,6 +3516,53 @@
   }
 }
 
+/* Compact the inline workflow so the document subject has more room. */
+.inlineDetailHeader {
+  grid-template-columns: minmax(300px, 1fr) minmax(280px, 400px) auto;
+}
+
+.inlineDetailWorkflow .workTreeLine {
+  grid-template-columns: repeat(4, minmax(50px, 1fr));
+  max-width: 360px;
+}
+
+.inlineDetailWorkflow .workTreeStep {
+  gap: 2px;
+  padding: 0 2px;
+  font-size: 9.5px;
+}
+
+.inlineDetailWorkflow .workTreeStep::before {
+  top: 10px;
+  height: 2px;
+}
+
+.inlineDetailWorkflow .workTreeSymbol {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+  font-size: 10px;
+}
+
+.inlineDetailWorkflow .workTreeLabel {
+  max-width: 58px;
+  min-height: 18px;
+  white-space: nowrap;
+}
+
+.inlineDetailActions {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.inlineDetailActions .detailAcknowledgeButton {
+  min-height: 30px;
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
 
 /* Mobile filters: two rows, no horizontal scroll */
 @media (max-width: 640px) {

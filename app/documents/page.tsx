@@ -533,6 +533,12 @@ function assignmentState(book: BookItem, currentUserId: string) {
   return "pending";
 }
 
+function assignedTaskForUser(book: BookItem, currentUserId: string) {
+  return book.tasks.find(
+    (task) => task.assigneeId === currentUserId && task.status === "assigned",
+  );
+}
+
 function originalAttachmentNumber(
   book: BookItem,
   attachment: AttachmentItem,
@@ -2102,11 +2108,7 @@ export default function DocumentsPage() {
             {pagedBooks.map((book) => {
               const source = sourceDisplayParts(book.sourceAgency);
               const isSelected = selectedBook?.id === book.id;
-              const ownAssignedTask = book.tasks.find(
-                (task) =>
-                  task.assigneeId === currentUserId &&
-                  task.status === "assigned",
-              );
+              const ownAssignedTask = assignedTaskForUser(book, currentUserId);
               const ownInProgressTask = book.tasks.find(
                 (task) =>
                   task.assigneeId === currentUserId &&
@@ -2472,6 +2474,22 @@ export default function DocumentsPage() {
                         </main>
 
                         <footer className={styles.mobileDetailActions}>
+                          {ownAssignedTask && (
+                            <button
+                              type="button"
+                              className={`${styles.primaryAction} ${styles.detailAcknowledgeButton}`}
+                              onClick={() =>
+                                void updateTaskStatus(
+                                  ownAssignedTask.id,
+                                  "in_progress",
+                                )
+                              }
+                              disabled={savingKey === ownAssignedTask.id}
+                            >
+                              รับทราบ
+                            </button>
+                          )}
+
                           {capabilities.canAssign &&
                             book.status !== "done" && (
                               <button
@@ -2757,6 +2775,24 @@ export default function DocumentsPage() {
                             />
                             </div>
                             <div className={styles.inlineDetailActions}>
+                              {assignedTaskForUser(book, currentUserId) && (
+                                <button
+                                  type="button"
+                                  className={`${styles.primaryAction} ${styles.detailAcknowledgeButton}`}
+                                  onClick={() =>
+                                    void updateTaskStatus(
+                                      assignedTaskForUser(book, currentUserId)?.id || "",
+                                      "in_progress",
+                                    )
+                                  }
+                                  disabled={
+                                    savingKey ===
+                                    assignedTaskForUser(book, currentUserId)?.id
+                                  }
+                                >
+                                  รับทราบ
+                                </button>
+                              )}
                               {capabilities.canAssign &&
                                 book.status !== "done" && (
                                   <button

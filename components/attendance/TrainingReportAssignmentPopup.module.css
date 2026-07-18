@@ -16,7 +16,8 @@
   width: min(460px, 100%);
   max-height: calc(100dvh - 24px);
   gap: 12px;
-  overflow: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid #bae6fd;
   border-radius: 18px;
   background: #ffffff;
@@ -77,13 +78,12 @@
 }
 
 .subjectBox strong {
-  display: -webkit-box;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
   color: #0f172a;
   font-size: 16px;
   line-height: 1.45;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  overflow-wrap: anywhere;
 }
 
 .metaGrid {
@@ -110,18 +110,16 @@
 }
 
 .metaGrid dd {
-  overflow: hidden;
   color: #0f172a;
   font-size: 13px;
   font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .note {
-  display: -webkit-box;
+  display: block;
   margin: 0;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid #bfdbfe;
   border-radius: 12px;
   background: #eff6ff;
@@ -131,8 +129,7 @@
   font-weight: 700;
   line-height: 1.35;
   white-space: pre-wrap;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
 }
 
 .navigation {
@@ -253,7 +250,6 @@
   .subjectBox strong {
     font-size: 14px;
     line-height: 1.35;
-    -webkit-line-clamp: 3;
   }
 
   .metaGrid {
@@ -262,7 +258,6 @@
 
   .note {
     font-size: 12px;
-    -webkit-line-clamp: 2;
   }
 
   .notificationButton {
