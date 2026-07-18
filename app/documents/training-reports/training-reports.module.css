@@ -1133,9 +1133,16 @@
 
   .modalActions button {
     min-height: 38px;
-    padding: 0 6px;
-    font-size: 10.5px;
-    white-space: nowrap;
+    min-width: 0;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .modalActions button:nth-child(2) {
+    font-size: 9px;
   }
 
   .modalActions button:last-child {

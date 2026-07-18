@@ -183,6 +183,17 @@ function isObjectPreview(url: string) {
   return url.startsWith("blob:");
 }
 
+function photoPreviewUrl(photo: TrainingReportAttachment | null) {
+  if (!photo) return "";
+  if (photo.fileId) {
+    return `/api/training-reports/files/${encodeURIComponent(
+      photo.fileId,
+    )}/preview`;
+  }
+
+  return photo.fileUrl || "";
+}
+
 function canSubmitOwnReport(row: GroupedReportRow) {
   return Boolean(
     row.currentUserRow &&
@@ -515,7 +526,7 @@ export default function TrainingReportsPage() {
       current.forEach((url) => {
         if (isObjectPreview(url)) URL.revokeObjectURL(url);
       });
-      return photos.map((photo) => photo?.fileUrl || "");
+      return photos.map(photoPreviewUrl);
     });
   }
 

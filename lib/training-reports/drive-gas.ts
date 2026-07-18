@@ -166,3 +166,31 @@ export async function createTrainingReportPdf(input: {
     attachmentKind: "pdf",
   };
 }
+
+export async function downloadTrainingReportFile(fileId: string) {
+  const config = getTrainingReportDriveConfig();
+
+  if (!config) {
+    throw new Error(
+      "ยังไม่ได้ตั้งค่า GAS_TRAINING_REPORT_URL และ GAS_TRAINING_REPORT_SECRET",
+    );
+  }
+
+  const result = await callTrainingReportDriveGas(config.url, {
+    action: "downloadTrainingReportFile",
+    secret: config.secret,
+    fileId,
+  });
+
+  const base64 = typeof result.base64 === "string" ? result.base64 : "";
+
+  if (!base64) {
+    throw new Error("Apps Script ไม่ได้ส่งข้อมูลไฟล์กลับมา");
+  }
+
+  return {
+    body: Buffer.from(base64, "base64"),
+    fileName: String(result.fileName ?? "training-report-file"),
+    mimeType: String(result.mimeType ?? "application/octet-stream"),
+  };
+}

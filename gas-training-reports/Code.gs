@@ -37,6 +37,10 @@ function doPost(e) {
       return json_(deleteTrainingReportFile_(body));
     }
 
+    if (body.action === "downloadTrainingReportFile") {
+      return json_(downloadTrainingReportFile_(body));
+    }
+
     return json_({ ok: false, message: "Unknown action" });
   } catch (error) {
     return json_({
@@ -123,6 +127,24 @@ function deleteTrainingReportFile_(body) {
   return {
     ok: true,
     fileId: fileId,
+  };
+}
+
+function downloadTrainingReportFile_(body) {
+  const fileId = String(body.fileId || "").trim();
+  if (!fileId) {
+    throw new Error("Missing fileId");
+  }
+
+  const file = DriveApp.getFileById(fileId);
+  const blob = file.getBlob();
+
+  return {
+    ok: true,
+    fileId: fileId,
+    fileName: file.getName(),
+    mimeType: blob.getContentType(),
+    base64: Utilities.base64Encode(blob.getBytes()),
   };
 }
 

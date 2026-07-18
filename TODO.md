@@ -1425,6 +1425,16 @@ Training report environment setup:
 - [x] Confirm `npm.cmd run build` succeeds after the training-report environment setup.
 - [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
 
+Training report draft photo preview:
+
+- [x] Added a GAS file preview action so saved draft photos can be read back from Drive without making the files public.
+- [x] Added `/api/training-reports/files/[fileId]/preview` to proxy saved training-report images for the form preview.
+- [x] Changed draft photo slots to preview saved images through the local API instead of raw Drive URLs.
+- [x] Tightened the mobile action buttons so `ไม่เข้าประชุม-อบรม` fits inside its button.
+- [x] Redeployed the training-report GAS web app to version 11.
+- [x] Confirm `npm.cmd run build` succeeds after the draft photo preview fix.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
 Follow-up checks:
 
 - [ ] Test the category card filtering interactively in a browser after browser automation is available.
