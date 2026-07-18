@@ -73,10 +73,16 @@ type DailyOverview = {
     overdue: number;
     people: PersonPreview[];
   };
+  orders: {
+    assigned: number;
+    acknowledged: number;
+    unacknowledged: number;
+    items: PersonPreview[];
+  };
   highlights: Highlight[];
 };
 
-type DashboardTab = "staff" | "students" | "documents";
+type DashboardTab = "staff" | "students" | "documents" | "orders";
 
 function formatThaiDate(value: string) {
   if (!value) return "วันนี้";
@@ -249,6 +255,7 @@ export default function DashboardPage() {
               { id: "staff", label: "การลงเวลาครู" },
               { id: "students", label: "สถิตินักเรียนวันนี้" },
               { id: "documents", label: "หนังสือราชการ" },
+              { id: "orders", label: "คำสั่ง" },
             ].map((tab) => (
               <button
                 type="button"
@@ -344,6 +351,24 @@ export default function DashboardPage() {
                 people={overview.documents.people}
                 accessToken={accessToken}
                 variant="document"
+              />
+            </article>
+
+            <article
+              className={styles.summaryCard}
+              data-active={activeTab === "orders"}
+            >
+              <CardHeader icon="!" title="คำสั่ง" href="/orders" />
+              <div className={`${styles.metricGrid} ${styles.metricGridThree}`}>
+                <Metric label="ยังไม่รับทราบ" value={overview.orders.unacknowledged} tone="orange" suffix="เรื่อง" />
+                <Metric label="รับทราบแล้ว" value={overview.orders.acknowledged} tone="green" suffix="เรื่อง" />
+                <Metric label="แจ้งทั้งหมด" value={overview.orders.assigned} tone="gray" suffix="เรื่อง" />
+              </div>
+              <PersonList
+                title="คำสั่งที่ต้องรับทราบ"
+                emptyText="ไม่มีคำสั่งที่ต้องรับทราบ"
+                people={overview.orders.items}
+                accessToken={accessToken}
               />
             </article>
           </section>

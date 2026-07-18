@@ -171,6 +171,12 @@
   white-space: nowrap;
 }
 
+.manageCell {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
 .fileButton {
   display: inline-flex;
   text-decoration: none;
@@ -196,7 +202,10 @@
 
 .reviewButton,
 .updateButton,
-.deleteButton {
+.deleteButton,
+.notifyButton,
+.notifiedButton,
+.ackButton {
   height: 36px;
   min-height: 36px;
   border-radius: 9px;
@@ -210,6 +219,100 @@
   background: #168647;
   color: #fff;
   padding: 0 12px;
+}
+
+.notifyButton,
+.notifiedButton,
+.ackButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 10px;
+}
+
+.notifyButton {
+  background: #5f3496;
+  color: #fff;
+}
+
+.notifiedButton {
+  background: #edf1f5;
+  color: #586b7a;
+  font-size: 11px;
+}
+
+.ackButton {
+  background: #fff7ed;
+  color: #c65b08;
+}
+
+.ackDone {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border-radius: 999px;
+  background: #dcf8e7;
+  color: #177743;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.recipientChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.recipientChips span {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.recipientChips i {
+  display: inline-grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.recipientPending {
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.recipientPending i {
+  background: #f59e0b;
+}
+
+.recipientDone {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.recipientDone i {
+  background: #16a34a;
 }
 
 .returnButton {
@@ -298,6 +401,12 @@
   margin: 0 0 16px;
 }
 
+.modalLead {
+  margin: -8px 0 14px;
+  color: #6d5582;
+  line-height: 1.45;
+}
+
 .form {
   display: grid;
   gap: 14px;
@@ -377,11 +486,26 @@
     margin-bottom: 10px;
   }
   .mobileCard > .actions {
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    justify-content: stretch;
+    align-items: stretch;
+    gap: 10px;
   }
   .mobileCard > .actions > .actions {
-    margin-left: auto;
+    margin-left: 0;
+  }
+  .mobileCard .files {
+    justify-content: flex-start;
+  }
+  .mobileCard .manageCell {
+    justify-items: stretch;
+  }
+  .mobileCard .actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .mobileCard .recipientChips {
+    justify-content: flex-start;
   }
   .formGrid { grid-template-columns: 1fr; }
 }
@@ -391,6 +515,15 @@
   .header .primary { width: 100%; }
   .toolbar { grid-template-columns: 1fr; }
   .toolbar input:first-child { grid-column: auto; }
+  .notifySearchBox {
+    grid-template-columns: 1fr;
+  }
+  .notifySearchBox span {
+    justify-self: start;
+  }
+  .notifyOption {
+    min-height: 50px;
+  }
 }
 
 /* Compact orders table patch */
@@ -459,7 +592,7 @@
 }
 
 .actionColumn {
-  width: 180px;
+  width: 240px;
 }
 
 .subject {
@@ -522,7 +655,10 @@
 
 .reviewButton,
 .updateButton,
-.deleteButton {
+.deleteButton,
+.notifyButton,
+.notifiedButton,
+.ackButton {
   height: 30px;
   min-height: 30px;
   border-radius: 7px;
@@ -531,7 +667,10 @@
 }
 
 .reviewButton,
-.updateButton {
+.updateButton,
+.notifyButton,
+.notifiedButton,
+.ackButton {
   padding: 0 9px;
 }
 
@@ -672,4 +811,94 @@
     justify-content: center;
     flex-wrap: wrap;
   }
+}
+
+.notifyModal {
+  width: min(620px, 100%);
+}
+
+.notifySearchBox {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.notifySearchBox input {
+  min-height: 40px;
+  border: 1px solid #d9cbea;
+  border-radius: 10px;
+  color: #3f2b56;
+  font: inherit;
+  padding: 9px 11px;
+}
+
+.notifySearchBox span {
+  border-radius: 999px;
+  background: #f1eafd;
+  color: #5f3496;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.notifySelectedBox {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #eadff6;
+  border-radius: 12px;
+  background: #fbf8ff;
+}
+
+.notifySelectedBox .recipientChips {
+  justify-content: flex-start;
+}
+
+.notifySelectedBox p {
+  margin: 0;
+  color: #7890a4;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.notifyList {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.notifyOption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  border: 1px solid #eadff6;
+  border-radius: 12px;
+  background: #fff;
+  padding: 9px 10px;
+}
+
+.notifyOption input {
+  width: 18px;
+  height: 18px;
+  accent-color: #5f3496;
+}
+
+.notifyOption span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notifyOption strong {
+  color: #3f2b56;
+  font-size: 13px;
+}
+
+.notifyOption small {
+  color: #7890a4;
+  font-size: 11.5px;
 }

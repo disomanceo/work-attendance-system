@@ -40,6 +40,19 @@ type OrderItem = {
   last_file_uploaded_at: string | null;
   approved_at: string | null;
   updated_at: string;
+  order_document_recipients?: OrderRecipient[];
+};
+
+type OrderRecipient = {
+  id: string;
+  order_document_id: string;
+  profile_id: string;
+  recipient_name_snapshot: string;
+  recipient_position_snapshot: string | null;
+  notified_by: string | null;
+  notified_at: string;
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
 };
 
 type FormState = {
@@ -127,6 +140,22 @@ function getWordDownloadUrl(order: OrderItem) {
   return `/api/orders/files/${encodeURIComponent(fileId)}/download`;
 }
 
+function teacherShortName(value: string) {
+  return value
+    .replace(/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ดร\.|ครู)\s*/u, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 1)
+    .join("")
+    .trim() || value;
+}
+
+function orderRecipients(order: OrderItem) {
+  return [...(order.order_document_recipients ?? [])].sort((left, right) =>
+    left.recipient_name_snapshot.localeCompare(right.recipient_name_snapshot, "th"),
+  );
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -149,6 +178,11 @@ export default function OrdersPage() {
   const [docx, setDocx] = useState<File | null>(null);
   const [pdf, setPdf] = useState<File | null>(null);
   const [reviewOrder, setReviewOrder] = useState<OrderItem | null>(null);
+  const [notifyOrder, setNotifyOrder] = useState<OrderItem | null>(null);
+  const [notifySelectedIds, setNotifySelectedIds] = useState<string[]>([]);
+  const [notifySearch, setNotifySearch] = useState("");
+  const [notifying, setNotifying] = useState(false);
+  const [acknowledgingId, setAcknowledgingId] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState(false);
@@ -409,6 +443,89 @@ export default function OrdersPage() {
     }
   }
 
+  function openNotify(order: OrderItem) {
+    const currentIds = orderRecipients(order).map((recipient) => recipient.profile_id);
+    setNotifyOrder(order);
+    setNotifySelectedIds(currentIds);
+    setNotifySearch("");
+  }
+
+  async function notifyRecipients() {
+    if (!notifyOrder) return;
+    setNotifying(true);
+
+    try {
+      const token = await getToken();
+      const response = await fetch(`/api/orders/${notifyOrder.id}/notify`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ recipientIds: notifySelectedIds }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "แจ้งคำสั่งไม่สำเร็จ");
+      }
+
+      const recipients = (result.recipients ?? []) as OrderRecipient[];
+      setOrders((current) =>
+        current.map((item) =>
+          item.id === notifyOrder.id
+            ? { ...item, order_document_recipients: recipients }
+            : item,
+        ),
+      );
+      showMessage(result.message || "แจ้งคำสั่งแล้ว");
+      setNotifyOrder(null);
+      setNotifySelectedIds([]);
+      setNotifySearch("");
+    } catch (error) {
+      showMessage(
+        error instanceof Error ? error.message : "แจ้งคำสั่งไม่สำเร็จ",
+        true,
+      );
+    } finally {
+      setNotifying(false);
+    }
+  }
+
+  async function acknowledgeOrder(order: OrderItem) {
+    setAcknowledgingId(order.id);
+
+    try {
+      const token = await getToken();
+      const response = await fetch(`/api/orders/${order.id}/acknowledge`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "รับทราบคำสั่งไม่สำเร็จ");
+      }
+
+      const recipients = (result.recipients ?? []) as OrderRecipient[];
+      setOrders((current) =>
+        current.map((item) =>
+          item.id === order.id
+            ? { ...item, order_document_recipients: recipients }
+            : item,
+        ),
+      );
+      showMessage(result.message || "รับทราบคำสั่งแล้ว");
+    } catch (error) {
+      showMessage(
+        error instanceof Error ? error.message : "รับทราบคำสั่งไม่สำเร็จ",
+        true,
+      );
+    } finally {
+      setAcknowledgingId("");
+    }
+  }
+
   const totalPages = Math.max(
     1,
     Math.ceil(orders.length / ORDERS_PER_PAGE)
@@ -418,6 +535,18 @@ export default function OrdersPage() {
     (safeCurrentPage - 1) * ORDERS_PER_PAGE,
     safeCurrentPage * ORDERS_PER_PAGE
   );
+  const selectableTeacherProfiles = profiles.filter(
+    (profile) => !["director", "admin"].includes(profile.role),
+  );
+  const filteredNotifyProfiles = selectableTeacherProfiles.filter((profile) => {
+    const searchText = notifySearch.trim().toLowerCase();
+    if (!searchText) return true;
+    return [
+      profile.full_name,
+      profile.position ?? "",
+      profile.role,
+    ].some((value) => value.toLowerCase().includes(searchText));
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -486,49 +615,113 @@ export default function OrdersPage() {
     );
   }
 
-  function renderActions(order: OrderItem) {
+  function renderRecipientChips(order: OrderItem) {
+    const recipients = orderRecipients(order);
+    if (recipients.length === 0) return null;
+
     return (
-      <div className={styles.actions}>
-        {canManageAll && order.status === "PENDING" && (
-          <button
-            type="button"
-            className={styles.reviewButton}
-            onClick={() => {
-              setReviewOrder(order);
-              setReviewNote("");
-            }}
-          >
-            พิจารณา
-          </button>
-        )}
+      <div className={styles.recipientChips} aria-label="สถานะรับทราบคำสั่ง">
+        {recipients.map((recipient) => {
+          const acknowledged = Boolean(recipient.acknowledged_at);
+          return (
+            <span
+              className={
+                acknowledged ? styles.recipientDone : styles.recipientPending
+              }
+              key={recipient.id}
+              title={`${recipient.recipient_name_snapshot} ${
+                acknowledged ? "รับทราบแล้ว" : "ยังไม่รับทราบ"
+              }`}
+            >
+              <i aria-hidden="true">{acknowledged ? "✓" : "!"}</i>
+              ครู{teacherShortName(recipient.recipient_name_snapshot)}
+            </span>
+          );
+        })}
+      </div>
+    );
+  }
 
-        {canEdit(order) && (
-          <button
-            type="button"
-            className={`${styles.updateButton} ${
-              order.status === "REVISION" ? styles.hasBadge : ""
-            }`}
-            onClick={() => openEdit(order)}
-          >
-            อัปเดต
-            {order.status === "REVISION" && (
-              <span className={styles.badge}>{order.revision_count}</span>
-            )}
-          </button>
-        )}
+  function renderActions(order: OrderItem) {
+    const recipients = orderRecipients(order);
+    const currentRecipient = currentProfile
+      ? recipients.find((recipient) => recipient.profile_id === currentProfile.id)
+      : undefined;
+    const currentAcknowledged = Boolean(currentRecipient?.acknowledged_at);
 
-        {canDelete(order) && (
-          <button
-            type="button"
-            className={styles.deleteButton}
-            title="ลบคำสั่ง"
-            aria-label="ลบคำสั่ง"
-            disabled={deletingId === order.id}
-            onClick={() => void deleteOrder(order)}
-          >
-            {deletingId === order.id ? "…" : "×"}
-          </button>
-        )}
+    return (
+      <div className={styles.manageCell}>
+        <div className={styles.actions}>
+          {canManageAll && order.status === "PENDING" && (
+            <button
+              type="button"
+              className={styles.reviewButton}
+              onClick={() => {
+                setReviewOrder(order);
+                setReviewNote("");
+              }}
+            >
+              พิจารณา
+            </button>
+          )}
+
+          {canManageAll && order.status === "APPROVED" && (
+            <button
+              type="button"
+              className={
+                recipients.length > 0
+                  ? styles.notifiedButton
+                  : styles.notifyButton
+              }
+              onClick={() => openNotify(order)}
+            >
+              {recipients.length > 0 ? "แจ้งครูแล้ว" : "แจ้งคำสั่ง"}
+            </button>
+          )}
+
+          {currentRecipient &&
+            (currentAcknowledged ? (
+              <span className={styles.ackDone}>✓ รับทราบแล้ว</span>
+            ) : (
+              <button
+                type="button"
+                className={styles.ackButton}
+                disabled={acknowledgingId === order.id}
+                onClick={() => void acknowledgeOrder(order)}
+              >
+                {acknowledgingId === order.id ? "..." : "รับทราบ"}
+              </button>
+            ))}
+
+          {canEdit(order) && (
+            <button
+              type="button"
+              className={`${styles.updateButton} ${
+                order.status === "REVISION" ? styles.hasBadge : ""
+              }`}
+              onClick={() => openEdit(order)}
+            >
+              อัปเดต
+              {order.status === "REVISION" && (
+                <span className={styles.badge}>{order.revision_count}</span>
+              )}
+            </button>
+          )}
+
+          {canDelete(order) && (
+            <button
+              type="button"
+              className={styles.deleteButton}
+              title="ลบคำสั่ง"
+              aria-label="ลบคำสั่ง"
+              disabled={deletingId === order.id}
+              onClick={() => void deleteOrder(order)}
+            >
+              {deletingId === order.id ? "…" : "×"}
+            </button>
+          )}
+        </div>
+        {renderRecipientChips(order)}
       </div>
     );
   }
@@ -894,6 +1087,91 @@ export default function OrdersPage() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {notifyOrder && (
+        <div className={styles.overlay}>
+          <section className={`${styles.modal} ${styles.notifyModal}`}>
+            <h2>แจ้งคำสั่ง {notifyOrder.order_number}</h2>
+            <p className={styles.modalLead}>{notifyOrder.subject}</p>
+
+            <div className={styles.notifySearchBox}>
+              <input
+                value={notifySearch}
+                placeholder="ค้นหาชื่อครู"
+                onChange={(event) => setNotifySearch(event.target.value)}
+              />
+              <span>{notifySelectedIds.length} คน</span>
+            </div>
+
+            <div className={styles.notifySelectedBox}>
+              {notifySelectedIds.length === 0 ? (
+                <p>ยังไม่ได้เลือกรายชื่อครู</p>
+              ) : (
+                <div className={styles.recipientChips}>
+                  {notifySelectedIds
+                    .map((profileId) =>
+                      selectableTeacherProfiles.find(
+                        (profile) => profile.id === profileId,
+                      ),
+                    )
+                    .filter((profile): profile is Profile => Boolean(profile))
+                    .map((profile) => (
+                      <span className={styles.recipientPending} key={profile.id}>
+                        <i aria-hidden="true">!</i>
+                        ครู{teacherShortName(profile.full_name)}
+                      </span>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.notifyList}>
+              {filteredNotifyProfiles.map((profile) => (
+                <label className={styles.notifyOption} key={profile.id}>
+                  <input
+                    type="checkbox"
+                    checked={notifySelectedIds.includes(profile.id)}
+                    onChange={() =>
+                      setNotifySelectedIds((current) =>
+                        current.includes(profile.id)
+                          ? current.filter((id) => id !== profile.id)
+                          : [...current, profile.id],
+                      )
+                    }
+                  />
+                  <span>
+                    <strong>{profile.full_name}</strong>
+                    <small>{profile.position || profile.role || "-"}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.secondary}
+                disabled={notifying}
+                onClick={() => {
+                  setNotifyOrder(null);
+                  setNotifySelectedIds([]);
+                  setNotifySearch("");
+                }}
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                className={styles.notifyButton}
+                disabled={notifying || notifySelectedIds.length === 0}
+                onClick={() => void notifyRecipients()}
+              >
+                {notifying ? "กำลังส่ง..." : "ส่งแจ้งเตือน"}
+              </button>
+            </div>
           </section>
         </div>
       )}

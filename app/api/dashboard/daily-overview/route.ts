@@ -70,6 +70,29 @@ type SmartAreaBook = {
   smart_area_tasks?: SmartAreaTask[] | null;
 };
 
+type OrderRecipientRow = {
+  id: string;
+  profile_id: string | null;
+  acknowledged_at: string | null;
+  notified_at: string | null;
+  order_documents?:
+    | {
+        id: string;
+        order_number: string | null;
+        subject: string | null;
+        order_date: string | null;
+        status: string | null;
+      }
+    | {
+    id: string;
+    order_number: string | null;
+    subject: string | null;
+    order_date: string | null;
+    status: string | null;
+      }[]
+    | null;
+};
+
 function getConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -99,6 +122,22 @@ function isValidDate(value: string) {
 
 function displayName(profile: StaffProfile) {
   return profile.full_name?.trim() || profile.position?.trim() || "ไม่ระบุชื่อ";
+}
+
+function thaiDateShort(value: string) {
+  const dateValue = String(value || "").slice(0, 10);
+  if (!isValidDate(dateValue)) return "";
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${dateValue}T12:00:00+07:00`));
+}
+
+function orderFromRecipient(recipient: OrderRecipientRow) {
+  const order = recipient.order_documents;
+  return Array.isArray(order) ? order[0] ?? null : order ?? null;
 }
 
 function initials(value: string) {
@@ -209,7 +248,7 @@ async function requireActiveUser(request: Request) {
     };
   }
 
-  return { ok: true as const, admin };
+  return { ok: true as const, admin, profile };
 }
 
 export async function GET(request: Request) {
@@ -230,6 +269,7 @@ export async function GET(request: Request) {
       studentsResult,
       studentAttendanceResult,
       booksResult,
+      orderRecipientsResult,
     ] = await Promise.all([
       auth.admin
         .from("profiles")
@@ -285,6 +325,26 @@ export async function GET(request: Request) {
         .eq("is_active", true)
         .order("received_date", { ascending: false, nullsFirst: false })
         .limit(100),
+      auth.admin
+        .from("order_document_recipients")
+        .select(
+          `
+            id,
+            profile_id,
+            acknowledged_at,
+            notified_at,
+            order_documents (
+              id,
+              order_number,
+              subject,
+              order_date,
+              status
+            )
+          `,
+        )
+        .eq("profile_id", auth.profile.id)
+        .order("notified_at", { ascending: false })
+        .limit(30),
     ]);
 
     const firstError =
@@ -294,7 +354,8 @@ export async function GET(request: Request) {
       officialDutyResult.error ||
       studentsResult.error ||
       studentAttendanceResult.error ||
-      booksResult.error;
+      booksResult.error ||
+      orderRecipientsResult.error;
 
     if (firstError) {
       console.error("Daily dashboard load error:", firstError);
@@ -313,6 +374,8 @@ export async function GET(request: Request) {
     const studentAttendance =
       (studentAttendanceResult.data ?? []) as StudentAttendanceRow[];
     const books = (booksResult.data ?? []) as SmartAreaBook[];
+    const orderRecipients =
+      (orderRecipientsResult.data ?? []) as unknown as OrderRecipientRow[];
 
     const attendanceByUser = new Map(
       attendance
@@ -624,6 +687,33 @@ export async function GET(request: Request) {
         })),
     };
 
+    const activeOrderRecipients = orderRecipients.filter((recipient) => {
+      const order = orderFromRecipient(recipient);
+      return order?.status === "APPROVED";
+    });
+    const unacknowledgedOrderRecipients = activeOrderRecipients.filter(
+      (recipient) => !recipient.acknowledged_at,
+    );
+    const orderSummary = {
+      assigned: activeOrderRecipients.length,
+      unacknowledged: unacknowledgedOrderRecipients.length,
+      acknowledged:
+        activeOrderRecipients.length - unacknowledgedOrderRecipients.length,
+      items: unacknowledgedOrderRecipients.slice(0, 6).map((recipient) => {
+        const order = orderFromRecipient(recipient);
+        const title = order?.order_number
+          ? `${order.order_number} ${order.subject || ""}`.trim()
+          : order?.subject || "คำสั่งที่ต้องรับทราบ";
+        return {
+          id: order?.id || recipient.id,
+          name: title,
+          label: order?.order_date ? thaiDateShort(order.order_date) : "",
+          note: "ยังไม่รับทราบ",
+          initials: "คส",
+        };
+      }),
+    };
+
     const highlights = [
       staffSummary.notCheckedIn > 0
         ? {
@@ -651,6 +741,14 @@ export async function GET(request: Request) {
             detail: "ควรติดตามก่อนสิ้นวัน",
           }
         : null,
+      orderSummary.unacknowledged > 0
+        ? {
+            tone: "warning",
+            title: "คำสั่งที่ยังไม่รับทราบ",
+            value: `${orderSummary.unacknowledged.toLocaleString("th-TH")} เรื่อง`,
+            detail: "เปิดทะเบียนคำสั่งเพื่อกดรับทราบ",
+          }
+        : null,
     ].filter(Boolean);
 
     return NextResponse.json({
@@ -660,6 +758,7 @@ export async function GET(request: Request) {
       staff: staffSummary,
       students: studentSummary,
       documents: documentSummary,
+      orders: orderSummary,
       highlights,
     });
   } catch (error) {

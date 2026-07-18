@@ -166,3 +166,73 @@ export async function notifyOrderReviewedTelegram(input: {
     },
   });
 }
+
+export async function notifyOrderAssignedTelegram(input: {
+  orderId: string;
+  recipientProfileIds: string[];
+  actorProfileId: string;
+  actorName: string;
+  orderNumber?: string | null;
+  subject: string;
+  orderDate: string;
+  pdfFileUrl?: string | null;
+}) {
+  const text = [
+    "📌 <b>มีคำสั่งแจ้งให้รับทราบ</b>",
+    "",
+    `เลขที่: ${escapeHtml(input.orderNumber || "-")}`,
+    `เรื่อง: ${escapeHtml(input.subject)}`,
+    `วันที่คำสั่ง: ${escapeHtml(thaiDate(input.orderDate))}`,
+    `ผู้แจ้ง: ${escapeHtml(input.actorName)}`,
+    ...(input.pdfFileUrl
+      ? ["", `เปิดเอกสาร PDF: ${escapeHtml(input.pdfFileUrl)}`]
+      : []),
+    "",
+    `เปิดรายการคำสั่ง: ${escapeHtml(`${appUrl()}/orders`)}`,
+  ].join("\n");
+
+  return notifyTelegramProfiles({
+    event: "order.assigned",
+    recipientProfileIds: input.recipientProfileIds,
+    actorProfileId: input.actorProfileId,
+    entityType: "order_document",
+    entityId: input.orderId,
+    text,
+    metadata: {
+      orderNumber: input.orderNumber || null,
+    },
+  });
+}
+
+export async function notifyOrderAcknowledgedTelegram(input: {
+  orderId: string;
+  recipientProfileIds: string[];
+  actorProfileId: string;
+  actorName: string;
+  orderNumber?: string | null;
+  subject: string;
+  orderDate: string;
+}) {
+  const text = [
+    "✅ <b>ครูรับทราบคำสั่งแล้ว</b>",
+    "",
+    `ผู้รับทราบ: ${escapeHtml(input.actorName)}`,
+    `เลขที่: ${escapeHtml(input.orderNumber || "-")}`,
+    `เรื่อง: ${escapeHtml(input.subject)}`,
+    `วันที่คำสั่ง: ${escapeHtml(thaiDate(input.orderDate))}`,
+    "",
+    `เปิดรายการคำสั่ง: ${escapeHtml(`${appUrl()}/orders`)}`,
+  ].join("\n");
+
+  return notifyTelegramProfiles({
+    event: "order.acknowledged",
+    recipientProfileIds: input.recipientProfileIds,
+    actorProfileId: input.actorProfileId,
+    entityType: "order_document",
+    entityId: input.orderId,
+    text,
+    metadata: {
+      orderNumber: input.orderNumber || null,
+    },
+  });
+}

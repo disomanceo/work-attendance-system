@@ -1315,6 +1315,17 @@ Teaching supervision header and assessment form adjustment:
 - [x] Confirm `npm.cmd run build` succeeds after the teaching supervision UI adjustment.
 - [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
 
+Order notification and acknowledgment flow:
+
+- [x] Added a Supabase migration for per-teacher order notification/acknowledgment rows.
+- [x] Applied the order recipient migration to Supabase project `ptlenyxonbsghbbkhuta`.
+- [x] Added server APIs for directors/admins to notify selected teachers and for teachers to acknowledge assigned orders.
+- [x] Reused the existing Telegram order workflow events for assigned and acknowledged notifications.
+- [x] Updated the order registry actions to show notify/acknowledge controls and all recipient status chips without hiding names.
+- [x] Added a Dashboard orders card for unacknowledged order notifications.
+- [x] Confirm `npm.cmd run build` succeeds after the order notification flow.
+- [x] Did not run `git reset`, `git clean`, commit, push, or deploy.
+
 Follow-up checks:
 
 - [ ] Test the category card filtering interactively in a browser after browser automation is available.

@@ -148,8 +148,8 @@ export async function GET(request: Request) {
       url.searchParams.get("responsibleId")?.trim() ?? "";
 
         const sort = url.searchParams.get("sort")?.trim() ?? "number_desc";let query = auth.admin
-      .from("order_documents")
-      .select("*");
+        .from("order_documents")
+      .select("*, order_document_recipients(*)");
 
     switch (sort) {
       case "number_asc":
