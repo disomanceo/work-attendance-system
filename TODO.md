@@ -1435,6 +1435,19 @@ Training report draft photo preview:
 - [x] Confirm `npm.cmd run build` succeeds after the draft photo preview fix.
 - [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
 
+Dashboard order tab adjustment:
+
+- [x] Removed the Dashboard order acknowledgement popup so order popups remain on the attendance home page only.
+- [x] Replaced the Dashboard orders detail list with a three-color pie chart summary.
+- [x] Added orange, green, and black order-status percentages inside the chart panel.
+- [x] Corrected the order chart math so the total assigned count is not double-counted as another status slice.
+- [x] Locked the Dashboard order pie chart to equal width and height so it renders as a true circle.
+- [x] Cleaned up the Dashboard order pie chart labels so the center text does not overlap and legend values show only percentages.
+- [x] Reworked the Dashboard order chart to use the same donut style as the student attendance chart.
+- [x] Replaced escaped Thai strings in the Dashboard order chart with direct UTF-8 Thai text.
+- [x] Confirm `npm.cmd run build` succeeds after the Dashboard order tab adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
 Follow-up checks:
 
 - [ ] Test the category card filtering interactively in a browser after browser automation is available.

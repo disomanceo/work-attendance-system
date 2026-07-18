@@ -141,6 +141,10 @@ function formatPercent(value: number) {
   return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
 }
 
+function formatChartPercent(value: number) {
+  return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
+}
+
 function numberText(value: number) {
   if (value === 0) return "-";
   return value.toLocaleString("th-TH");
@@ -191,7 +195,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [dismissedOrderAlertKey, setDismissedOrderAlertKey] = useState("");
 
   const loadTrainingDashboard = useCallback(async (token: string) => {
     try {
@@ -362,18 +365,6 @@ export default function DashboardPage() {
     void loadOverview("initial");
   }, [loadOverview]);
 
-  const orderAlertKey = useMemo(() => {
-    if (!overview || overview.orders.unacknowledged <= 0) return "";
-    const ids = overview.orders.items.map((item) => item.id || item.name).join(",");
-    return `orders:${overview.orders.unacknowledged}:${ids}`;
-  }, [overview]);
-
-  useEffect(() => {
-    if (!orderAlertKey) return;
-    setDismissedOrderAlertKey(
-      window.sessionStorage.getItem("dismissedOrderAlertKey") || "",
-    );
-  }, [orderAlertKey]);
 
   const staffPercent = overview
     ? percent(overview.staff.checkedIn, overview.staff.total)
@@ -583,12 +574,7 @@ export default function DashboardPage() {
                 <Metric label="รับทราบแล้ว" value={overview.orders.acknowledged} tone="green" suffix="เรื่อง" />
                 <Metric label="แจ้งทั้งหมด" value={overview.orders.assigned} tone="gray" suffix="เรื่อง" />
               </div>
-              <PersonList
-                title="คำสั่งที่ต้องรับทราบ"
-                emptyText="ไม่มีคำสั่งที่ต้องรับทราบ"
-                people={overview.orders.items}
-                accessToken={accessToken}
-              />
+              <OrderStatusDonut counts={overview.orders} />
             </article>
 
             <article
@@ -642,54 +628,6 @@ export default function DashboardPage() {
             </section>
           )}
         </>
-      )}
-
-      {overview && orderAlertKey && dismissedOrderAlertKey !== orderAlertKey && (
-        <section
-          className={styles.orderAlertPopup}
-          aria-label="คำสั่งที่ต้องรับทราบ"
-        >
-          <button
-            type="button"
-            className={styles.orderAlertClose}
-            aria-label="ปิดแจ้งเตือนคำสั่ง"
-            onClick={() => {
-              window.sessionStorage.setItem(
-                "dismissedOrderAlertKey",
-                orderAlertKey,
-              );
-              setDismissedOrderAlertKey(orderAlertKey);
-            }}
-          >
-            ×
-          </button>
-          <strong>มีคำสั่งที่ต้องรับทราบ</strong>
-          <p>
-            คุณมีคำสั่งที่ยังไม่รับทราบ {overview.orders.unacknowledged.toLocaleString("th-TH")} เรื่อง
-          </p>
-          <div className={styles.orderAlertActions}>
-            <button
-              type="button"
-              className={styles.orderAlertLater}
-              onClick={() => {
-                window.sessionStorage.setItem(
-                  "dismissedOrderAlertKey",
-                  orderAlertKey,
-                );
-                setDismissedOrderAlertKey(orderAlertKey);
-              }}
-            >
-              อ่านภายหลัง
-            </button>
-            <button
-              type="button"
-              className={styles.orderAlertOpen}
-              onClick={() => router.push("/orders")}
-            >
-              เปิดอ่านคำสั่ง
-            </button>
-          </div>
-        </section>
       )}
     </main>
   );
@@ -746,6 +684,58 @@ function Donut({ value, label }: { value: number; label: string }) {
       >
         <strong>{formatPercent(value)}</strong>
         <span>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+function OrderStatusDonut({
+  counts,
+}: {
+  counts: DailyOverview["orders"];
+}) {
+  const total = counts.assigned;
+  const orangePercent = percent(counts.unacknowledged, total);
+  const greenPercent = percent(counts.acknowledged, total);
+  const totalPercent = total > 0 ? 100 : 0;
+  const items = [
+    {
+      label: "ยังไม่รับทราบ",
+      count: counts.unacknowledged,
+      percent: orangePercent,
+      className: styles.orderSliceOrange,
+    },
+    {
+      label: "รับทราบแล้ว",
+      count: counts.acknowledged,
+      percent: greenPercent,
+      className: styles.orderSliceGreen,
+    },
+    {
+      label: "แจ้งทั้งหมด",
+      count: total,
+      percent: totalPercent,
+      className: styles.orderSliceBlack,
+    },
+  ];
+
+  return (
+    <div className={styles.orderDonutPanel}>
+      <Donut
+        value={greenPercent}
+        label="รับทราบ"
+      />
+      <div className={styles.orderDonutLegend}>
+        {items.map((item) => (
+          <div className={styles.orderDonutLegendItem} key={item.label}>
+            <span className={item.className} aria-hidden="true" />
+            <small>{item.label}</small>
+            <strong>
+              {numberText(item.count)} เรื่อง
+              <em>{formatChartPercent(item.percent)}</em>
+            </strong>
+          </div>
+        ))}
       </div>
     </div>
   );
