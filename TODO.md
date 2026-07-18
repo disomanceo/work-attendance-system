@@ -1,6 +1,6 @@
 # Work Attendance TODO
 
-Updated: 2026-07-16
+Updated: 2026-07-18
 
 ## Current rules
 
@@ -101,7 +101,17 @@ Updated: 2026-07-16
   - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the Thai text repair.
   - [x] Confirmed `npm.cmd run build` succeeds after the Thai text repair.
   - [x] Confirmed local `/teaching-supervision` returns `200 OK` after the Thai text repair.
+  - [x] Changed teaching supervision overview to use per-round selected teacher rosters instead of automatically listing every inspectable profile.
+  - [x] Added Firestore-backed `teaching_supervision_round_plans` records for year/semester/round teacher selections.
+  - [x] Added director/admin controls to add teacher names to the selected round and open the next round only after the current round is completed.
+  - [x] Pushed the shared `gas-school-library` Apps Script source with `npx.cmd @google/clasp push --force`.
+  - [x] Confirmed the active web app deployment `AKfycbyuarmxdn-5NL-3-lc69IMNuZ1fXgOKVLN9EqVsM1D-q_UG3UGxx4oiT-dYhaE_wsrQ @7` responds to teaching-supervision actions.
+  - [x] Added `TEACHING_SUPERVISION_DRIVE_GAS_URL`, `TEACHING_SUPERVISION_DRIVE_GAS_SECRET`, and `TEACHING_SUPERVISION_DRIVE_ROOT_FOLDER_ID` to `.env.local`.
+  - [x] Smoke-tested the teaching-supervision Apps Script endpoint; it returned `Missing fileId`, confirming the URL, secret, and action routing are active without creating or deleting a Drive file.
+  - [x] Changed the teaching-supervision reset button to clear only uninspected names from the selected round while preserving completed inspections.
+  - [x] Added an ordered selected-teacher box in the round roster picker and made the overview table follow the checkbox selection order.
   - [ ] Verify Firestore security rules for `teaching_inspections` before production use.
+  - [ ] Verify Firestore security rules for `teaching_supervision_round_plans` before production use.
 
 - Dashboard page addition on 2026-07-16:
   - [x] Kept `/attendance` as the existing work check-in home page.
@@ -1295,6 +1305,14 @@ School library wide layout adjustment:
 - [x] Confirm `npm.cmd run lint -- --quiet` succeeds after the wide layout adjustment.
 - [x] Confirm `npm.cmd run build` succeeds after the wide layout adjustment.
 - [x] Confirm local `/school-library` still returns `200 OK` after the wide layout adjustment.
+- [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
+
+Teaching supervision header and assessment form adjustment:
+
+- [x] Moved the Firebase save status to the top-right of the teaching supervision title row.
+- [x] Replaced the inspected-teacher dropdown with a read-only selected-teacher display.
+- [x] Tightened the teacher-type radio controls so both options stay compact on one line.
+- [x] Confirm `npm.cmd run build` succeeds after the teaching supervision UI adjustment.
 - [x] Did not run `git add`, `git reset`, `git clean`, commit, push, or deploy.
 
 Follow-up checks:

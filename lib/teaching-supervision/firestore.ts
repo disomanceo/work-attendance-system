@@ -96,7 +96,23 @@ export type TeachingInspectionRecord = TeachingInspectionPayload & {
   updatedAt?: unknown;
 };
 
+export type TeachingInspectionRoundPlanInput = {
+  academicYearBE: number;
+  semester: number;
+  inspectionRound: number;
+  teacherIds: string[];
+  createdBy: string;
+  updatedBy: string;
+};
+
+export type TeachingInspectionRoundPlanRecord = TeachingInspectionRoundPlanInput & {
+  id: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+};
+
 const COLLECTION_NAME = "teaching_inspections";
+const ROUND_PLAN_COLLECTION_NAME = "teaching_supervision_round_plans";
 
 export function isTeachingInspectionFirebaseConfigured() {
   return isFirebaseConfigured();
@@ -149,6 +165,44 @@ export async function listTeachingInspections() {
     id: item.id,
     ...item.data(),
   })) as TeachingInspectionRecord[];
+}
+
+export async function listTeachingInspectionRoundPlans() {
+  const client = getFirebaseClient();
+  if (!client) throw new Error("Firebase is not configured");
+
+  const snapshot = await getDocs(collection(client.db, ROUND_PLAN_COLLECTION_NAME));
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as TeachingInspectionRoundPlanRecord[];
+}
+
+export async function saveTeachingInspectionRoundPlan(
+  input: TeachingInspectionRoundPlanInput,
+) {
+  const client = getFirebaseClient();
+  if (!client) throw new Error("Firebase is not configured");
+
+  const id = [
+    "year",
+    input.academicYearBE,
+    "semester",
+    input.semester,
+    "round",
+    input.inspectionRound,
+  ].join("-");
+
+  await setDoc(
+    doc(client.db, ROUND_PLAN_COLLECTION_NAME, id),
+    {
+      ...input,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return id;
 }
 
 export async function updateTeachingInspectionPdfReport(

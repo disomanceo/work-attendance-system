@@ -16,11 +16,14 @@ import {
   deleteTeachingInspection,
   isTeachingInspectionFirebaseConfigured,
   listTeachingInspections,
+  listTeachingInspectionRoundPlans,
   saveTeachingInspection,
+  saveTeachingInspectionRoundPlan,
   updateTeachingInspectionPdfReport,
   type TeachingInspectionPayload,
   type TeachingInspectionPdfReport,
   type TeachingInspectionRecord,
+  type TeachingInspectionRoundPlanRecord,
   type TeachingInspectionStatus,
 } from "@/lib/teaching-supervision/firestore";
 import styles from "./teaching-supervision.module.css";
@@ -337,6 +340,7 @@ export default function TeachingSupervisionPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   const [inspectionRecords, setInspectionRecords] = useState<TeachingInspectionRecord[]>([]);
+  const [roundPlans, setRoundPlans] = useState<TeachingInspectionRoundPlanRecord[]>([]);
   const [profileImageUrls, setProfileImageUrls] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("teachers");
   const [pendingAutoPdfInspectionId, setPendingAutoPdfInspectionId] = useState("");
@@ -350,8 +354,11 @@ export default function TeachingSupervisionPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [learningAreaFilter, setLearningAreaFilter] = useState("all");
   const [roundFilter, setRoundFilter] = useState("1");
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
+  const [showRosterPicker, setShowRosterPicker] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingRoundPlan, setSavingRoundPlan] = useState(false);
   const [message, setMessage] = useState("");
   const [messageError, setMessageError] = useState(false);
 
@@ -424,8 +431,12 @@ export default function TeachingSupervisionPage() {
       if (!firebaseConfigured) return;
 
       try {
-        const records = await listTeachingInspections();
+        const [records, plans] = await Promise.all([
+          listTeachingInspections(),
+          listTeachingInspectionRoundPlans(),
+        ]);
         setInspectionRecords(records);
+        setRoundPlans(plans);
       } catch (error) {
         setMessageError(true);
         setMessage(
@@ -465,41 +476,108 @@ export default function TeachingSupervisionPage() {
   const canManageInspections =
     currentProfile?.role === "director" || currentProfile?.role === "admin";
 
-  const positions = useMemo(() => {
-    return Array.from(
-      new Set(
-        profiles
-          .filter((profile) => profile.role !== "director" && profile.role !== "admin")
-          .map((profile) => profile.position || profile.role)
-          .filter(Boolean),
-      ),
-    ).sort((a, b) => a.localeCompare(b, "th"));
-  }, [profiles]);
-
   const inspectableProfiles = useMemo(() => {
     return profiles.filter((profile) => {
       return profile.role !== "director" && profile.role !== "admin";
     });
   }, [profiles]);
 
+  const selectedAcademicYearBE =
+    Number(form.academicYearBE || EMPTY_FORM.academicYearBE) ||
+    Number(EMPTY_FORM.academicYearBE);
+  const selectedSemester =
+    Number(form.semester || EMPTY_FORM.semester) || Number(EMPTY_FORM.semester);
+  const selectedRound = Number(roundFilter) || 1;
+
+  const currentRoundPlan = useMemo(() => {
+    return (
+      roundPlans.find((plan) => {
+        return (
+          Number(plan.academicYearBE || 0) === selectedAcademicYearBE &&
+          Number(plan.semester || 0) === selectedSemester &&
+          Number(plan.inspectionRound || 1) === selectedRound
+        );
+      }) ?? null
+    );
+  }, [roundPlans, selectedAcademicYearBE, selectedSemester, selectedRound]);
+
+  const completedTeacherIdsForCurrentRound = useMemo(() => {
+    return inspectionRecords
+      .filter((record) => {
+        return (
+          record.status === "completed" &&
+          Number(record.academicYearBE || 0) === selectedAcademicYearBE &&
+          Number(record.semester || 0) === selectedSemester &&
+          Number(record.inspectionRound || 1) === selectedRound
+        );
+      })
+      .map((record) => record.teacherId);
+  }, [inspectionRecords, selectedAcademicYearBE, selectedSemester, selectedRound]);
+
+  const currentRoundTeacherIds = useMemo(() => {
+    return Array.from(
+      new Set([...(currentRoundPlan?.teacherIds ?? []), ...completedTeacherIdsForCurrentRound]),
+    );
+  }, [completedTeacherIdsForCurrentRound, currentRoundPlan?.teacherIds]);
+
+  useEffect(() => {
+    setSelectedTeacherIds(currentRoundTeacherIds);
+  }, [currentRoundTeacherIds]);
+
+  const currentRoundProfiles = useMemo(() => {
+    const profileMap = new Map(inspectableProfiles.map((profile) => [profile.id, profile]));
+    return currentRoundTeacherIds
+      .map((teacherId) => profileMap.get(teacherId))
+      .filter((profile): profile is Profile => Boolean(profile));
+  }, [currentRoundTeacherIds, inspectableProfiles]);
+
+  const selectedTeacherProfiles = useMemo(() => {
+    const profileMap = new Map(inspectableProfiles.map((profile) => [profile.id, profile]));
+    return selectedTeacherIds
+      .map((teacherId) => profileMap.get(teacherId))
+      .filter((profile): profile is Profile => Boolean(profile));
+  }, [inspectableProfiles, selectedTeacherIds]);
+
+  const positions = useMemo(() => {
+    return Array.from(
+      new Set(
+        currentRoundProfiles
+          .map((profile) => profile.position || profile.role)
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "th"));
+  }, [currentRoundProfiles]);
+
   const inspectionRounds = useMemo(() => {
     const rounds = new Set(["1"]);
+    roundPlans.forEach((plan) => {
+      if (
+        Number(plan.academicYearBE || 0) === selectedAcademicYearBE &&
+        Number(plan.semester || 0) === selectedSemester
+      ) {
+        rounds.add(String(plan.inspectionRound || 1));
+      }
+    });
     inspectionRecords.forEach((record) => {
-      rounds.add(String(record.inspectionRound || 1));
+      if (
+        Number(record.academicYearBE || 0) === selectedAcademicYearBE &&
+        Number(record.semester || 0) === selectedSemester
+      ) {
+        rounds.add(String(record.inspectionRound || 1));
+      }
     });
     return Array.from(rounds).sort((a, b) => Number(a) - Number(b));
-  }, [inspectionRecords]);
+  }, [inspectionRecords, roundPlans, selectedAcademicYearBE, selectedSemester]);
 
   const latestInspectionByTeacher = useMemo(() => {
     const byTeacher = new Map<string, TeachingInspectionRecord>();
-    const selectedRound = Number(roundFilter) || 1;
 
     inspectionRecords
       .filter((record) => {
         return (
           record.status === "completed" &&
-          Number(record.academicYearBE || 0) === Number(form.academicYearBE || EMPTY_FORM.academicYearBE) &&
-          Number(record.semester || 0) === Number(form.semester || 1) &&
+          Number(record.academicYearBE || 0) === selectedAcademicYearBE &&
+          Number(record.semester || 0) === selectedSemester &&
           Number(record.inspectionRound || 1) === selectedRound
         );
       })
@@ -513,12 +591,12 @@ export default function TeachingSupervisionPage() {
       });
 
     return byTeacher;
-  }, [form.academicYearBE, form.semester, inspectionRecords, roundFilter]);
+  }, [inspectionRecords, selectedAcademicYearBE, selectedRound, selectedSemester]);
 
   const teacherRows = useMemo<TeacherInspectionRow[]>(() => {
     const search = teacherSearch.trim().toLowerCase();
 
-    return inspectableProfiles
+    return currentRoundProfiles
       .map((profile) => ({
         profile,
         latestInspection: latestInspectionByTeacher.get(profile.id) ?? null,
@@ -545,8 +623,8 @@ export default function TeachingSupervisionPage() {
         );
       });
   }, [
+    currentRoundProfiles,
     latestInspectionByTeacher,
-    inspectableProfiles,
     learningAreaFilter,
     positionFilter,
     statusFilter,
@@ -1313,10 +1391,155 @@ export default function TeachingSupervisionPage() {
     resetInspectionForm,
   ]);
 
+  const saveRoundPlan = useCallback(
+    async (inspectionRound: number, teacherIds: string[]) => {
+      if (!firebaseConfigured) {
+        throw new Error("ยังไม่ได้ตั้งค่า Firebase สำหรับบันทึกแผนรอบนิเทศ");
+      }
+
+      const planInput = {
+        academicYearBE: selectedAcademicYearBE,
+        semester: selectedSemester,
+        inspectionRound,
+        teacherIds: Array.from(new Set(teacherIds)),
+        createdBy: currentProfile?.id ?? "",
+        updatedBy: currentProfile?.id ?? "",
+      };
+      const id = await saveTeachingInspectionRoundPlan(planInput);
+      const nextPlan = { id, ...planInput } as TeachingInspectionRoundPlanRecord;
+
+      setRoundPlans((current) => [
+        nextPlan,
+        ...current.filter((plan) => plan.id !== id),
+      ]);
+
+      return nextPlan;
+    },
+    [
+      currentProfile?.id,
+      firebaseConfigured,
+      selectedAcademicYearBE,
+      selectedSemester,
+    ],
+  );
+
+  const toggleSelectedTeacher = useCallback((teacherId: string) => {
+    setSelectedTeacherIds((current) => {
+      return current.includes(teacherId)
+        ? current.filter((id) => id !== teacherId)
+        : [...current, teacherId];
+    });
+  }, []);
+
+  const handleSaveRoundPlan = useCallback(async () => {
+    setSavingRoundPlan(true);
+    setMessage("");
+    setMessageError(false);
+
+    try {
+      const allowedTeacherIds = new Set(inspectableProfiles.map((profile) => profile.id));
+      const nextTeacherIds = [
+        ...selectedTeacherIds.filter((id) => allowedTeacherIds.has(id)),
+        ...completedTeacherIdsForCurrentRound.filter((id) => !selectedTeacherIds.includes(id)),
+      ].filter((id, index, list) => list.indexOf(id) === index && allowedTeacherIds.has(id));
+      await saveRoundPlan(selectedRound, nextTeacherIds);
+      setSelectedTeacherIds(nextTeacherIds);
+      setShowRosterPicker(false);
+      setMessage("บันทึกรายชื่อผู้รับการนิเทศของรอบนี้แล้ว");
+    } catch (error) {
+      setMessageError(true);
+      setMessage(
+        error instanceof Error ? error.message : "บันทึกรายชื่อผู้รับการนิเทศไม่สำเร็จ",
+      );
+    } finally {
+      setSavingRoundPlan(false);
+    }
+  }, [
+    completedTeacherIdsForCurrentRound,
+    inspectableProfiles,
+    saveRoundPlan,
+    selectedRound,
+    selectedTeacherIds,
+  ]);
+
+  const handleStartNextRound = useCallback(async () => {
+    const nextRound = selectedRound + 1;
+
+    setSavingRoundPlan(true);
+    setMessage("");
+    setMessageError(false);
+
+    try {
+      await saveRoundPlan(nextRound, []);
+      setRoundFilter(String(nextRound));
+      setSelectedTeacherIds([]);
+      setShowRosterPicker(true);
+      setMessage(`เริ่มนิเทศครั้งที่ ${nextRound} แล้ว กรุณาเพิ่มรายชื่อครูในรอบนี้`);
+    } catch (error) {
+      setMessageError(true);
+      setMessage(
+        error instanceof Error ? error.message : "เริ่มนิเทศรอบถัดไปไม่สำเร็จ",
+      );
+    } finally {
+      setSavingRoundPlan(false);
+    }
+  }, [saveRoundPlan, selectedRound]);
+
+  const handleResetOverview = useCallback(async () => {
+    setTeacherSearch("");
+    setPositionFilter("all");
+    setStatusFilter("all");
+    setLearningAreaFilter("all");
+
+    if (!canManageInspections) return;
+
+    const completedIds = new Set(completedTeacherIdsForCurrentRound);
+    const pendingIds = currentRoundTeacherIds.filter((teacherId) => !completedIds.has(teacherId));
+    if (pendingIds.length === 0) {
+      setMessage("");
+      setMessageError(false);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `เคลียร์รายชื่อที่ยังไม่ได้นิเทศ ${pendingIds.length} รายการออกจากรอบนี้? รายชื่อที่นิเทศแล้วจะยังอยู่เหมือนเดิม`,
+    );
+    if (!confirmed) return;
+
+    setSavingRoundPlan(true);
+    setMessage("");
+    setMessageError(false);
+
+    try {
+      const nextTeacherIds = currentRoundTeacherIds.filter((teacherId) =>
+        completedIds.has(teacherId),
+      );
+      await saveRoundPlan(selectedRound, nextTeacherIds);
+      setSelectedTeacherIds(nextTeacherIds);
+      setShowRosterPicker(false);
+      setMessage("เคลียร์รายชื่อที่ยังไม่ได้นิเทศในรอบนี้แล้ว");
+    } catch (error) {
+      setMessageError(true);
+      setMessage(
+        error instanceof Error ? error.message : "เคลียร์รายชื่อรอบนิเทศไม่สำเร็จ",
+      );
+    } finally {
+      setSavingRoundPlan(false);
+    }
+  }, [
+    canManageInspections,
+    completedTeacherIdsForCurrentRound,
+    currentRoundTeacherIds,
+    saveRoundPlan,
+    selectedRound,
+  ]);
+
   const teacherName = profileById.get(form.teacherId)?.full_name ?? "เลือกครูผู้รับการนิเทศ";
+  const teacherPosition = profileById.get(form.teacherId)?.position ?? "";
   const progressWidth = `${Math.min(100, Math.max(0, total.percentage))}%`;
   const completedCount = teacherRows.filter((row) => row.latestInspection).length;
   const pendingCount = teacherRows.length - completedCount;
+  const currentRoundComplete = teacherRows.length > 0 && pendingCount === 0;
   const displaySemester = `${form.semester}/${form.academicYearBE}`;
   const selectedSummaryRecord = lastSavedSummary
     ? inspectionRecords.find((record) => record.id === lastSavedSummary.inspectionId) ?? null
@@ -1336,12 +1559,14 @@ export default function TeachingSupervisionPage() {
 
       <header className={styles.header}>
         <div>
-          <h1>นิเทศการสอน</h1>
+          <div className={styles.titleRow}>
+            <h1>นิเทศการสอน</h1>
+            <div className={styles.autoSave}>
+              <span />
+              {firebaseConfigured ? "พร้อมบันทึก Firebase" : "ยังไม่พร้อม Firebase"}
+            </div>
+          </div>
           <p>แบบประเมินการจัดการเรียนรู้ในชั้นเรียน</p>
-        </div>
-        <div className={styles.autoSave}>
-          <span />
-          {firebaseConfigured ? "พร้อมบันทึก Firebase" : "ยังไม่พร้อม Firebase"}
         </div>
       </header>
 
@@ -1376,8 +1601,30 @@ export default function TeachingSupervisionPage() {
           <div className={styles.listHeader}>
             <div>
               <h2>รายการนิเทศการสอน</h2>
-              <p>ภาพรวมการนิเทศการสอนทั้งหมด</p>
+              <p>รายชื่อผู้รับการนิเทศตามแผนของรอบที่เลือก</p>
             </div>
+            {canManageInspections && (
+              <div className={styles.listHeaderActions}>
+                {currentRoundComplete && (
+                  <button
+                    type="button"
+                    className={styles.primaryTopButton}
+                    onClick={() => void handleStartNextRound()}
+                    disabled={savingRoundPlan}
+                  >
+                    เริ่มนิเทศครั้งที่ {selectedRound + 1}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={styles.secondaryTopButton}
+                  onClick={() => setShowRosterPicker((current) => !current)}
+                  disabled={savingRoundPlan}
+                >
+                  เพิ่มรายชื่อครู
+                </button>
+              </div>
+            )}
           </div>
 
           <div className={styles.listStats} aria-label="สรุปรายการนิเทศ">
@@ -1424,7 +1671,10 @@ export default function TeachingSupervisionPage() {
               <span>ภาคเรียน</span>
               <select
                 value={form.semester}
-                onChange={(event) => updateForm("semester", event.target.value)}
+                onChange={(event) => {
+                  updateForm("semester", event.target.value);
+                  setRoundFilter("1");
+                }}
               >
                 <option value="1">1/{form.academicYearBE}</option>
                 <option value="2">2/{form.academicYearBE}</option>
@@ -1441,7 +1691,6 @@ export default function TeachingSupervisionPage() {
                     ครั้งที่ {round}
                   </option>
                 ))}
-                {!inspectionRounds.includes("2") && <option value="2">ครั้งที่ 2</option>}
               </select>
             </label>
             <label>
@@ -1461,17 +1710,86 @@ export default function TeachingSupervisionPage() {
             <button
               type="button"
               className={styles.resetFilterButton}
-              onClick={() => {
-                setTeacherSearch("");
-                setPositionFilter("all");
-                setStatusFilter("all");
-                setLearningAreaFilter("all");
-                setRoundFilter("1");
-              }}
+              onClick={() => void handleResetOverview()}
+              disabled={savingRoundPlan}
             >
               รีเซ็ต
             </button>
           </div>
+
+          {showRosterPicker && canManageInspections && (
+            <div className={styles.rosterPicker}>
+              <div className={styles.rosterPickerHeader}>
+                <div>
+                  <h3>เพิ่มรายชื่อผู้รับการนิเทศ</h3>
+                  <p>
+                    เลือกครูสำหรับปี {form.academicYearBE} ภาคเรียน {form.semester} ครั้งที่ {roundFilter}
+                  </p>
+                </div>
+                <span>{selectedTeacherIds.length} รายการ</span>
+              </div>
+              <div className={styles.selectedRosterBox}>
+                <div className={styles.selectedRosterTitle}>
+                  <strong>ลำดับรายชื่อที่เลือก</strong>
+                  <span>เรียงตามลำดับการติ๊กก่อนหลัง</span>
+                </div>
+                {selectedTeacherProfiles.length > 0 ? (
+                  <ol className={styles.selectedRosterList}>
+                    {selectedTeacherProfiles.map((profile) => (
+                      <li key={profile.id}>
+                        <span>{profile.full_name}</span>
+                        <small>{profile.position || profile.role || "-"}</small>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className={styles.selectedRosterEmpty}>ยังไม่ได้เลือกรายชื่อครู</p>
+                )}
+              </div>
+              <div className={styles.rosterPickerGrid}>
+                {inspectableProfiles.map((profile) => {
+                  const classLevels = profile.homeroomClassLevels ?? [];
+                  return (
+                    <label key={profile.id} className={styles.rosterOption}>
+                      <input
+                        type="checkbox"
+                        checked={selectedTeacherIds.includes(profile.id)}
+                        onChange={() => toggleSelectedTeacher(profile.id)}
+                      />
+                      <span>
+                        <strong>{profile.full_name}</strong>
+                        <small>
+                          {profile.position || profile.role || "-"}
+                          {classLevels.length > 0 ? ` • ${classLevels.join(", ")}` : ""}
+                        </small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className={styles.rosterPickerActions}>
+                <button
+                  type="button"
+                  className={styles.resetFilterButton}
+                  onClick={() => {
+                    setSelectedTeacherIds(currentRoundTeacherIds);
+                    setShowRosterPicker(false);
+                  }}
+                  disabled={savingRoundPlan}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className={styles.primaryTopButton}
+                  onClick={() => void handleSaveRoundPlan()}
+                  disabled={savingRoundPlan}
+                >
+                  {savingRoundPlan ? "กำลังบันทึก..." : "บันทึกรายชื่อ"}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className={styles.inspectionTableWrap}>
             <table className={styles.inspectionTable}>
@@ -1602,7 +1920,9 @@ export default function TeachingSupervisionPage() {
               </tbody>
             </table>
             {!loadingProfiles && teacherRows.length === 0 && (
-              <div className={styles.emptySummary}>ไม่พบรายการตามตัวกรองที่เลือก</div>
+              <div className={styles.emptySummary}>
+                ยังไม่มีรายชื่อผู้รับการนิเทศในรอบนี้
+              </div>
             )}
           </div>
           <div className={styles.mobileInspectionList}>
@@ -1693,11 +2013,13 @@ export default function TeachingSupervisionPage() {
               );
             })}
             {!loadingProfiles && teacherRows.length === 0 && (
-              <div className={styles.emptySummary}>ไม่พบรายการตามตัวกรองที่เลือก</div>
+              <div className={styles.emptySummary}>
+                ยังไม่มีรายชื่อผู้รับการนิเทศในรอบนี้
+              </div>
             )}
           </div>
           <p className={styles.tableFootnote}>
-            แสดง 1 ถึง {teacherRows.length} จาก {inspectableProfiles.length} รายการ • ภาคเรียน {displaySemester}
+            แสดง {teacherRows.length > 0 ? "1" : "0"} ถึง {teacherRows.length} จาก {currentRoundProfiles.length} รายการในรอบนี้ • ภาคเรียน {displaySemester}
           </p>
         </section>
       )}
@@ -1712,22 +2034,12 @@ export default function TeachingSupervisionPage() {
             </div>
 
             <div className={styles.formGrid}>
-              <label className={`${styles.fieldWide} ${styles.mobileHiddenField}`}>
+              <label className={styles.fieldWide}>
                 <span>ครูผู้รับการนิเทศ</span>
-                <select
-                  value={form.teacherId}
-                  onChange={(event) => updateForm("teacherId", event.target.value)}
-                >
-                  <option value="" disabled>
-                    เลือกครูจากแท็บข้อมูลทั่วไป
-                  </option>
-                  {inspectableProfiles.map((profile) => (
-                    <option key={profile.id} value={profile.id}>
-                      {profile.full_name}
-                      {profile.position ? ` - ${profile.position}` : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className={styles.readOnlyField}>
+                  <strong>{teacherName}</strong>
+                  {teacherPosition && <small>{teacherPosition}</small>}
+                </div>
               </label>
 
               <fieldset className={styles.radioGroup}>

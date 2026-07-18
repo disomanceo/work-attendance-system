@@ -12,12 +12,15 @@
 }
 
 .header {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 14px;
   max-width: 1580px;
   margin: 0 auto 18px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .backButton {
@@ -50,9 +53,11 @@
 .autoSave {
   display: inline-flex;
   align-items: center;
+  flex: 0 0 auto;
   gap: 8px;
   margin: 0;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .autoSave span {
@@ -190,6 +195,13 @@
   line-height: 1.55;
 }
 
+.listHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .primaryTopButton {
   min-height: 42px;
   border: 0;
@@ -201,6 +213,24 @@
   font-weight: 600;
   padding: 0 18px;
   box-shadow: 0 10px 24px rgba(88, 64, 217, 0.22);
+}
+
+.primaryTopButton:disabled,
+.secondaryTopButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.secondaryTopButton {
+  min-height: 42px;
+  border: 1px solid #cfc8ff;
+  border-radius: 10px;
+  background: #fff;
+  color: #4b35c8;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: 0 18px;
 }
 
 .listStats {
@@ -259,6 +289,175 @@
   cursor: pointer;
   font: inherit;
   padding: 0 14px;
+}
+
+.rosterPicker {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  border: 1px solid #dfe4f2;
+  border-radius: 14px;
+  background: #fbfcff;
+  padding: 14px;
+}
+
+.rosterPickerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rosterPickerHeader h3 {
+  margin: 0;
+  color: #11183a;
+  font-size: 18px;
+}
+
+.rosterPickerHeader p {
+  margin: 3px 0 0;
+  color: #65708c;
+  font-size: 12.5px;
+}
+
+.rosterPickerHeader > span {
+  border-radius: 999px;
+  background: #f0edff;
+  color: #4b35c8;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.selectedRosterBox {
+  display: grid;
+  gap: 9px;
+  border: 1px solid #d9def0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 11px;
+}
+
+.selectedRosterTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.selectedRosterTitle strong {
+  color: #11183a;
+  font-size: 13px;
+}
+
+.selectedRosterTitle span {
+  color: #65708c;
+  font-size: 11.5px;
+}
+
+.selectedRosterList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: selected-teacher;
+}
+
+.selectedRosterList li {
+  counter-increment: selected-teacher;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid #d8d2ff;
+  border-radius: 999px;
+  background: #f7f5ff;
+  color: #2f267e;
+  font-size: 12px;
+  padding: 4px 9px 4px 5px;
+}
+
+.selectedRosterList li::before {
+  content: counter(selected-teacher);
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #5840d9;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.selectedRosterList span {
+  font-weight: 700;
+}
+
+.selectedRosterList small {
+  color: #65708c;
+  font-size: 10.5px;
+}
+
+.selectedRosterEmpty {
+  margin: 0;
+  color: #65708c;
+  font-size: 12px;
+}
+
+.rosterPickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.rosterOption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 9px;
+  border: 1px solid #e2e6f3;
+  border-radius: 11px;
+  background: #fff;
+  padding: 10px;
+}
+
+.rosterOption input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: #5840d9;
+}
+
+.rosterOption span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rosterOption strong {
+  color: #11183a;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.rosterOption small {
+  color: #65708c;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.rosterPickerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .inspectionTableWrap {
@@ -710,6 +909,28 @@
   padding: 10px 12px;
 }
 
+.readOnlyField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d8deee;
+  border-radius: 10px;
+  background: #f8f9ff;
+  color: #11183a;
+  padding: 10px 12px;
+}
+
+.readOnlyField strong {
+  font-weight: 500;
+}
+
+.readOnlyField small {
+  color: #59627e;
+  font-size: 12px;
+}
+
 .noteField {
   margin-bottom: 12px;
 }
@@ -722,8 +943,8 @@
 
 .radioGroup {
   display: flex;
-  align-items: end;
-  gap: 14px;
+  align-items: center;
+  gap: 8px;
   border: 0;
   margin: 0;
   padding: 0;
@@ -732,8 +953,22 @@
 .radioGroup label {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 42px;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid #d8deee;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 10px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.radioGroup input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
 }
 
 .scoreHint {
@@ -1107,12 +1342,14 @@
   }
 
   .header {
-    grid-template-columns: 1fr;
+    margin-bottom: 14px;
+  }
+
+  .titleRow {
+    align-items: flex-start;
   }
 
   .autoSave {
-    grid-column: 1 / -1;
-    justify-self: end;
     font-size: 12px;
   }
 
@@ -1151,7 +1388,14 @@
     font-size: 19px;
   }
 
-  .primaryTopButton {
+  .listHeaderActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .primaryTopButton,
+  .secondaryTopButton {
     width: 100%;
   }
 
@@ -1191,6 +1435,24 @@
   .resetFilterButton {
     grid-column: auto;
     padding: 0 4px;
+  }
+
+  .rosterPicker {
+    padding: 11px;
+  }
+
+  .rosterPickerHeader {
+    display: grid;
+  }
+
+  .rosterPickerGrid {
+    grid-template-columns: 1fr;
+    max-height: 360px;
+  }
+
+  .rosterPickerActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .inspectionTableWrap {
@@ -1391,6 +1653,7 @@
 
   .formGrid input,
   .formGrid select,
+  .readOnlyField,
   .noteField input,
   .noteField textarea {
     min-height: 32px;
@@ -1398,6 +1661,12 @@
     font-size: 10.8px;
     line-height: 1.25;
     border-radius: 8px;
+  }
+
+  .readOnlyField {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .formGrid {
