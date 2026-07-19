@@ -304,6 +304,22 @@ function documentFilesOf(document: LibraryDocument): LibraryDocumentFile[] {
   ];
 }
 
+function childFileMatchesQuery(file: LibraryDocumentFile, normalizedQuery: string) {
+  if (!normalizedQuery) return false;
+
+  return [
+    file.fileName,
+    file.mimeType,
+    file.fileType,
+    file.driveFileId,
+    file.driveUrl,
+    file.fileSize ? formatFileSize(file.fileSize) : "",
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
 function primaryDocumentFile(document: LibraryDocument) {
   return documentFilesOf(document)[0];
 }
@@ -467,6 +483,11 @@ export default function SchoolLibraryPage() {
   const [loadingDocuments, setLoadingDocuments] = useState(firebaseConfigured);
   const [savingDocument, setSavingDocument] = useState(false);
   const [dropZoneActive, setDropZoneActive] = useState(false);
+  const [pendingDropFiles, setPendingDropFiles] = useState<File[]>([]);
+  const [dropTargetQuery, setDropTargetQuery] = useState("");
+  const [moveTargetQuery, setMoveTargetQuery] = useState("");
+  const [draggedDocumentId, setDraggedDocumentId] = useState("");
+  const [dragOverTargetId, setDragOverTargetId] = useState("");
 
   useEffect(() => {
     setSearchHistory(sortSearchHistory(readSearchHistory()).slice(0, 8));
@@ -713,6 +734,72 @@ export default function SchoolLibraryPage() {
     [filteredDocuments],
   );
 
+  useEffect(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return;
+
+    const matchingSetIds = latestDocuments
+      .filter((document) => {
+        const files = documentFilesOf(document);
+        return files.length > 1 && files.some((file) => childFileMatchesQuery(file, normalizedQuery));
+      })
+      .map((document) => document.id);
+
+    if (matchingSetIds.length === 0) return;
+
+    setExpandedDocumentIds((current) => {
+      const missingIds = matchingSetIds.filter((id) => !current.includes(id));
+      return missingIds.length > 0 ? [...current, ...missingIds] : current;
+    });
+  }, [latestDocuments, query]);
+
+  const dropTargetDocuments = useMemo(() => {
+    const normalizedQuery = dropTargetQuery.trim().toLowerCase();
+
+    return documents
+      .filter((document) => {
+        if (!normalizedQuery) return true;
+
+        return [
+          document.title,
+          document.fileName,
+          document.owner,
+          document.subcategory,
+          document.academicYear,
+          ...document.keywords,
+          ...documentFilesOf(document).map((file) => file.fileName),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .slice(0, 8);
+  }, [documents, dropTargetQuery]);
+
+  const moveTargetDocuments = useMemo(() => {
+    const normalizedQuery = moveTargetQuery.trim().toLowerCase();
+
+    return documents
+      .filter((document) => {
+        if (editingDocument?.id === document.id) return false;
+        if (!normalizedQuery) return true;
+
+        return [
+          document.title,
+          document.fileName,
+          document.owner,
+          document.subcategory,
+          document.academicYear,
+          ...document.keywords,
+          ...documentFilesOf(document).map((file) => file.fileName),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .slice(0, 8);
+  }, [documents, editingDocument?.id, moveTargetQuery]);
+
   function rememberSearchTerm(value = query) {
     const term = normalizeSearchTerm(value);
     if (!term) return;
@@ -755,6 +842,7 @@ export default function SchoolLibraryPage() {
     setEditingDocument(null);
     setSelectedFiles([]);
     setFormError("");
+    setMoveTargetQuery("");
   }
 
   function openCreateDocumentForm(initialFiles?: FileList | File[]) {
@@ -777,6 +865,21 @@ export default function SchoolLibraryPage() {
     setFormOpen(true);
   }
 
+  function closeDropTargetPicker() {
+    setPendingDropFiles([]);
+    setDropTargetQuery("");
+  }
+
+  function openDroppedFilesAsNewDocument() {
+    openCreateDocumentForm(pendingDropFiles);
+    closeDropTargetPicker();
+  }
+
+  function openDroppedFilesForExistingDocument(document: LibraryDocument) {
+    openEditDocumentForm(document, pendingDropFiles);
+    closeDropTargetPicker();
+  }
+
   function handleLibraryDrop(event: DragEvent<HTMLElement>) {
     event.preventDefault();
     event.stopPropagation();
@@ -785,7 +888,8 @@ export default function SchoolLibraryPage() {
     if (event.dataTransfer.files.length === 0) return;
 
     event.dataTransfer.dropEffect = "copy";
-    openCreateDocumentForm(event.dataTransfer.files);
+    setPendingDropFiles(Array.from(event.dataTransfer.files));
+    setDropTargetQuery("");
   }
 
   function handleLibraryDragOver(event: DragEvent<HTMLElement>) {
@@ -803,7 +907,11 @@ export default function SchoolLibraryPage() {
     setDropZoneActive(false);
   }
 
-  function openEditDocumentForm(document: LibraryDocument) {
+  function openEditDocumentForm(document: LibraryDocument, initialFiles?: FileList | File[]) {
+    const incomingFiles = Array.from(initialFiles || []);
+    const validFiles = incomingFiles.filter((file) => file.size <= MAX_UPLOAD_FILE_SIZE);
+    const rejectedFile = incomingFiles.find((file) => file.size > MAX_UPLOAD_FILE_SIZE);
+
     setDraft({
       title: document.title,
       category: document.category,
@@ -814,8 +922,12 @@ export default function SchoolLibraryPage() {
       keywords: document.keywords.join(", "),
     });
     setEditingDocument(document);
-    setSelectedFiles([]);
-    setFormError("");
+    setSelectedFiles(validFiles);
+    setFormError(
+      rejectedFile
+        ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน 30 MB`
+        : "",
+    );
     setFormOpen(true);
   }
 
@@ -825,6 +937,139 @@ export default function SchoolLibraryPage() {
         ? current.filter((id) => id !== documentId)
         : [...current, documentId],
     );
+  }
+
+  async function moveSingleFileDocumentToTarget(
+    sourceDocument: LibraryDocument,
+    targetDocument: LibraryDocument,
+    options: { closeForm?: boolean; setModalError?: boolean } = {},
+  ) {
+    if (sourceDocument.id === targetDocument.id) return;
+
+    const sourceFiles = documentFilesOf(sourceDocument);
+    if (sourceFiles.length !== 1) {
+      if (options.setModalError) {
+        setFormError("ย้ายได้เฉพาะรายการไฟล์เดี่ยวก่อน หากเป็นชุดเอกสารให้ย้ายไฟล์ย่อยทีละรายการในเฟสถัดไป");
+      } else {
+        setDatabaseMessage("ย้ายได้เฉพาะรายการไฟล์เดี่ยวก่อน");
+      }
+      return;
+    }
+
+    if (!canDeleteDocument(sourceDocument, currentProfile, currentUserId, !firebaseConfigured)) {
+      if (options.setModalError) {
+        setFormError("ย้ายได้เฉพาะผู้ที่อัปโหลดไฟล์หรือ ผอ. เท่านั้น");
+      } else {
+        setDatabaseMessage("ย้ายได้เฉพาะผู้ที่อัปโหลดไฟล์หรือ ผอ. เท่านั้น");
+      }
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `ต้องการย้ายไฟล์ "${sourceDocument.title}" ไปไว้ใน "${targetDocument.title}" ใช่ไหม`,
+    );
+    if (!confirmed) return;
+
+    setSavingDocument(true);
+    setFormError("");
+    setDatabaseMessage("กำลังย้ายไฟล์เข้าเอกสารเดิม...");
+
+    try {
+      const mergedFiles = [...documentFilesOf(targetDocument), ...sourceFiles];
+      const updatedTargetInput = documentInputWithFiles(targetDocument, mergedFiles);
+      const savedTarget = firebaseConfigured
+        ? await updateSchoolLibraryDocument(targetDocument.id, updatedTargetInput)
+        : { ...updatedTargetInput, id: targetDocument.id };
+
+      if (firebaseConfigured) {
+        await deleteSchoolLibraryDocument(sourceDocument.id);
+      }
+
+      setDocuments((current) =>
+        current
+          .filter((document) => document.id !== sourceDocument.id)
+          .map((document) => (document.id === targetDocument.id ? savedTarget : document)),
+      );
+      setEditingDocument((current) => (current?.id === sourceDocument.id ? null : current));
+      setExpandedDocumentIds((current) =>
+        current.includes(targetDocument.id) ? current : [...current, targetDocument.id],
+      );
+      setDatabaseMessage("ย้ายไฟล์เข้าเอกสารเดิมเรียบร้อย");
+      if (options.closeForm) resetDocumentForm();
+    } catch (error) {
+      console.error("Move school library document error:", error);
+      const message = error instanceof Error ? error.message : "ย้ายไฟล์เข้าเอกสารเดิมไม่สำเร็จ";
+      if (options.setModalError) {
+        setFormError(message);
+      } else {
+        setDatabaseMessage(message);
+      }
+    } finally {
+      setSavingDocument(false);
+      setDraggedDocumentId("");
+      setDragOverTargetId("");
+    }
+  }
+
+  async function handleMoveEditingDocumentToTarget(targetDocument: LibraryDocument) {
+    if (!editingDocument) return;
+    await moveSingleFileDocumentToTarget(editingDocument, targetDocument, {
+      closeForm: true,
+      setModalError: true,
+    });
+  }
+
+  function handleDocumentIconDragStart(event: DragEvent<HTMLElement>, document: LibraryDocument) {
+    if (documentFilesOf(document).length !== 1) {
+      event.preventDefault();
+      return;
+    }
+
+    setDraggedDocumentId(document.id);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", document.id);
+  }
+
+  function handleDocumentDragEnd() {
+    setDraggedDocumentId("");
+    setDragOverTargetId("");
+  }
+
+  function handleDocumentSetDragOver(event: DragEvent<HTMLElement>, targetDocument: LibraryDocument) {
+    if (!draggedDocumentId || draggedDocumentId === targetDocument.id) return;
+    if (documentFilesOf(targetDocument).length <= 1) return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverTargetId(targetDocument.id);
+  }
+
+  function handleDocumentSetDragLeave(event: DragEvent<HTMLElement>, targetDocument: LibraryDocument) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    if (dragOverTargetId === targetDocument.id) setDragOverTargetId("");
+  }
+
+  async function handleDocumentSetDrop(event: DragEvent<HTMLElement>, targetDocument: LibraryDocument) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const sourceId = event.dataTransfer.getData("text/plain") || draggedDocumentId;
+    const sourceDocument = documents.find((document) => document.id === sourceId);
+    setDragOverTargetId("");
+
+    if (!sourceDocument || sourceDocument.id === targetDocument.id) {
+      setDraggedDocumentId("");
+      return;
+    }
+
+    if (documentFilesOf(targetDocument).length <= 1) {
+      setDatabaseMessage("ปล่อยไฟล์ได้เฉพาะเอกสารที่เป็นชุดเอกสารก่อน");
+      setDraggedDocumentId("");
+      return;
+    }
+
+    await moveSingleFileDocumentToTarget(sourceDocument, targetDocument);
   }
 
   async function handleDeleteDocumentFile(document: LibraryDocument, fileIndex: number) {
@@ -971,6 +1216,7 @@ export default function SchoolLibraryPage() {
       return;
     }
 
+    setDatabaseMessage("กำลังเตรียมส่งไฟล์เข้าคลังโรงเรียน...");
     setSavingDocument(true);
 
     try {
@@ -1042,6 +1288,8 @@ export default function SchoolLibraryPage() {
           fileType: uploadResult.fileType || inferFileTypeFromFile(selectedFile),
         });
       }
+
+      setDatabaseMessage("กำลังจัดเก็บรายละเอียดเอกสาร...");
 
       const mergedFiles = [...existingFiles, ...uploadedFiles];
       const primaryFile = mergedFiles[0];
@@ -1360,13 +1608,37 @@ export default function SchoolLibraryPage() {
                   const expanded = expandedDocumentIds.includes(document.id);
                   const primaryFile = primaryDocumentFile(document);
                   const fileKind = fileKindOf(primaryFile || document);
+                  const isDropTarget = dragOverTargetId === document.id;
+                  const canDragDocument = !isDocumentSet;
 
                   return (
-                    <article className={styles.documentRow} key={document.id}>
+                    <article
+                      className={`${styles.documentRow} ${isDropTarget ? styles.documentDropTarget : ""}`}
+                      key={document.id}
+                      onDragOver={(event) => handleDocumentSetDragOver(event, document)}
+                      onDragLeave={(event) => handleDocumentSetDragLeave(event, document)}
+                      onDrop={(event) => void handleDocumentSetDrop(event, document)}
+                    >
                       <div className={styles.documentTitle}>
-                        <span className={`${styles.fileBadge} ${styles[fileKind]}`}>
-                          {fileIconLabel(fileKind, primaryFile?.fileName || document.fileName || document.title)}
-                        </span>
+                        {isDocumentSet ? (
+                          <span className={styles.folderFileBadge} aria-hidden="true">
+                            <span className={`${styles.fileBadge} ${styles[fileKind]}`}>
+                              {fileIconLabel(fileKind, primaryFile?.fileName || document.fileName || document.title)}
+                            </span>
+                          </span>
+                        ) : (
+                          <span
+                            className={`${styles.fileBadge} ${styles[fileKind]} ${canDragDocument ? styles.draggableFileBadge : ""}`}
+                            aria-label="ลากไฟล์นี้ไปใส่ชุดเอกสาร"
+                            draggable={canDragDocument}
+                            role={canDragDocument ? "button" : undefined}
+                            title={canDragDocument ? "ลากไปใส่ชุดเอกสาร" : undefined}
+                            onDragStart={(event) => handleDocumentIconDragStart(event, document)}
+                            onDragEnd={handleDocumentDragEnd}
+                          >
+                            {fileIconLabel(fileKind, primaryFile?.fileName || document.fileName || document.title)}
+                          </span>
+                        )}
                         <div>
                           {isDocumentSet ? (
                             <button
@@ -1410,6 +1682,13 @@ export default function SchoolLibraryPage() {
                           onClick={() => openEditDocumentForm(document)}
                         >
                           แก้ไข
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.addFileButton}
+                          onClick={() => openEditDocumentForm(document)}
+                        >
+                          เพิ่มไฟล์
                         </button>
                         {canDeleteDocument(document, currentProfile, currentUserId, !firebaseConfigured) && (
                           <button
@@ -1511,6 +1790,34 @@ export default function SchoolLibraryPage() {
             </div>
 
             {formError && <p className={styles.formError}>{formError}</p>}
+
+            {savingDocument && (
+              <div className={styles.uploadLoader} role="status" aria-live="polite">
+                <div className={styles.circuitBoard} aria-hidden="true">
+                  <svg viewBox="0 0 220 130" focusable="false">
+                    <rect x="22" y="20" width="176" height="90" rx="14" />
+                    <path d="M46 48 H84 C94 48 94 34 104 34 H142" />
+                    <path d="M46 82 H72 C86 82 88 96 102 96 H166" />
+                    <path d="M84 48 V66 H122 C134 66 134 52 146 52 H176" />
+                    <path d="M112 34 V20" />
+                    <path d="M166 96 V110" />
+                    <circle cx="46" cy="48" r="5" />
+                    <circle cx="176" cy="52" r="5" />
+                    <circle cx="166" cy="96" r="5" />
+                    <circle cx="112" cy="64" r="13" />
+                  </svg>
+                  <span className={styles.circuitPulseOne} />
+                  <span className={styles.circuitPulseTwo} />
+                </div>
+                <div className={styles.uploadLoaderText}>
+                  <h3>กำลังส่งไฟล์เข้าคลังโรงเรียน</h3>
+                  <p>{databaseMessage || "กำลังจัดเก็บข้อมูล..."}</p>
+                </div>
+                <div className={styles.uploadProgress} aria-hidden="true">
+                  <span />
+                </div>
+              </div>
+            )}
 
             <label>
               ชื่อเอกสาร
@@ -1626,6 +1933,39 @@ export default function SchoolLibraryPage() {
               </div>
             )}
 
+            {editingDocument && documentFilesOf(editingDocument).length === 1 && (
+              <section className={styles.moveFilePanel}>
+                <div>
+                  <strong>ย้ายไฟล์นี้เข้าเอกสารเดิม</strong>
+                  <span>เลือกหัวข้อปลายทาง ระบบจะย้ายเฉพาะข้อมูลไฟล์ ไม่อัปโหลดซ้ำ</span>
+                </div>
+                <input
+                  value={moveTargetQuery}
+                  onChange={(event) => setMoveTargetQuery(event.target.value)}
+                  placeholder="ค้นหาหัวข้อปลายทาง..."
+                />
+                <div className={styles.moveTargetList}>
+                  {moveTargetDocuments.length > 0 ? (
+                    moveTargetDocuments.map((document) => (
+                      <button
+                        type="button"
+                        key={document.id}
+                        onClick={() => void handleMoveEditingDocumentToTarget(document)}
+                        disabled={savingDocument}
+                      >
+                        <strong>{document.title}</strong>
+                        <span>
+                          {documentFileSizeLabel(document)} • {document.owner} • {document.updatedAt}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p>ไม่พบเอกสารเดิมที่ตรงกับคำค้น</p>
+                  )}
+                </div>
+              </section>
+            )}
+
             {selectedFiles.length > 0 && (
               <div className={styles.selectedFilesPanel} aria-live="polite">
                 <div>
@@ -1673,6 +2013,61 @@ export default function SchoolLibraryPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {pendingDropFiles.length > 0 && !formOpen && (
+        <div className={styles.modalBackdrop} role="presentation">
+          <section className={styles.dropTargetModal} role="dialog" aria-modal="true">
+            <div className={styles.modalHeader}>
+              <h2>เลือกปลายทางของไฟล์</h2>
+              <button type="button" onClick={closeDropTargetPicker} aria-label="ปิด">
+                ×
+              </button>
+            </div>
+
+            <p className={styles.dropTargetSummary}>
+              ไฟล์ที่โยนมา {pendingDropFiles.length} ไฟล์ • รวม{" "}
+              {formatFileSize(pendingDropFiles.reduce((total, file) => total + file.size, 0))}
+            </p>
+
+            <button
+              type="button"
+              className={styles.createNewDropButton}
+              onClick={openDroppedFilesAsNewDocument}
+            >
+              สร้างเอกสารใหม่จากไฟล์นี้
+            </button>
+
+            <label className={styles.dropTargetSearch}>
+              เพิ่มเข้าเอกสารเดิม
+              <input
+                value={dropTargetQuery}
+                onChange={(event) => setDropTargetQuery(event.target.value)}
+                placeholder="ค้นหาชื่อเอกสารเดิม..."
+                autoFocus
+              />
+            </label>
+
+            <div className={styles.dropTargetList}>
+              {dropTargetDocuments.length > 0 ? (
+                dropTargetDocuments.map((document) => (
+                  <button
+                    type="button"
+                    key={document.id}
+                    onClick={() => openDroppedFilesForExistingDocument(document)}
+                  >
+                    <strong>{document.title}</strong>
+                    <span>
+                      {documentFileSizeLabel(document)} • {document.owner} • {document.updatedAt}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <p>ไม่พบเอกสารเดิมที่ตรงกับคำค้น</p>
+              )}
+            </div>
+          </section>
         </div>
       )}
     </main>

@@ -476,6 +476,13 @@
   box-shadow: inset 3px 0 0 rgba(21, 128, 61, 0.22);
 }
 
+.documentDropTarget {
+  background: #ecfeff;
+  box-shadow:
+    inset 4px 0 0 #0891b2,
+    inset 0 0 0 1px rgba(8, 145, 178, 0.24);
+}
+
 .documentRow:last-child {
   border-bottom: 0;
 }
@@ -527,6 +534,56 @@
   color: #68746c;
 }
 
+.folderFileBadge {
+  position: relative;
+  display: grid;
+  width: 34px;
+  min-width: 34px;
+  height: 28px;
+  place-items: end center;
+  isolation: isolate;
+}
+
+.folderFileBadge::before {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  z-index: -2;
+  width: 21px;
+  height: 11px;
+  border: 1px solid #f59e0b;
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, #fde68a, #fbbf24);
+  content: "";
+}
+
+.folderFileBadge::after {
+  position: absolute;
+  inset: 8px 0 0;
+  z-index: -1;
+  border: 1px solid #d97706;
+  border-radius: 5px 6px 6px 6px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0 34%, transparent 35%),
+    linear-gradient(180deg, #fcd34d, #f59e0b);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 3px 6px rgba(146, 64, 14, 0.14);
+  content: "";
+  transform: skewX(-5deg);
+  transform-origin: bottom left;
+}
+
+.folderFileBadge .fileBadge {
+  width: 18px;
+  height: 18px;
+  margin-bottom: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 4px;
+  font-size: 6px;
+  box-shadow: 0 1px 3px rgba(60, 28, 4, 0.24);
+}
+
 .fileBadge {
   display: grid;
   width: 24px;
@@ -538,6 +595,15 @@
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1;
+}
+
+.draggableFileBadge {
+  cursor: grab;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.16);
+}
+
+.draggableFileBadge:active {
+  cursor: grabbing;
 }
 
 .pdf {
@@ -668,6 +734,25 @@
 .editButton:hover {
   border-color: #15803d;
   background: #e7f7eb;
+}
+
+.addFileButton {
+  min-width: 52px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #0369a1;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.addFileButton:hover {
+  border-color: #7dd3fc;
+  background: #e0f2fe;
 }
 
 .deleteButton {
@@ -834,6 +919,101 @@
   font-size: 13px;
 }
 
+.dropTargetModal {
+  display: grid;
+  width: min(540px, 100%);
+  max-height: min(720px, 92svh);
+  gap: 12px;
+  overflow: auto;
+  padding: 18px;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+}
+
+.dropTargetSummary {
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid #dbe8df;
+  border-radius: 8px;
+  color: #31513a;
+  background: #f6fbf7;
+  font-size: 13px;
+}
+
+.createNewDropButton {
+  min-height: 40px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #08712d;
+  background: #f0fdf4;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.createNewDropButton:hover {
+  border-color: #86efac;
+  background: #dcfce7;
+}
+
+.dropTargetSearch {
+  display: grid;
+  gap: 6px;
+  color: #26332a;
+  font-size: 13px;
+}
+
+.dropTargetSearch input {
+  min-height: 38px;
+  border: 1px solid #d4ded7;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #18281d;
+  background: #ffffff;
+  outline: none;
+}
+
+.dropTargetList {
+  display: grid;
+  max-height: 310px;
+  gap: 7px;
+  overflow: auto;
+}
+
+.dropTargetList button {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #e2ece5;
+  border-radius: 8px;
+  color: #17241b;
+  background: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.dropTargetList button:hover {
+  border-color: #bdebd4;
+  background: #f7fcf8;
+}
+
+.dropTargetList strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropTargetList span,
+.dropTargetList p {
+  margin: 0;
+  color: #607466;
+  font-size: 11px;
+}
+
 .modalBackdrop {
   position: fixed;
   inset: 0;
@@ -845,6 +1025,7 @@
 }
 
 .modal {
+  position: relative;
   display: grid;
   width: min(620px, 100%);
   max-height: min(780px, 92svh);
@@ -1029,6 +1210,77 @@
   font-weight: 400;
 }
 
+.moveFilePanel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #f0f9ff;
+}
+
+.moveFilePanel > div {
+  display: grid;
+  gap: 3px;
+}
+
+.moveFilePanel strong {
+  color: #075985;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.moveFilePanel span {
+  color: #35647a;
+  font-size: 11px;
+}
+
+.moveFilePanel input {
+  min-height: 36px;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #17241b;
+  background: #ffffff;
+  outline: none;
+}
+
+.moveTargetList {
+  display: grid;
+  max-height: 190px;
+  gap: 6px;
+  overflow: auto;
+}
+
+.moveTargetList button {
+  display: grid;
+  min-height: auto;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid #d7edf8;
+  border-radius: 8px;
+  color: #17241b;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.moveTargetList button:hover:not(:disabled) {
+  border-color: #7dd3fc;
+  background: #ecfeff;
+}
+
+.moveTargetList button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.moveTargetList p {
+  margin: 0;
+  color: #607466;
+  font-size: 11px;
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1043,6 +1295,128 @@
   color: #b91c1c;
   background: #fff1f2;
   font-weight: 400;
+}
+
+.uploadLoader {
+  position: sticky;
+  top: -20px;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: -2px 0 2px;
+  padding: 12px;
+  border: 1px solid #bdebd4;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(240, 253, 244, 0.96), rgba(236, 254, 255, 0.96)),
+    #f0fdf4;
+  box-shadow: 0 14px 32px rgba(8, 113, 45, 0.14);
+}
+
+.circuitBoard {
+  position: relative;
+  display: grid;
+  min-height: 78px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(14, 165, 233, 0.28);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(14, 165, 233, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(21, 128, 61, 0.08) 1px, transparent 1px),
+    #f8fffb;
+  background-size: 18px 18px;
+}
+
+.circuitBoard svg {
+  width: 100%;
+  max-width: 136px;
+  height: 80px;
+}
+
+.circuitBoard rect,
+.circuitBoard path,
+.circuitBoard circle {
+  fill: none;
+  stroke: #0891b2;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.circuitBoard rect {
+  stroke: rgba(8, 145, 178, 0.42);
+}
+
+.circuitBoard path {
+  stroke-dasharray: 210;
+  stroke-dashoffset: 210;
+  animation: circuitTrace 1.9s ease-in-out infinite;
+}
+
+.circuitBoard circle {
+  fill: #ecfeff;
+  stroke: #15803d;
+  stroke-width: 3;
+  animation: circuitGlow 1.6s ease-in-out infinite;
+}
+
+.circuitPulseOne,
+.circuitPulseTwo {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #22c55e;
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.85);
+  animation: dataPulse 1.7s linear infinite;
+}
+
+.circuitPulseTwo {
+  background: #06b6d4;
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.85);
+  animation-delay: 0.55s;
+}
+
+.uploadLoaderText {
+  min-width: 0;
+}
+
+.uploadLoaderText h3 {
+  margin: 0 0 4px;
+  color: #07551f;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.uploadLoaderText p {
+  margin: 0;
+  overflow: hidden;
+  color: #24533a;
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploadProgress {
+  grid-column: 1 / -1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(8, 145, 178, 0.14);
+}
+
+.uploadProgress span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22c55e, #06b6d4, #2563eb);
+  animation: uploadSweep 1.2s ease-in-out infinite;
 }
 
 .modalActions {
@@ -1071,6 +1445,65 @@
 .modalActions button:disabled {
   opacity: 0.62;
   cursor: wait;
+}
+
+@keyframes circuitTrace {
+  0% {
+    stroke-dashoffset: 210;
+    opacity: 0.45;
+  }
+
+  48%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes circuitGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(34, 197, 94, 0));
+    transform: scale(1);
+  }
+
+  50% {
+    filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.55));
+    transform: scale(1.08);
+  }
+}
+
+@keyframes dataPulse {
+  0% {
+    left: 18%;
+    top: 36%;
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  55% {
+    left: 52%;
+    top: 49%;
+  }
+
+  100% {
+    left: 82%;
+    top: 63%;
+    opacity: 0;
+  }
+}
+
+@keyframes uploadSweep {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(250%);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -1161,6 +1594,49 @@
   .databaseNotice {
     padding: 6px 8px;
     font-size: 10.5px;
+  }
+
+  .uploadLoader {
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .circuitBoard {
+    min-height: 60px;
+  }
+
+  .circuitBoard svg {
+    height: 60px;
+  }
+
+  .uploadLoaderText h3 {
+    font-size: 14px;
+  }
+
+  .uploadLoaderText p {
+    font-size: 10.5px;
+  }
+
+  .dropTargetModal {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .dropTargetSummary {
+    font-size: 11px;
+  }
+
+  .dropTargetList {
+    max-height: 260px;
+  }
+
+  .dropTargetList button {
+    padding: 8px;
+  }
+
+  .dropTargetList strong {
+    font-size: 12px;
   }
 
   .categoryGrid {
@@ -1316,6 +1792,13 @@
     font-size: 10px;
   }
 
+  .addFileButton {
+    min-width: 42px;
+    height: 22px;
+    padding: 0 5px;
+    font-size: 10px;
+  }
+
   .fileTree {
     margin: 0 0 2px 20px;
     padding-left: 9px;
@@ -1345,10 +1828,48 @@
     font-size: 9px;
   }
 
+  .folderFileBadge {
+    width: 30px;
+    min-width: 30px;
+    height: 24px;
+  }
+
+  .folderFileBadge::before {
+    top: 1px;
+    left: 3px;
+    width: 18px;
+    height: 10px;
+  }
+
+  .folderFileBadge::after {
+    inset: 7px 0 0;
+  }
+
+  .folderFileBadge .fileBadge {
+    width: 15px;
+    height: 15px;
+    margin-bottom: 3px;
+    font-size: 5px;
+  }
+
   .fileBadge {
     width: 20px;
     height: 20px;
     border-radius: 5px;
     font-size: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .circuitBoard path,
+  .circuitBoard circle,
+  .circuitPulseOne,
+  .circuitPulseTwo,
+  .uploadProgress span {
+    animation: none;
+  }
+
+  .circuitBoard path {
+    stroke-dashoffset: 0;
   }
 }
