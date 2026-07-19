@@ -13,7 +13,7 @@
   grid-template-columns: auto 1fr auto;
   align-items: start;
   gap: 20px;
-  max-width: 1240px;
+  max-width: 1580px;
   margin: 0 auto 20px;
 }
 
@@ -65,7 +65,7 @@
 .pageTabs {
   display: flex;
   gap: 10px;
-  max-width: 1240px;
+  max-width: 1580px;
   margin: 0 auto 20px;
   border-bottom: 1px solid #ded4ef;
 }
@@ -103,7 +103,7 @@
 
 .successMessage,
 .errorMessage {
-  max-width: 1240px;
+  max-width: 1580px;
   box-sizing: border-box;
   margin: 0 auto 18px;
   border-radius: 14px;
@@ -126,7 +126,7 @@
 .loadingCard {
   display: grid;
   min-height: 260px;
-  max-width: 1240px;
+  max-width: 1580px;
   margin: 0 auto;
   place-items: center;
   border: 1px solid #e2d9f0;
@@ -139,7 +139,7 @@
   display: grid;
   grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
   gap: 22px;
-  max-width: 1240px;
+  max-width: 1580px;
   margin: 0 auto;
   align-items: start;
 }
@@ -344,7 +344,7 @@
 }
 
 .reviewSection {
-  max-width: 1240px;
+  max-width: 1580px;
   margin: 0 auto;
   padding: 24px;
 }

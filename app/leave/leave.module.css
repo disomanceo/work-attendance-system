@@ -5275,3 +5275,31 @@
 }
 /* MOBILE_HISTORY_TABS_STEP11_END */
 
+/* Wide content area, matching the registry pages without changing inner proportions. */
+@media (min-width: 801px) {
+  .header,
+  .summaryGrid,
+  .grid,
+  .success,
+  .error {
+    width: 100% !important;
+    max-width: 1580px !important;
+    margin-inline: auto !important;
+  }
+
+  .pageContent {
+    max-width: none !important;
+  }
+
+  .grid {
+    grid-template-columns: minmax(420px, 0.72fr) minmax(0, 1.28fr) !important;
+    gap: 22px !important;
+  }
+
+  .formCard,
+  .historyCard {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
