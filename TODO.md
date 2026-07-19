@@ -74,6 +74,7 @@ Updated: 2026-07-18
   - [x] Removed the Teaching Supervision table's forced horizontal scroll on compact desktop widths and added proportional compact columns.
   - [x] Kept the Teaching Supervision filters inside the card on narrow desktop widths and improved active step-tab contrast.
   - [x] Expanded the Leave, Official Duty, and Memo page content areas to match the wider registry layout without changing inner proportions.
+  - [x] Added an attendance-home pending-work Telegram summary button and holiday status badge for non-working days.
   - [x] Added a distinct blue draft marker (`◇`) for draft training reports.
   - [x] Changed the Dashboard orders tab to show latest approved order recipients, not only unacknowledged items.
   - [x] Confirmed `npm.cmd run build` succeeds after the module addition.

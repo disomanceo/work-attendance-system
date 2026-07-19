@@ -370,6 +370,7 @@ export default function AttendancePage() {
   const [latePermissionStatus, setLatePermissionStatus] =
     useState<LatePermissionStatus>("not_requested");
   const [overviewSending, setOverviewSending] = useState(false);
+  const [pendingWorkSending, setPendingWorkSending] = useState(false);
   const [overviewMessage, setOverviewMessage] = useState("");
   const [pendingCheckIn, setPendingCheckIn] =
     useState<PendingCheckIn | null>(null);
@@ -843,6 +844,47 @@ export default function AttendancePage() {
     }
   }
 
+  async function sendPendingWorkSummary() {
+    if (pendingWorkSending) return;
+
+    setPendingWorkSending(true);
+    setOverviewMessage("");
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setOverviewMessage("กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+
+      const response = await fetch("/api/telegram/pending-work-summary", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+      } | null;
+
+      if (!response.ok || !result?.ok) {
+        setOverviewMessage(result?.message || "ส่งไม่สำเร็จ");
+        return;
+      }
+
+      setOverviewMessage(result.message || "ส่งแล้ว");
+    } catch {
+      setOverviewMessage("ส่งไม่สำเร็จ");
+    } finally {
+      setPendingWorkSending(false);
+    }
+  }
+
   function countReasonCharacters(value: string) {
     return Array.from(value.trim()).length;
   }
@@ -1232,10 +1274,19 @@ schoolName: settings?.school_name ?? null,
                     type="button"
                     className={styles.directorOverviewButton}
                     onClick={() => void sendDirectorOverview()}
-                    disabled={overviewSending}
+                    disabled={overviewSending || pendingWorkSending}
                     title="ส่งสรุปเวลาปฏิบัติงานและรายงานการมาเรียนไป Telegram"
                   >
                     {overviewSending ? "กำลังส่ง" : "ส่งสรุป"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.directorOverviewButton} ${styles.pendingWorkSummaryButton}`}
+                    onClick={() => void sendPendingWorkSummary()}
+                    disabled={overviewSending || pendingWorkSending}
+                    title="ส่งสรุปงานค้างไป Telegram กลุ่ม"
+                  >
+                    {pendingWorkSending ? "กำลังส่ง" : "สรุปงานค้าง"}
                   </button>
                   {overviewMessage && (
                     <em className={styles.directorOverviewMessage}>
@@ -1450,6 +1501,9 @@ schoolName: settings?.school_name ?? null,
                     <span className={styles.focusStatusLeave}>
                       {getLeaveDisplayLabel(todayLeave)}
                     </span>
+                  ) : !record?.check_in_at &&
+                    workCalendarDay?.isWorkingDay === false ? (
+                    <span className={styles.focusStatusHoliday}>วันหยุด</span>
                   ) : !record?.check_in_at ? (
                     <span className={styles.focusStatusWaiting}>รอลงเวลา</span>
                   ) : isLate ? (

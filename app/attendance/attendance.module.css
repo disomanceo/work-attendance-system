@@ -2091,6 +2091,17 @@
   opacity: 0.68;
 }
 
+.pendingWorkSummaryButton {
+  border-color: rgba(203, 213, 225, 0.38);
+  color: #f1f5f9;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.pendingWorkSummaryButton:hover:not(:disabled) {
+  border-color: rgba(203, 213, 225, 0.62);
+  background: rgba(148, 163, 184, 0.28);
+}
+
 .directorOverviewMessage {
   max-width: 130px;
   overflow: hidden;
@@ -2328,6 +2339,7 @@
 .focusStatusNormal,
 .focusStatusLate,
 .focusStatusWaiting,
+.focusStatusHoliday,
 .focusStatusLeave {
   display: inline-flex;
   min-width: 74px;
@@ -2356,6 +2368,12 @@
   border: 1px solid rgba(245, 158, 11, 0.36);
   color: #92400e;
   background: #fef3c7;
+}
+
+.focusStatusHoliday {
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  color: #334155;
+  background: #e5e7eb;
 }
 
 .focusStatusLeave {
