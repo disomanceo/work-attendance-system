@@ -17,10 +17,29 @@ type SeenRecord = {
   dismissCount?: number;
 };
 
-const MAX_DISMISS_COUNT = 2;
-
 function popupKey(taskId: string) {
   return `training-report-assignment:${taskId}`;
+}
+
+function bangkokDateKey(value: string | Date = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value || "";
+  const month = parts.find((part) => part.type === "month")?.value || "";
+  const day = parts.find((part) => part.type === "day")?.value || "";
+
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
+function wasDismissedToday(record?: SeenRecord) {
+  return !!record?.dismissedAt && bangkokDateKey(record.dismissedAt) === bangkokDateKey();
 }
 
 async function loadSeenRecords(token: string, keys: string[]) {
@@ -67,9 +86,7 @@ export default function TrainingReportAssignmentPopup() {
   const [tasks, setTasks] = useState<TrainingReportSourceTask[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visible, setVisible] = useState(false);
-  const [dismissCounts, setDismissCounts] = useState<Record<string, number>>(
-    {},
-  );
+  const [dismissedToday, setDismissedToday] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let active = true;
@@ -103,18 +120,18 @@ export default function TrainingReportAssignmentPopup() {
         session.access_token,
         pendingTasks.map((task) => popupKey(task.taskId)),
       );
-      const nextDismissCounts = Object.fromEntries(
+      const nextDismissedToday = Object.fromEntries(
         pendingTasks.map((task) => [
           task.taskId,
-          Number(seenRecords[popupKey(task.taskId)]?.dismissCount || 0),
+          wasDismissedToday(seenRecords[popupKey(task.taskId)]),
         ]),
       );
       const firstPopupIndex = pendingTasks.findIndex(
-        (task) => (nextDismissCounts[task.taskId] || 0) < MAX_DISMISS_COUNT,
+        (task) => !nextDismissedToday[task.taskId],
       );
 
       setTasks(pendingTasks);
-      setDismissCounts(nextDismissCounts);
+      setDismissedToday(nextDismissedToday);
       setCurrentIndex(firstPopupIndex >= 0 ? firstPopupIndex : 0);
       setVisible(firstPopupIndex >= 0);
     }
@@ -128,6 +145,7 @@ export default function TrainingReportAssignmentPopup() {
 
   const task = tasks[currentIndex] ?? null;
   const count = tasks.length;
+  const autoPopupCount = tasks.filter((item) => !dismissedToday[item.taskId]).length;
 
   if (!task || count === 0) return null;
 
@@ -160,19 +178,18 @@ export default function TrainingReportAssignmentPopup() {
           }),
         });
         const result = await response.json().catch(() => null);
-        const count = Number(result?.record?.dismissCount || 0);
 
-        if (response.ok && result?.ok && count > 0) {
-          setDismissCounts((previous) => ({
+        if (response.ok && result?.ok) {
+          setDismissedToday((previous) => ({
             ...previous,
-            [task.taskId]: count,
+            [task.taskId]: true,
           }));
         }
       }
     } catch {
-      setDismissCounts((previous) => ({
+      setDismissedToday((previous) => ({
         ...previous,
-        [task.taskId]: (previous[task.taskId] || 0) + 1,
+        [task.taskId]: true,
       }));
     }
 
@@ -190,7 +207,7 @@ export default function TrainingReportAssignmentPopup() {
         type="button"
         className={styles.notificationButton}
         onClick={() => setVisible(true)}
-        aria-label={`งานรายงานผลที่ต้องส่ง ${count} รายการ`}
+        aria-label={`งานรายงานผลที่ต้องส่ง ${count} รายการ ยังไม่ปิดเตือนวันนี้ ${autoPopupCount} รายการ`}
       >
         <span aria-hidden="true">!</span>
         <strong>รายงานผล</strong>
