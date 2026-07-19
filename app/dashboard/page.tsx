@@ -141,10 +141,6 @@ function formatPercent(value: number) {
   return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
 }
 
-function formatChartPercent(value: number) {
-  return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
-}
-
 function numberText(value: number) {
   if (value === 0) return "-";
   return value.toLocaleString("th-TH");
@@ -372,6 +368,29 @@ export default function DashboardPage() {
   const studentPercent = overview
     ? percent(overview.students.present, overview.students.total)
     : 0;
+  const dashboardHighlights = useMemo<Highlight[]>(() => {
+    if (!overview) return [];
+
+    const highlights = overview.highlights.map((item) =>
+      item.title.includes("คำสั่ง")
+        ? {
+            ...item,
+            value: `${numberText(overview.orders.unacknowledged)} คน`,
+          }
+        : item,
+    );
+
+    if (training.pending > 0) {
+      highlights.push({
+        tone: "warning",
+        title: "รายงานประชุม/อบรมที่ยังไม่รายงาน",
+        value: `${numberText(training.pending)} คน`,
+        detail: "ติดตามครูที่ยังไม่ส่งรายงานผล",
+      });
+    }
+
+    return highlights;
+  }, [overview, training.pending]);
 
   if (loading) {
     return (
@@ -470,7 +489,6 @@ export default function DashboardPage() {
                 onClick={() => setActiveTab(tab.id as DashboardTab)}
               >
                 <span className={styles.sectionTabIcon} aria-hidden="true">
-                  <small>{tab.shortLabel}</small>
                   {tab.icon}
                 </span>
                 <span className={styles.sectionTabLabel}>{tab.label}</span>
@@ -570,9 +588,9 @@ export default function DashboardPage() {
             >
               <CardHeader icon="!" title="คำสั่ง" href="/orders" />
               <div className={`${styles.metricGrid} ${styles.metricGridThree}`}>
-                <Metric label="ยังไม่รับทราบ" value={overview.orders.unacknowledged} tone="orange" suffix="เรื่อง" />
-                <Metric label="รับทราบแล้ว" value={overview.orders.acknowledged} tone="green" suffix="เรื่อง" />
-                <Metric label="แจ้งทั้งหมด" value={overview.orders.assigned} tone="gray" suffix="เรื่อง" />
+                <Metric label="ยังไม่รับทราบ" value={overview.orders.unacknowledged} tone="orange" suffix="คน" />
+                <Metric label="รับทราบแล้ว" value={overview.orders.acknowledged} tone="green" suffix="คน" />
+                <Metric label="แจ้งทั้งหมด" value={overview.orders.assigned} tone="gray" suffix="คน" />
               </div>
               <OrderStatusDonut counts={overview.orders} />
             </article>
@@ -583,7 +601,7 @@ export default function DashboardPage() {
             >
               <CardHeader
                 icon="◇"
-                title="รายการงานประชุม/อบรม"
+                title="รายงานการประชุม/อบรม"
                 href="/documents/training-reports"
               />
               <div className={`${styles.metricGrid} ${styles.metricGridThree}`}>
@@ -606,11 +624,11 @@ export default function DashboardPage() {
             </article>
           </section>
 
-          {overview.highlights.length > 0 && (
+          {dashboardHighlights.length > 0 && (
             <section className={styles.highlights} aria-label="รายการที่ควรทราบวันนี้">
               <h2>รายการที่ควรทราบวันนี้</h2>
               <div className={styles.highlightGrid}>
-                {overview.highlights.map((item) => (
+                {dashboardHighlights.map((item) => (
                   <article
                     className={`${styles.highlightCard} ${
                       item.tone === "danger" ? styles.highlightDanger : styles.highlightWarning
@@ -721,6 +739,7 @@ function OrderStatusDonut({
 
   return (
     <div className={styles.orderDonutPanel}>
+      <h3 className={styles.orderDonutTitle}>สรุปจำนวนครูที่รับทราบคำสั่ง</h3>
       <Donut
         value={greenPercent}
         label="รับทราบ"
@@ -731,8 +750,7 @@ function OrderStatusDonut({
             <span className={item.className} aria-hidden="true" />
             <small>{item.label}</small>
             <strong>
-              {numberText(item.count)} เรื่อง
-              <em>{formatChartPercent(item.percent)}</em>
+              <b>{numberText(item.count)} คน</b>
             </strong>
           </div>
         ))}
@@ -756,13 +774,18 @@ function PersonList({
 }) {
   return (
     <div className={styles.peopleBlock}>
-      {title && <h3>{title}</h3>}
+      {title && (
+        <div className={styles.peopleBlockHeader} data-variant={variant}>
+          <h3>{title}</h3>
+          {variant === "training" && <span>ชั่วโมงอบรมสะสม</span>}
+        </div>
+      )}
       {people.length === 0 ? (
         <p className={styles.emptyState}>{emptyText}</p>
       ) : (
         <div className={styles.peopleList}>
           {people.map((person, index) => (
-            <div className={styles.personRow} key={`${person.name}-${index}`}>
+            <div className={styles.personRow} data-variant={variant} key={`${person.name}-${index}`}>
               <ProfileAvatar person={person} accessToken={accessToken} />
               <div>
                 <strong>{person.name}</strong>

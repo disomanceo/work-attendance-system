@@ -75,6 +75,8 @@ Updated: 2026-07-18
   - [x] Kept the Teaching Supervision filters inside the card on narrow desktop widths and improved active step-tab contrast.
   - [x] Expanded the Leave, Official Duty, and Memo page content areas to match the wider registry layout without changing inner proportions.
   - [x] Added an attendance-home pending-work Telegram summary button and holiday status badge for non-working days.
+  - [x] Fixed Dashboard orders donut legend wrapping so text stays inside the card on narrower desktop widths.
+  - [x] Changed Dashboard order counts from document topics to teacher-recipient counts and removed shortcut labels above the five tab icons.
   - [x] Added a distinct blue draft marker (`◇`) for draft training reports.
   - [x] Changed the Dashboard orders tab to show latest approved order recipients, not only unacknowledged items.
   - [x] Confirmed `npm.cmd run build` succeeds after the module addition.
@@ -1476,3 +1478,15 @@ Orders responsive layout:
 - [x] Kept the orders action buttons aligned to the right inside the compact manage column.
 - [x] Made the orders manage cell span the full action column so notify and delete controls stay right-aligned at every compact width.
 - [x] Allowed compact orders recipient chips to expand vertically so all assigned teachers remain visible.
+- [x] Removed duplicate percentages from the Dashboard orders legend so the count stays compact beside the chart.
+- [x] Added pending meeting/training report counts to the Dashboard highlights and kept order highlight counts in people.
+- [x] Reduced teacher-name weight in the Dashboard official-document and meeting/training person lists.
+- [x] Made the Dashboard overview cards and student/order widgets adapt to narrower widths without overlapping.
+- [x] Compacted the Dashboard highlights row and meeting/training teacher rows.
+- [x] Renamed the Dashboard training tab header to `รายงานการประชุม/อบรม`.
+- [x] Added the blue `ชั่วโมงอบรมสะสม` label beside the Dashboard training hour badge and tightened that row.
+- [x] Moved the Dashboard training accumulated-hours label into the list header and restored the hour badge to a number-only circle.
+- [x] Moved the Dashboard orders chart legend below the donut so the order card has enough responsive space.
+- [x] Changed the Dashboard highlight from overdue official books to official documents that are still unacknowledged.
+- [x] Removed the five-person cap from the Dashboard official-document people list so every pending assignee is shown.
+- [x] Aligned Dashboard official-document acknowledgement counts with the Documents page by treating `in_progress` tasks as acknowledged/in progress.

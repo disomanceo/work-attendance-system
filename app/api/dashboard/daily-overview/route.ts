@@ -566,7 +566,7 @@ export async function GET(request: Request) {
     );
     const unacknowledgedTasks = activeTasks.filter(
       (task) =>
-        task.status !== "done" &&
+        task.status === "assigned" &&
         !task.assignment_acknowledged_at &&
         !task.assignment_opened_at,
     );
@@ -633,7 +633,9 @@ export async function GET(request: Request) {
       const pendingDays = dayDifference(receivedDate, date);
       const isDone = task.status === "done";
       const isUnacknowledged =
-        !isDone && !task.assignment_acknowledged_at && !task.assignment_opened_at;
+        task.status === "assigned" &&
+        !task.assignment_acknowledged_at &&
+        !task.assignment_opened_at;
       const isInProgress = !isDone && !isUnacknowledged;
 
       documentsByAssignee.set(key, {
@@ -658,7 +660,11 @@ export async function GET(request: Request) {
     const inProgressTasks = activeTasks.filter(
       (task) =>
         task.status !== "done" &&
-        (task.assignment_acknowledged_at || task.assignment_opened_at),
+        !(
+          task.status === "assigned" &&
+          !task.assignment_acknowledged_at &&
+          !task.assignment_opened_at
+        ),
     );
     const pending1Day = unacknowledgedTasks.filter((task) => {
       const receivedDate = String(task.book.received_date || "").slice(0, 10);
@@ -676,7 +682,11 @@ export async function GET(request: Request) {
     const documentSummary = {
       assigned: activeTasks.length,
       acknowledged: activeTasks.filter(
-        (task) => task.assignment_acknowledged_at || task.assignment_opened_at,
+        (task) =>
+          task.status === "in_progress" ||
+          task.status === "done" ||
+          task.assignment_acknowledged_at ||
+          task.assignment_opened_at,
       ).length,
       unacknowledged: unacknowledgedTasks.length,
       inProgress: inProgressTasks.length,
@@ -698,7 +708,6 @@ export async function GET(request: Request) {
             right.done - left.done ||
             left.name.localeCompare(right.name, "th"),
         )
-        .slice(0, 5)
         .map((person) => ({
           name: person.name,
           note: [
@@ -779,12 +788,12 @@ export async function GET(request: Request) {
             detail: "ติดตามการเช็กชื่อประจำวัน",
           }
         : null,
-      documentSummary.overdue > 0
+      documentSummary.unacknowledged > 0
         ? {
-            tone: "danger",
-            title: "หนังสือค้างเกิน 3 วัน",
-            value: `${documentSummary.overdue.toLocaleString("th-TH")} เรื่อง`,
-            detail: "ควรติดตามก่อนสิ้นวัน",
+            tone: "warning",
+            title: "หนังสือที่ยังไม่ได้รับทราบ",
+            value: `${documentSummary.unacknowledged.toLocaleString("th-TH")} เรื่อง`,
+            detail: "ควรติดตามให้เปิดรับทราบ",
           }
         : null,
       orderSummary.unacknowledged > 0
