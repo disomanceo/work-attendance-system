@@ -146,7 +146,8 @@
 .subject {
   font-weight: 700;
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .meta {
@@ -157,8 +158,10 @@
 }
 
 .files {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  justify-content: start;
+  align-items: center;
   gap: 7px;
 }
 
@@ -173,6 +176,8 @@
 
 .fileButton {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-decoration: none;
   padding: 7px 9px;
   font-size: 12px;
@@ -439,32 +444,38 @@
 }
 
 .numberColumn {
-  width: 100px;
+  width: 7%;
+}
+
+.subjectColumn {
+  width: 35%;
 }
 
 .dateColumn {
-  width: 118px;
+  width: 11%;
 }
 
 .ownerColumn {
-  width: 160px;
+  width: 15%;
 }
 
 .fileColumn {
-  width: 120px;
+  width: 10%;
 }
 
 .statusColumn {
-  width: 110px;
+  width: 10%;
 }
 
 .actionColumn {
-  width: 180px;
+  width: 12%;
 }
 
 .subject {
   font-weight: 400;
   line-height: 1.35;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .meta {
@@ -475,6 +486,8 @@
 }
 
 .files {
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  justify-content: start;
   gap: 5px;
   align-items: center;
 }
@@ -489,6 +502,10 @@
   border-radius: 8px;
   font-size: 10px;
   font-weight: 600;
+}
+
+.fileButton span {
+  display: none;
 }
 
 .fileButton svg {
@@ -548,7 +565,7 @@
   line-height: 1.35;
 }
 
-@media (max-width: 1180px) and (min-width: 901px) {
+@media (max-width: 1320px) and (min-width: 901px) {
   .toolbar {
     grid-template-columns:
       minmax(200px, 1fr)
@@ -556,6 +573,68 @@
       minmax(145px, 175px)
       minmax(115px, 135px)
       minmax(160px, 190px);
+  }
+
+  .table th,
+  .table td {
+    padding-inline: 7px;
+    font-size: 12px;
+  }
+
+  .numberColumn { width: 7%; }
+  .subjectColumn { width: 36%; }
+  .dateColumn { width: 11%; }
+  .ownerColumn { width: 14%; }
+  .fileColumn { width: 9%; }
+  .statusColumn { width: 10%; }
+  .actionColumn { width: 13%; }
+
+  .subject {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .meta {
+    font-size: 10px;
+  }
+
+  .fileButton {
+    min-width: 26px;
+    min-height: 26px;
+    padding: 3px;
+  }
+
+  .fileButton svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .status {
+    padding: 3px 5px;
+    font-size: 10px;
+  }
+
+  .actions {
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .reviewButton,
+  .updateButton,
+  .deleteButton {
+    height: 28px;
+    min-height: 28px;
+    font-size: 10px;
+  }
+
+  .reviewButton,
+  .updateButton {
+    padding-inline: 7px;
+  }
+
+  .deleteButton {
+    width: 26px;
+    min-width: 26px;
   }
 }
 

@@ -9,6 +9,7 @@
   font-family: "Anuphan", "Noto Sans Thai", "Leelawadee UI", Tahoma, Arial, sans-serif;
   font-weight: 400;
   padding: 22px 22px 104px;
+  overflow-x: clip;
 }
 
 .header {
@@ -81,6 +82,7 @@
 .steps button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 34px;
   padding: 0 14px;
   border: 0;
@@ -88,6 +90,7 @@
   background: #eef0fb;
   color: inherit;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -100,6 +103,11 @@
   background: #5740d8 !important;
   color: #fff;
   font-weight: 700;
+}
+
+.steps button.stepActive:disabled {
+  color: #fff;
+  opacity: 1;
 }
 
 .grid {
@@ -260,6 +268,7 @@
 .filterBar label {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .filterBar span {
@@ -270,6 +279,7 @@
 .filterBar input,
 .filterBar select {
   width: 100%;
+  min-width: 0;
   min-height: 42px;
   border: 1px solid #d8deee;
   border-radius: 10px;
@@ -461,7 +471,7 @@
 }
 
 .inspectionTableWrap {
-  overflow-x: auto;
+  overflow-x: visible;
   border: 1px solid #e2e6f3;
   border-radius: 13px;
   background: #fff;
@@ -473,9 +483,10 @@
 
 .inspectionTable {
   width: 100%;
-  min-width: 1020px;
+  min-width: 0;
   border-collapse: collapse;
   font-size: 12.5px;
+  table-layout: fixed;
 }
 
 .inspectionTable th,
@@ -529,16 +540,21 @@
 .teacherNameCell {
   display: grid;
   gap: 3px;
+  min-width: 0;
 }
 
 .teacherNameCell span {
   font-weight: 600;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .teacherNameCell small {
   color: #65708c;
   font-size: 11.5px;
   line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .resultBadge,
@@ -586,8 +602,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 5px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .iconActionButton {
@@ -1332,6 +1349,96 @@
 
   .rightColumn {
     position: static;
+  }
+}
+
+@media (max-width: 1320px) and (min-width: 761px) {
+  .filterBar {
+    grid-template-columns:
+      minmax(170px, 1.7fr)
+      repeat(5, minmax(86px, 1fr))
+      minmax(58px, 0.7fr);
+    gap: 7px;
+  }
+
+  .filterBar span {
+    font-size: 10.5px;
+  }
+
+  .filterBar input,
+  .filterBar select,
+  .resetFilterButton {
+    min-height: 36px;
+    border-radius: 9px;
+    font-size: 11px;
+    padding: 7px 8px;
+  }
+
+  .resetFilterButton {
+    padding-inline: 7px;
+  }
+
+  .inspectionTable {
+    font-size: 11.5px;
+  }
+
+  .inspectionTable th,
+  .inspectionTable td {
+    padding: 7px 6px;
+  }
+
+  .inspectionTable th:nth-child(1) { width: 5%; }
+  .inspectionTable th:nth-child(2) { width: 6%; }
+  .inspectionTable th:nth-child(3) { width: 18%; }
+  .inspectionTable th:nth-child(4) { width: 13%; }
+  .inspectionTable th:nth-child(5) { width: 7%; }
+  .inspectionTable th:nth-child(6) { width: 11%; }
+  .inspectionTable th:nth-child(7) { width: 9%; }
+  .inspectionTable th:nth-child(8) { width: 9%; }
+  .inspectionTable th:nth-child(9) { width: 10%; }
+  .inspectionTable th:nth-child(10) { width: 12%; }
+
+  .profilePhotoCell {
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .teacherNameCell span {
+    font-size: 11.5px;
+    line-height: 1.3;
+  }
+
+  .teacherNameCell small {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .resultBadge,
+  .statusBadge {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .tableActionGroup {
+    justify-content: flex-end;
+    gap: 3px;
+  }
+
+  .tableActionButton {
+    min-width: 74px;
+    min-height: 28px;
+    border-radius: 8px;
+    font-size: 10px;
+    padding: 0 6px;
+  }
+
+  .iconActionButton {
+    min-width: 27px;
+    height: 28px;
+    border-radius: 7px;
+    font-size: 9px;
+    padding: 0 4px;
   }
 }
 

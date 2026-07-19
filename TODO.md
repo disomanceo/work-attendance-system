@@ -70,6 +70,9 @@ Updated: 2026-07-18
   - [x] Updated Dashboard order counts so director/admin sees overall acknowledged and unacknowledged recipient totals.
   - [x] Changed the Dashboard training-hour badge to a blue outline style.
   - [x] Expanded the Orders and Announcements pages to use the full available content width.
+  - [x] Tightened the Announcements table responsive columns so subjects keep usable width and file icons sit side-by-side.
+  - [x] Removed the Teaching Supervision table's forced horizontal scroll on compact desktop widths and added proportional compact columns.
+  - [x] Kept the Teaching Supervision filters inside the card on narrow desktop widths and improved active step-tab contrast.
   - [x] Added a distinct blue draft marker (`◇`) for draft training reports.
   - [x] Changed the Dashboard orders tab to show latest approved order recipients, not only unacknowledged items.
   - [x] Confirmed `npm.cmd run build` succeeds after the module addition.
@@ -1461,3 +1464,13 @@ Manual training reports:
 - [x] Added an auto-dismissing source notice when a manual report subject is clicked.
 - [x] Kept linked assignment completion limited to reports that still have `sourceAssignmentId`.
 - [x] Confirm `npm.cmd run build` succeeds after adding manual training reports.
+
+Orders responsive layout:
+
+- [x] Reduced the orders status and action column widths so the subject column keeps more room on narrower desktop/tablet screens.
+- [x] Added tablet-specific compact table sizing for the orders registry.
+- [x] Changed mobile recipient chips to shrink inside five equal columns instead of stretching by content width.
+- [x] Expanded the compact orders-table breakpoint to cover sidebar layouts and set proportional column widths so the subject column is not squeezed.
+- [x] Kept the orders action buttons aligned to the right inside the compact manage column.
+- [x] Made the orders manage cell span the full action column so notify and delete controls stay right-aligned at every compact width.
+- [x] Allowed compact orders recipient chips to expand vertically so all assigned teachers remain visible.
