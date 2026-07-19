@@ -1452,3 +1452,12 @@ Follow-up checks:
 
 - [ ] Test the category card filtering interactively in a browser after browser automation is available.
 - [ ] If the school wants legacy Firestore category values rewritten permanently, create a reviewed migration plan first.
+
+Manual training reports:
+
+- [x] Added `reportSource` so training reports can be separated into assigned and manual reports.
+- [x] Allowed `+ เพิ่มรายงาน` to create a manual training report without a linked official document or assignment.
+- [x] Included manual training reports in the main training-report table.
+- [x] Added an auto-dismissing source notice when a manual report subject is clicked.
+- [x] Kept linked assignment completion limited to reports that still have `sourceAssignmentId`.
+- [x] Confirm `npm.cmd run build` succeeds after adding manual training reports.

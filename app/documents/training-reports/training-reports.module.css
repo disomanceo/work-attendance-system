@@ -218,6 +218,24 @@
   color: #b91c1c;
 }
 
+.sourceToast {
+  position: fixed;
+  z-index: 80;
+  left: 50%;
+  top: 22px;
+  width: min(520px, calc(100vw - 28px));
+  transform: translateX(-50%);
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #075985;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 16px 42px rgba(14, 116, 144, 0.18);
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

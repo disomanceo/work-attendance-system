@@ -31,6 +31,7 @@ import type {
   TrainingReport,
   TrainingReportAttachment,
   TrainingReportMode,
+  TrainingReportSource,
   TrainingReportStatus,
 } from "@/lib/training-reports/types";
 
@@ -118,6 +119,7 @@ function mapReport(id: string, data: Record<string, unknown>): TrainingReport {
     id,
     status: text(data.status, "draft") as TrainingReportStatus,
     mode: text(data.mode, "individual") as TrainingReportMode,
+    reportSource: text(data.reportSource, "assigned") as TrainingReportSource,
     sourceDocumentId: text(data.sourceDocumentId),
     sourceAssignmentId: text(data.sourceAssignmentId),
     bookNumber: text(data.bookNumber),
@@ -247,11 +249,15 @@ export async function POST(request: Request) {
         ? statusInput
         : "draft";
     const mode = text(form.get("mode")) === "group" ? "group" : "individual";
+    const reportSource =
+      text(form.get("reportSource")) === "manual" ? "manual" : "assigned";
     const reportId = text(form.get("id")) || crypto.randomUUID();
     const sourceAssignmentId = text(form.get("sourceAssignmentId"));
     const sourceDocumentId = text(form.get("sourceDocumentId"));
     const documentTitle = text(form.get("documentTitle"));
-    const bookNumber = text(form.get("bookNumber"));
+    const inputBookNumber = text(form.get("bookNumber"));
+    const bookNumber =
+      reportSource === "manual" ? text(inputBookNumber, "อบรมเอง") : inputBookNumber;
     const teacherProfileId = auth.canManageAll
       ? text(form.get("teacherProfileId"), auth.profile.id)
       : auth.profile.id;
@@ -273,7 +279,9 @@ export async function POST(request: Request) {
     const { db } = getTrainingReportFirebaseClient();
 
     requireOnSubmit("ชื่อเรื่อง", documentTitle, status);
-    requireOnSubmit("เลขหนังสือ", bookNumber, status);
+    if (reportSource !== "manual") {
+      requireOnSubmit("เลขหนังสือ", bookNumber, status);
+    }
     requireOnSubmit("วันที่เริ่มประชุม/อบรม", trainingStartDate, status);
     requireOnSubmit("สรุปสาระสำคัญ", summary, status);
     const buddhistYear = buddhistYearFromDate(
@@ -391,6 +399,7 @@ export async function POST(request: Request) {
     const payload = {
       status,
       mode,
+      reportSource,
       sourceDocumentId,
       sourceAssignmentId,
       bookNumber,

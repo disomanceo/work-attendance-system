@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { MouseEvent } from "react";
 import { compactPersonDisplayName } from "@/lib/person-display";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -49,6 +50,7 @@ type FormState = {
   teacherProfileId: string;
   teacherNameSnapshot: string;
   mode: "individual" | "group";
+  reportSource: "assigned" | "manual";
   trainingType: string;
   trainingStartDate: string;
   trainingEndDate: string;
@@ -67,6 +69,7 @@ type ReportRow = {
   task: TrainingReportSourceTask;
   report: TrainingReport | null;
   status: "pending" | "draft" | "submitted" | "not_attended";
+  isManual?: boolean;
 };
 
 type GroupedReportRow = {
@@ -79,6 +82,7 @@ type GroupedReportRow = {
   assignmentNote: string;
   status: "pending" | "draft" | "partial" | "submitted" | "not_attended";
   currentUserRow: ReportRow | null;
+  isManual: boolean;
 };
 
 const today = new Intl.DateTimeFormat("en-CA", {
@@ -107,6 +111,7 @@ const emptyForm: FormState = {
   teacherProfileId: "",
   teacherNameSnapshot: "",
   mode: "individual",
+  reportSource: "manual",
   trainingType: "ประชุม/อบรม",
   trainingStartDate: today,
   trainingEndDate: today,
@@ -216,6 +221,7 @@ function createFormFromTask(
       teacherProfileId: report.teacherProfileId || task.assigneeId,
       teacherNameSnapshot: report.teacherNameSnapshot || task.assigneeName,
       mode: report.mode,
+      reportSource: report.reportSource || (report.sourceAssignmentId ? "assigned" : "manual"),
       trainingType: report.trainingType,
       trainingStartDate: report.trainingStartDate || today,
       trainingEndDate: report.trainingEndDate || report.trainingStartDate || today,
@@ -239,7 +245,26 @@ function createFormFromTask(
     documentTitle: task.subject,
     teacherProfileId: task.assigneeId,
     teacherNameSnapshot: task.assigneeName,
+    reportSource: "assigned",
     dueDate: "",
+  };
+}
+
+function createManualTaskFromReport(report: TrainingReport): TrainingReportSourceTask {
+  return {
+    taskId: `manual:${report.id}`,
+    bookId: "",
+    assigneeId: report.teacherProfileId,
+    assigneeName: report.teacherNameSnapshot,
+    assigneeImageFileId: "",
+    status: report.status,
+    requiresTrainingReport: false,
+    assignmentNote: "เป็นการประชุม-อบรมของคุณครูเอง",
+    registrationNumber: "",
+    documentNumber: report.bookNumber || "อบรมเอง",
+    subject: report.documentTitle,
+    documentDate: report.trainingStartDate,
+    receivedDate: report.trainingStartDate,
   };
 }
 
@@ -257,10 +282,12 @@ export default function TrainingReportsPage() {
   );
   const [photoAttachments, setPhotoAttachments] =
     useState<Array<TrainingReportAttachment | null>>(emptyPhotoAttachments);
+  const sourceToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [sourceToast, setSourceToast] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | GroupedReportRow["status"]
@@ -334,6 +361,12 @@ export default function TrainingReportsPage() {
     };
   }, [photoPreviews]);
 
+  useEffect(() => {
+    return () => {
+      if (sourceToastTimer.current) clearTimeout(sourceToastTimer.current);
+    };
+  }, []);
+
   const reportByTaskId = useMemo(() => {
     const map = new Map<string, TrainingReport>();
     for (const report of reports) {
@@ -347,7 +380,7 @@ export default function TrainingReportsPage() {
   }, [reports]);
 
   const rows = useMemo<ReportRow[]>(() => {
-    return sourceTasks.map((task) => {
+    const assignedRows = sourceTasks.map((task) => {
       const report = reportByTaskId.get(task.taskId) ?? null;
       const status: ReportRow["status"] =
         report?.status === "submitted" || report?.status === "not_attended"
@@ -358,15 +391,34 @@ export default function TrainingReportsPage() {
 
       return { task, report, status };
     });
-  }, [reportByTaskId, sourceTasks]);
+
+    const manualRows = reports
+      .filter((report) => report.reportSource === "manual" || !report.sourceAssignmentId)
+      .map((report) => {
+        const status: ReportRow["status"] =
+          report.status === "submitted" || report.status === "not_attended"
+            ? report.status
+            : "draft";
+
+        return {
+          task: createManualTaskFromReport(report),
+          report,
+          status,
+          isManual: true,
+        };
+      });
+
+    return [...assignedRows, ...manualRows];
+  }, [reportByTaskId, reports, sourceTasks]);
 
   const groupedRows = useMemo<GroupedReportRow[]>(() => {
     const map = new Map<string, ReportRow[]>();
 
     for (const row of rows) {
-      const key =
-        row.task.bookId ||
-        `${sourceBookNumber(row.task)}:${row.task.subject}`.toLowerCase();
+      const key = row.isManual
+        ? `manual:${row.report?.id || row.task.taskId}`
+        : row.task.bookId ||
+          `${sourceBookNumber(row.task)}:${row.task.subject}`.toLowerCase();
       map.set(key, [...(map.get(key) ?? []), row]);
     }
 
@@ -406,6 +458,7 @@ export default function TrainingReportsPage() {
           .find(Boolean) ?? "",
         status,
         currentUserRow,
+        isManual: groupRows.every((row) => row.isManual),
       };
     }).sort((left, right) =>
       rowDateValue(right).localeCompare(rowDateValue(left)),
@@ -538,7 +591,16 @@ export default function TrainingReportsPage() {
     setNotice("");
     setError("");
     resetPhotoSlots();
-    setForm(row ? createFormFromTask(row.task, row.report) : emptyForm);
+    setForm(
+      row
+        ? createFormFromTask(row.task, row.report)
+        : {
+            ...emptyForm,
+            teacherProfileId: currentProfile?.id ?? "",
+            teacherNameSnapshot: currentProfile?.full_name ?? "",
+            reportSource: "manual",
+          },
+    );
     if (row) loadExistingPhotos(row.report);
     setFormOpen(true);
   }
@@ -547,6 +609,28 @@ export default function TrainingReportsPage() {
     setFormOpen(false);
     resetPhotoSlots();
     setForm(emptyForm);
+  }
+
+  function showManualSourceToast() {
+    if (sourceToastTimer.current) clearTimeout(sourceToastTimer.current);
+    setSourceToast(
+      "ไม่มีหนังสือราชการจากต้นเรื่อง เป็นการประชุม-อบรมของคุณครูเอง",
+    );
+    sourceToastTimer.current = setTimeout(() => {
+      setSourceToast("");
+      sourceToastTimer.current = null;
+    }, 1800);
+  }
+
+  function handleSourceClick(
+    event: MouseEvent<HTMLAnchorElement>,
+    row: GroupedReportRow,
+  ) {
+    const bookId = row.rows[0]?.task.bookId || "";
+    if (bookId) return;
+
+    event.preventDefault();
+    showManualSourceToast();
   }
 
   async function persistReport(nextStatus: "draft" | "submitted" | "not_attended") {
@@ -644,6 +728,12 @@ export default function TrainingReportsPage() {
         {(notice || error) && (
           <div className={`${styles.notice} ${error ? styles.noticeError : ""}`}>
             {error || notice}
+          </div>
+        )}
+
+        {sourceToast && (
+          <div className={styles.sourceToast} role="status" aria-live="polite">
+            {sourceToast}
           </div>
         )}
 
@@ -771,9 +861,14 @@ export default function TrainingReportsPage() {
                   <td data-label="เรื่อง">
                     <a
                       className={styles.subjectLink}
-                      href={`/documents?book=${encodeURIComponent(
-                        row.rows[0]?.task.bookId || "",
-                      )}`}
+                      href={
+                        row.rows[0]?.task.bookId
+                          ? `/documents?book=${encodeURIComponent(
+                              row.rows[0]?.task.bookId || "",
+                            )}`
+                          : "#"
+                      }
+                      onClick={(event) => handleSourceClick(event, row)}
                     >
                       {row.subject}
                     </a>

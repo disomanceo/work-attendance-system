@@ -2,6 +2,8 @@ export type TrainingReportStatus = "draft" | "submitted" | "not_attended";
 
 export type TrainingReportMode = "individual" | "group";
 
+export type TrainingReportSource = "assigned" | "manual";
+
 export type TrainingReportAttachment = {
   fileId: string;
   fileUrl: string;
@@ -19,6 +21,7 @@ export type TrainingReport = {
   id: string;
   status: TrainingReportStatus;
   mode: TrainingReportMode;
+  reportSource: TrainingReportSource;
   sourceDocumentId: string;
   sourceAssignmentId: string;
   bookNumber: string;
