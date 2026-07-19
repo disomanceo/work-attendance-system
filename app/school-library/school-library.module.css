@@ -33,11 +33,11 @@
 }
 
 .header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: minmax(250px, 0.9fr) minmax(320px, 1.35fr) auto;
+  align-items: start;
+  gap: 18px;
+  margin-bottom: 12px;
 }
 
 .header h1 {
@@ -75,14 +75,47 @@
   line-height: 1;
 }
 
+.headerDropZone {
+  display: grid;
+  min-height: 148px;
+  place-items: center;
+  padding: 18px;
+  border: 3px dashed #dc2626;
+  border-radius: 22px;
+  color: #b91c1c;
+  background: rgba(254, 242, 242, 0.62);
+  font-size: clamp(18px, 2.2vw, 28px);
+  font-weight: 700;
+  text-align: center;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.headerDropZoneActive {
+  border-color: #15803d;
+  color: #08712d;
+  background: #f0fdf4;
+  box-shadow: 0 14px 34px rgba(21, 128, 61, 0.18);
+}
+
+.headerActions {
+  display: grid;
+  min-width: 160px;
+  justify-items: end;
+  gap: 8px;
+}
+
 .searchBar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  min-height: 54px;
-  margin-bottom: 22px;
-  padding: 0 14px;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 14px;
+  padding: 0 12px;
   border: 1px solid #cfd8d2;
   border-radius: 8px;
   background: #ffffff;
@@ -91,7 +124,7 @@
 
 .searchBar > span {
   color: #3d4641;
-  font-size: 26px;
+  font-size: 21px;
 }
 
 .searchBar input {
@@ -99,14 +132,14 @@
   border: 0;
   color: #1f2b24;
   background: transparent;
-  font-size: 16px;
+  font-size: 14px;
   outline: none;
 }
 
 .searchBar button {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   place-items: center;
   border: 0;
   border-left: 1px solid #e2e8e3;
@@ -116,14 +149,16 @@
 }
 
 .databaseNotice {
-  margin: -8px 0 18px;
-  padding: 10px 12px;
+  width: 100%;
+  margin: 0;
+  padding: 7px 10px;
   border: 1px solid #fed7aa;
   border-radius: 8px;
   color: #9a4b05;
   background: #fff7ed;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
+  text-align: center;
 }
 
 .databaseNotice[data-ready="true"] {
@@ -347,17 +382,17 @@
 .filters {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 22px;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .filters label {
   display: grid;
-  min-height: 50px;
+  min-height: 44px;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+  gap: 8px;
+  padding: 0 10px;
   border: 1px solid #d1dbd4;
   border-radius: 8px;
   background: #ffffff;
@@ -365,7 +400,7 @@
 
 .filters span {
   color: #25312a;
-  font-size: 22px;
+  font-size: 19px;
 }
 
 .filters select {
@@ -1039,6 +1074,18 @@
 }
 
 @media (max-width: 1100px) {
+  .header {
+    grid-template-columns: 1fr;
+  }
+
+  .headerActions {
+    justify-items: stretch;
+  }
+
+  .headerDropZone {
+    min-height: 112px;
+  }
+
   .categoryGrid {
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   }
@@ -1078,12 +1125,42 @@
   }
 
   .header {
-    align-items: stretch;
-    flex-direction: column;
+    gap: 10px;
   }
 
   .primaryButton {
     width: 100%;
+  }
+
+  .headerDropZone {
+    min-height: 86px;
+    border-width: 2px;
+    border-radius: 16px;
+    font-size: 16px;
+  }
+
+  .searchBar {
+    min-height: 38px;
+    margin-bottom: 10px;
+    padding: 0 8px;
+  }
+
+  .searchBar > span {
+    font-size: 18px;
+  }
+
+  .searchBar input {
+    font-size: 12px;
+  }
+
+  .searchBar button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .databaseNotice {
+    padding: 6px 8px;
+    font-size: 10.5px;
   }
 
   .categoryGrid {

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { type DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import {
   createSchoolLibraryDocument,
   deleteSchoolLibraryDocument,
@@ -466,6 +466,7 @@ export default function SchoolLibraryPage() {
   );
   const [loadingDocuments, setLoadingDocuments] = useState(firebaseConfigured);
   const [savingDocument, setSavingDocument] = useState(false);
+  const [dropZoneActive, setDropZoneActive] = useState(false);
 
   useEffect(() => {
     setSearchHistory(sortSearchHistory(readSearchHistory()).slice(0, 8));
@@ -756,12 +757,50 @@ export default function SchoolLibraryPage() {
     setFormError("");
   }
 
-  function openCreateDocumentForm() {
-    setDraft(EMPTY_DRAFT);
+  function openCreateDocumentForm(initialFiles?: FileList | File[]) {
+    const incomingFiles = Array.from(initialFiles || []);
+    const validFiles = incomingFiles.filter((file) => file.size <= MAX_UPLOAD_FILE_SIZE);
+    const rejectedFile = incomingFiles.find((file) => file.size > MAX_UPLOAD_FILE_SIZE);
+
+    setDraft(
+      validFiles[0]
+        ? { ...EMPTY_DRAFT, title: titleFromFileName(validFiles[0].name) }
+        : EMPTY_DRAFT,
+    );
     setEditingDocument(null);
-    setSelectedFiles([]);
-    setFormError("");
+    setSelectedFiles(validFiles);
+    setFormError(
+      rejectedFile
+        ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน 30 MB`
+        : "",
+    );
     setFormOpen(true);
+  }
+
+  function handleLibraryDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDropZoneActive(false);
+
+    if (event.dataTransfer.files.length === 0) return;
+
+    event.dataTransfer.dropEffect = "copy";
+    openCreateDocumentForm(event.dataTransfer.files);
+  }
+
+  function handleLibraryDragOver(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    setDropZoneActive(true);
+  }
+
+  function handleLibraryDragLeave(event: DragEvent<HTMLElement>) {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+      return;
+    }
+    setDropZoneActive(false);
   }
 
   function openEditDocumentForm(document: LibraryDocument) {
@@ -866,7 +905,7 @@ export default function SchoolLibraryPage() {
     }
   }
 
-  function addSelectedFiles(fileList: FileList | null) {
+  function addSelectedFiles(fileList: FileList | File[] | null) {
     const incomingFiles = Array.from(fileList || []);
     if (incomingFiles.length === 0) return;
 
@@ -1177,14 +1216,29 @@ export default function SchoolLibraryPage() {
             <h1>คลังงานโรงเรียน</h1>
             <p>ค้นหาและจัดเก็บองค์ความรู้ของโรงเรียน</p>
           </div>
-          <button
-            type="button"
-            className={styles.primaryButton}
-            onClick={openCreateDocumentForm}
+          <section
+            className={`${styles.headerDropZone} ${dropZoneActive ? styles.headerDropZoneActive : ""}`}
+            aria-label="โยนไฟล์เข้าคลังตรงนี้ได้"
+            onDragEnter={handleLibraryDragOver}
+            onDragOver={handleLibraryDragOver}
+            onDragLeave={handleLibraryDragLeave}
+            onDrop={handleLibraryDrop}
           >
-            <span aria-hidden="true">＋</span>
-            เพิ่มเอกสาร
-          </button>
+            <span>โยนไฟล์เข้าคลังตรงนี้ได้</span>
+          </section>
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              onClick={() => openCreateDocumentForm()}
+            >
+              <span aria-hidden="true">＋</span>
+              เพิ่มเอกสาร
+            </button>
+            <p className={styles.databaseNotice} data-ready={firebaseConfigured}>
+              {loadingDocuments ? "กำลังโหลดข้อมูลจาก Firebase..." : databaseMessage}
+            </p>
+          </div>
         </header>
 
         <div className={styles.searchBar}>
@@ -1204,10 +1258,6 @@ export default function SchoolLibraryPage() {
             ☷
           </button>
         </div>
-
-        <p className={styles.databaseNotice} data-ready={firebaseConfigured}>
-          {loadingDocuments ? "กำลังโหลดข้อมูลจาก Firebase..." : databaseMessage}
-        </p>
 
         <section className={styles.categoryGrid} aria-label="หมวดเอกสารหลัก">
           {CATEGORIES.map((category) => {
