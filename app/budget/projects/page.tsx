@@ -5,14 +5,18 @@ export default function BudgetProjectsPage() {
     <main
       style={{
         minHeight: "100%",
-        padding: "clamp(10px, 2vw, 20px)",
+        width: "100%",
+        minWidth: 0,
+        padding: "clamp(10px, 1.6vw, 20px)",
         background: "#f8fafc",
+        overflowX: "clip",
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: "1500px",
+          minWidth: 0,
+          maxWidth: "none",
           margin: "0 auto",
         }}
       >

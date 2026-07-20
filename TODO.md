@@ -13,6 +13,13 @@ Updated: 2026-07-18
 
 ## Latest findings
 
+- Budget responsive width polish on 2026-07-20:
+  - [x] Expanded `/budget/projects` wrapper to use the available app content width instead of capping at `1500px`.
+  - [x] Added viewport-safe sizing for budget project filters, summary cards, rows, status badges, file icons, and activity buttons.
+  - [x] Added viewport-safe sizing for budget payment filters, project rows, and action buttons so text/buttons stay inside cards when resizing.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the responsive update.
+  - [x] Confirm `npm.cmd run build` after the responsive update.
+
 - Budget payments completed-project guard on 2026-07-20:
   - [x] Hide the `เบิกจ่าย` button on `/budget/payments` when a project or `เรียนฟรี 15 ปี` record has status `เสร็จสิ้น`.
   - [x] Guard `openPayment()` so completed records cannot open the payment modal from any path.

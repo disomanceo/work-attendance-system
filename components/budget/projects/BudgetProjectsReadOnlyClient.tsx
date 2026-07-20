@@ -4768,7 +4768,219 @@ export default function BudgetProjectsReadOnlyClient() {
           }
         }
 
-      
+        /* BUDGET_PROJECTS_FLUID_VIEWPORT_FIX_START */
+        .projectsRoot,
+        .projectsRoot *,
+        .projectsRoot *::before,
+        .projectsRoot *::after {
+          box-sizing: border-box;
+        }
+
+        .projectsRoot {
+          width: 100%;
+          min-width: 0;
+          overflow-x: clip;
+        }
+
+        .pageTop,
+        .pageTop > div,
+        .pageTopActions,
+        .summaryGrid article,
+        .filterCard,
+        .dataCard,
+        .projectCard,
+        .projectRow,
+        .columnHeader,
+        .activityPanel,
+        .activityPanelHeader {
+          min-width: 0;
+        }
+
+        .pageTop {
+          flex-wrap: wrap;
+        }
+
+        .pageTop > div:first-child {
+          flex: 1 1 320px;
+        }
+
+        .pageTopActions {
+          flex: 0 1 auto;
+          max-width: 100%;
+        }
+
+        .filterCard {
+          grid-template-columns:
+            minmax(220px, 1.7fr)
+            minmax(150px, 0.8fr)
+            minmax(130px, 0.7fr)
+            42px;
+        }
+
+        .dataCard {
+          --project-grid:
+            30px
+            minmax(260px, 2.35fr)
+            minmax(82px, 0.62fr)
+            minmax(118px, 0.85fr)
+            minmax(74px, 0.5fr)
+            minmax(74px, 0.5fr)
+            minmax(74px, 0.5fr)
+            minmax(92px, 0.62fr)
+            minmax(54px, 0.38fr)
+            42px;
+        }
+
+        .columnHeader,
+        .projectRow {
+          width: 100%;
+          max-width: 100%;
+          gap: 6px;
+        }
+
+        .columnHeader > div,
+        .projectRow > div,
+        .projectMain,
+        .projectText {
+          min-width: 0;
+        }
+
+        .projectText b,
+        .ownerCell b,
+        .leadCell b {
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+
+        .statusCell {
+          flex-wrap: nowrap;
+        }
+
+        .statusBadge {
+          max-width: 100%;
+          min-width: 0;
+          padding-inline: 7px;
+          font-size: 11px;
+          line-height: 1.15;
+          white-space: normal;
+          text-align: center;
+        }
+
+        .fileIcons {
+          justify-content: center;
+        }
+
+        .activityCount {
+          width: 28px;
+          height: 28px;
+        }
+
+        @media (min-width: 981px) and (max-width: 1360px) {
+          .dataCard {
+            --project-grid:
+              28px
+              minmax(240px, 2.15fr)
+              minmax(76px, 0.54fr)
+              minmax(104px, 0.76fr)
+              minmax(70px, 0.46fr)
+              minmax(70px, 0.46fr)
+              minmax(70px, 0.46fr)
+              minmax(86px, 0.56fr)
+              minmax(44px, 0.32fr)
+              38px;
+          }
+
+          .columnHeader,
+          .projectRow {
+            padding-inline: 10px;
+            font-size: 11px;
+          }
+
+          .projectText b,
+          .ownerCell b,
+          .leadCell b,
+          .amountCell b,
+          .projectRow .statusBadge {
+            font-size: 11.5px;
+            line-height: 1.25;
+          }
+
+          .amountCell span,
+          .fileCell {
+            font-size: 10px;
+          }
+
+          .fileIcon,
+          .fileMore {
+            width: 24px;
+            min-width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            font-size: 8px;
+          }
+
+          .startProjectButton,
+          .activityCount {
+            width: 25px;
+            height: 25px;
+          }
+        }
+
+        @media (min-width: 981px) and (max-width: 1180px) {
+          .dataCard {
+            --project-grid:
+              28px
+              minmax(220px, 2fr)
+              minmax(94px, 0.72fr)
+              minmax(70px, 0.48fr)
+              minmax(70px, 0.48fr)
+              minmax(76px, 0.52fr)
+              34px;
+          }
+
+          .columnHeader > div:nth-child(3),
+          .columnHeader > div:nth-child(6),
+          .columnHeader > div:nth-child(9),
+          .projectRow > .ownerCell,
+          .projectRow > .amountCell:nth-of-type(5),
+          .projectRow > .fileCell {
+            display: none;
+          }
+        }
+
+        @media (max-width: 980px) {
+          .filterCard {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          }
+
+          .searchBox {
+            grid-column: 1 / -1;
+          }
+        }
+
+        @media (max-width: 680px) {
+          .projectsRoot {
+            overflow-x: clip;
+          }
+
+          .projectRow {
+            grid-template-columns: 24px minmax(0, 1fr) auto auto;
+          }
+
+          .projectText b {
+            display: -webkit-box;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+          }
+
+          .fileIcons {
+            max-width: 58px;
+          }
+        }
+        /* BUDGET_PROJECTS_FLUID_VIEWPORT_FIX_END */
+
+
 /* BUDGET_TYPE_TABS_STEP8_FIXED_START */
 .budgetTypeTabs {
   display: flex;

@@ -3441,6 +3441,195 @@ export default function BudgetPaymentsPage() {
 }
 /* BUDGET_PAYMENTS_AMBER_THEME_END */
 
+/* BUDGET_PAYMENTS_FLUID_VIEWPORT_FIX_START */
+.paymentsPage,
+.paymentsPage *,
+.paymentsPage *::before,
+.paymentsPage *::after {
+  box-sizing: border-box;
+}
+
+.paymentsPage,
+.paymentsPage.freeEducationTheme {
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+  padding-inline: clamp(10px, 1.6vw, 20px);
+}
+
+.paymentsPage .pageHeader,
+.paymentsPage .pageHeader > div,
+.paymentsPage .reloadArea,
+.paymentsPage .summaryGrid article,
+.paymentsPage .projectPanel,
+.paymentsPage .panelTop,
+.paymentsPage .filterBar,
+.paymentsPage .projectCard,
+.paymentsPage .projectRow,
+.paymentsPage .tableHeader,
+.paymentsPage .historyPanel {
+  min-width: 0;
+}
+
+.paymentsPage .pageHeader,
+.paymentsPage .panelTop {
+  flex-wrap: wrap;
+}
+
+.paymentsPage .pageHeader > div:first-child,
+.paymentsPage .panelTop > div:first-child {
+  flex: 1 1 320px;
+}
+
+.paymentsPage .reloadArea {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.paymentsPage .filterBar {
+  width: 100%;
+  max-width: none;
+  grid-template-columns:
+    minmax(220px, 1.6fr)
+    minmax(118px, 0.7fr)
+    minmax(130px, 0.75fr)
+    minmax(130px, 0.75fr);
+}
+
+.paymentsPage .tableHeader,
+.paymentsPage .projectRow {
+  width: 100%;
+  max-width: 100%;
+  grid-template-columns:
+    32px
+    minmax(260px, 2.35fr)
+    minmax(80px, 0.56fr)
+    minmax(80px, 0.56fr)
+    minmax(84px, 0.6fr)
+    minmax(52px, 0.36fr)
+    minmax(86px, 0.55fr)
+    minmax(112px, 0.78fr);
+  gap: 6px;
+}
+
+.paymentsPage .tableHeader > div,
+.paymentsPage .projectRow > div,
+.paymentsPage .projectName,
+.paymentsPage .actionCell {
+  min-width: 0;
+}
+
+.paymentsPage .projectName strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.paymentsPage .projectName small {
+  max-width: 100%;
+}
+
+.paymentsPage .actionCell {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.paymentsPage .payButton,
+.paymentsPage .historyButton {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+@media (min-width: 1181px) and (max-width: 1360px) {
+  .paymentsPage .tableHeader,
+  .paymentsPage .projectRow {
+    grid-template-columns:
+      30px
+      minmax(230px, 2.15fr)
+      minmax(72px, 0.48fr)
+      minmax(72px, 0.48fr)
+      minmax(76px, 0.5fr)
+      minmax(44px, 0.3fr)
+      minmax(78px, 0.48fr)
+      minmax(100px, 0.68fr);
+  }
+
+  .paymentsPage .projectRow,
+  .paymentsPage .projectName strong,
+  .paymentsPage .amountCell strong,
+  .paymentsPage .countCell,
+  .paymentsPage .latestCell,
+  .paymentsPage .payButton,
+  .paymentsPage .historyButton {
+    font-size: 11.5px;
+  }
+
+  .paymentsPage .amountCell span,
+  .paymentsPage .projectName small {
+    font-size: 9.5px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .paymentsPage .filterBar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .paymentsPage .tableHeader,
+  .paymentsPage .projectRow {
+    grid-template-columns:
+      28px
+      minmax(220px, 2fr)
+      minmax(74px, 0.55fr)
+      minmax(74px, 0.55fr)
+      minmax(86px, 0.62fr)
+      minmax(108px, 0.76fr);
+  }
+
+  .paymentsPage .tableHeader > div:nth-child(6),
+  .paymentsPage .tableHeader > div:nth-child(7),
+  .paymentsPage .projectRow > .countCell,
+  .paymentsPage .projectRow > .latestCell {
+    display: none;
+  }
+
+  .paymentsPage .projectRow,
+  .paymentsPage .projectName strong,
+  .paymentsPage .amountCell strong,
+  .paymentsPage .payButton,
+  .paymentsPage .historyButton {
+    font-size: 11.5px;
+  }
+
+  .paymentsPage .actionCell {
+    justify-content: end;
+  }
+}
+
+@media (max-width: 760px) {
+  .paymentsPage,
+  .paymentsPage.freeEducationTheme {
+    overflow-x: clip;
+  }
+
+  .paymentsPage .filterBar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .paymentsPage .projectRow {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+  }
+
+  .paymentsPage .projectName strong {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+/* BUDGET_PAYMENTS_FLUID_VIEWPORT_FIX_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}
 
