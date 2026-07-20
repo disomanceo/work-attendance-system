@@ -13,6 +13,24 @@ Updated: 2026-07-18
 
 ## Latest findings
 
+- Budget table typography on 2026-07-20:
+  - [x] Changed `/budget/projects` table detail text to regular weight while keeping headers, badges, and buttons distinct.
+  - [x] Changed `/budget/payments` table detail text to regular weight while keeping headers, badges, and buttons distinct.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the budget table typography update.
+  - [x] Confirm `npm.cmd run build` after the budget table typography update.
+
+- Attendance training report popup responsiveness on 2026-07-20:
+  - [x] Changed the "later" and close actions to hide the popup immediately before saving the dismissed state in the background.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the popup responsiveness update.
+  - [x] Confirm `npm.cmd run build` after the popup responsiveness update.
+
+- Memo related registry display on 2026-07-20:
+  - [x] Changed `/api/document-registry` to display leave items as Thai leave labels such as `ลาป่วย` and `ลากิจ`.
+  - [x] Included the leave, official-duty, and memo reason in the related registry subject text when available.
+  - [x] Made the memo related registry rows display-only instead of opening details from that box.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the related registry display update.
+  - [x] Confirm `npm.cmd run build` after the related registry display update.
+
 - Official documents responsive width polish on 2026-07-20:
   - [x] Expanded `/documents` to use the available app content width.
   - [x] Let the workload summary move below the table on cramped desktop widths so the document list keeps usable space.

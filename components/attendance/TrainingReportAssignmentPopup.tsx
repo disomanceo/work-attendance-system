@@ -152,48 +152,44 @@ export default function TrainingReportAssignmentPopup() {
   const hasPrevious = currentIndex > 0;
   const hasNext = currentIndex < count - 1;
 
-  async function dismiss() {
+  function dismiss() {
     if (!task) {
       setVisible(false);
       return;
     }
 
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.access_token) {
-        const response = await fetch("/api/notifications/seen", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "dismiss",
-            key: popupKey(task.taskId),
-            kind: "training-report-assignment",
-            referenceId: task.taskId,
-          }),
-        });
-        const result = await response.json().catch(() => null);
-
-        if (response.ok && result?.ok) {
-          setDismissedToday((previous) => ({
-            ...previous,
-            [task.taskId]: true,
-          }));
-        }
-      }
-    } catch {
-      setDismissedToday((previous) => ({
-        ...previous,
-        [task.taskId]: true,
-      }));
-    }
-
+    const taskId = task.taskId;
+    setDismissedToday((previous) => ({
+      ...previous,
+      [taskId]: true,
+    }));
     setVisible(false);
+
+    void (async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          await fetch("/api/notifications/seen", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "dismiss",
+              key: popupKey(taskId),
+              kind: "training-report-assignment",
+              referenceId: taskId,
+            }),
+          });
+        }
+      } catch {
+        // The popup is already closed; a later load can retry the server state.
+      }
+    })();
   }
 
   function openReportPage() {

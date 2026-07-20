@@ -3630,6 +3630,19 @@ export default function BudgetPaymentsPage() {
 }
 /* BUDGET_PAYMENTS_FLUID_VIEWPORT_FIX_END */
 
+/* BUDGET_PAYMENTS_TABLE_REGULAR_TEXT_START */
+.paymentsPage .projectRow .projectName strong,
+.paymentsPage .projectRow .amountCell strong,
+.paymentsPage .projectRow .countCell,
+.paymentsPage .projectRow .latestCell,
+.paymentsPage.freeEducationTheme .projectRow .projectName strong,
+.paymentsPage.freeEducationTheme .projectRow .amountCell strong,
+.paymentsPage.freeEducationTheme .projectRow .countCell,
+.paymentsPage.freeEducationTheme .projectRow .latestCell {
+  font-weight: 400;
+}
+/* BUDGET_PAYMENTS_TABLE_REGULAR_TEXT_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}
 

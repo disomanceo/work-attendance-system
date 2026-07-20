@@ -344,6 +344,10 @@
   cursor: pointer;
 }
 
+.registryTable tbody tr {
+  cursor: default;
+}
+
 .registryTable tbody tr:hover,
 .compactTable tbody tr:hover,
 .selectedRow {

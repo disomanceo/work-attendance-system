@@ -19,6 +19,24 @@ type DocumentIssueRow = {
   metadata: unknown;
 };
 
+type LeaveRegistryDetail = {
+  id: string;
+  leave_type: string | null;
+  reason: string | null;
+};
+
+type OfficialDutyRegistryDetail = {
+  id: string;
+  subject: string | null;
+  reason: string | null;
+};
+
+type MemoRegistryDetail = {
+  id: string;
+  subject: string | null;
+  reason: string | null;
+};
+
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   LEAVE: "ใบลา",
   OFFICIAL_DUTY: "ไปราชการ",
@@ -112,6 +130,31 @@ function readMetadataText(
   return "";
 }
 
+function text(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function leaveTypeLabel(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === "sick") return "ลาป่วย";
+  if (normalized === "personal") return "ลากิจ";
+
+  return value || "ใบลา";
+}
+
+function combineTitleAndReason(title: string, reason: string) {
+  const normalizedTitle = title.trim();
+  const normalizedReason = reason.trim();
+
+  if (!normalizedTitle) return normalizedReason;
+  if (!normalizedReason || normalizedReason === normalizedTitle) {
+    return normalizedTitle;
+  }
+
+  return `${normalizedTitle} - ${normalizedReason}`;
+}
+
 async function loadExistingReferenceIds(
   admin: SupabaseClient,
   table: "leave_requests" | "official_duty_requests" | "memo_requests",
@@ -176,6 +219,117 @@ async function filterExistingDocuments(
   });
 }
 
+async function loadRegistryDetails(
+  admin: SupabaseClient,
+  rows: DocumentIssueRow[]
+) {
+  const leaveIds: string[] = [];
+  const officialDutyIds: string[] = [];
+  const memoIds: string[] = [];
+
+  for (const row of rows) {
+    const referenceId = String(row.reference_id ?? "");
+    const documentType = String(row.document_type ?? "");
+
+    if (!referenceId) continue;
+    if (documentType === "LEAVE") leaveIds.push(referenceId);
+    if (["OFFICIAL_DUTY", "OFFICIAL"].includes(documentType)) {
+      officialDutyIds.push(referenceId);
+    }
+    if (documentType === "MEMO") memoIds.push(referenceId);
+  }
+
+  const [leaveResult, officialDutyResult, memoResult] = await Promise.all([
+    leaveIds.length > 0
+      ? admin
+          .from("leave_requests")
+          .select("id, leave_type, reason")
+          .in("id", Array.from(new Set(leaveIds)))
+      : Promise.resolve({ data: [], error: null }),
+    officialDutyIds.length > 0
+      ? admin
+          .from("official_duty_requests")
+          .select("id, subject, reason")
+          .in("id", Array.from(new Set(officialDutyIds)))
+      : Promise.resolve({ data: [], error: null }),
+    memoIds.length > 0
+      ? admin
+          .from("memo_requests")
+          .select("id, subject, reason")
+          .in("id", Array.from(new Set(memoIds)))
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (leaveResult.error) throw new Error(leaveResult.error.message);
+  if (officialDutyResult.error) {
+    throw new Error(officialDutyResult.error.message);
+  }
+  if (memoResult.error) throw new Error(memoResult.error.message);
+
+  return {
+    leaves: new Map(
+      ((leaveResult.data ?? []) as LeaveRegistryDetail[]).map((item) => [
+        String(item.id),
+        item,
+      ])
+    ),
+    officialDuties: new Map(
+      (
+        (officialDutyResult.data ?? []) as OfficialDutyRegistryDetail[]
+      ).map((item) => [String(item.id), item])
+    ),
+    memos: new Map(
+      ((memoResult.data ?? []) as MemoRegistryDetail[]).map((item) => [
+        String(item.id),
+        item,
+      ])
+    ),
+  };
+}
+
+function registrySubject(
+  row: DocumentIssueRow,
+  metadata: Record<string, unknown>,
+  details: Awaited<ReturnType<typeof loadRegistryDetails>>
+) {
+  const documentType = String(row.document_type ?? "");
+  const referenceId = String(row.reference_id ?? "");
+
+  if (documentType === "LEAVE") {
+    const leave = details.leaves.get(referenceId);
+    const leaveType =
+      text(leave?.leave_type) || readMetadataText(metadata, ["leaveType"]);
+    const reason = text(leave?.reason) || readMetadataText(metadata, ["reason"]);
+
+    return combineTitleAndReason(leaveTypeLabel(leaveType), reason);
+  }
+
+  if (["OFFICIAL_DUTY", "OFFICIAL"].includes(documentType)) {
+    const duty = details.officialDuties.get(referenceId);
+    const title =
+      text(duty?.subject) ||
+      readMetadataText(metadata, ["subject", "dutyReason"]) ||
+      "ไปราชการ";
+    const reason = text(duty?.reason) || readMetadataText(metadata, ["reason"]);
+
+    return combineTitleAndReason(title, reason);
+  }
+
+  if (documentType === "MEMO") {
+    const memo = details.memos.get(referenceId);
+    const title = text(memo?.subject) || readMetadataText(metadata, ["subject"]);
+    const reason = text(memo?.reason) || readMetadataText(metadata, ["reason"]);
+
+    return combineTitleAndReason(title, reason);
+  }
+
+  return (
+    readMetadataText(metadata, ["subject", "reason", "leaveType", "dutyReason"]) ||
+    DOCUMENT_TYPE_LABELS[documentType] ||
+    documentType
+  );
+}
+
 export async function GET(request: Request) {
   try {
     const auth = await authorize(request);
@@ -219,6 +373,7 @@ export async function GET(request: Request) {
       auth.admin,
       (data ?? []) as DocumentIssueRow[]
     );
+    const registryDetails = await loadRegistryDetails(auth.admin, existingRows);
 
     const documents = existingRows.map((item) => {
       const metadata =
@@ -232,12 +387,9 @@ export async function GET(request: Request) {
         "name",
       ]);
       const subject =
-        readMetadataText(metadata, [
-          "subject",
-          "reason",
-          "leaveType",
-          "dutyReason",
-        ]) || DOCUMENT_TYPE_LABELS[documentType] || documentType;
+        registrySubject(item, metadata, registryDetails) ||
+        DOCUMENT_TYPE_LABELS[documentType] ||
+        documentType;
 
       return {
         id: String(item.id),

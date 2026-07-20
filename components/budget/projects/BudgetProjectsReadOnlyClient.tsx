@@ -5856,6 +5856,19 @@ export default function BudgetProjectsReadOnlyClient() {
 }
 /* BUDGET_PROJECTS_ACTIVITY_COLUMN_FIT_END */
 
+/* BUDGET_PROJECTS_TABLE_REGULAR_TEXT_START */
+.projectsRoot .projectRow .projectText b,
+.projectsRoot .projectRow .ownerCell b,
+.projectsRoot .projectRow .leadCell b,
+.projectsRoot .projectRow .amountCell b,
+.projectsRoot.freeEducationTheme .projectRow .projectText b,
+.projectsRoot.freeEducationTheme .projectRow .ownerCell b,
+.projectsRoot.freeEducationTheme .projectRow .leadCell b,
+.projectsRoot.freeEducationTheme .projectRow .amountCell b {
+  font-weight: 400;
+}
+/* BUDGET_PROJECTS_TABLE_REGULAR_TEXT_END */
+
 /* FREE_EDUCATION_DARK_GREEN_THEME_STEP10_END */
 `}</style>
     </div>

@@ -759,16 +759,6 @@ export default function MemoPage() {
                     pagedDocuments.map((item) => (
                       <tr
                         key={item.id}
-                        className={
-                          selectedRequest?.id === item.referenceId
-                            ? styles.selectedRow
-                            : ""
-                        }
-                        onClick={() => {
-                          if (item.documentType === "MEMO") {
-                            openMemoDetail(item.referenceId);
-                          }
-                        }}
                       >
                         <td>{item.formattedNumber || "-"}</td>
                         <td>{item.typeLabel}</td>
@@ -778,7 +768,7 @@ export default function MemoPage() {
                         <td>
                           <span className={styles.status}>
                             {item.status === "COMPLETED"
-                              ? "ออกเลขแล้ว"
+                              ? "อนุมัติ"
                               : item.status}
                           </span>
                         </td>
