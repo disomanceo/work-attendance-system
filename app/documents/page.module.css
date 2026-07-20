@@ -4983,3 +4983,335 @@
     box-sizing: border-box !important;
   }
 }
+
+/* DOCUMENTS_FLUID_VIEWPORT_FIX_V1_START */
+.page {
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+  padding-inline: clamp(10px, 1.4vw, 16px);
+}
+
+.summaryGrid,
+.workspace {
+  width: 100%;
+  max-width: none;
+}
+
+.summaryCard,
+.workspace,
+.mainPanel,
+.workloadPanel,
+.viewTabs,
+.toolbar,
+.resultBar,
+.tableWrap,
+.bookTable,
+.inlineDetail,
+.inlineDetailHeader,
+.inlineDetailWorkflow,
+.inlineDetailActions {
+  min-width: 0;
+}
+
+.workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+}
+
+.workspaceCollapsed {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+.viewTabs {
+  flex-wrap: wrap;
+}
+
+.viewTabs button {
+  min-width: 0;
+  white-space: normal;
+}
+
+.toolbar {
+  grid-template-columns:
+    minmax(220px, 1.55fr)
+    minmax(118px, 0.7fr)
+    minmax(118px, 0.7fr)
+    minmax(140px, 0.85fr);
+}
+
+.searchField,
+.selectField,
+.searchField input,
+.selectField select {
+  min-width: 0;
+}
+
+.resultBar.documentsMobilePagerV1 {
+  min-width: 0;
+}
+
+@media (min-width: 769px) {
+  .tableWrap {
+    overflow-x: hidden;
+  }
+
+  .bookTable {
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .bookTable th,
+  .bookTable td {
+    padding: 7px 6px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .bookTable th:nth-child(1),
+  .bookTable td:nth-child(1) {
+    width: 10%;
+  }
+
+  .bookTable th:nth-child(2),
+  .bookTable td:nth-child(2) {
+    width: 43%;
+  }
+
+  .bookTable th:nth-child(3),
+  .bookTable td:nth-child(3) {
+    width: 13%;
+  }
+
+  .bookTable th:nth-child(4),
+  .bookTable td:nth-child(4) {
+    width: 10%;
+  }
+
+  .bookTable th:nth-child(5),
+  .bookTable td:nth-child(5) {
+    width: 16%;
+  }
+
+  .bookTable th:nth-child(6),
+  .bookTable td:nth-child(6) {
+    width: 8%;
+  }
+
+  .registrationCell,
+  .subjectCell,
+  .sourceCell,
+  .assigneeCell,
+  .actionCell {
+    min-width: 0;
+  }
+
+  .registrationCell {
+    padding-left: 6px;
+  }
+
+  .registrationCell strong,
+  .subjectButton,
+  .sourceGroupOnly,
+  .assigneeStatusItem,
+  .doneAction,
+  .clerkDoneCompact,
+  .clerkSubmitCompact {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .registrationCell small,
+  .subjectCell > small,
+  .documentListDate,
+  .documentNumber {
+    font-size: 9.5px;
+    line-height: 1.2;
+  }
+
+  .subjectButton {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .statusBadge {
+    max-width: 100%;
+    min-width: 0;
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 10px;
+    line-height: 1.15;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .assigneeStatusList {
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    gap: 3px 6px;
+  }
+
+  .assigneeStatusItem {
+    grid-template-columns: 14px minmax(0, max-content);
+    max-width: 100%;
+  }
+
+  .assigneeStatusItem > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .actionCell {
+    justify-items: end;
+    overflow: visible;
+  }
+
+  .actionCell .doneAction,
+  .clerkDoneCompact,
+  .clerkSubmitCompact {
+    min-height: 24px;
+    max-width: 100%;
+    padding: 3px 6px;
+    white-space: normal;
+  }
+
+  .fileLinks {
+    gap: 3px 6px;
+  }
+
+  .fileNameLink {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .inlineDetailHeader {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(260px, 0.95fr) auto;
+    align-items: start;
+  }
+
+  .inlineDetailActions {
+    grid-template-columns: repeat(2, minmax(0, auto)) 30px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1420px) {
+  .workspace,
+  .workspaceCollapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workloadPanel,
+  .workloadPanelCollapsed {
+    width: 100%;
+  }
+
+  .workloadHeader {
+    padding: 9px 12px;
+  }
+
+  .workloadContent {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    padding: 10px 12px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1180px) {
+  .summaryGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .summaryCard {
+    min-height: 60px;
+    padding: 9px 10px;
+    gap: 8px;
+  }
+
+  .summaryIcon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .summaryCard strong {
+    font-size: 17px;
+  }
+
+  .summaryCard span,
+  .summaryCard small {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .searchField {
+    grid-column: 1 / -1;
+  }
+
+  .bookTable th:nth-child(1),
+  .bookTable td:nth-child(1) {
+    width: 11%;
+  }
+
+  .bookTable th:nth-child(2),
+  .bookTable td:nth-child(2) {
+    width: 47%;
+  }
+
+  .bookTable th:nth-child(3),
+  .bookTable td:nth-child(3) {
+    width: 12%;
+  }
+
+  .bookTable th:nth-child(4),
+  .bookTable td:nth-child(4) {
+    width: 11%;
+  }
+
+  .bookTable th:nth-child(5),
+  .bookTable td:nth-child(5) {
+    width: 13%;
+  }
+
+  .bookTable th:nth-child(6),
+  .bookTable td:nth-child(6) {
+    width: 6%;
+  }
+
+  .bookTable th,
+  .bookTable td {
+    padding-inline: 5px;
+    font-size: 11px;
+  }
+
+  .assigneeStatusList {
+    grid-template-columns: 1fr;
+  }
+
+  .inlineDetailHeader {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inlineDetailActions {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 30px;
+    justify-content: stretch;
+  }
+
+  .inlineDetailActions .signAssignButton,
+  .inlineDetailActions .assignDetailButton,
+  .inlineDetailActions .doneAction {
+    width: 100%;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    overflow-x: hidden;
+  }
+}
+/* DOCUMENTS_FLUID_VIEWPORT_FIX_V1_END */
