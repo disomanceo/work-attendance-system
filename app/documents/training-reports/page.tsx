@@ -137,6 +137,28 @@ function formatDate(value: string) {
   }).format(new Date(`${value}T12:00:00+07:00`));
 }
 
+function formatDateTime(value: string) {
+  if (!value) return "";
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const date = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(parsed);
+  const time = new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(parsed);
+
+  return `${date} เวลา ${time} น.`;
+}
+
 function sourceBookNumber(task: TrainingReportSourceTask) {
   return task.documentNumber || task.registrationNumber || "-";
 }
@@ -207,10 +229,16 @@ function canSubmitOwnReport(row: GroupedReportRow) {
   );
 }
 
-function canEditOwnSubmittedReport(row: GroupedReportRow) {
-  return Boolean(
-    row.currentUserRow?.report && row.currentUserRow.status === "submitted",
-  );
+function submittedUpdatedAt(row: GroupedReportRow) {
+  return row.rows
+    .map((item) => item.report)
+    .filter(
+      (report): report is TrainingReport =>
+        Boolean(report) && report?.status === "submitted",
+    )
+    .map((report) => report.updatedAt || report.submittedAt || "")
+    .filter(Boolean)
+    .sort((left, right) => right.localeCompare(left))[0];
 }
 
 function createFormFromTask(
@@ -931,9 +959,16 @@ export default function TrainingReportsPage() {
                     {formatDate(row.documentDate || row.receivedDate)}
                   </td>
                   <td data-label="สถานะ">
-                    <span className={reportStatusClass(row.status)}>
-                      {reportStatusLabel(row.status)}
-                    </span>
+                    <div className={styles.statusCell}>
+                      <span className={reportStatusClass(row.status)}>
+                        {reportStatusLabel(row.status)}
+                      </span>
+                      {row.status === "submitted" && submittedUpdatedAt(row) && (
+                        <small>
+                          อัพเดท {formatDateTime(submittedUpdatedAt(row))}
+                        </small>
+                      )}
+                    </div>
                   </td>
                   <td data-label="จัดการ">
                     <div className={styles.actionStack}>
@@ -941,18 +976,36 @@ export default function TrainingReportsPage() {
                         .map((item) => ({ item, pdf: reportPdf(item.report) }))
                         .filter(({ pdf }) => Boolean(pdf?.fileUrl))
                         .map(({ item, pdf }) => (
-                          <a
+                          <span
                             key={pdf?.fileId || item.task.taskId}
-                            className={styles.pdfButton}
-                            href={pdf?.fileUrl}
-                            target="_blank"
-                            rel="noreferrer"
+                            className={styles.pdfAction}
                           >
-                            PDF{" "}
-                            {compactPersonDisplayName({
-                              name: item.task.assigneeName || "",
-                            })}
-                          </a>
+                            <a
+                              className={styles.pdfButton}
+                              href={pdf?.fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              PDF{" "}
+                              {compactPersonDisplayName({
+                                name: item.task.assigneeName || "",
+                              })}
+                            </a>
+                            {item.status === "submitted" &&
+                              item.report?.teacherProfileId === currentProfile?.id && (
+                                <button
+                                  type="button"
+                                  className={styles.iconEditButton}
+                                  onClick={() => openReportForm(item)}
+                                  aria-label={`แก้ไขรายงานของ ${
+                                    item.task.assigneeName || "ผู้ใช้"
+                                  }`}
+                                  title="แก้ไขรายงาน"
+                                >
+                                  ✎
+                                </button>
+                              )}
+                          </span>
                         ))}
                       {canSubmitOwnReport(row) && row.currentUserRow && (
                         <button
@@ -963,17 +1016,6 @@ export default function TrainingReportsPage() {
                           }
                         >
                           ส่งรายงาน
-                        </button>
-                      )}
-                      {canEditOwnSubmittedReport(row) && row.currentUserRow && (
-                        <button
-                          type="button"
-                          className={styles.editButton}
-                          onClick={() =>
-                            openReportForm(row.currentUserRow ?? undefined)
-                          }
-                        >
-                          แก้ไขรายงาน
                         </button>
                       )}
                     </div>

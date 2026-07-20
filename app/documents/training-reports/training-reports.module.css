@@ -461,6 +461,20 @@
   color: #15803d;
 }
 
+.statusCell {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+
+.statusCell small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
 .statusPartial {
   background: #dbeafe;
   color: #1d4ed8;
@@ -543,6 +557,12 @@
   gap: 6px;
 }
 
+.pdfAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .pagination {
   display: flex;
   align-items: center;
@@ -596,6 +616,28 @@
   border: 1px solid #bbf7d0;
   background: #ecfdf5;
   color: #047857;
+}
+
+.iconEditButton {
+  display: inline-grid;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconEditButton:hover,
+.iconEditButton:focus-visible {
+  background: #d1fae5;
+  outline: none;
 }
 
 .empty {
@@ -1084,11 +1126,29 @@
     justify-content: flex-start;
   }
 
+  .statusCell {
+    justify-items: flex-start;
+  }
+
+  .statusCell small {
+    white-space: normal;
+  }
+
+  .pdfAction {
+    max-width: 100%;
+  }
+
   .sendButton,
   .pdfButton {
     width: auto;
     min-height: 34px;
     padding: 0 10px;
+  }
+
+  .iconEditButton {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
   }
 
   .modalBackdrop {

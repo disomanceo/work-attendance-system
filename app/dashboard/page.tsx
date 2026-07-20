@@ -243,6 +243,7 @@ export default function DashboardPage() {
           submitted: number;
           hours: number;
           imageFileId?: string;
+          submittedReportIds: Set<string>;
         }
       >();
 
@@ -259,13 +260,14 @@ export default function DashboardPage() {
             submitted: 0,
             hours: 0,
             imageFileId: task.assigneeImageFileId,
+            submittedReportIds: new Set<string>(),
           };
         current.assignedTopics.add(trainingTopicKey(task));
         if (task.assigneeImageFileId) current.imageFileId = task.assigneeImageFileId;
         const report = reportByTaskId.get(task.taskId);
         if (report?.status === "submitted") {
           current.submitted += 1;
-          current.hours += Number(report.hours || 0);
+          current.submittedReportIds.add(report.id);
         } else if (report?.status === "draft") {
           current.draft += 1;
         } else if (report?.status !== "not_attended") {
@@ -274,23 +276,51 @@ export default function DashboardPage() {
         peopleMap.set(key, current);
       }
 
+      for (const report of submittedReports) {
+        const key = report.teacherProfileId || report.teacherNameSnapshot;
+        if (!key) continue;
+        const current =
+          peopleMap.get(key) ??
+          {
+            name: report.teacherNameSnapshot || "ไม่ระบุชื่อ",
+            assignedTopics: new Set<string>(),
+            pending: 0,
+            draft: 0,
+            submitted: 0,
+            hours: 0,
+            imageFileId: "",
+            submittedReportIds: new Set<string>(),
+          };
+
+        current.hours += Number(report.hours || 0);
+        if (!current.submittedReportIds.has(report.id)) {
+          current.submitted += 1;
+          current.submittedReportIds.add(report.id);
+        }
+        peopleMap.set(key, current);
+      }
+
       const people = Array.from(peopleMap.values())
-        .map((person) => ({
-          name: person.name,
-          initials: initials(person.name),
-          imageFileId: person.imageFileId,
-          trainingHours: person.hours,
-          statusCounts: {
-            unacknowledged: person.pending,
-            inProgress: person.draft,
-            done: person.submitted,
-          },
-          label: `อบรม ${person.assignedTopics.size.toLocaleString(
-            "th-TH",
-          )} เรื่อง · รายงาน ${person.submitted.toLocaleString(
-            "th-TH",
-          )} เรื่อง · ${person.hours.toLocaleString("th-TH")} ชม.`,
-        }))
+        .map((person) => {
+          const topicCount = Math.max(person.assignedTopics.size, person.submitted);
+
+          return {
+            name: person.name,
+            initials: initials(person.name),
+            imageFileId: person.imageFileId,
+            trainingHours: person.hours,
+            statusCounts: {
+              unacknowledged: person.pending,
+              inProgress: person.draft,
+              done: person.submitted,
+            },
+            label: `อบรม ${topicCount.toLocaleString(
+              "th-TH",
+            )} เรื่อง · รายงาน ${person.submitted.toLocaleString(
+              "th-TH",
+            )} เรื่อง · ${person.hours.toLocaleString("th-TH")} ชม.`,
+          };
+        })
         .sort((left, right) => left.name.localeCompare(right.name, "th"));
 
       setTraining({

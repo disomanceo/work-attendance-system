@@ -19,6 +19,28 @@ Updated: 2026-07-18
   - [x] Confirm `npm.cmd run lint -- --quiet` after the budget table typography update.
   - [x] Confirm `npm.cmd run build` after the budget table typography update.
 
+- Training report edit controls on 2026-07-20:
+  - [x] Moved the submitted report edit action into a pencil icon beside each person's PDF button.
+  - [x] Limited the pencil edit button to the owner of that submitted report.
+  - [x] Added a small gray updated timestamp under the submitted status.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the training report edit control update.
+  - [x] Confirm `npm.cmd run build` after the training report edit control update.
+
+- Training report PDF page layout refinement on 2026-07-20:
+  - [x] Formatted GAS training report dates as Thai long dates such as `20 กรกฎาคม 2569`.
+  - [x] Adjusted the director signature line to avoid wrapping the word `โรงเรียน`.
+  - [x] Changed report photo pages to stack one photo block at a time, with up to two photos per page.
+  - [x] Updated GAS PDF margins to use a wider left margin and practical right margin.
+  - [x] Confirm GAS syntax check after the training report PDF page layout refinement.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the training report PDF page layout refinement.
+  - [x] Confirm `npm.cmd run build` after the training report PDF page layout refinement.
+
+- Dashboard training hours on 2026-07-20:
+  - [x] Updated the training tab people list to calculate the blue hour badge from submitted training reports.
+  - [x] Included submitted manual training reports that do not have a linked Smart Area assignment.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the dashboard training hour update.
+  - [x] Confirm `npm.cmd run build` after the dashboard training hour update.
+
 - Training report PDF layout on 2026-07-20:
   - [x] Adjusted the meeting/training report PDF payload to pass the director name and existing PDF file id.
   - [x] Updated the local GAS PDF template so the first page is the report body with signature fields.
