@@ -207,6 +207,12 @@ function canSubmitOwnReport(row: GroupedReportRow) {
   );
 }
 
+function canEditOwnSubmittedReport(row: GroupedReportRow) {
+  return Boolean(
+    row.currentUserRow?.report && row.currentUserRow.status === "submitted",
+  );
+}
+
 function createFormFromTask(
   task: TrainingReportSourceTask,
   report?: TrainingReport | null,
@@ -649,6 +655,21 @@ export default function TrainingReportsPage() {
         "existingPhotoAttachments",
         JSON.stringify(photoAttachments.filter(Boolean)),
       );
+      payload.set(
+        "existingPdfAttachment",
+        JSON.stringify(
+          form.id
+            ? reports
+                .find((report) => report.id === form.id)
+                ?.attachments.filter(
+                  (attachment) =>
+                    attachment.attachmentKind === "pdf" ||
+                    attachment.mimeType === "application/pdf" ||
+                    attachment.fileName.toLowerCase().endsWith(".pdf"),
+                ) ?? []
+            : [],
+        ),
+      );
       photoFiles.forEach((file, index) => {
         if (file) payload.append(`photoSlot${index + 1}`, file);
       });
@@ -934,13 +955,26 @@ export default function TrainingReportsPage() {
                           </a>
                         ))}
                       {canSubmitOwnReport(row) && row.currentUserRow && (
-                      <button
-                        type="button"
-                        className={styles.sendButton}
-                        onClick={() => openReportForm(row.currentUserRow ?? undefined)}
-                      >
-                        ส่งรายงาน
-                      </button>
+                        <button
+                          type="button"
+                          className={styles.sendButton}
+                          onClick={() =>
+                            openReportForm(row.currentUserRow ?? undefined)
+                          }
+                        >
+                          ส่งรายงาน
+                        </button>
+                      )}
+                      {canEditOwnSubmittedReport(row) && row.currentUserRow && (
+                        <button
+                          type="button"
+                          className={styles.editButton}
+                          onClick={() =>
+                            openReportForm(row.currentUserRow ?? undefined)
+                          }
+                        >
+                          แก้ไขรายงาน
+                        </button>
                       )}
                     </div>
                   </td>
@@ -1187,7 +1221,11 @@ export default function TrainingReportsPage() {
                 บันทึกร่าง
               </button>
               <button type="submit" disabled={saving}>
-                {saving ? "กำลังส่ง..." : "ส่งรายงาน"}
+                {saving
+                  ? "กำลังบันทึก..."
+                  : form.id
+                    ? "อัปเดตรายงาน"
+                    : "ส่งรายงาน"}
               </button>
             </div>
           </form>

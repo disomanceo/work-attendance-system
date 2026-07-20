@@ -56,26 +56,35 @@ function createTrainingReportPdf_(body) {
   const doc = DocumentApp.create(fileName.replace(/\.pdf$/i, ""));
   const docFile = DriveApp.getFileById(doc.getId());
   const content = doc.getBody();
+  content.setMarginTop(42);
+  content.setMarginBottom(42);
+  content.setMarginLeft(54);
+  content.setMarginRight(54);
 
   content.appendParagraph("รายงานผลการประชุม/อบรม")
-    .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  appendPair_(content, "เลขหนังสือ", body.bookNumber);
-  appendPair_(content, "เรื่อง", body.documentTitle);
-  appendPair_(content, "ผู้รายงาน", body.teacherName);
-  appendPair_(content, "ประเภท", body.trainingType);
-  appendPair_(content, "วันที่", dateRange_(body.trainingStartDate, body.trainingEndDate));
-  appendPair_(content, "จำนวนชั่วโมง", body.hours);
-  appendPair_(content, "สถานที่", body.place);
-  appendPair_(content, "ผู้จัด", body.organizer);
+    .setHeading(DocumentApp.ParagraphHeading.HEADING1)
+    .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  appendInfoTable_(content, [
+    ["เลขหนังสือ", body.bookNumber],
+    ["เรื่อง", body.documentTitle],
+    ["ผู้รายงาน", body.teacherName],
+    ["ประเภท", body.trainingType],
+    ["วันที่", dateRange_(body.trainingStartDate, body.trainingEndDate)],
+    ["จำนวนชั่วโมง", body.hours ? String(body.hours) + " ชั่วโมง" : "-"],
+    ["สถานที่", body.place],
+    ["ผู้จัด", body.organizer],
+  ]);
   appendSection_(content, "สรุปสาระสำคัญ", body.summary);
   appendSection_(content, "ประโยชน์ที่ได้รับ", body.benefits);
   appendSection_(content, "ข้อเสนอแนะ", body.suggestions);
+  appendSignatureBlock_(content, body.teacherName, body.directorName);
   appendPhotoSlots_(content, body.photoSlots || []);
 
   doc.saveAndClose();
   docFile.moveTo(folder);
 
   const pdfBlob = docFile.getBlob().getAs("application/pdf").setName(fileName);
+  trashExistingReportPdfs_(folder, body.reportId, fileName, body.existingPdfFileId);
   const pdfFile = folder.createFile(pdfBlob);
 
   pdfFile.setDescription(
@@ -188,15 +197,32 @@ function buildFileName_(body) {
 }
 
 function buildReportPdfFileName_(body) {
-  const stamp = Utilities.formatDate(new Date(), "Asia/Bangkok", "yyyyMMdd-HHmmss");
   const safeNumber = safeFolderName_(body.bookNumber, "no-book-number");
   const safeTeacher = safeFolderName_(body.teacherName, "teacher");
 
-  return "รายงานผลการประชุมอบรม-" + safeNumber + "-" + safeTeacher + "-" + stamp + ".pdf";
+  return "รายงานผลการประชุมอบรม-" + safeNumber + "-" + safeTeacher + ".pdf";
 }
 
 function appendPair_(content, label, value) {
   content.appendParagraph(String(label || "") + ": " + String(value || "-"));
+}
+
+function appendInfoTable_(content, rows) {
+  const table = content.appendTable();
+  table.setBorderColor("#9ca3af");
+  table.setBorderWidth(0.5);
+
+  rows.forEach(function(rowData) {
+    const row = table.appendTableRow();
+    const labelCell = row.appendTableCell(String(rowData[0] || ""));
+    const valueCell = row.appendTableCell(String(rowData[1] || "-"));
+    labelCell.setWidth(92);
+    valueCell.setWidth(360);
+    labelCell.getChild(0).asParagraph().editAsText().setBold(true);
+    valueCell.getChild(0).asParagraph().editAsText().setBold(false);
+  });
+
+  content.appendParagraph("");
 }
 
 function appendSection_(content, title, value) {
@@ -205,42 +231,137 @@ function appendSection_(content, title, value) {
 }
 
 function appendPhotoSlots_(content, slots) {
-  content.appendParagraph("รูปประกอบรายงาน").setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  const photos = (slots || [])
+    .filter(function(slot) {
+      return slot && String(slot.fileId || "").trim();
+    })
+    .sort(function(left, right) {
+      return Number(left.slotIndex || 0) - Number(right.slotIndex || 0);
+    });
 
-  const normalized = [1, 2, 3, 4].map(function(index) {
-    const found = (slots || []).filter(function(slot) {
-      return Number(slot.slotIndex || 0) === index;
-    })[0];
+  if (photos.length === 0) return;
 
-    return found || {
-      slotIndex: index,
-      slotLabel: index <= 2 ? "รูปการอบรม" : index === 3 ? "รูปใบประกาศ" : "รูปใบลงทะเบียน",
-      fileId: "",
-    };
-  });
-  const table = content.appendTable();
+  content.appendPageBreak();
+  content.appendParagraph("รูปประกอบรายงาน")
+    .setHeading(DocumentApp.ParagraphHeading.HEADING1)
+    .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
 
-  for (let rowIndex = 0; rowIndex < 2; rowIndex += 1) {
-    const row = table.appendTableRow();
-
-    for (let colIndex = 0; colIndex < 2; colIndex += 1) {
-      const slot = normalized[rowIndex * 2 + colIndex];
-      const cell = row.appendTableCell();
-      cell.appendParagraph(String(slot.slotLabel || ""));
-
-      if (slot.fileId) {
-        try {
-          const image = cell.appendImage(DriveApp.getFileById(String(slot.fileId)).getBlob());
-          image.setWidth(220);
-        } catch (error) {
-          cell.appendParagraph("ไม่สามารถแสดงรูปนี้ได้");
-        }
-      } else {
-        cell.appendParagraph("ไม่มีรูป");
-      }
-
-      cell.appendParagraph(String(slot.slotIndex || ""));
+  for (let index = 0; index < photos.length; index += 4) {
+    if (index > 0) {
+      content.appendPageBreak();
+      content.appendParagraph("รูปประกอบรายงาน")
+        .setHeading(DocumentApp.ParagraphHeading.HEADING1)
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
     }
+
+    const pagePhotos = photos.slice(index, index + 4);
+    const table = content.appendTable();
+    table.setBorderColor("#9ca3af");
+    table.setBorderWidth(0.5);
+
+    for (let rowIndex = 0; rowIndex < Math.ceil(pagePhotos.length / 2); rowIndex += 1) {
+      const row = table.appendTableRow();
+
+      for (let colIndex = 0; colIndex < 2; colIndex += 1) {
+        const slot = pagePhotos[rowIndex * 2 + colIndex];
+        const cell = row.appendTableCell();
+        cell.setWidth(225);
+        if (!slot) {
+          cell.clear();
+          continue;
+        }
+
+        const imageParagraph = cell.appendParagraph("");
+        imageParagraph.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        try {
+          const image = imageParagraph.appendInlineImage(
+            DriveApp.getFileById(String(slot.fileId)).getBlob()
+          );
+          fitImage_(image, 210, 160);
+        } catch (error) {
+          imageParagraph.appendText("ไม่สามารถแสดงรูปนี้ได้");
+        }
+
+        const caption = cell.appendParagraph(
+          "ภาพที่ " + String(index + rowIndex * 2 + colIndex + 1) + " " + String(slot.slotLabel || "รูปประกอบ")
+        );
+        caption.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        caption.editAsText().setBold(false);
+      }
+    }
+  }
+}
+
+function appendSignatureBlock_(content, teacherName, directorName) {
+  content.appendParagraph("");
+  content.appendParagraph("");
+
+  const table = content.appendTable();
+  table.setBorderWidth(0);
+  const row = table.appendTableRow();
+  const reporterCell = row.appendTableCell();
+  const directorCell = row.appendTableCell();
+
+  reporterCell.setWidth(225);
+  directorCell.setWidth(225);
+  appendSignatureCell_(reporterCell, "ผู้รายงาน", teacherName);
+  appendSignatureCell_(directorCell, "ผู้อำนวยการโรงเรียน", directorName);
+}
+
+function appendSignatureCell_(cell, roleLabel, name) {
+  cell.clear();
+  const signLine = cell.appendParagraph("ลงชื่อ........................................" + roleLabel);
+  signLine.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  signLine.editAsText().setBold(false);
+
+  const nameLine = cell.appendParagraph("(" + String(name || "") + ")");
+  nameLine.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  nameLine.editAsText().setBold(false);
+}
+
+function fitImage_(image, maxWidth, maxHeight) {
+  const width = image.getWidth();
+  const height = image.getHeight();
+
+  if (!width || !height) {
+    image.setWidth(maxWidth);
+    return;
+  }
+
+  const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+  image.setWidth(Math.floor(width * scale));
+  image.setHeight(Math.floor(height * scale));
+}
+
+function trashExistingReportPdfs_(folder, reportId, fileName, existingPdfFileId) {
+  const explicitId = String(existingPdfFileId || "").trim();
+  if (explicitId) {
+    try {
+      DriveApp.getFileById(explicitId).setTrashed(true);
+    } catch (error) {
+      // Continue with name/reportId cleanup below.
+    }
+  }
+
+  const files = folder.getFiles();
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getMimeType() !== MimeType.PDF) continue;
+    if (file.getName() === fileName || fileDescriptionMatchesReport_(file, reportId)) {
+      file.setTrashed(true);
+    }
+  }
+}
+
+function fileDescriptionMatchesReport_(file, reportId) {
+  const id = String(reportId || "").trim();
+  if (!id) return false;
+
+  try {
+    const description = JSON.parse(file.getDescription() || "{}");
+    return String(description.reportId || "") === id;
+  } catch (error) {
+    return false;
   }
 }
 

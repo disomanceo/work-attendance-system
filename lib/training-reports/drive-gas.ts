@@ -124,6 +124,8 @@ export async function createTrainingReportPdf(input: {
   benefits: string;
   application: string;
   suggestions: string;
+  directorName?: string;
+  existingPdfFileId?: string;
   photoSlots?: TrainingReportPhotoSlot[];
 }) {
   const config = getTrainingReportDriveConfig();
@@ -154,6 +156,8 @@ export async function createTrainingReportPdf(input: {
     benefits: input.benefits,
     application: input.application,
     suggestions: input.suggestions,
+    directorName: input.directorName || "",
+    existingPdfFileId: input.existingPdfFileId || "",
     photoSlots: input.photoSlots || [],
   });
 

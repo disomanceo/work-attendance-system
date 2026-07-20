@@ -19,6 +19,15 @@ Updated: 2026-07-18
   - [x] Confirm `npm.cmd run lint -- --quiet` after the budget table typography update.
   - [x] Confirm `npm.cmd run build` after the budget table typography update.
 
+- Training report PDF layout on 2026-07-20:
+  - [x] Adjusted the meeting/training report PDF payload to pass the director name and existing PDF file id.
+  - [x] Updated the local GAS PDF template so the first page is the report body with signature fields.
+  - [x] Moved available report photos to separate attachment pages and skipped missing photo slots.
+  - [x] Added submitted-report editing from the training reports page.
+  - [x] Replaced visible PDF duplicates by trashing the previous PDF before generating the new one in GAS.
+  - [x] Confirm `npm.cmd run lint -- --quiet` after the training report PDF update.
+  - [x] Confirm `npm.cmd run build` after the training report PDF update.
+
 - Attendance training report popup responsiveness on 2026-07-20:
   - [x] Changed the "later" and close actions to hide the popup immediately before saving the dismissed state in the background.
   - [x] Confirm `npm.cmd run lint -- --quiet` after the popup responsiveness update.

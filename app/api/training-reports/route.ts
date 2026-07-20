@@ -114,6 +114,32 @@ function parseExistingAttachments(value: FormDataEntryValue | null) {
   }
 }
 
+function findPdfAttachment(attachments: TrainingReportAttachment[]) {
+  return attachments.find(
+    (attachment) =>
+      attachment.attachmentKind === "pdf" ||
+      attachment.mimeType === "application/pdf" ||
+      attachment.fileName.toLowerCase().endsWith(".pdf"),
+  );
+}
+
+async function loadDirectorName(
+  auth: Awaited<ReturnType<typeof requireSmartAreaUser>>,
+) {
+  if (!auth.ok) return "";
+
+  const { data } = await auth.admin
+    .from("profiles")
+    .select("full_name, role, account_status")
+    .eq("account_status", "active")
+    .in("role", ["director", "admin"])
+    .order("role", { ascending: false })
+    .order("full_name", { ascending: true })
+    .limit(1);
+
+  return text(data?.[0]?.full_name);
+}
+
 function mapReport(id: string, data: Record<string, unknown>): TrainingReport {
   return {
     id,
@@ -291,6 +317,9 @@ export async function POST(request: Request) {
     const existingPhotos = parseExistingAttachments(
       form.get("existingPhotoAttachments"),
     ).filter((attachment) => attachment.attachmentKind === "photo");
+    const existingPdf = findPdfAttachment(
+      parseExistingAttachments(form.get("existingPdfAttachment")),
+    );
     const photoUploads = PHOTO_SLOTS.map((slot) => {
       const file = form.get(`photoSlot${slot.slotIndex}`);
       return file instanceof File && file.size > 0 ? { ...slot, file } : null;
@@ -357,6 +386,8 @@ export async function POST(request: Request) {
             benefits,
             application,
             suggestions,
+            directorName: await loadDirectorName(auth),
+            existingPdfFileId: existingPdf?.fileId || "",
             photoSlots: finalPhotos
               .filter((photo) => photo.fileId)
               .map((photo) => ({

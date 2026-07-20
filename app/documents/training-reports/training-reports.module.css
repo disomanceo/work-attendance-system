@@ -592,6 +592,12 @@
   text-decoration: none;
 }
 
+.editButton {
+  border: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .empty {
   padding: 34px 12px;
   color: #64748b;
