@@ -13,6 +13,14 @@ Updated: 2026-07-18
 
 ## Latest findings
 
+- Budget payments completed-project guard on 2026-07-20:
+  - [x] Hide the `เบิกจ่าย` button on `/budget/payments` when a project or `เรียนฟรี 15 ปี` record has status `เสร็จสิ้น`.
+  - [x] Guard `openPayment()` so completed records cannot open the payment modal from any path.
+  - [x] Guard `/api/budget/payments` POST so completed records return `409` before inserting a new payment.
+  - [x] Repaired Thai mojibake only in the touched budget payment files.
+  - [x] Confirmed `npm.cmd run lint -- --quiet` succeeds after the guard update.
+  - [x] Confirmed `npm.cmd run build` succeeds after the guard update.
+
 - Training reports module on 2026-07-18:
   - [x] Added `/documents/training-reports` as a mobile-first page for meeting/training reports.
   - [x] Added a sidebar menu item under the official documents module.

@@ -448,7 +448,7 @@ export async function POST(request: Request) {
 
     const { data: project, error: projectError } = await auth.admin
       .from("budget_projects")
-      .select("id,name,budget_activities(id,name)")
+      .select("id,name,status,budget_activities(id,name)")
       .eq("id", projectId)
       .maybeSingle();
 
@@ -456,6 +456,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { ok: false, message: "ไม่พบโครงการใน Supabase" },
         { status: 404 }
+      );
+    }
+
+    if (text(project.status) === "เสร็จสิ้น") {
+      return NextResponse.json(
+        { ok: false, message: "รายการนี้เสร็จสิ้นแล้ว ไม่สามารถเบิกจ่ายเพิ่มได้" },
+        { status: 409 }
       );
     }
 

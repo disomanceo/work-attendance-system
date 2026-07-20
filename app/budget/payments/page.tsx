@@ -84,6 +84,9 @@ function thaiDateTime(value: string) {
   }).format(date);
 }
 
+function isProjectCompleted(project: BudgetProjectListItem) {
+  return project.status === "เสร็จสิ้น";
+}
 
 function requesterDutyLabel(person: RequesterOption) {
   const labels: string[] = [];
@@ -454,6 +457,12 @@ export default function BudgetPaymentsPage() {
   }, [projects, paymentSummaryByProject, activeRecordType]);
 
   function openPayment(project: BudgetProjectListItem) {
+    if (isProjectCompleted(project)) {
+      setMessageType("error");
+      setMessage("รายการนี้เสร็จสิ้นแล้ว ไม่สามารถเบิกจ่ายเพิ่มได้");
+      return;
+    }
+
     const existingActivePayments = payments.filter(
       (payment) =>
         payment.project_id === project.id &&
@@ -877,7 +886,8 @@ export default function BudgetPaymentsPage() {
             );
             const expanded = expandedProjectId === project.id;
             const canPay =
-              currentUser?.canFinance || currentUser?.canManageAll;
+              (currentUser?.canFinance || currentUser?.canManageAll) &&
+              !isProjectCompleted(project);
 
             return (
               <article
