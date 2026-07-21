@@ -2977,6 +2977,14 @@ export default function BudgetProjectsReadOnlyClient() {
         }
         .pageTop h2 { margin: 0; color: #14532d; font-size: 26px; font-weight: 900; }
         .pageTop p { margin: 5px 0 0; color: #3f6212; font-size: 13px; font-weight: 600; }
+
+        /* prevent long headings or unbroken text from causing horizontal overflow on small screens */
+        .pageTop h2,
+        .pageTop p {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
         .readOnlyBadge { padding: 7px 11px; border-radius: 999px; color: #166534; background: #dcfce7; font-size: 11px; font-weight: 800; }
 
         .createProjectButton {
@@ -3092,7 +3100,8 @@ export default function BudgetProjectsReadOnlyClient() {
 
         .expandedCard .projectText b {
           color: #14532d;
-        }
+        }
+
 
         .projectRow {
           display: grid;
@@ -3122,7 +3131,8 @@ export default function BudgetProjectsReadOnlyClient() {
         }
 
         .chevron { color: #0ea5e9; font-size: 18px; font-weight: 900; transition: transform .18s ease; }
-        .chevronOpen { transform: rotate(90deg); }
+        .chevronOpen { transform: rotate(90deg); }
+
 
         .projectText {
           display: flex;
@@ -4801,7 +4811,9 @@ export default function BudgetProjectsReadOnlyClient() {
         }
 
         .pageTop > div:first-child {
-          flex: 1 1 320px;
+          /* allow the first column to shrink below 320px on narrow viewports */
+          flex: 1 1 0;
+          min-width: 0;
         }
 
         .pageTopActions {
@@ -5175,7 +5187,8 @@ export default function BudgetProjectsReadOnlyClient() {
 
   .chevron {
     font-size: 14px;
-  }
+  }
+
 
   .projectText b {
     display: -webkit-box;
