@@ -5014,14 +5014,6 @@
   min-width: 0;
 }
 
-.workspace {
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
-}
-
-.workspaceCollapsed {
-  grid-template-columns: minmax(0, 1fr) 44px;
-}
-
 .viewTabs {
   flex-wrap: wrap;
 }
@@ -5029,14 +5021,6 @@
 .viewTabs button {
   min-width: 0;
   white-space: normal;
-}
-
-.toolbar {
-  grid-template-columns:
-    minmax(220px, 1.55fr)
-    minmax(118px, 0.7fr)
-    minmax(118px, 0.7fr)
-    minmax(140px, 0.85fr);
 }
 
 .searchField,
@@ -5051,6 +5035,22 @@
 }
 
 @media (min-width: 769px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+  }
+
+  .workspaceCollapsed {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .toolbar {
+    grid-template-columns:
+      minmax(220px, 1.55fr)
+      minmax(118px, 0.7fr)
+      minmax(118px, 0.7fr)
+      minmax(140px, 0.85fr);
+  }
+
   .tableWrap {
     overflow-x: hidden;
   }
@@ -5312,6 +5312,20 @@
 @media (max-width: 768px) {
   .page {
     overflow-x: hidden;
+  }
+
+  .workspace,
+  .workspaceCollapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workloadPanel {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .workloadPanelCollapsed {
+    display: none !important;
   }
 }
 /* DOCUMENTS_FLUID_VIEWPORT_FIX_V1_END */
