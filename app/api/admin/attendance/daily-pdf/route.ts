@@ -301,7 +301,7 @@ async function authorizeAdmin(
     profileError ||
     !profile ||
     profile.account_status !== "active" ||
-    !["admin", "director"].includes(profile.role)
+    !["admin", "director", "staff"].includes(profile.role)
   ) {
     return {
       ok: false as const,
@@ -893,3 +893,4 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request, true);
 }
+

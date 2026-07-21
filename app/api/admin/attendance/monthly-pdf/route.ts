@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildMergedAttendancePdf } from "@/lib/attendance-pdf-merge";
 
@@ -88,7 +88,7 @@ async function authorizeAdmin(
     : "";
 
   if (!token) {
-    return { ok: false as const, status: 401, message: "กรุณาเข้าสู่ระบบ" };
+    return { ok: false as const, status: 401, message: "เธเธฃเธธเธ“เธฒเน€เธเนเธฒเธชเธนเนเธฃเธฐเธเธ" };
   }
 
   const supabase = createClient(config.supabaseUrl, config.serviceRoleKey, {
@@ -103,7 +103,7 @@ async function authorizeAdmin(
     return {
       ok: false as const,
       status: 401,
-      message: "Session ไม่ถูกต้องหรือหมดอายุ",
+      message: "Session เนเธกเนเธ–เธนเธเธ•เนเธญเธเธซเธฃเธทเธญเธซเธกเธ”เธญเธฒเธขเธธ",
     };
   }
 
@@ -116,12 +116,12 @@ async function authorizeAdmin(
   if (
     !profile ||
     profile.account_status !== "active" ||
-    !["admin", "director"].includes(profile.role)
+    !["admin", "director", "staff"].includes(profile.role)
   ) {
     return {
       ok: false as const,
       status: 403,
-      message: "ไม่มีสิทธิ์จัดการรายงาน PDF",
+      message: "เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธเธฑเธ”เธเธฒเธฃเธฃเธฒเธขเธเธฒเธ PDF",
     };
   }
 
@@ -170,12 +170,12 @@ async function callGas(
     result = JSON.parse(text) as GasResponse;
   } catch {
     throw new Error(
-      "GAS ส่งข้อมูลกลับมาไม่ถูกต้อง กรุณา Deploy เวอร์ชันล่าสุด"
+      "GAS เธชเนเธเธเนเธญเธกเธนเธฅเธเธฅเธฑเธเธกเธฒเนเธกเนเธ–เธนเธเธ•เนเธญเธ เธเธฃเธธเธ“เธฒ Deploy เน€เธงเธญเธฃเนเธเธฑเธเธฅเนเธฒเธชเธธเธ”"
     );
   }
 
   if (!response.ok || !result.ok) {
-    throw new Error(result.message || "ไม่สามารถเรียก GAS รายงาน PDF ได้");
+    throw new Error(result.message || "เนเธกเนเธชเธฒเธกเธฒเธฃเธ–เน€เธฃเธตเธขเธ GAS เธฃเธฒเธขเธเธฒเธ PDF เนเธ”เน");
   }
 
   return result;
@@ -198,7 +198,7 @@ function pdfResponse(result: GasResponse, fallbackName: string) {
       {
         ok: true,
         found: false,
-        message: result.message || "ยังไม่พบรายงาน PDF",
+        message: result.message || "เธขเธฑเธเนเธกเนเธเธเธฃเธฒเธขเธเธฒเธ PDF",
       },
       { status: 404 }
     );
@@ -229,7 +229,7 @@ async function handle(request: Request, allowWrite: boolean) {
         {
           ok: false,
           message:
-            "ยังไม่ได้ตั้งค่า GAS_DAILY_PDF_API_URL หรือ GAS_DAILY_PDF_SECRET",
+            "เธขเธฑเธเนเธกเนเนเธ”เนเธ•เธฑเนเธเธเนเธฒ GAS_DAILY_PDF_API_URL เธซเธฃเธทเธญ GAS_DAILY_PDF_SECRET",
         },
         { status: 500 }
       );
@@ -250,7 +250,7 @@ async function handle(request: Request, allowWrite: boolean) {
 
     if (!isValidMonth(month)) {
       return NextResponse.json(
-        { ok: false, message: "กรุณาระบุ month รูปแบบ YYYY-MM" },
+        { ok: false, message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธ month เธฃเธนเธเนเธเธ YYYY-MM" },
         { status: 400 }
       );
     }
@@ -279,7 +279,7 @@ async function handle(request: Request, allowWrite: boolean) {
 
       if (!weekRange) {
         return NextResponse.json(
-          { ok: false, message: "กรุณาระบุ startDay และ endDay ให้ถูกต้อง" },
+          { ok: false, message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธ startDay เนเธฅเธฐ endDay เนเธซเนเธ–เธนเธเธ•เนเธญเธ" },
           { status: 400 }
         );
       }
@@ -314,7 +314,7 @@ async function handle(request: Request, allowWrite: boolean) {
 
       if (!weekRange) {
         return NextResponse.json(
-          { ok: false, message: "กรุณาระบุ startDay และ endDay ให้ถูกต้อง" },
+          { ok: false, message: "เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธ startDay เนเธฅเธฐ endDay เนเธซเนเธ–เธนเธเธ•เนเธญเธ" },
           { status: 400 }
         );
       }
@@ -341,7 +341,7 @@ async function handle(request: Request, allowWrite: boolean) {
         {
           ok: false,
           message:
-            "mode ต้องเป็น metadata, file, weekly-metadata, weekly-file, status, build, build-weekly หรือ close",
+            "mode เธ•เนเธญเธเน€เธเนเธ metadata, file, weekly-metadata, weekly-file, status, build, build-weekly เธซเธฃเธทเธญ close",
         },
         { status: 400 }
       );
@@ -363,7 +363,7 @@ async function handle(request: Request, allowWrite: boolean) {
         message:
           error instanceof Error
             ? error.message
-            : "เกิดข้อผิดพลาดในรายงาน PDF",
+            : "เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เนเธเธฃเธฒเธขเธเธฒเธ PDF",
       },
       { status: 500 }
     );
@@ -377,3 +377,4 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return handle(request, true);
 }
+

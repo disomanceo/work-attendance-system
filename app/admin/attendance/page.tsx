@@ -1193,6 +1193,19 @@ export default function AdminAttendancePage() {
           </div>
 </header>
 
+        <nav className={styles.attendanceTabs} aria-label="มุมมองการลงเวลา">
+          <button
+            type="button"
+            className={styles.attendanceTab}
+            onClick={() => router.push("/attendance/history")}
+          >
+            การลงเวลาของฉัน
+          </button>
+          <button type="button" className={styles.activeAttendanceTab}>
+            การลงเวลาของโรงเรียน
+          </button>
+        </nav>
+
         <section className={styles.filterPanel}>
           <div className={styles.datePickerWrap} ref={calendarRef}>
             <label>เลือกวันที่</label>

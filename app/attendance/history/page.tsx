@@ -231,6 +231,10 @@ export default function AttendanceHistoryPage() {
     });
   }, [records, statusFilter]);
 
+  const canViewSchoolAttendance = ["admin", "director", "staff"].includes(
+    profile?.role ?? ""
+  );
+
   return (
     <main className={styles.page}>
       <section className={styles.panel}>
@@ -268,6 +272,21 @@ export default function AttendanceHistoryPage() {
             <strong>{formatThaiDate(startDate)} – {formatThaiDate(endDate)}</strong>
           </div>
         </section>
+
+        {canViewSchoolAttendance && (
+          <nav className={styles.attendanceTabs} aria-label="มุมมองการลงเวลา">
+            <button type="button" className={styles.activeAttendanceTab}>
+              การลงเวลาของฉัน
+            </button>
+            <button
+              type="button"
+              className={styles.attendanceTab}
+              onClick={() => router.push("/admin/attendance")}
+            >
+              การลงเวลาของโรงเรียน
+            </button>
+          </nav>
+        )}
 
         <section className={styles.toolbar}>
           <label>

@@ -1561,3 +1561,8 @@ Orders responsive layout:
 - [x] Changed the Dashboard highlight from overdue official books to official documents that are still unacknowledged.
 - [x] Removed the five-person cap from the Dashboard official-document people list so every pending assignee is shown.
 - [x] Aligned Dashboard official-document acknowledgement counts with the Documents page by treating `in_progress` tasks as acknowledged/in progress.
+
+- Attendance school report access for staff on 2026-07-21:
+  - [x] Allowed active staff users to access daily attendance PDF endpoints.
+  - [x] Allowed active staff users to access monthly attendance PDF endpoints.
+  - [x] Confirmed npm.cmd run build after the attendance PDF permission update.

@@ -1971,3 +1971,43 @@
     line-height: 1.25 !important;
   }
 }
+
+/* ATTENDANCE ROLE TABS START */
+
+.attendanceTabs{
+  display:flex;
+  gap:8px;
+  margin-top:16px;
+  padding:5px;
+  width:max-content;
+  max-width:100%;
+  border:1px solid rgba(47,141,105,.18);
+  border-radius:14px;
+  background:rgba(246,252,248,.9);
+}
+.attendanceTab,.activeAttendanceTab{
+  min-height:40px;
+  padding:0 16px;
+  border:0;
+  border-radius:10px;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+}
+.attendanceTab{
+  color:#47685b;
+  background:transparent;
+}
+.attendanceTab:hover{
+  background:rgba(47,141,105,.08);
+}
+.activeAttendanceTab{
+  color:#fff;
+  background:linear-gradient(135deg,#42b883,#2f8d69);
+  box-shadow:0 6px 16px rgba(47,141,105,.2);
+}
+@media(max-width:700px){
+  .attendanceTabs{width:100%}
+  .attendanceTab,.activeAttendanceTab{flex:1;padding:0 10px;font-size:13px}
+}
+/* ATTENDANCE ROLE TABS END */
