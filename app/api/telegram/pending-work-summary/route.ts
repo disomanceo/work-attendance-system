@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { collection, getDocs, limit, query } from "firebase/firestore";
 import { getTelegramGroupChatIds } from "@/lib/telegram/chat-ids";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
-import {
-  getTrainingReportFirebaseClient,
-  isTrainingReportFirebaseConfigured,
-  TRAINING_REPORTS_COLLECTION,
-} from "@/lib/training-reports/firebase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,9 +13,9 @@ type ProfileRow = {
   account_status: string | null;
 };
 
-type PendingItem = {
+type PendingCount = {
   teacherName: string;
-  subject: string;
+  count: number;
 };
 
 function adminClient() {
@@ -57,7 +51,13 @@ function escapeHtml(value: unknown) {
 function shortTeacherName(value: unknown) {
   const name = text(value).replace(/\s+/g, " ");
   if (!name) return "ไม่ระบุชื่อ";
-  return name.replace(/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ดร\.|ครู)\s*/u, "ครู");
+
+  return name
+    .replace(
+      /^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ว่าที่ร\.ต\.|ดร\.|ครู)\s*/u,
+      "ครู",
+    )
+    .trim();
 }
 
 async function requireDirector(request: Request) {
@@ -97,15 +97,21 @@ async function requireDirector(request: Request) {
   return { ok: true as const, admin, profile: row };
 }
 
-async function loadUnreadDocuments(admin: ReturnType<typeof adminClient>) {
+function addCount(map: Map<string, number>, teacherName: unknown) {
+  const name = shortTeacherName(teacherName);
+  map.set(name, (map.get(name) ?? 0) + 1);
+}
+
+async function loadUnacknowledgedSmartAreaTasks(
+  admin: ReturnType<typeof adminClient>,
+) {
   const { data, error } = await admin
     .from("smart_area_tasks")
     .select(
       `
       id,
-      assignee_id,
       assignee_name_snapshot,
-      assignment_opened_at,
+      assignment_acknowledged_at,
       is_active,
       profiles!smart_area_tasks_assignee_id_fkey (
         full_name,
@@ -113,7 +119,6 @@ async function loadUnreadDocuments(admin: ReturnType<typeof adminClient>) {
       ),
       smart_area_books!inner (
         id,
-        subject,
         status,
         is_active
       )
@@ -121,193 +126,80 @@ async function loadUnreadDocuments(admin: ReturnType<typeof adminClient>) {
     )
     .eq("is_active", true)
     .in("status", ["assigned", "in_progress"])
-    .is("assignment_opened_at", null)
+    .is("assignment_acknowledged_at", null)
     .eq("smart_area_books.is_active", true)
     .neq("smart_area_books.status", "done")
-    .limit(200);
+    .limit(1000);
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: any): PendingItem => {
+  return (data ?? []).map((row: any) => {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-    const book = Array.isArray(row.smart_area_books)
-      ? row.smart_area_books[0]
-      : row.smart_area_books;
-
-    return {
-      teacherName: shortTeacherName(
-        row.assignee_name_snapshot || profile?.full_name,
-      ),
-      subject: text(book?.subject) || "ไม่ระบุเรื่อง",
-    };
+    return row.assignee_name_snapshot || profile?.full_name;
   });
 }
 
-async function loadUnacknowledgedOrders(admin: ReturnType<typeof adminClient>) {
+async function loadUnacknowledgedOrderRecipients(
+  admin: ReturnType<typeof adminClient>,
+) {
   const { data: orders, error: ordersError } = await admin
     .from("order_documents")
-    .select("id, subject")
+    .select("id")
     .eq("status", "APPROVED")
-    .limit(200);
+    .limit(1000);
 
   if (ordersError) throw new Error(ordersError.message);
 
-  const orderById = new Map(
-    (orders ?? [])
-      .map((order: any) => [text(order.id), text(order.subject)] as const)
-      .filter(([id]) => Boolean(id)),
-  );
-
-  if (orderById.size === 0) return [];
+  const orderIds = (orders ?? []).map((order: any) => text(order.id));
+  if (orderIds.length === 0) return [];
 
   const { data, error } = await admin
     .from("order_document_recipients")
     .select("id, recipient_name_snapshot, order_document_id")
-    .in("order_document_id", Array.from(orderById.keys()))
+    .in("order_document_id", orderIds)
     .is("acknowledged_at", null)
-    .limit(200);
+    .limit(1000);
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: any): PendingItem => {
-    const order = { title: orderById.get(text(row.order_document_id)) };
-
-    return {
-      teacherName: shortTeacherName(row.recipient_name_snapshot),
-      subject: text(order?.title) || "ไม่ระบุเรื่อง",
-    };
-  });
+  return (data ?? []).map((row: any) => row.recipient_name_snapshot);
 }
 
-async function loadSubmittedTrainingAssignmentIds() {
-  if (!isTrainingReportFirebaseConfigured()) return new Set<string>();
-
-  const { db } = getTrainingReportFirebaseClient();
-  const snapshot = await getDocs(
-    query(collection(db, TRAINING_REPORTS_COLLECTION), limit(500)),
-  );
-  const doneAssignmentIds = new Set<string>();
-
-  snapshot.docs.forEach((item) => {
-    const data = item.data();
-    const status = text(data.status);
-    const assignmentId = text(data.sourceAssignmentId);
-
-    if (
-      assignmentId &&
-      (status === "submitted" ||
-        status === "not_attended" ||
-        status === "draft")
-    ) {
-      doneAssignmentIds.add(assignmentId);
-    }
-  });
-
-  return doneAssignmentIds;
-}
-
-async function loadPendingTrainingReports(
+async function loadUnacknowledgedCounts(
   admin: ReturnType<typeof adminClient>,
 ) {
-  const [doneAssignmentIds, tasksResult] = await Promise.all([
-    loadSubmittedTrainingAssignmentIds(),
-    admin
-      .from("smart_area_tasks")
-      .select(
-        `
-        id,
-        assignee_id,
-        assignee_name_snapshot,
-        requires_training_report,
-        is_active,
-        profiles!smart_area_tasks_assignee_id_fkey (
-          full_name,
-          account_status
-        ),
-        smart_area_books!inner (
-          id,
-          subject,
-          is_active
-        )
-      `,
-      )
-      .eq("is_active", true)
-      .eq("requires_training_report", true)
-      .eq("smart_area_books.is_active", true)
-      .limit(200),
+  const [documentNames, orderNames] = await Promise.all([
+    loadUnacknowledgedSmartAreaTasks(admin),
+    loadUnacknowledgedOrderRecipients(admin),
   ]);
 
-  if (tasksResult.error) throw new Error(tasksResult.error.message);
+  const counts = new Map<string, number>();
+  for (const name of [...documentNames, ...orderNames]) addCount(counts, name);
 
-  return (tasksResult.data ?? [])
-    .filter((row: any) => !doneAssignmentIds.has(text(row.id)))
-    .map((row: any): PendingItem => {
-      const profile = Array.isArray(row.profiles)
-        ? row.profiles[0]
-        : row.profiles;
-      const book = Array.isArray(row.smart_area_books)
-        ? row.smart_area_books[0]
-        : row.smart_area_books;
-
-      return {
-        teacherName: shortTeacherName(
-          row.assignee_name_snapshot || profile?.full_name,
-        ),
-        subject: text(book?.subject) || "ไม่ระบุเรื่อง",
-      };
-    });
+  return Array.from(counts.entries())
+    .map(([teacherName, count]) => ({ teacherName, count }))
+    .sort(
+      (left, right) =>
+        right.count - left.count ||
+        left.teacherName.localeCompare(right.teacherName, "th"),
+    );
 }
 
-function formatItems(label: string, items: PendingItem[]) {
-  if (items.length === 0) return [];
-
-  return [
-    `<b>${escapeHtml(label)}</b>`,
+function buildMessage(items: PendingCount[]) {
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  const lines = [
+    "<b>มีงานที่ยังไม่รับทราบ</b>",
+    `ทั้งหมด ${total.toLocaleString("th-TH")} งาน`,
+    "",
     ...items.map(
       (item) =>
-        `⚠️ ${escapeHtml(item.teacherName)} ${escapeHtml(label)} ${escapeHtml(
-          item.subject,
-        )}`,
-    ),
-  ];
-}
-
-function buildMessage(input: {
-  unreadDocuments: PendingItem[];
-  unacknowledgedOrders: PendingItem[];
-  pendingTrainingReports: PendingItem[];
-}) {
-  const lines = [
-    "📌 <b>แจ้งงานค้าง</b>",
-    ...formatItems("ยังไม่เปิดหนังสือ", input.unreadDocuments),
-    ...formatItems("ยังไม่รับทราบคำสั่ง", input.unacknowledgedOrders),
-    ...formatItems(
-      "ยังไม่รายงานการประชุม/อบรม",
-      input.pendingTrainingReports,
+        `${escapeHtml(item.teacherName)}  ${item.count.toLocaleString(
+          "th-TH",
+        )}  งาน`,
     ),
   ];
 
   return lines.join("\n");
-}
-
-function splitTelegramMessage(message: string) {
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const line of message.split("\n")) {
-    const next = current ? `${current}\n${line}` : line;
-
-    if (next.length > 3500 && current) {
-      chunks.push(current);
-      current = line;
-      continue;
-    }
-
-    current = next;
-  }
-
-  if (current) chunks.push(current);
-  return chunks.length > 0 ? chunks : [message];
 }
 
 function rejectionDetails(results: PromiseSettledResult<unknown>[]) {
@@ -338,47 +230,32 @@ export async function POST(request: Request) {
 
     if (chatIds.length === 0) {
       return NextResponse.json(
-        { ok: false, message: "ยังไม่ได้ตั้งค่ากลุ่ม Telegram สำหรับแจ้งเตือน" },
+        {
+          ok: false,
+          message: "ยังไม่ได้ตั้งค่ากลุ่ม Telegram สำหรับแจ้งเตือน",
+        },
         { status: 500 },
       );
     }
 
-    const [unreadDocuments, unacknowledgedOrders, pendingTrainingReports] =
-      await Promise.all([
-        loadUnreadDocuments(auth.admin),
-        loadUnacknowledgedOrders(auth.admin),
-        loadPendingTrainingReports(auth.admin),
-      ]);
-
-    const total =
-      unreadDocuments.length +
-      unacknowledgedOrders.length +
-      pendingTrainingReports.length;
+    const pendingCounts = await loadUnacknowledgedCounts(auth.admin);
+    const total = pendingCounts.reduce((sum, item) => sum + item.count, 0);
 
     if (total === 0) {
       return NextResponse.json({
         ok: true,
-        message: "ไม่มีงานค้างที่ต้องแจ้งเตือน",
+        message: "ไม่มีงานที่ยังไม่รับทราบ",
         result: {
           sent: false,
           total,
-          unreadDocuments: 0,
-          unacknowledgedOrders: 0,
-          pendingTrainingReports: 0,
+          people: 0,
         },
       });
     }
 
-    const message = buildMessage({
-      unreadDocuments,
-      unacknowledgedOrders,
-      pendingTrainingReports,
-    });
-    const messages = splitTelegramMessage(message);
+    const message = buildMessage(pendingCounts);
     const results = await Promise.allSettled(
-      chatIds.flatMap((chatId) =>
-        messages.map((item) => sendTelegramMessage(chatId, item)),
-      ),
+      chatIds.map((chatId) => sendTelegramMessage(chatId, message)),
     );
     const sentCount = results.filter((result) => result.status === "fulfilled")
       .length;
@@ -392,10 +269,7 @@ export async function POST(request: Request) {
       response_detail: {
         actorName: auth.profile.full_name || "director",
         total,
-        unreadDocuments: unreadDocuments.length,
-        unacknowledgedOrders: unacknowledgedOrders.length,
-        pendingTrainingReports: pendingTrainingReports.length,
-        messageChunks: messages.length,
+        people: pendingCounts.length,
         sentCount,
         failedCount: results.length - sentCount,
         failedReasons,
@@ -406,20 +280,23 @@ export async function POST(request: Request) {
 
     if (sentCount === 0) {
       return NextResponse.json(
-        { ok: false, message: "ส่ง Telegram ไม่สำเร็จ" },
+        {
+          ok: false,
+          message: failedReasons[0] || "ส่ง Telegram ไม่สำเร็จ",
+        },
         { status: 502 },
       );
     }
 
     return NextResponse.json({
       ok: true,
-      message: `ส่งสรุปงานค้างแล้ว ${total.toLocaleString("th-TH")} รายการ`,
+      message: `ส่งสรุปงานที่ยังไม่รับทราบแล้ว ${total.toLocaleString(
+        "th-TH",
+      )} งาน`,
       result: {
         sent: true,
         total,
-        unreadDocuments: unreadDocuments.length,
-        unacknowledgedOrders: unacknowledgedOrders.length,
-        pendingTrainingReports: pendingTrainingReports.length,
+        people: pendingCounts.length,
       },
     });
   } catch (error) {
@@ -431,7 +308,7 @@ export async function POST(request: Request) {
         message:
           error instanceof Error
             ? error.message
-            : "ไม่สามารถส่งสรุปงานค้างได้",
+            : "ไม่สามารถส่งสรุปงานที่ยังไม่รับทราบได้",
       },
       { status: 500 },
     );
