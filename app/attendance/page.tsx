@@ -109,6 +109,7 @@ type RecentDocument = {
   receivedDate: string;
   updatedAt: string;
   status: string;
+  sourceSystem?: string;
   isRead: boolean;
 };
 
@@ -542,6 +543,7 @@ export default function AttendancePage() {
         }
 
         const unreadActiveBooks = (result.books ?? [])
+          .filter((book) => book.sourceSystem !== "director-announcement")
           .filter((book) => !book.isRead)
           .filter((book) => book.status !== "done")
           .slice(0, 3);
@@ -942,10 +944,9 @@ export default function AttendancePage() {
         return;
       }
 
-      setOverviewMessage(result.message || "ส่งประกาศแล้ว");
+      setOverviewMessage("ประกาศแล้ว");
       setDirectorAnnouncementOpen(false);
       setDirectorAnnouncementText("");
-      window.dispatchEvent(new Event("smart-area-documents-updated"));
     } catch {
       setOverviewMessage("ส่งประกาศไม่สำเร็จ");
     } finally {

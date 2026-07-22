@@ -1,13 +1,22 @@
 import "server-only";
 
-import {
-  getLineTarget,
-  type LineMessage,
-} from "@/lib/line/client";
+import { getLineTarget, type LineMessage } from "@/lib/line/client";
 
 const GREEN = "#1B8A5A";
 const TEXT = "#0F172A";
 const MUTED = "#64748B";
+
+type DirectorLineTarget =
+  | {
+      ok: true;
+      groupId: string;
+      token: string;
+      channel: "director" | "default";
+    }
+  | {
+      ok: false;
+      message: string;
+    };
 
 function text(value: string, extra: Record<string, unknown> = {}) {
   return {
@@ -50,32 +59,61 @@ async function parseLineResponse(response: Response) {
       };
 }
 
-export async function getDirectorLineTarget() {
-  const groupId =
-    process.env.DIRECTOR_LINE_GROUP_ID?.trim() ||
-    process.env.LINE_GROUP_ID?.trim();
+export async function getDirectorLineTarget(): Promise<DirectorLineTarget> {
+  const directorToken =
+    process.env.DIRECTOR_LINE_CHANNEL_ACCESS_TOKEN?.trim() || "";
+  const directorGroupId = process.env.DIRECTOR_LINE_GROUP_ID?.trim() || "";
 
-  if (groupId) return { ok: true as const, groupId };
+  if (directorToken && directorGroupId) {
+    return {
+      ok: true,
+      groupId: directorGroupId,
+      token: directorToken,
+      channel: "director",
+    };
+  }
+
+  const defaultToken = process.env.LINE_CHANNEL_ACCESS_TOKEN?.trim() || "";
+  const configuredGroupId = process.env.LINE_GROUP_ID?.trim() || "";
+
+  if (!defaultToken) {
+    return {
+      ok: false,
+      message: directorToken
+        ? "ยังไม่ได้ตั้งค่า DIRECTOR_LINE_GROUP_ID สำหรับบอทประกาศจาก ผอ."
+        : "ยังไม่ได้ตั้งค่า LINE_CHANNEL_ACCESS_TOKEN",
+    };
+  }
+
+  if (configuredGroupId) {
+    return {
+      ok: true,
+      groupId: configuredGroupId,
+      token: defaultToken,
+      channel: "default",
+    };
+  }
 
   const target = await getLineTarget();
   return target.ok
-    ? { ok: true as const, groupId: target.groupId }
-    : { ok: false as const, message: target.message };
+    ? {
+        ok: true,
+        groupId: target.groupId,
+        token: defaultToken,
+        channel: "default",
+      }
+    : { ok: false, message: target.message };
 }
 
 export async function pushDirectorLineMessages(
   to: string,
   messages: LineMessage[],
+  token: string,
 ) {
-  const token =
-    process.env.DIRECTOR_LINE_CHANNEL_ACCESS_TOKEN?.trim() ||
-    process.env.LINE_CHANNEL_ACCESS_TOKEN?.trim();
-
   if (!token) {
     return {
       ok: false as const,
-      message:
-        "ยังไม่ได้ตั้งค่า DIRECTOR_LINE_CHANNEL_ACCESS_TOKEN หรือ LINE_CHANNEL_ACCESS_TOKEN",
+      message: "ยังไม่ได้ตั้งค่า LINE channel access token",
     };
   }
 

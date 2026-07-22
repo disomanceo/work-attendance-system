@@ -144,30 +144,33 @@ async function loadUnreadDocuments(admin: ReturnType<typeof adminClient>) {
 }
 
 async function loadUnacknowledgedOrders(admin: ReturnType<typeof adminClient>) {
+  const { data: orders, error: ordersError } = await admin
+    .from("order_documents")
+    .select("id, title")
+    .eq("status", "APPROVED")
+    .limit(200);
+
+  if (ordersError) throw new Error(ordersError.message);
+
+  const orderById = new Map(
+    (orders ?? [])
+      .map((order: any) => [text(order.id), text(order.title)] as const)
+      .filter(([id]) => Boolean(id)),
+  );
+
+  if (orderById.size === 0) return [];
+
   const { data, error } = await admin
     .from("order_document_recipients")
-    .select(
-      `
-      id,
-      recipient_name_snapshot,
-      acknowledged_at,
-      order_documents!inner (
-        id,
-        title,
-        status
-      )
-    `,
-    )
+    .select("id, recipient_name_snapshot, order_document_id")
+    .in("order_document_id", Array.from(orderById.keys()))
     .is("acknowledged_at", null)
-    .eq("order_documents.status", "APPROVED")
     .limit(200);
 
   if (error) throw new Error(error.message);
 
   return (data ?? []).map((row: any): PendingItem => {
-    const order = Array.isArray(row.order_documents)
-      ? row.order_documents[0]
-      : row.order_documents;
+    const order = { title: orderById.get(text(row.order_document_id)) };
 
     return {
       teacherName: shortTeacherName(row.recipient_name_snapshot),

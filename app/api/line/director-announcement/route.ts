@@ -179,13 +179,17 @@ export async function POST(request: Request) {
 
     if (taskError) throw new Error(taskError.message);
 
-    const lineResult = await pushDirectorLineMessages(target.groupId, [
-      directorAnnouncementFlex({
-        bookId: book.id,
-        directorName: auth.profile.full_name || "ผู้อำนวยการ",
-        message,
-      }),
-    ]);
+    const lineResult = await pushDirectorLineMessages(
+      target.groupId,
+      [
+        directorAnnouncementFlex({
+          bookId: book.id,
+          directorName: auth.profile.full_name || "ผู้อำนวยการ",
+          message,
+        }),
+      ],
+      target.token,
+    );
 
     await auth.admin.from("line_notification_logs").insert({
       event_key: `director-announcement:${book.id}`,
@@ -194,6 +198,7 @@ export async function POST(request: Request) {
       status: lineResult.ok ? "sent" : "failed",
       response_detail: {
         result: lineResult,
+        channel: target.channel,
         actorName: auth.profile.full_name || "director",
         recipientCount: recipients.length,
       },
