@@ -1355,7 +1355,12 @@ schoolName: settings?.school_name ?? null,
                     }
                     title="ส่งสรุปเวลาปฏิบัติงานและรายงานการมาเรียนไป Telegram"
                   >
-                    {overviewSending ? "กำลังส่ง" : "สรุปเวลาครู-นักเรียน"}
+                    <span className={styles.directorShortcutIcon} aria-hidden="true">
+                      ◷
+                    </span>
+                    <span className={styles.directorShortcutText}>
+                      {overviewSending ? "กำลังส่ง" : "สรุปลงเวลาครู-นักเรียน"}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -1368,7 +1373,12 @@ schoolName: settings?.school_name ?? null,
                     }
                     title="ส่งสรุปงานค้างไป Telegram กลุ่ม"
                   >
-                    {pendingWorkSending ? "กำลังส่ง" : "สรุปงานค้าง"}
+                    <span className={styles.directorShortcutIcon} aria-hidden="true">
+                      ▣
+                    </span>
+                    <span className={styles.directorShortcutText}>
+                      {pendingWorkSending ? "กำลังส่ง" : "สรุปงานค้าง"}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -1381,9 +1391,14 @@ schoolName: settings?.school_name ?? null,
                     }
                     title="ส่งประกาศจาก ผอ. ไป LINE กลุ่ม"
                   >
-                    {directorAnnouncementSending
-                      ? "กำลังส่ง"
-                      : "ประกาศจาก ผอ."}
+                    <span className={styles.directorShortcutIcon} aria-hidden="true">
+                      ◆
+                    </span>
+                    <span className={styles.directorShortcutText}>
+                      {directorAnnouncementSending
+                        ? "กำลังส่ง"
+                        : "ประกาศจาก ผอ."}
+                    </span>
                   </button>
                   {overviewMessage && (
                     <em className={styles.directorOverviewMessage}>
@@ -1944,7 +1959,7 @@ schoolName: settings?.school_name ?? null,
                 <span>DIRECTOR ANNOUNCEMENT</span>
                 <h2 id="director-announcement-title">ประกาศจาก ผอ.</h2>
                 <p>
-                  ข้อความนี้จะส่งเข้า LINE กลุ่ม และสร้างงานให้ครูกดรับทราบในระบบ
+                  ข้อความนี้จะส่งเข้า LINE กลุ่ม พร้อมปุ่มรับทราบใน LINE
                 </p>
               </div>
             </div>

@@ -574,7 +574,7 @@ export default function OrdersPage() {
                 const res = await fetch(getWordDownloadUrl(order), { cache: "no-store" });
                 if (!res.ok) throw new Error(`ดาวน์โหลดไม่สำเร็จ (${res.status})`);
                 const blob = await res.blob();
-                let filename = order.docx_file_name || "file.docx";
+                const filename = order.docx_file_name || "file.docx";
 
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");

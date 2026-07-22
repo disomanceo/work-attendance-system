@@ -2097,29 +2097,43 @@
 
 .directorOverviewWrap {
   display: grid;
-  justify-items: end;
-  gap: 4px;
+  grid-template-columns: repeat(3, 74px);
+  align-items: start;
+  justify-content: end;
+  gap: 7px;
   flex: 0 0 auto;
 }
 
 .directorOverviewButton {
-  min-height: 30px;
-  padding: 5px 10px;
+  display: grid;
+  width: 74px;
+  min-width: 0;
+  height: 74px;
+  min-height: 74px;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 7px 5px;
   border: 1px solid rgba(125, 211, 252, 0.38);
-  border-radius: 9px;
+  border-radius: 16px;
   color: #e0f7ff;
-  background: rgba(14, 165, 233, 0.15);
+  background:
+    linear-gradient(145deg, rgba(14, 165, 233, 0.26), rgba(8, 47, 73, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 22px rgba(4, 1, 10, 0.18);
   font: inherit;
-  font-size: 11px;
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.05;
   cursor: pointer;
-  white-space: nowrap;
+  overflow: hidden;
+  text-align: center;
 }
 
 .directorOverviewButton:hover:not(:disabled) {
   border-color: rgba(125, 211, 252, 0.62);
-  background: rgba(14, 165, 233, 0.24);
+  background:
+    linear-gradient(145deg, rgba(14, 165, 233, 0.34), rgba(8, 47, 73, 0.92));
 }
 
 .directorOverviewButton:disabled {
@@ -2127,29 +2141,74 @@
   opacity: 0.68;
 }
 
+.directorShortcutIcon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: #082f49;
+  background: #bae6fd;
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: 0 5px 14px rgba(14, 165, 233, 0.24);
+}
+
+.directorShortcutText {
+  display: -webkit-box;
+  width: 100%;
+  max-width: 62px;
+  overflow: hidden;
+  color: inherit;
+  font-size: 9px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .pendingWorkSummaryButton {
-  border-color: rgba(203, 213, 225, 0.38);
-  color: #f1f5f9;
-  background: rgba(148, 163, 184, 0.18);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fff7ed;
+  background:
+    linear-gradient(145deg, rgba(245, 158, 11, 0.3), rgba(120, 53, 15, 0.88));
 }
 
 .pendingWorkSummaryButton:hover:not(:disabled) {
-  border-color: rgba(203, 213, 225, 0.62);
-  background: rgba(148, 163, 184, 0.28);
+  border-color: rgba(251, 191, 36, 0.66);
+  background:
+    linear-gradient(145deg, rgba(245, 158, 11, 0.38), rgba(120, 53, 15, 0.92));
+}
+
+.pendingWorkSummaryButton .directorShortcutIcon {
+  color: #78350f;
+  background: #fde68a;
+  box-shadow: 0 5px 14px rgba(245, 158, 11, 0.22);
 }
 
 .directorAnnouncementButton {
   border-color: rgba(74, 222, 128, 0.38);
   color: #dcfce7;
-  background: rgba(34, 197, 94, 0.16);
+  background:
+    linear-gradient(145deg, rgba(34, 197, 94, 0.28), rgba(20, 83, 45, 0.9));
 }
 
 .directorAnnouncementButton:hover:not(:disabled) {
   border-color: rgba(74, 222, 128, 0.62);
-  background: rgba(34, 197, 94, 0.25);
+  background:
+    linear-gradient(145deg, rgba(34, 197, 94, 0.36), rgba(20, 83, 45, 0.94));
+}
+
+.directorAnnouncementButton .directorShortcutIcon {
+  color: #14532d;
+  background: #bbf7d0;
+  box-shadow: 0 5px 14px rgba(34, 197, 94, 0.22);
 }
 
 .directorOverviewMessage {
+  grid-column: 1 / -1;
+  justify-self: end;
   max-width: 130px;
   overflow: hidden;
   color: #bae6fd;
@@ -4499,9 +4558,27 @@
   }
 
   .directorOverviewButton {
-    min-height: 28px;
-    padding: 4px 8px;
-    font-size: 10px;
+    width: 60px;
+    height: 60px;
+    min-height: 60px;
+    padding: 5px 4px;
+  }
+
+  .directorOverviewWrap {
+    grid-template-columns: repeat(3, 60px);
+    gap: 5px;
+  }
+
+  .directorShortcutIcon {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+  }
+
+  .directorShortcutText {
+    max-width: 52px;
+    font-size: 8px;
+    line-height: 1.12;
   }
 
   .directorOverviewMessage {
@@ -4516,6 +4593,17 @@
   }
 
   .directorOverviewButton {
-    padding-inline: 7px;
+    width: 56px;
+    height: 58px;
+    min-height: 58px;
+  }
+
+  .directorOverviewWrap {
+    grid-template-columns: repeat(3, 56px);
+  }
+
+  .directorShortcutText {
+    max-width: 48px;
+    font-size: 7.5px;
   }
 }

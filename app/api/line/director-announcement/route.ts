@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import {
-  isSmartAreaManagerRole,
-  requireSmartAreaUser,
-} from "@/lib/smart-area/auth";
-import {
   directorAnnouncementFlex,
   getDirectorLineTarget,
   pushDirectorLineMessages,
 } from "@/lib/line/director-announcements";
+import {
+  isSmartAreaManagerRole,
+  requireSmartAreaUser,
+} from "@/lib/smart-area/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,13 +55,15 @@ export async function POST(request: Request) {
 
     if (message.length > 2000) {
       return NextResponse.json(
-        { ok: false, message: "ข้อความประกาศยาวเกิน 2,000 ตัวอักษร" },
+        {
+          ok: false,
+          message: "ข้อความประกาศยาวเกิน 2,000 ตัวอักษร",
+        },
         { status: 400 },
       );
     }
 
     const target = await getDirectorLineTarget();
-
     if (!target.ok) {
       return NextResponse.json(
         { ok: false, message: target.message },
@@ -69,12 +71,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const eventKey = `director-announcement-line:${crypto.randomUUID()}`;
+    const announcementId = crypto.randomUUID();
+    const eventKey = `director-announcement-line:${announcementId}`;
+    const directorName = auth.profile.full_name || "ผู้อำนวยการ";
     const lineResult = await pushDirectorLineMessages(
       target.groupId,
       [
         directorAnnouncementFlex({
-          directorName: auth.profile.full_name || "ผู้อำนวยการ",
+          announcementId,
+          directorName,
           message,
         }),
       ],
@@ -90,6 +95,9 @@ export async function POST(request: Request) {
         result: lineResult,
         channel: target.channel,
         actorName: auth.profile.full_name || "director",
+        announcementId,
+        message,
+        acknowledgements: [],
       },
       sent_at: lineResult.ok ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
@@ -109,6 +117,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       lineSent: true,
+      announcementId,
       message: "ส่งประกาศเข้า LINE แล้ว",
     });
   } catch (error) {
