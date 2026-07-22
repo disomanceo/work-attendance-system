@@ -936,6 +936,7 @@ export default function AttendancePage() {
       });
       const result = (await response.json().catch(() => null)) as {
         ok?: boolean;
+        lineSent?: boolean;
         message?: string;
       } | null;
 
@@ -944,7 +945,11 @@ export default function AttendancePage() {
         return;
       }
 
-      setOverviewMessage("ประกาศแล้ว");
+      setOverviewMessage(
+        result.lineSent
+          ? "ส่งประกาศเข้า LINE แล้ว"
+          : "บันทึกประกาศแล้ว แต่ LINE ยังไม่ส่ง",
+      );
       setDirectorAnnouncementOpen(false);
       setDirectorAnnouncementText("");
     } catch {

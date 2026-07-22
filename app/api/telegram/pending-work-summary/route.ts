@@ -290,6 +290,39 @@ function buildMessage(input: {
   return lines.join("\n");
 }
 
+function splitTelegramMessage(message: string) {
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const line of message.split("\n")) {
+    const next = current ? `${current}\n${line}` : line;
+
+    if (next.length > 3500 && current) {
+      chunks.push(current);
+      current = line;
+      continue;
+    }
+
+    current = next;
+  }
+
+  if (current) chunks.push(current);
+  return chunks.length > 0 ? chunks : [message];
+}
+
+function rejectionDetails(results: PromiseSettledResult<unknown>[]) {
+  return results
+    .filter(
+      (result): result is PromiseRejectedResult =>
+        result.status === "rejected",
+    )
+    .map((result) =>
+      result.reason instanceof Error
+        ? result.reason.message
+        : String(result.reason ?? "Unknown error"),
+    );
+}
+
 export async function POST(request: Request) {
   try {
     const auth = await requireDirector(request);
@@ -341,11 +374,15 @@ export async function POST(request: Request) {
       unacknowledgedOrders,
       pendingTrainingReports,
     });
+    const messages = splitTelegramMessage(message);
     const results = await Promise.allSettled(
-      chatIds.map((chatId) => sendTelegramMessage(chatId, message)),
+      chatIds.flatMap((chatId) =>
+        messages.map((item) => sendTelegramMessage(chatId, item)),
+      ),
     );
     const sentCount = results.filter((result) => result.status === "fulfilled")
       .length;
+    const failedReasons = rejectionDetails(results);
 
     await auth.admin.from("line_notification_logs").insert({
       event_key: `pending-work-summary:${Date.now()}`,
@@ -358,8 +395,10 @@ export async function POST(request: Request) {
         unreadDocuments: unreadDocuments.length,
         unacknowledgedOrders: unacknowledgedOrders.length,
         pendingTrainingReports: pendingTrainingReports.length,
+        messageChunks: messages.length,
         sentCount,
         failedCount: results.length - sentCount,
+        failedReasons,
       },
       sent_at: sentCount > 0 ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
