@@ -146,7 +146,7 @@ async function loadUnreadDocuments(admin: ReturnType<typeof adminClient>) {
 async function loadUnacknowledgedOrders(admin: ReturnType<typeof adminClient>) {
   const { data: orders, error: ordersError } = await admin
     .from("order_documents")
-    .select("id, title")
+    .select("id, subject")
     .eq("status", "APPROVED")
     .limit(200);
 
@@ -154,7 +154,7 @@ async function loadUnacknowledgedOrders(admin: ReturnType<typeof adminClient>) {
 
   const orderById = new Map(
     (orders ?? [])
-      .map((order: any) => [text(order.id), text(order.title)] as const)
+      .map((order: any) => [text(order.id), text(order.subject)] as const)
       .filter(([id]) => Boolean(id)),
   );
 

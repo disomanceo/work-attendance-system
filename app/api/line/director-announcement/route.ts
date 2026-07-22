@@ -209,16 +209,18 @@ export async function POST(request: Request) {
     if (!lineResult.ok) {
       return NextResponse.json(
         {
-          ok: false,
+          ok: true,
+          lineSent: false,
           message: lineResult.message || "ส่งประกาศเข้า LINE ไม่สำเร็จ",
           bookId: book.id,
         },
-        { status: 502 },
+        { status: 200 },
       );
     }
 
     return NextResponse.json({
       ok: true,
+      lineSent: true,
       message: `ส่งประกาศจาก ผอ. แล้ว (${recipients.length.toLocaleString("th-TH")} คนต้องรับทราบ)`,
       bookId: book.id,
       recipientCount: recipients.length,
