@@ -2,6 +2,10 @@ const TRAINING_REPORT_ROOT_FOLDER_ID = PropertiesService.getScriptProperties()
   .getProperty("TRAINING_REPORT_ROOT_FOLDER_ID");
 const TRAINING_REPORT_DRIVE_SECRET = PropertiesService.getScriptProperties()
   .getProperty("TRAINING_REPORT_DRIVE_SECRET");
+const DOC_MARGIN_CM = 28.35;
+const PHOTO_FRAME_WIDTH = 530;
+const PHOTO_IMAGE_MAX_WIDTH = 510;
+const PHOTO_IMAGE_MAX_HEIGHT = 292;
 
 function setupTrainingReportProperties(rootFolderId, secret) {
   const properties = PropertiesService.getScriptProperties();
@@ -56,10 +60,10 @@ function createTrainingReportPdf_(body) {
   const doc = DocumentApp.create(fileName.replace(/\.pdf$/i, ""));
   const docFile = DriveApp.getFileById(doc.getId());
   const content = doc.getBody();
-  content.setMarginTop(42);
-  content.setMarginBottom(42);
-  content.setMarginLeft(72);
-  content.setMarginRight(54);
+  content.setMarginTop(DOC_MARGIN_CM);
+  content.setMarginBottom(DOC_MARGIN_CM);
+  content.setMarginLeft(DOC_MARGIN_CM);
+  content.setMarginRight(DOC_MARGIN_CM);
 
   content.appendParagraph("รายงานผลการประชุม/อบรม")
     .setHeading(DocumentApp.ParagraphHeading.HEADING1)
@@ -242,16 +246,12 @@ function appendPhotoSlots_(content, slots) {
   if (photos.length === 0) return;
 
   content.appendPageBreak();
-  content.appendParagraph("รูปประกอบรายงาน")
-    .setHeading(DocumentApp.ParagraphHeading.HEADING1)
-    .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  appendPhotoPageTitle_(content);
 
   for (let index = 0; index < photos.length; index += 2) {
     if (index > 0) {
       content.appendPageBreak();
-      content.appendParagraph("รูปประกอบรายงาน")
-        .setHeading(DocumentApp.ParagraphHeading.HEADING1)
-        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+      appendPhotoPageTitle_(content);
     }
 
     const pagePhotos = photos.slice(index, index + 2);
@@ -264,14 +264,25 @@ function appendPhotoSlots_(content, slots) {
   }
 }
 
+function appendPhotoPageTitle_(content) {
+  const title = content.appendParagraph("รูปประกอบรายงาน");
+  title.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  title.editAsText().setBold(false).setFontSize(16);
+  content.appendParagraph("");
+}
+
 function appendPhotoBlock_(content, slot, photoNumber) {
   const table = content.appendTable();
-  table.setBorderColor("#9ca3af");
-  table.setBorderWidth(0.5);
+  table.setBorderColor("#000000");
+  table.setBorderWidth(1);
 
   const row = table.appendTableRow();
   const cell = row.appendTableCell();
-  cell.setWidth(440);
+  cell.setWidth(PHOTO_FRAME_WIDTH);
+  cell.setPaddingTop(4);
+  cell.setPaddingBottom(4);
+  cell.setPaddingLeft(4);
+  cell.setPaddingRight(4);
 
   const imageParagraph = cell.appendParagraph("");
   imageParagraph.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
@@ -279,7 +290,7 @@ function appendPhotoBlock_(content, slot, photoNumber) {
     const image = imageParagraph.appendInlineImage(
       DriveApp.getFileById(String(slot.fileId)).getBlob()
     );
-    fitImage_(image, 400, 235);
+    fitImage_(image, PHOTO_IMAGE_MAX_WIDTH, PHOTO_IMAGE_MAX_HEIGHT);
   } catch (error) {
     imageParagraph.appendText("ไม่สามารถแสดงรูปนี้ได้");
   }
@@ -289,6 +300,7 @@ function appendPhotoBlock_(content, slot, photoNumber) {
   );
   caption.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
   caption.editAsText().setBold(false).setFontSize(12);
+  content.appendParagraph("");
 }
 
 function appendSignatureBlock_(content, teacherName, directorName) {
@@ -304,7 +316,7 @@ function appendSignatureBlock_(content, teacherName, directorName) {
   reporterCell.setWidth(225);
   directorCell.setWidth(240);
   appendSignatureCell_(reporterCell, "ผู้รายงาน", teacherName, "................................");
-  appendSignatureCell_(directorCell, "ผู้อำนวยการโรงเรียน", directorName, "........................");
+  appendSignatureCell_(directorCell, "ผู้อำนวยการ", directorName, "........................");
 }
 
 function appendSignatureCell_(cell, roleLabel, name, dots) {
