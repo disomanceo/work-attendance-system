@@ -29,18 +29,6 @@ function text(value: string, extra: Record<string, unknown> = {}) {
   };
 }
 
-function appUrl() {
-  const explicit = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (explicit) return explicit;
-
-  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  return production ? `https://${production}` : "http://localhost:3000";
-}
-
-function documentUrl(bookId: string) {
-  return `${appUrl()}/documents?book=${encodeURIComponent(bookId)}`;
-}
-
 async function parseLineResponse(response: Response) {
   const raw = await response.text();
   let detail: unknown = raw;
@@ -131,12 +119,9 @@ export async function pushDirectorLineMessages(
 }
 
 export function directorAnnouncementFlex(input: {
-  bookId: string;
   directorName: string;
   message: string;
 }) {
-  const openUrl = documentUrl(input.bookId);
-
   return {
     type: "flex",
     altText: `ประกาศจาก ผอ.: ${input.message.slice(0, 80)}`,
@@ -174,24 +159,6 @@ export function directorAnnouncementFlex(input: {
             color: MUTED,
             margin: "md",
           }),
-        ],
-      },
-      footer: {
-        type: "box",
-        layout: "vertical",
-        paddingAll: "12px",
-        contents: [
-          {
-            type: "button",
-            style: "primary",
-            height: "sm",
-            color: GREEN,
-            action: {
-              type: "uri",
-              label: "เปิดประกาศ/รับทราบ",
-              uri: openUrl,
-            },
-          },
         ],
       },
     },
