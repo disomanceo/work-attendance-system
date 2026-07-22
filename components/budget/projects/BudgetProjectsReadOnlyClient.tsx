@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import {
   mapAndSortBudgetProjects,
@@ -24,6 +24,8 @@ import {
   loadBudgetProjectEditorState,
   saveBudgetProjectEditor,
 } from "@/lib/budget/project-editor-repository";
+
+import BudgetProjectPaymentHistory from "./BudgetProjectPaymentHistory";
 
 type ApiResult = {
   ok?: boolean;
@@ -822,7 +824,9 @@ export default function BudgetProjectsReadOnlyClient() {
       setEditorDataSource(editorState.source);
       setLastLoadedAt(new Date().toISOString());
       setProjectOverrides(editorState.overrides);
-      setProjects(mappedProjects);
+      setProjects(
+        applyBudgetProjectOverrides(mappedProjects, editorState.overrides),
+      );
     } catch (error) {
       if (!background) {
         setProjects([]);
@@ -1729,7 +1733,8 @@ export default function BudgetProjectsReadOnlyClient() {
             const activitySummary = activityStatusSummary(project);
 
             return (
-              <article
+              <Fragment key={project.id}>
+                <article
                 className={
                   expanded ? "projectCard expandedCard" : "projectCard"
                 }
@@ -2031,6 +2036,12 @@ export default function BudgetProjectsReadOnlyClient() {
                               >
                                 {project.status}
                               </span>
+
+                              <BudgetProjectPaymentHistory
+                                projectId={project.id}
+                                activityId={null}
+                                level="project"
+                              />
                             </div>
                           </div>
                         );
@@ -2129,6 +2140,12 @@ export default function BudgetProjectsReadOnlyClient() {
                               >
                                 {activity.status}
                               </span>
+
+                                <BudgetProjectPaymentHistory
+                                  projectId={project.id}
+                                  activityId={activity.id}
+                                  level="activity"
+                                />
                             </div>
                           );
                         })}
@@ -2136,7 +2153,8 @@ export default function BudgetProjectsReadOnlyClient() {
                     )}
                   </div>
                 )}
-              </article>
+                </article>
+              </Fragment>
             );
           })}
         </div>
