@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { STUDENT_CLASS_LEVELS } from "@/lib/students/settings";
 import { buildSummaryMessage } from "@/lib/telegram/commands";
+import { getTelegramGroupChatIds } from "@/lib/telegram/chat-ids";
 import { isTelegramNotificationEnabled } from "@/lib/telegram/notification-settings";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
 
@@ -64,21 +65,6 @@ function escapeHtml(value: unknown) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
-}
-
-function getTelegramChatIds() {
-  const attendanceChatId = process.env.TELEGRAM_ATTENDANCE_CHAT_ID?.trim();
-
-  if (attendanceChatId) {
-    return attendanceChatId.startsWith("-") ? [attendanceChatId] : [];
-  }
-
-  const groupChatId = (process.env.TELEGRAM_ALLOWED_CHAT_IDS?.trim() || "")
-    .split(",")
-    .map((value) => value.trim())
-    .find((value) => value.startsWith("-"));
-
-  return groupChatId ? [groupChatId] : [];
 }
 
 async function requireDirector(request: Request) {
@@ -398,7 +384,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const chatIds = getTelegramChatIds();
+    const chatIds = getTelegramGroupChatIds();
 
     if (chatIds.length === 0) {
       return NextResponse.json(

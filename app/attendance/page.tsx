@@ -371,6 +371,12 @@ export default function AttendancePage() {
     useState<LatePermissionStatus>("not_requested");
   const [overviewSending, setOverviewSending] = useState(false);
   const [pendingWorkSending, setPendingWorkSending] = useState(false);
+  const [directorAnnouncementOpen, setDirectorAnnouncementOpen] =
+    useState(false);
+  const [directorAnnouncementText, setDirectorAnnouncementText] =
+    useState("");
+  const [directorAnnouncementSending, setDirectorAnnouncementSending] =
+    useState(false);
   const [overviewMessage, setOverviewMessage] = useState("");
   const [pendingCheckIn, setPendingCheckIn] =
     useState<PendingCheckIn | null>(null);
@@ -805,6 +811,9 @@ export default function AttendancePage() {
 
   async function sendDirectorOverview() {
     if (overviewSending) return;
+    if (!window.confirm("ยืนยันส่งสรุปเวลาครู-นักเรียนไปยัง Telegram?")) {
+      return;
+    }
 
     setOverviewSending(true);
     setOverviewMessage("");
@@ -846,6 +855,9 @@ export default function AttendancePage() {
 
   async function sendPendingWorkSummary() {
     if (pendingWorkSending) return;
+    if (!window.confirm("ยืนยันส่งสรุปงานค้างไปยัง Telegram?")) {
+      return;
+    }
 
     setPendingWorkSending(true);
     setOverviewMessage("");
@@ -882,6 +894,62 @@ export default function AttendancePage() {
       setOverviewMessage("ส่งไม่สำเร็จ");
     } finally {
       setPendingWorkSending(false);
+    }
+  }
+
+  async function sendDirectorAnnouncement() {
+    if (directorAnnouncementSending) return;
+
+    const announcement = directorAnnouncementText.trim();
+    if (!announcement) {
+      setOverviewMessage("กรุณาพิมพ์ประกาศจาก ผอ.");
+      return;
+    }
+
+    if (!window.confirm("ยืนยันส่งประกาศจาก ผอ. ไปยังกลุ่ม LINE?")) {
+      return;
+    }
+
+    setDirectorAnnouncementSending(true);
+    setOverviewMessage("");
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setOverviewMessage("กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+
+      const response = await fetch("/api/line/director-announcement", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: announcement }),
+        cache: "no-store",
+      });
+      const result = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+      } | null;
+
+      if (!response.ok || !result?.ok) {
+        setOverviewMessage(result?.message || "ส่งประกาศไม่สำเร็จ");
+        return;
+      }
+
+      setOverviewMessage(result.message || "ส่งประกาศแล้ว");
+      setDirectorAnnouncementOpen(false);
+      setDirectorAnnouncementText("");
+      window.dispatchEvent(new Event("smart-area-documents-updated"));
+    } catch {
+      setOverviewMessage("ส่งประกาศไม่สำเร็จ");
+    } finally {
+      setDirectorAnnouncementSending(false);
     }
   }
 
@@ -1274,19 +1342,42 @@ schoolName: settings?.school_name ?? null,
                     type="button"
                     className={styles.directorOverviewButton}
                     onClick={() => void sendDirectorOverview()}
-                    disabled={overviewSending || pendingWorkSending}
+                    disabled={
+                      overviewSending ||
+                      pendingWorkSending ||
+                      directorAnnouncementSending
+                    }
                     title="ส่งสรุปเวลาปฏิบัติงานและรายงานการมาเรียนไป Telegram"
                   >
-                    {overviewSending ? "กำลังส่ง" : "ส่งสรุป"}
+                    {overviewSending ? "กำลังส่ง" : "สรุปเวลาครู-นักเรียน"}
                   </button>
                   <button
                     type="button"
                     className={`${styles.directorOverviewButton} ${styles.pendingWorkSummaryButton}`}
                     onClick={() => void sendPendingWorkSummary()}
-                    disabled={overviewSending || pendingWorkSending}
+                    disabled={
+                      overviewSending ||
+                      pendingWorkSending ||
+                      directorAnnouncementSending
+                    }
                     title="ส่งสรุปงานค้างไป Telegram กลุ่ม"
                   >
                     {pendingWorkSending ? "กำลังส่ง" : "สรุปงานค้าง"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.directorOverviewButton} ${styles.directorAnnouncementButton}`}
+                    onClick={() => setDirectorAnnouncementOpen(true)}
+                    disabled={
+                      overviewSending ||
+                      pendingWorkSending ||
+                      directorAnnouncementSending
+                    }
+                    title="ส่งประกาศจาก ผอ. ไป LINE กลุ่ม"
+                  >
+                    {directorAnnouncementSending
+                      ? "กำลังส่ง"
+                      : "ประกาศจาก ผอ."}
                   </button>
                   {overviewMessage && (
                     <em className={styles.directorOverviewMessage}>
@@ -1832,7 +1923,75 @@ schoolName: settings?.school_name ?? null,
             </div>
           </section>
         </div>
-      )}      <SmartAreaImportButton autoOnly />
+      )}
+
+      {directorAnnouncementOpen && (
+        <div className={styles.lateReasonBackdrop}>
+          <section
+            className={`${styles.lateReasonModal} ${styles.directorAnnouncementModal}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="director-announcement-title"
+          >
+            <div className={styles.lateReasonHeader}>
+              <div>
+                <span>DIRECTOR ANNOUNCEMENT</span>
+                <h2 id="director-announcement-title">ประกาศจาก ผอ.</h2>
+                <p>
+                  ข้อความนี้จะส่งเข้า LINE กลุ่ม และสร้างงานให้ครูกดรับทราบในระบบ
+                </p>
+              </div>
+            </div>
+
+            <label className={styles.lateReasonField}>
+              <span>ข้อความประกาศ</span>
+              <textarea
+                value={directorAnnouncementText}
+                onChange={(event) =>
+                  setDirectorAnnouncementText(event.target.value.slice(0, 2000))
+                }
+                rows={6}
+                maxLength={2000}
+                autoFocus
+                disabled={directorAnnouncementSending}
+                placeholder="พิมพ์ประกาศที่ต้องการแจ้งครู..."
+              />
+            </label>
+
+            <div className={styles.lateReasonMeta}>
+              <small>
+                {Array.from(directorAnnouncementText.trim()).length}/2000
+                ตัวอักษร
+              </small>
+            </div>
+
+            <div className={styles.lateReasonActions}>
+              <button
+                type="button"
+                className={styles.lateReasonCancel}
+                onClick={() => setDirectorAnnouncementOpen(false)}
+                disabled={directorAnnouncementSending}
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                type="button"
+                className={styles.lateReasonConfirm}
+                onClick={() => void sendDirectorAnnouncement()}
+                disabled={
+                  directorAnnouncementSending ||
+                  directorAnnouncementText.trim().length < 2
+                }
+              >
+                {directorAnnouncementSending ? "กำลังส่ง..." : "ส่งประกาศ"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      <SmartAreaImportButton autoOnly />
       <SmartAreaAssignmentPopup />
       <TrainingReportAssignmentPopup />
 

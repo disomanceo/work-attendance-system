@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { collection, getDocs, limit, query } from "firebase/firestore";
+import { getTelegramGroupChatIds } from "@/lib/telegram/chat-ids";
 import { sendTelegramMessage } from "@/lib/telegram/send-message";
 import {
   getTrainingReportFirebaseClient,
@@ -57,21 +58,6 @@ function shortTeacherName(value: unknown) {
   const name = text(value).replace(/\s+/g, " ");
   if (!name) return "ไม่ระบุชื่อ";
   return name.replace(/^(นาย|นางสาว|นาง|ว่าที่ร้อยตรี|ดร\.|ครู)\s*/u, "ครู");
-}
-
-function getTelegramChatIds() {
-  const attendanceChatId = process.env.TELEGRAM_ATTENDANCE_CHAT_ID?.trim();
-
-  if (attendanceChatId) {
-    return attendanceChatId.startsWith("-") ? [attendanceChatId] : [];
-  }
-
-  const groupChatId = (process.env.TELEGRAM_ALLOWED_CHAT_IDS?.trim() || "")
-    .split(",")
-    .map((value) => value.trim())
-    .find((value) => value.startsWith("-"));
-
-  return groupChatId ? [groupChatId] : [];
 }
 
 async function requireDirector(request: Request) {
@@ -312,7 +298,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const chatIds = getTelegramChatIds();
+    const chatIds = getTelegramGroupChatIds();
 
     if (chatIds.length === 0) {
       return NextResponse.json(
