@@ -8,6 +8,7 @@ export const WORD_DOCX_MIME =
 type DownloadFileResult = {
   body: Buffer;
   contentType: string;
+  fileName?: string;
 };
 
 export function text(value: unknown) {
@@ -90,8 +91,29 @@ async function fetchDriveUrl(url: string) {
 
   const body = Buffer.from(await response.arrayBuffer());
   const contentType = text(response.headers.get("content-type")).split(";")[0];
+  const contentDisposition = text(response.headers.get("content-disposition"));
 
-  return { body, contentType };
+  let fileName: string | undefined;
+  if (contentDisposition) {
+    const starMatch = contentDisposition.match(
+      /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i,
+    );
+    const plainMatch = contentDisposition.match(
+      /filename\s*=\s*"?([^";]+)"?/i,
+    );
+    const rawName = starMatch?.[1] || plainMatch?.[1];
+
+    if (rawName) {
+      const normalized = rawName.trim().replace(/^"|"$/g, "");
+      try {
+        fileName = decodeURIComponent(normalized);
+      } catch {
+        fileName = normalized;
+      }
+    }
+  }
+
+  return { body, contentType, fileName };
 }
 
 function exportUrlForGoogleFile(fileId: string, mimeType: string, fileName: string) {
@@ -184,7 +206,6 @@ export async function downloadDriveWordFile(
       safeFileId,
     )}&confirm=t`,
   );
-
   if (!looksLikeHtml(direct.body, direct.contentType)) {
     return {
       body: direct.body,
@@ -192,6 +213,7 @@ export async function downloadDriveWordFile(
         direct.contentType && direct.contentType !== "application/octet-stream"
           ? direct.contentType
           : WORD_DOCX_MIME,
+      fileName: direct.fileName,
     };
   }
 
@@ -208,5 +230,6 @@ export async function downloadDriveWordFile(
   return {
     body: exported.body,
     contentType: WORD_DOCX_MIME,
+    fileName: exported.fileName,
   };
 }

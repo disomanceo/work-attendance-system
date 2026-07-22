@@ -177,6 +177,7 @@ export default function OrdersPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [docx, setDocx] = useState<File | null>(null);
   const [pdf, setPdf] = useState<File | null>(null);
+  const [downloadingId, setDownloadingId] = useState("");
   const [reviewOrder, setReviewOrder] = useState<OrderItem | null>(null);
   const [notifyOrder, setNotifyOrder] = useState<OrderItem | null>(null);
   const [notifySelectedIds, setNotifySelectedIds] = useState<string[]>([]);
@@ -563,26 +564,52 @@ export default function OrdersPage() {
     return (
       <div className={styles.files}>
         {order.docx_file_url && (
-          <a
+          <button
+            type="button"
             className={`${styles.fileButton} ${styles.wordFileButton}`}
-            href={getWordDownloadUrl(order)}
-            download={order.docx_file_name || undefined}
-            rel="noreferrer"
+            onClick={async () => {
+              if (downloadingId) return;
+              setDownloadingId(order.id);
+              try {
+                const res = await fetch(getWordDownloadUrl(order), { cache: "no-store" });
+                if (!res.ok) throw new Error(`ดาวน์โหลดไม่สำเร็จ (${res.status})`);
+                const blob = await res.blob();
+                let filename = order.docx_file_name || "file.docx";
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                a.rel = "noreferrer";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              } catch (err) {
+                showMessage(err instanceof Error ? err.message : "ดาวน์โหลดไม่สำเร็จ", true);
+              } finally {
+                setDownloadingId("");
+              }
+            }}
             title="ดาวน์โหลดไฟล์ Word"
             aria-label="ดาวน์โหลดไฟล์ Word"
+            disabled={Boolean(downloadingId)}
           >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              width="22"
-              height="22"
-            >
-              <path
-                fill="currentColor"
-                d="M4 3h10l6 6v12H4V3Zm9 1.8V10h5.2L13 4.8ZM7 13l1.2 5h1.7l1-3.3L12 18h1.7l1.3-5h-1.6l-.7 3.2-1-3.2h-1.5l-1 3.2-.7-3.2H7Z"
-              />
-            </svg>
-          </a>
+            {downloadingId === order.id ? (
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" strokeDasharray="60" strokeDashoffset="0">
+                  <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+                </circle>
+              </svg>
+            ) : (
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
+                <path
+                  fill="currentColor"
+                  d="M4 3h10l6 6v12H4V3Zm9 1.8V10h5.2L13 4.8ZM7 13l1.2 5h1.7l1-3.3L12 18h1.7l1.3-5h-1.6l-.7 3.2-1-3.2h-1.5l-1 3.2-.7-3.2H7Z"
+                />
+              </svg>
+            )}
+          </button>
         )}
 
         {order.pdf_file_url && (

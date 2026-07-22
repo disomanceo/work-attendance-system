@@ -57,7 +57,10 @@ export async function GET(
 
   try {
     const file = await downloadDriveWordFile(fileId);
-    const fileName = safeWordFileName(order.docx_file_name);
+    // Prefer filename reported by Drive export (better preserves original upload name),
+    // otherwise fall back to stored DB value.
+    const candidate = order.docx_file_name || file.fileName || "document";
+    const fileName = safeWordFileName(candidate);
     const headers = new Headers();
 
     headers.set("content-type", file.contentType || WORD_DOCX_MIME);
