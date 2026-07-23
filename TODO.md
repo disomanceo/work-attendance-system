@@ -24,7 +24,7 @@ Updated: 2026-07-23
   - [x] Confirmed `npm run build` succeeds after the scoped CSS update.
   - [ ] Visually recheck `/attendance/history` in the real logged-in browser viewport.
   - [x] Commit and push after the layout is approved.
-  - [ ] Deploy after the layout is approved.
+  - [x] Deploy after the layout is approved.
 
 - Director LINE announcement / @เลขาผอ.สุธน on 2026-07-23:
   - [x] Investigated why typing `@เลขา แจ้งเตือนครู` in LINE did not trigger the director announcement flow.
