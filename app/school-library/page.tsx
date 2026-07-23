@@ -32,6 +32,11 @@ type LibraryDocumentFile = {
   fileType: LibraryFileType;
 };
 
+type DriveLinkDraft = {
+  url: string;
+  name: string;
+};
+
 type LibraryDocument = {
   id: string;
   title: string;
@@ -436,6 +441,29 @@ function titleFromFileName(name: string) {
   return withoutExtension.trim().replace(/\s+/g, " ").slice(0, 120) || name.slice(0, 120);
 }
 
+function fileNameFromDriveUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    const pathName = decodeURIComponent(
+      parsed.pathname.split("/").filter(Boolean).pop() || "",
+    );
+    return pathName && !["view", "edit", "preview"].includes(pathName)
+      ? pathName.slice(0, 120)
+      : "Google Drive file";
+  } catch {
+    return "Google Drive file";
+  }
+}
+
+function normalizeDriveLinkDrafts(items: DriveLinkDraft[]) {
+  return items
+    .map((item) => ({
+      url: item.url.trim(),
+      name: item.name.trim(),
+    }))
+    .filter((item) => item.url);
+}
+
 function readSearchHistory(): SearchStat[] {
   if (typeof window === "undefined") return [];
 
@@ -494,6 +522,7 @@ export default function SchoolLibraryPage() {
   const [editingDocument, setEditingDocument] = useState<LibraryDocument | null>(null);
   const [expandedDocumentIds, setExpandedDocumentIds] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [driveLinks, setDriveLinks] = useState<DriveLinkDraft[]>([]);
   const [formError, setFormError] = useState("");
   const [currentProfile, setCurrentProfile] = useState<CurrentProfile | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -866,6 +895,7 @@ export default function SchoolLibraryPage() {
     setDraft(EMPTY_DRAFT);
     setEditingDocument(null);
     setSelectedFiles([]);
+    setDriveLinks([]);
     setFormError("");
     setMoveTargetQuery("");
   }
@@ -882,6 +912,7 @@ export default function SchoolLibraryPage() {
     );
     setEditingDocument(null);
     setSelectedFiles(validFiles);
+    setDriveLinks([]);
     setFormError(
       rejectedFile
         ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(MAX_UPLOAD_FILE_SIZE)}`
@@ -948,6 +979,7 @@ export default function SchoolLibraryPage() {
     });
     setEditingDocument(document);
     setSelectedFiles(validFiles);
+    setDriveLinks([]);
     setFormError(
       rejectedFile
         ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(MAX_UPLOAD_FILE_SIZE)}`
@@ -1220,6 +1252,24 @@ export default function SchoolLibraryPage() {
     );
   }
 
+  function addDriveLinkField() {
+    setDriveLinks((current) => [...current, { url: "", name: "" }]);
+  }
+
+  function updateDriveLink(index: number, key: keyof DriveLinkDraft, value: string) {
+    setDriveLinks((current) =>
+      current.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [key]: value } : item,
+      ),
+    );
+  }
+
+  function removeDriveLink(index: number) {
+    setDriveLinks((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError("");
@@ -1230,14 +1280,29 @@ export default function SchoolLibraryPage() {
     }
 
     const existingFiles = editingDocument ? documentFilesOf(editingDocument) : [];
+    const validDriveLinks = normalizeDriveLinkDrafts(driveLinks);
 
-    if (!editingDocument && selectedFiles.length === 0) {
-      setFormError("กรุณาเลือกไฟล์จากเครื่อง");
+    for (const link of validDriveLinks) {
+      try {
+        new URL(link.url);
+      } catch {
+        setFormError(`ลิงก์ไฟล์ไม่ถูกต้อง: ${link.url}`);
+        return;
+      }
+    }
+
+    if (!editingDocument && selectedFiles.length === 0 && validDriveLinks.length === 0) {
+      setFormError("กรุณาเลือกไฟล์จากเครื่องหรือแนบลิงก์ Google Drive");
       return;
     }
 
-    if (editingDocument && existingFiles.length === 0 && selectedFiles.length === 0) {
-      setFormError("กรุณาเลือกไฟล์จากเครื่อง");
+    if (
+      editingDocument &&
+      existingFiles.length === 0 &&
+      selectedFiles.length === 0 &&
+      validDriveLinks.length === 0
+    ) {
+      setFormError("กรุณาเลือกไฟล์จากเครื่องหรือแนบลิงก์ Google Drive");
       return;
     }
 
@@ -1327,6 +1392,22 @@ export default function SchoolLibraryPage() {
       }
 
       setDatabaseMessage("กำลังจัดเก็บรายละเอียดเอกสาร...");
+
+      for (const [linkIndex, link] of validDriveLinks.entries()) {
+        const fileName = link.name || fileNameFromDriveUrl(link.url);
+        setDatabaseMessage(
+          `กำลังบันทึกลิงก์ไฟล์ ${linkIndex + 1}/${validDriveLinks.length}: ${fileName}`,
+        );
+
+        uploadedFiles.push({
+          driveUrl: link.url,
+          driveFileId: driveFileIdOf({ driveUrl: link.url }),
+          fileName,
+          mimeType: "",
+          fileSize: 0,
+          fileType: "DRIVE",
+        });
+      }
 
       const mergedFiles = [...existingFiles, ...uploadedFiles];
       const primaryFile = mergedFiles[0];
@@ -1919,7 +2000,11 @@ export default function SchoolLibraryPage() {
                   addSelectedFiles(event.target.files);
                   event.currentTarget.value = "";
                 }}
-                required={!editingDocument && selectedFiles.length === 0}
+                required={
+                  !editingDocument &&
+                  selectedFiles.length === 0 &&
+                  normalizeDriveLinkDrafts(driveLinks).length === 0
+                }
               />
               {selectedFiles.length > 0 ? (
                 <span>
@@ -1929,6 +2014,47 @@ export default function SchoolLibraryPage() {
                 <span>เลือกไฟล์จากเครื่อง ระบบจะอัปโหลดเข้า Google Drive ให้</span>
               )}
             </label>
+
+            <section className={styles.driveLinkPanel}>
+              <div>
+                <strong>ลิงก์ Google Drive สำหรับไฟล์ใหญ่</strong>
+                <span>
+                  ใช้เมื่อไฟล์เกิน {formatFileSize(MAX_UPLOAD_FILE_SIZE)} โดยอัปโหลดไฟล์เข้า
+                  Google Drive ก่อน แล้วนำลิงก์มาแนบที่นี่
+                </span>
+              </div>
+
+              {driveLinks.length > 0 && (
+                <div className={styles.driveLinkList}>
+                  {driveLinks.map((link, index) => (
+                    <div className={styles.driveLinkRow} key={index}>
+                      <input
+                        value={link.url}
+                        onChange={(event) =>
+                          updateDriveLink(index, "url", event.target.value)
+                        }
+                        placeholder="https://drive.google.com/file/d/..."
+                        inputMode="url"
+                      />
+                      <input
+                        value={link.name}
+                        onChange={(event) =>
+                          updateDriveLink(index, "name", event.target.value)
+                        }
+                        placeholder="ชื่อไฟล์ที่จะแสดง"
+                      />
+                      <button type="button" onClick={() => removeDriveLink(index)}>
+                        ลบ
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button type="button" onClick={addDriveLinkField}>
+                + เพิ่มลิงก์ไฟล์ใหญ่
+              </button>
+            </section>
 
             {editingDocument && documentFilesOf(editingDocument).length > 0 && (
               <div className={`${styles.selectedFilesPanel} ${styles.existingFilesPanel}`} aria-live="polite">

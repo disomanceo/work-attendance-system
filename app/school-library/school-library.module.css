@@ -1124,6 +1124,78 @@
   background: #f7fcf8;
 }
 
+.driveLinkPanel {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.driveLinkPanel > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.driveLinkPanel strong {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.driveLinkPanel span {
+  color: #315a8a;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.driveLinkPanel > button,
+.driveLinkRow button {
+  min-height: 32px;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  color: #1d4ed8;
+  background: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.driveLinkPanel > button {
+  justify-self: start;
+  padding: 0 12px;
+}
+
+.driveLinkList {
+  display: grid;
+  gap: 7px;
+}
+
+.driveLinkRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(160px, 0.75fr) auto;
+  gap: 7px;
+  align-items: center;
+}
+
+.driveLinkRow input {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 12px;
+}
+
+.driveLinkRow button {
+  border-color: #fecaca;
+  color: #b42318;
+}
+
 .selectedFilesPanel > div {
   display: flex;
   align-items: center;
@@ -1857,6 +1929,15 @@
     height: 20px;
     border-radius: 5px;
     font-size: 7px;
+  }
+
+  .driveLinkRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .driveLinkPanel > button,
+  .driveLinkRow button {
+    width: 100%;
   }
 }
 
