@@ -1,6 +1,6 @@
 # Work Attendance TODO
 
-Updated: 2026-07-18
+Updated: 2026-07-23
 
 ## Current rules
 
@@ -12,6 +12,22 @@ Updated: 2026-07-18
 - Keep fixes minimal and avoid unrelated modules.
 
 ## Latest findings
+
+- Director LINE announcement / @เลขาผอ.สุธน on 2026-07-23:
+  - [x] Investigated why typing `@เลขา แจ้งเตือนครู` in LINE did not trigger the director announcement flow.
+  - [x] Found the LINE webhook command parser only accepted the longer phrase `@เลขา แจ้งให้คณะครูทุกท่านทราบ ...`.
+  - [x] Updated the director LINE parser to accept `@เลขาผอ.สุธน`, `@เลขาผอ`, and `@เลขา`.
+  - [x] Added supported command phrases: `แจ้งให้คณะครูทุกท่านทราบ`, `แจ้งเตือนครู`, `แจ้งครู`, `ประกาศถึงครู`, and `ประกาศ`.
+  - [x] Added a reply message when the command is recognized but no announcement text is provided.
+  - [x] Changed the Flex message header from `@เลขา ส่งถึง` to `@เลขาผอ.สุธน ส่งถึง`.
+  - [x] Removed LINE postback `displayText` from the acknowledgement button so LINE does not show the user's `รับทราบ` message.
+  - [x] Kept the webhook reply behavior that answers with the teacher name, e.g. `ครู... รับทราบแล้ว`.
+  - [x] Confirmed `npm run lint -- app/api/line/webhook/route.ts lib/line/director-announcements.ts` succeeds.
+  - [x] Confirmed `npm run build` succeeds.
+  - [x] Committed and pushed `fbc9b55 Fix director LINE announcement acknowledgements` to `origin/main`.
+  - [x] Confirmed Vercel production deployment for `pm-coming` reached `Ready` and aliased `https://pm-coming.vercel.app`.
+  - [ ] Test in the actual LINE group after deployment with `@เลขา แจ้งเตือนครู พรุ่งนี้ประชุมเวลา 09.00 น.`.
+  - [ ] Verify a teacher acknowledgement in LINE shows only the bot reply with the teacher name and no separate `รับทราบ` user message.
 
 - Budget table typography on 2026-07-20:
   - [x] Changed `/budget/projects` table detail text to regular weight while keeping headers, badges, and buttons distinct.
