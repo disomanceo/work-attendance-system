@@ -5746,21 +5746,51 @@ export default function BudgetProjectsReadOnlyClient() {
   .projectsRoot .dataCard {
     --project-grid:
       30px
-      minmax(360px, 2.72fr)
-      minmax(100px, 0.58fr)
-      minmax(138px, 0.78fr)
-      minmax(72px, 0.38fr)
-      minmax(72px, 0.38fr)
-      minmax(72px, 0.38fr)
+      minmax(340px, 2.55fr)
+      minmax(96px, 0.54fr)
+      minmax(128px, 0.72fr)
       minmax(68px, 0.36fr)
-      minmax(58px, 0.3fr)
-      72px;
+      minmax(68px, 0.36fr)
+      minmax(68px, 0.36fr)
+      minmax(94px, 0.5fr)
+      minmax(48px, 0.26fr)
+      50px;
   }
 
   .projectsRoot .activityCount {
-    width: 46px;
-    min-width: 46px;
+    width: 100%;
+    min-width: 0;
   }
+}
+
+.projectsRoot .statusCell {
+  overflow: visible;
+}
+
+.projectsRoot .statusBadge {
+  width: max-content;
+  max-width: none;
+  min-width: 76px;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.projectsRoot .activityCount,
+.projectsRoot .activityCount:hover,
+.projectsRoot .expandedCard .activityCount {
+  width: auto;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #2563eb;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 @media (max-width: 980px) {
@@ -5780,9 +5810,9 @@ export default function BudgetProjectsReadOnlyClient() {
   }
 
   .projectsRoot .activityCount {
-    width: 34px;
-    min-width: 34px;
-    height: 28px;
+    width: auto;
+    min-width: 0;
+    height: auto;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
@@ -5847,21 +5877,22 @@ export default function BudgetProjectsReadOnlyClient() {
   }
 
   .projectsRoot .statusBadge {
-    min-width: 0;
+    min-width: 58px;
     min-height: 22px;
     padding: 2px 6px;
     border-radius: 7px;
     font-size: 10px;
     font-weight: 600;
     line-height: 1;
+    white-space: nowrap;
   }
 
   .projectsRoot .activityCount {
     grid-column: 4;
     grid-row: 1;
-    width: 44px;
-    min-width: 44px;
-    height: 26px;
+    width: auto;
+    min-width: 0;
+    height: auto;
     font-size: 10px;
     line-height: 1;
     justify-self: center;
