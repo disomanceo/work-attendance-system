@@ -78,6 +78,7 @@ type SmartAreaBook = {
 type OrderRecipientRow = {
   id: string;
   profile_id: string | null;
+  recipient_name_snapshot: string | null;
   acknowledged_at: string | null;
   notified_at: string | null;
   order_documents?:
@@ -291,6 +292,7 @@ export async function GET(request: Request) {
         `
           id,
           profile_id,
+          recipient_name_snapshot,
           acknowledged_at,
           notified_at,
           order_documents (
@@ -738,35 +740,106 @@ export async function GET(request: Request) {
       const order = orderFromRecipient(recipient);
       return order?.status === "APPROVED";
     });
-    const unacknowledgedOrderRecipients = activeOrderRecipients.filter(
-      (recipient) => !recipient.acknowledged_at,
-    );
-    const latestOrderRecipients = [...activeOrderRecipients].sort((left, right) => {
-      const leftOrder = orderFromRecipient(left);
-      const rightOrder = orderFromRecipient(right);
-      return String(rightOrder?.order_date || "").localeCompare(
-        String(leftOrder?.order_date || ""),
-      );
-    });
-    const orderSummary = {
-      assigned: activeOrderRecipients.length,
-      unacknowledged: unacknowledgedOrderRecipients.length,
-      acknowledged:
-        activeOrderRecipients.length - unacknowledgedOrderRecipients.length,
-      items: latestOrderRecipients.slice(0, 8).map((recipient) => {
-        const order = orderFromRecipient(recipient);
-        const title = order?.order_number
-          ? `${order.order_number} ${order.subject || ""}`.trim()
-          : order?.subject || "คำสั่งที่ต้องรับทราบ";
-        const acknowledged = Boolean(recipient.acknowledged_at);
-        return {
-          id: order?.id || recipient.id,
-          name: title,
-          label: order?.order_date ? thaiDateShort(order.order_date) : "",
-          note: acknowledged ? "รับทราบแล้ว" : "ยังไม่รับทราบ",
-          initials: "คส",
+    const orderGroups = new Map<
+      string,
+      {
+        id: string;
+        orderNumber: string;
+        subject: string;
+        orderDate: string;
+        assigned: number;
+        acknowledged: number;
+        pendingNames: string[];
+      }
+    >();
+    const recipientStats = new Map<string, { assigned: number; pending: number }>();
+
+    activeOrderRecipients.forEach((recipient) => {
+      const order = orderFromRecipient(recipient);
+      const orderId = String(order?.id || recipient.id);
+      const acknowledged = Boolean(recipient.acknowledged_at);
+      const current = orderGroups.get(orderId) ?? {
+        id: orderId,
+        orderNumber: String(order?.order_number || "").trim(),
+        subject: String(order?.subject || "").trim(),
+        orderDate: String(order?.order_date || ""),
+        assigned: 0,
+        acknowledged: 0,
+        pendingNames: [],
+      };
+
+      current.assigned += 1;
+      current.acknowledged += acknowledged ? 1 : 0;
+      if (!acknowledged) {
+        current.pendingNames.push(
+          String(recipient.recipient_name_snapshot || "").trim() ||
+            "ไม่ระบุชื่อ",
+        );
+      }
+      orderGroups.set(orderId, current);
+
+      const recipientId =
+        String(recipient.profile_id || "").trim() ||
+        String(recipient.recipient_name_snapshot || "").trim();
+      if (recipientId) {
+        const stats = recipientStats.get(recipientId) ?? {
+          assigned: 0,
+          pending: 0,
         };
-      }),
+        stats.assigned += 1;
+        stats.pending += acknowledged ? 0 : 1;
+        recipientStats.set(recipientId, stats);
+      }
+    });
+
+    const orderItems = Array.from(orderGroups.values()).map((order) => {
+      const pending = Math.max(order.assigned - order.acknowledged, 0);
+      return {
+        ...order,
+        pending,
+        completed: pending === 0,
+      };
+    });
+    const pendingOrderCount = orderItems.filter((order) => !order.completed)
+      .length;
+    const completedOrderCount = orderItems.filter((order) => order.completed)
+      .length;
+    const peopleTotal = recipientStats.size;
+    const peopleComplete = Array.from(recipientStats.values()).filter(
+      (stats) => stats.assigned > 0 && stats.pending === 0,
+    ).length;
+    const displayOrders = orderItems
+      .sort((left, right) => {
+        if (left.completed !== right.completed) {
+          return left.completed ? 1 : -1;
+        }
+        return String(right.orderDate || "").localeCompare(
+          String(left.orderDate || ""),
+        );
+      })
+      .slice(0, 5);
+    const orderSummary = {
+      assigned: orderItems.length,
+      unacknowledged: pendingOrderCount,
+      acknowledged: completedOrderCount,
+      peopleTotal,
+      peopleComplete,
+      peoplePending: Math.max(peopleTotal - peopleComplete, 0),
+      items: displayOrders.map((order) => ({
+        id: order.id,
+        name: order.orderNumber
+          ? `คำสั่งที่ ${order.orderNumber}`
+          : order.subject || "คำสั่งที่ต้องรับทราบ",
+        label: order.orderDate ? thaiDateShort(order.orderDate) : "",
+        note: order.completed
+          ? "ครบแล้ว"
+          : `ค้าง ${order.pending.toLocaleString("th-TH")} คน`,
+        initials: "คส",
+        assigned: order.assigned,
+        acknowledged: order.acknowledged,
+        unacknowledged: order.pending,
+        pendingNames: order.pendingNames,
+      })),
     };
 
     const highlights = [

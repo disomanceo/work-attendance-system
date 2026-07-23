@@ -27,6 +27,17 @@ type PersonPreview = {
   };
 };
 
+type OrderPreview = {
+  id: string;
+  name: string;
+  label?: string;
+  note?: string;
+  assigned: number;
+  acknowledged: number;
+  unacknowledged: number;
+  pendingNames?: string[];
+};
+
 type ClassSummary = {
   label: string;
   total: number;
@@ -82,7 +93,10 @@ type DailyOverview = {
     assigned: number;
     acknowledged: number;
     unacknowledged: number;
-    items: PersonPreview[];
+    peopleTotal: number;
+    peopleComplete: number;
+    peoplePending: number;
+    items: OrderPreview[];
   };
   highlights: Highlight[];
 };
@@ -405,7 +419,7 @@ export default function DashboardPage() {
       item.title.includes("คำสั่ง")
         ? {
             ...item,
-            value: `${numberText(overview.orders.unacknowledged)} คน`,
+            value: `${numberText(overview.orders.unacknowledged)} เรื่อง`,
           }
         : item,
     );
@@ -618,9 +632,9 @@ export default function DashboardPage() {
             >
               <CardHeader icon="!" title="คำสั่ง" href="/orders" />
               <div className={`${styles.metricGrid} ${styles.metricGridThree}`}>
-                <Metric label="ยังไม่รับทราบ" value={overview.orders.unacknowledged} tone="orange" suffix="คน" />
-                <Metric label="รับทราบแล้ว" value={overview.orders.acknowledged} tone="green" suffix="คน" />
-                <Metric label="แจ้งทั้งหมด" value={overview.orders.assigned} tone="gray" suffix="คน" />
+                <Metric label="คำสั่งทั้งหมด" value={overview.orders.assigned} tone="gray" suffix="เรื่อง" />
+                <Metric label="ครบแล้ว" value={overview.orders.acknowledged} tone="green" suffix="เรื่อง" />
+                <Metric label="ยังค้าง" value={overview.orders.unacknowledged} tone="orange" suffix="เรื่อง" />
               </div>
               <OrderStatusDonut counts={overview.orders} />
             </article>
@@ -742,48 +756,55 @@ function OrderStatusDonut({
 }: {
   counts: DailyOverview["orders"];
 }) {
-  const total = counts.assigned;
-  const orangePercent = percent(counts.unacknowledged, total);
-  const greenPercent = percent(counts.acknowledged, total);
-  const totalPercent = total > 0 ? 100 : 0;
-  const items = [
-    {
-      label: "ยังไม่รับทราบ",
-      count: counts.unacknowledged,
-      percent: orangePercent,
-      className: styles.orderSliceOrange,
-    },
-    {
-      label: "รับทราบแล้ว",
-      count: counts.acknowledged,
-      percent: greenPercent,
-      className: styles.orderSliceGreen,
-    },
-    {
-      label: "แจ้งทั้งหมด",
-      count: total,
-      percent: totalPercent,
-      className: styles.orderSliceBlack,
-    },
-  ];
+  const teacherPercent = percent(counts.peopleComplete, counts.peopleTotal);
 
   return (
     <div className={styles.orderDonutPanel}>
-      <h3 className={styles.orderDonutTitle}>สรุปจำนวนครูที่รับทราบคำสั่ง</h3>
+      <h3 className={styles.orderDonutTitle}>สรุปครูที่รับทราบคำสั่งครบ</h3>
       <Donut
-        value={greenPercent}
-        label="รับทราบ"
+        value={teacherPercent}
+        label="ครบทุกคำสั่ง"
       />
+      <p className={styles.orderTeacherSummary}>
+        ครูรับทราบครบ {numberText(counts.peopleComplete)}/
+        {numberText(counts.peopleTotal)} คน
+      </p>
       <div className={styles.orderDonutLegend}>
-        {items.map((item) => (
-          <div className={styles.orderDonutLegendItem} key={item.label}>
-            <span className={item.className} aria-hidden="true" />
-            <small>{item.label}</small>
-            <strong>
-              <b>{numberText(item.count)} คน</b>
-            </strong>
-          </div>
-        ))}
+        {counts.items.length === 0 ? (
+          <p className={styles.emptyState}>ยังไม่มีคำสั่งที่ต้องรับทราบ</p>
+        ) : (
+          counts.items.map((item) => (
+            <div
+              className={styles.orderItemRow}
+              key={item.id}
+              title={
+                item.pendingNames?.length
+                  ? `ค้าง: ${item.pendingNames.join(", ")}`
+                  : "รับทราบครบแล้ว"
+              }
+            >
+              <span
+                className={
+                  item.unacknowledged > 0
+                    ? styles.orderSliceOrange
+                    : styles.orderSliceGreen
+                }
+                aria-hidden="true"
+              />
+              <small>
+                <b>{item.name}</b>
+                {item.label && <em>{item.label}</em>}
+              </small>
+              <strong>
+                รับทราบ {numberText(item.acknowledged)}/
+                {numberText(item.assigned)} |{" "}
+                {item.unacknowledged > 0
+                  ? `ค้าง ${numberText(item.unacknowledged)} คน`
+                  : "ครบแล้ว"}
+              </strong>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
