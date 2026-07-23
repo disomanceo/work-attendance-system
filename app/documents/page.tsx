@@ -1365,9 +1365,7 @@ export default function DocumentsPage() {
         .map((task) => task.assigneeId)
         .filter((id): id is string => Boolean(id)),
     );
-    setRequiresTrainingReport(
-      book.tasks.some((task) => task.requiresTrainingReport),
-    );
+    setRequiresTrainingReport(false);
     setActionNote(book.directorNote || "");
     setMessage("");
     setSuccessMessage("");
@@ -3091,9 +3089,19 @@ export default function DocumentsPage() {
               <input
                 type="checkbox"
                 checked={requiresTrainingReport}
-                onChange={(event) =>
-                  setRequiresTrainingReport(event.target.checked)
-                }
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  if (
+                    checked &&
+                    !window.confirm(
+                      "ต้องการให้ผู้รับมอบหมายส่งรายงานผลการประชุม/อบรมใช่ไหม",
+                    )
+                  ) {
+                    return;
+                  }
+
+                  setRequiresTrainingReport(checked);
+                }}
               />
               <span>
                 <strong>ต้องส่งรายงานผลการประชุม/อบรม</strong>

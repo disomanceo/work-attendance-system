@@ -567,9 +567,7 @@ setSelectedAssigneeIds(
         setInstructionText(
           result.book.directorNote || "มอบหมายให้",
         );
-        setRequiresTrainingReport(
-          (result.book.tasks ?? []).some((task) => task.requiresTrainingReport),
-        );
+        setRequiresTrainingReport(false);
 if (result.signer?.signatureFileId) {
           const cachedSignatureUrl = await getCachedProfileAssetUrl(
             "signature",
@@ -1197,7 +1195,17 @@ if (result.signer?.signatureFileId) {
                 type="checkbox"
                 checked={requiresTrainingReport}
                 onChange={(event) => {
-                  setRequiresTrainingReport(event.target.checked);
+                  const checked = event.target.checked;
+                  if (
+                    checked &&
+                    !window.confirm(
+                      "ต้องการให้ผู้รับมอบหมายส่งรายงานผลการประชุม/อบรมใช่ไหม",
+                    )
+                  ) {
+                    return;
+                  }
+
+                  setRequiresTrainingReport(checked);
                   setIsDirty(true);
                 }}
               />
