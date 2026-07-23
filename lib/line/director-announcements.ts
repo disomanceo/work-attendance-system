@@ -306,7 +306,7 @@ export function directorAnnouncementFlex(input: {
         paddingAll: "12px",
         backgroundColor: GREEN,
         contents: [
-          lineText("@เลขา ส่งถึง", {
+          lineText("@เลขาผอ.สุธน ส่งถึง", {
             color: "#ECFDF5",
             weight: "bold",
             size: "xs",
@@ -342,7 +342,6 @@ export function directorAnnouncementFlex(input: {
                     type: "postback",
                     label: "รับทราบ",
                     data: `director_ack:${input.announcementId}`,
-                    displayText: "รับทราบ",
                   },
                 },
               ],

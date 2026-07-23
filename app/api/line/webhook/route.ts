@@ -302,13 +302,40 @@ async function handleDirectorPostback(event: LineEvent) {
   return true;
 }
 
-function directorAnnouncementMessage(value: string) {
+function parseDirectorAnnouncementCommand(value: string) {
   const text = value.trim();
-  const command = "แจ้งให้คณะครูทุกท่านทราบ";
-  const index = text.indexOf(command);
-  if (!text.includes("@เลขา") || index < 0) return "";
+  const mentionIndex = ["@เลขาผอ.สุธน", "@เลขาผอ", "@เลขา"]
+    .map((mention) => text.indexOf(mention))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
 
-  return text.slice(index + command.length).trim();
+  if (mentionIndex === undefined) {
+    return { matched: false as const, message: "" };
+  }
+
+  const afterMention = text
+    .slice(mentionIndex)
+    .replace(/^@เลขาผอ\.สุธน|^@เลขาผอ|^@เลขา/u, "")
+    .trim();
+  const commands = [
+    "แจ้งให้คณะครูทุกท่านทราบ",
+    "แจ้งเตือนครู",
+    "แจ้งครู",
+    "ประกาศถึงครู",
+    "ประกาศ",
+  ];
+  const command = commands.find((item) => afterMention.startsWith(item));
+  if (!command) {
+    return { matched: false as const, message: "" };
+  }
+
+  return {
+    matched: true as const,
+    message: afterMention
+      .slice(command.length)
+      .replace(/^[\s:：\-–—]+/u, "")
+      .trim(),
+  };
 }
 
 async function handleDirectorCommand(event: LineEvent) {
@@ -321,8 +348,18 @@ async function handleDirectorCommand(event: LineEvent) {
     return false;
   }
 
-  const message = directorAnnouncementMessage(event.message.text);
-  if (!message) return false;
+  const command = parseDirectorAnnouncementCommand(event.message.text);
+  if (!command.matched) return false;
+
+  if (!command.message) {
+    await replyDirectorLineMessages(event.replyToken, [
+      {
+        type: "text",
+        text: "กรุณาพิมพ์ข้อความประกาศต่อท้าย เช่น @เลขา แจ้งเตือนครู พรุ่งนี้ประชุมเวลา 09.00 น.",
+      },
+    ]);
+    return true;
+  }
 
   const groupId = event.source?.groupId || "";
   const userId = event.source?.userId || "";
@@ -338,7 +375,7 @@ async function handleDirectorCommand(event: LineEvent) {
     directorAnnouncementFlex({
       announcementId,
       directorName,
-      message,
+      message: command.message,
     }),
   ]);
 
@@ -353,7 +390,7 @@ async function handleDirectorCommand(event: LineEvent) {
         channel: "director",
         actorName: directorName,
         announcementId,
-        message,
+        message: command.message,
         acknowledgements: [],
         source: "line-command",
       },
