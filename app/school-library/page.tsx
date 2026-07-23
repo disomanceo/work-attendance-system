@@ -88,7 +88,7 @@ type SearchStat = {
 const DRIVE_FOLDER_URL =
   "https://drive.google.com/drive/u/0/folders/1oqa3etlgk5LtqDLRY2SJn1mDinPL0_lJ";
 const SEARCH_HISTORY_KEY = "school-library-search-history";
-const MAX_UPLOAD_FILE_SIZE = 30 * 1024 * 1024;
+const MAX_UPLOAD_FILE_SIZE = 4 * 1024 * 1024;
 
 const CATEGORIES = SCHOOL_LIBRARY_CATEGORIES;
 
@@ -236,6 +236,31 @@ function formatFileSize(size: number) {
   if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
   if (size >= 1024) return `${Math.round(size / 1024)} KB`;
   return `${size} bytes`;
+}
+
+type ApiResultBase = {
+  ok?: boolean;
+  message?: string;
+};
+
+async function readApiResult<T extends ApiResultBase>(response: Response) {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    return (await response.json().catch(() => ({
+      ok: false,
+      message: "ข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง",
+    }))) as T;
+  }
+
+  const text = (await response.text().catch(() => "")).trim();
+  const message = /request entity too large/i.test(text)
+    ? `ไฟล์ใหญ่เกินกว่าระบบรับผ่านหน้าเว็บได้ กรุณาเลือกไฟล์ไม่เกิน ${formatFileSize(
+        MAX_UPLOAD_FILE_SIZE,
+      )}`
+    : text.slice(0, 220) || `เซิร์ฟเวอร์ตอบกลับไม่สำเร็จ (${response.status})`;
+
+  return { ok: false, message } as T;
 }
 
 function documentFileCount(document: LibraryDocument) {
@@ -531,11 +556,11 @@ export default function SchoolLibraryPage() {
       const response = await fetch("/api/school-library/profiles", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const result = (await response.json()) as {
+      const result = await readApiResult<{
         ok?: boolean;
         profiles?: PersonnelOption[];
         message?: string;
-      };
+      }>(response);
 
       if (!response.ok || !result.ok) {
         throw new Error(result.message || "โหลดรายชื่อครูและบุคลากรไม่สำเร็จ");
@@ -859,7 +884,7 @@ export default function SchoolLibraryPage() {
     setSelectedFiles(validFiles);
     setFormError(
       rejectedFile
-        ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน 30 MB`
+        ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(MAX_UPLOAD_FILE_SIZE)}`
         : "",
     );
     setFormOpen(true);
@@ -925,7 +950,7 @@ export default function SchoolLibraryPage() {
     setSelectedFiles(validFiles);
     setFormError(
       rejectedFile
-        ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน 30 MB`
+        ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(MAX_UPLOAD_FILE_SIZE)}`
         : "",
     );
     setFormOpen(true);
@@ -1118,7 +1143,9 @@ export default function SchoolLibraryPage() {
             uploadedByUserId: document.uploadedByUserId || "",
           }),
         });
-        const result = await response.json();
+        const result = await readApiResult<{ ok?: boolean; message?: string }>(
+          response,
+        );
 
         if (!response.ok || !result.ok) {
           throw new Error(result.message || "ลบไฟล์ไม่สำเร็จ");
@@ -1158,7 +1185,11 @@ export default function SchoolLibraryPage() {
     const rejectedFile = incomingFiles.find((file) => file.size > MAX_UPLOAD_FILE_SIZE);
 
     if (rejectedFile) {
-      setFormError(`ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน 30 MB`);
+      setFormError(
+        `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(
+          MAX_UPLOAD_FILE_SIZE,
+        )}`,
+      );
     } else {
       setFormError("");
     }
@@ -1212,7 +1243,11 @@ export default function SchoolLibraryPage() {
 
     const oversizedFile = selectedFiles.find((file) => file.size > MAX_UPLOAD_FILE_SIZE);
     if (oversizedFile) {
-      setFormError(`ไฟล์ ${oversizedFile.name} ต้องมีขนาดไม่เกิน 30 MB`);
+      setFormError(
+        `ไฟล์ ${oversizedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(
+          MAX_UPLOAD_FILE_SIZE,
+        )}`,
+      );
       return;
     }
 
@@ -1272,7 +1307,9 @@ export default function SchoolLibraryPage() {
             headers: { Authorization: `Bearer ${accessToken}` },
             body: uploadData,
           });
-          uploadResult = await uploadResponse.json();
+          uploadResult = await readApiResult<typeof uploadResult>(
+            uploadResponse,
+          );
 
           if (!uploadResponse.ok || !uploadResult.ok) {
             throw new Error(uploadResult.message || "อัปโหลดไฟล์ไป Google Drive ไม่สำเร็จ");
@@ -1428,7 +1465,9 @@ export default function SchoolLibraryPage() {
             uploadedByUserId: document.uploadedByUserId || "",
           }),
         });
-        const result = await response.json();
+        const result = await readApiResult<{ ok?: boolean; message?: string }>(
+          response,
+        );
 
         if (!response.ok || !result.ok) {
           throw new Error(result.message || "ลบไฟล์ไม่สำเร็จ");
