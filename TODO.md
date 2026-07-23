@@ -17,6 +17,7 @@ Updated: 2026-07-23
   - [x] Checked the `การลงเวลาของฉัน` page at `/attendance/history` against the school attendance page layout.
   - [x] Confirmed the personal attendance history route uses its own CSS module, so the change can be scoped without touching `AppShell` or `/admin/attendance`.
   - [x] Expanded the personal attendance history page wrapper and panel to use the full available AppShell content width.
+  - [x] Tightened the fix after production feedback by sizing the page from the viewport minus the standard sidebar width.
   - [x] Confirmed `npm run lint -- app/attendance/history/page.tsx` succeeds after the scoped CSS update.
   - [x] Confirmed `npm run build` succeeds after the scoped CSS update.
   - [ ] Visually recheck `/attendance/history` in the real logged-in browser viewport.
