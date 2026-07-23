@@ -12,6 +12,7 @@ function doPost(e) {
 
     const isSchoolLibraryRequest =
       body.action === "uploadSchoolLibraryFile" ||
+      body.action === "uploadSchoolLibraryFileChunk" ||
       body.action === "deleteSchoolLibraryFile";
     const isTeachingRequest =
       body.action === "uploadTeachingInspectionImage" ||
@@ -36,6 +37,10 @@ function doPost(e) {
 
     if (body.action === "uploadSchoolLibraryFile") {
       return json_(uploadSchoolLibraryFile_(body));
+    }
+
+    if (body.action === "uploadSchoolLibraryFileChunk") {
+      return json_(uploadSchoolLibraryFileChunk_(body));
     }
 
     if (body.action === "deleteSchoolLibraryFile") {
@@ -93,6 +98,111 @@ function uploadSchoolLibraryFile_(body) {
   );
 
   return fileResponse_(file);
+}
+
+function uploadSchoolLibraryFileChunk_(body) {
+  if (!SCHOOL_LIBRARY_ROOT_FOLDER_ID) {
+    throw new Error("Missing SCHOOL_LIBRARY_ROOT_FOLDER_ID");
+  }
+
+  const uploadId = String(body.uploadId || "").trim().replace(/[^A-Za-z0-9_-]/g, "");
+  const chunkIndex = Number(body.chunkIndex);
+  const totalChunks = Number(body.totalChunks);
+  const base64 = String(body.base64 || "").trim();
+
+  if (!uploadId) {
+    throw new Error("Missing uploadId");
+  }
+
+  if (
+    !Number.isInteger(chunkIndex) ||
+    !Number.isInteger(totalChunks) ||
+    chunkIndex < 0 ||
+    totalChunks < 1 ||
+    chunkIndex >= totalChunks
+  ) {
+    throw new Error("Invalid chunk order");
+  }
+
+  if (!base64) {
+    throw new Error("Missing chunk content");
+  }
+
+  const root = DriveApp.getFolderById(SCHOOL_LIBRARY_ROOT_FOLDER_ID);
+  const tempRoot = getOrCreateFolder_(root, "_school_library_upload_tmp");
+  const uploadFolder = getOrCreateFolder_(tempRoot, uploadId);
+  const chunkName = "chunk_" + String(chunkIndex).padStart(5, "0") + ".txt";
+  const existing = uploadFolder.getFilesByName(chunkName);
+
+  while (existing.hasNext()) {
+    existing.next().setTrashed(true);
+  }
+
+  uploadFolder.createFile(
+    Utilities.newBlob(base64, "text/plain", chunkName)
+  );
+
+  if (chunkIndex !== totalChunks - 1) {
+    return {
+      ok: true,
+      complete: false,
+      uploadId: uploadId,
+      chunkIndex: chunkIndex,
+      totalChunks: totalChunks,
+    };
+  }
+
+  const chunks = [];
+  for (let index = 0; index < totalChunks; index += 1) {
+    const name = "chunk_" + String(index).padStart(5, "0") + ".txt";
+    const files = uploadFolder.getFilesByName(name);
+    if (!files.hasNext()) {
+      throw new Error("Missing chunk " + (index + 1) + "/" + totalChunks);
+    }
+    chunks.push(files.next());
+  }
+
+  const bytes = [];
+  chunks.forEach(function (chunkFile) {
+    const chunkBytes = Utilities.base64Decode(
+      chunkFile.getBlob().getDataAsString()
+    );
+    chunkBytes.forEach(function (byte) {
+      bytes.push(byte);
+    });
+  });
+
+  const yearFolder = getOrCreateFolder_(root, String(body.academicYear || "ไม่ระบุปี"));
+  const categoryFolder = getOrCreateFolder_(yearFolder, categoryLabel_(body.category));
+  const fileName = buildFileName_(body);
+  const blob = Utilities.newBlob(
+    bytes,
+    String(body.mimeType || "application/octet-stream"),
+    fileName
+  );
+  const file = categoryFolder.createFile(blob);
+
+  file.setDescription(
+    JSON.stringify({
+      module: "school-library",
+      category: body.category || "",
+      uploadedBy: body.uploadedBy || "",
+      uploadedAt: new Date().toISOString(),
+      uploadId: uploadId,
+      chunked: true,
+    })
+  );
+
+  chunks.forEach(function (chunkFile) {
+    chunkFile.setTrashed(true);
+  });
+  uploadFolder.setTrashed(true);
+
+  const response = fileResponse_(file);
+  response.complete = true;
+  response.fileType = body.fileType || "DRIVE";
+  response.fileSize = Number(body.fileSize) || file.getSize();
+  return response;
 }
 
 function deleteSchoolLibraryFile_(body) {

@@ -97,4 +97,6 @@ SCHOOL_LIBRARY_DRIVE_GAS_SECRET=
 
 The selected file is uploaded to Google Drive first. Firestore stores only metadata such as title, category, file type, file name, file size, Drive file id, and Drive URL.
 
+Files up to 4 MB use the normal `/api/school-library/upload` route. Larger files up to 30 MB are split by the browser and sent through `/api/school-library/upload-chunk`; the Next.js route forwards each chunk to Apps Script, and Apps Script rebuilds the file in Drive after receiving the final chunk.
+
 When updating `gas-school-library/Code.gs`, redeploy the Apps Script web app so actions such as `deleteSchoolLibraryFile` are available to the website.

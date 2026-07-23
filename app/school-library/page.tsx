@@ -32,11 +32,6 @@ type LibraryDocumentFile = {
   fileType: LibraryFileType;
 };
 
-type DriveLinkDraft = {
-  url: string;
-  name: string;
-};
-
 type LibraryDocument = {
   id: string;
   title: string;
@@ -93,7 +88,9 @@ type SearchStat = {
 const DRIVE_FOLDER_URL =
   "https://drive.google.com/drive/u/0/folders/1oqa3etlgk5LtqDLRY2SJn1mDinPL0_lJ";
 const SEARCH_HISTORY_KEY = "school-library-search-history";
-const MAX_UPLOAD_FILE_SIZE = 4 * 1024 * 1024;
+const DIRECT_UPLOAD_FILE_SIZE = 4 * 1024 * 1024;
+const MAX_UPLOAD_FILE_SIZE = 30 * 1024 * 1024;
+const UPLOAD_CHUNK_SIZE = 1024 * 1024;
 
 const CATEGORIES = SCHOOL_LIBRARY_CATEGORIES;
 
@@ -266,6 +263,35 @@ async function readApiResult<T extends ApiResultBase>(response: Response) {
     : text.slice(0, 220) || `เซิร์ฟเวอร์ตอบกลับไม่สำเร็จ (${response.status})`;
 
   return { ok: false, message } as T;
+}
+
+type SchoolLibraryUploadResult = ApiResultBase & {
+  fileType?: LibraryDocument["fileType"];
+  fileUrl?: string;
+  fileId?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+};
+
+function createUploadId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function readFileChunkAsBase64(file: File, start: number, end: number) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      resolve(result.includes(",") ? result.split(",").pop() || "" : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error("อ่านไฟล์ไม่สำเร็จ"));
+    reader.readAsDataURL(file.slice(start, end));
+  });
 }
 
 function documentFileCount(document: LibraryDocument) {
@@ -441,29 +467,6 @@ function titleFromFileName(name: string) {
   return withoutExtension.trim().replace(/\s+/g, " ").slice(0, 120) || name.slice(0, 120);
 }
 
-function fileNameFromDriveUrl(value: string) {
-  try {
-    const parsed = new URL(value);
-    const pathName = decodeURIComponent(
-      parsed.pathname.split("/").filter(Boolean).pop() || "",
-    );
-    return pathName && !["view", "edit", "preview"].includes(pathName)
-      ? pathName.slice(0, 120)
-      : "Google Drive file";
-  } catch {
-    return "Google Drive file";
-  }
-}
-
-function normalizeDriveLinkDrafts(items: DriveLinkDraft[]) {
-  return items
-    .map((item) => ({
-      url: item.url.trim(),
-      name: item.name.trim(),
-    }))
-    .filter((item) => item.url);
-}
-
 function readSearchHistory(): SearchStat[] {
   if (typeof window === "undefined") return [];
 
@@ -522,7 +525,6 @@ export default function SchoolLibraryPage() {
   const [editingDocument, setEditingDocument] = useState<LibraryDocument | null>(null);
   const [expandedDocumentIds, setExpandedDocumentIds] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [driveLinks, setDriveLinks] = useState<DriveLinkDraft[]>([]);
   const [formError, setFormError] = useState("");
   const [currentProfile, setCurrentProfile] = useState<CurrentProfile | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -895,7 +897,6 @@ export default function SchoolLibraryPage() {
     setDraft(EMPTY_DRAFT);
     setEditingDocument(null);
     setSelectedFiles([]);
-    setDriveLinks([]);
     setFormError("");
     setMoveTargetQuery("");
   }
@@ -912,7 +913,6 @@ export default function SchoolLibraryPage() {
     );
     setEditingDocument(null);
     setSelectedFiles(validFiles);
-    setDriveLinks([]);
     setFormError(
       rejectedFile
         ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(MAX_UPLOAD_FILE_SIZE)}`
@@ -979,7 +979,6 @@ export default function SchoolLibraryPage() {
     });
     setEditingDocument(document);
     setSelectedFiles(validFiles);
-    setDriveLinks([]);
     setFormError(
       rejectedFile
         ? `ไฟล์ ${rejectedFile.name} ต้องมีขนาดไม่เกิน ${formatFileSize(MAX_UPLOAD_FILE_SIZE)}`
@@ -1252,22 +1251,57 @@ export default function SchoolLibraryPage() {
     );
   }
 
-  function addDriveLinkField() {
-    setDriveLinks((current) => [...current, { url: "", name: "" }]);
-  }
+  async function uploadLargeFileInChunks(input: {
+    file: File;
+    title: string;
+    category: LibraryCategory;
+    academicYear: string;
+    accessToken: string;
+    uploadedBy: string;
+  }) {
+    const totalChunks = Math.ceil(input.file.size / UPLOAD_CHUNK_SIZE);
+    const uploadId = createUploadId();
+    let uploadResult: SchoolLibraryUploadResult = {};
 
-  function updateDriveLink(index: number, key: keyof DriveLinkDraft, value: string) {
-    setDriveLinks((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, [key]: value } : item,
-      ),
-    );
-  }
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+      const start = chunkIndex * UPLOAD_CHUNK_SIZE;
+      const end = Math.min(input.file.size, start + UPLOAD_CHUNK_SIZE);
+      const base64 = await readFileChunkAsBase64(input.file, start, end);
 
-  function removeDriveLink(index: number) {
-    setDriveLinks((current) =>
-      current.filter((_, itemIndex) => itemIndex !== index),
-    );
+      setDatabaseMessage(
+        `กำลังส่งไฟล์ใหญ่ ${input.file.name} ส่วนที่ ${chunkIndex + 1}/${totalChunks}`,
+      );
+
+      const response = await fetch("/api/school-library/upload-chunk", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${input.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uploadId,
+          chunkIndex,
+          totalChunks,
+          base64,
+          title: input.title,
+          category: input.category,
+          academicYear: input.academicYear,
+          originalName: input.file.name,
+          mimeType: input.file.type || "application/octet-stream",
+          fileType: inferFileTypeFromFile(input.file),
+          fileSize: input.file.size,
+          uploadedBy: input.uploadedBy,
+        }),
+      });
+
+      uploadResult = await readApiResult<SchoolLibraryUploadResult>(response);
+
+      if (!response.ok || !uploadResult.ok) {
+        throw new Error(uploadResult.message || "อัปโหลดไฟล์ใหญ่ไป Google Drive ไม่สำเร็จ");
+      }
+    }
+
+    return uploadResult;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1280,29 +1314,18 @@ export default function SchoolLibraryPage() {
     }
 
     const existingFiles = editingDocument ? documentFilesOf(editingDocument) : [];
-    const validDriveLinks = normalizeDriveLinkDrafts(driveLinks);
 
-    for (const link of validDriveLinks) {
-      try {
-        new URL(link.url);
-      } catch {
-        setFormError(`ลิงก์ไฟล์ไม่ถูกต้อง: ${link.url}`);
-        return;
-      }
-    }
-
-    if (!editingDocument && selectedFiles.length === 0 && validDriveLinks.length === 0) {
-      setFormError("กรุณาเลือกไฟล์จากเครื่องหรือแนบลิงก์ Google Drive");
+    if (!editingDocument && selectedFiles.length === 0) {
+      setFormError("กรุณาเลือกไฟล์จากเครื่อง");
       return;
     }
 
     if (
       editingDocument &&
       existingFiles.length === 0 &&
-      selectedFiles.length === 0 &&
-      validDriveLinks.length === 0
+      selectedFiles.length === 0
     ) {
-      setFormError("กรุณาเลือกไฟล์จากเครื่องหรือแนบลิงก์ Google Drive");
+      setFormError("กรุณาเลือกไฟล์จากเครื่อง");
       return;
     }
 
@@ -1340,22 +1363,25 @@ export default function SchoolLibraryPage() {
           `กำลังบันทึกไฟล์ ${fileIndex + 1}/${selectedFiles.length}: ${selectedFile.name}`,
         );
 
-        let uploadResult: {
-          ok?: boolean;
-          message?: string;
-          fileType?: LibraryDocument["fileType"];
-          fileUrl?: string;
-          fileId?: string;
-          fileName?: string;
-          mimeType?: string;
-          fileSize?: number;
-        } = {};
+        let uploadResult: SchoolLibraryUploadResult = {};
         const localPreviewUrl =
           !firebaseConfigured && shouldOpenFileInBrowser(selectedFile)
             ? URL.createObjectURL(selectedFile)
             : "";
 
-        if (firebaseConfigured) {
+        if (firebaseConfigured && selectedFile.size > DIRECT_UPLOAD_FILE_SIZE) {
+          uploadResult = await uploadLargeFileInChunks({
+            file: selectedFile,
+            title:
+              selectedFiles.length === 1
+                ? baseTitle
+                : `${baseTitle} - ${titleFromFileName(selectedFile.name)}`,
+            category: draft.category,
+            academicYear: draft.academicYear.trim() || "2569",
+            accessToken,
+            uploadedBy: sessionUserId,
+          });
+        } else if (firebaseConfigured) {
           const uploadData = new FormData();
           uploadData.append("file", selectedFile);
           uploadData.append(
@@ -1392,22 +1418,6 @@ export default function SchoolLibraryPage() {
       }
 
       setDatabaseMessage("กำลังจัดเก็บรายละเอียดเอกสาร...");
-
-      for (const [linkIndex, link] of validDriveLinks.entries()) {
-        const fileName = link.name || fileNameFromDriveUrl(link.url);
-        setDatabaseMessage(
-          `กำลังบันทึกลิงก์ไฟล์ ${linkIndex + 1}/${validDriveLinks.length}: ${fileName}`,
-        );
-
-        uploadedFiles.push({
-          driveUrl: link.url,
-          driveFileId: driveFileIdOf({ driveUrl: link.url }),
-          fileName,
-          mimeType: "",
-          fileSize: 0,
-          fileType: "DRIVE",
-        });
-      }
 
       const mergedFiles = [...existingFiles, ...uploadedFiles];
       const primaryFile = mergedFiles[0];
@@ -2000,11 +2010,7 @@ export default function SchoolLibraryPage() {
                   addSelectedFiles(event.target.files);
                   event.currentTarget.value = "";
                 }}
-                required={
-                  !editingDocument &&
-                  selectedFiles.length === 0 &&
-                  normalizeDriveLinkDrafts(driveLinks).length === 0
-                }
+                required={!editingDocument && selectedFiles.length === 0}
               />
               {selectedFiles.length > 0 ? (
                 <span>
@@ -2014,47 +2020,6 @@ export default function SchoolLibraryPage() {
                 <span>เลือกไฟล์จากเครื่อง ระบบจะอัปโหลดเข้า Google Drive ให้</span>
               )}
             </label>
-
-            <section className={styles.driveLinkPanel}>
-              <div>
-                <strong>ลิงก์ Google Drive สำหรับไฟล์ใหญ่</strong>
-                <span>
-                  ใช้เมื่อไฟล์เกิน {formatFileSize(MAX_UPLOAD_FILE_SIZE)} โดยอัปโหลดไฟล์เข้า
-                  Google Drive ก่อน แล้วนำลิงก์มาแนบที่นี่
-                </span>
-              </div>
-
-              {driveLinks.length > 0 && (
-                <div className={styles.driveLinkList}>
-                  {driveLinks.map((link, index) => (
-                    <div className={styles.driveLinkRow} key={index}>
-                      <input
-                        value={link.url}
-                        onChange={(event) =>
-                          updateDriveLink(index, "url", event.target.value)
-                        }
-                        placeholder="https://drive.google.com/file/d/..."
-                        inputMode="url"
-                      />
-                      <input
-                        value={link.name}
-                        onChange={(event) =>
-                          updateDriveLink(index, "name", event.target.value)
-                        }
-                        placeholder="ชื่อไฟล์ที่จะแสดง"
-                      />
-                      <button type="button" onClick={() => removeDriveLink(index)}>
-                        ลบ
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button type="button" onClick={addDriveLinkField}>
-                + เพิ่มลิงก์ไฟล์ใหญ่
-              </button>
-            </section>
 
             {editingDocument && documentFilesOf(editingDocument).length > 0 && (
               <div className={`${styles.selectedFilesPanel} ${styles.existingFilesPanel}`} aria-live="polite">
