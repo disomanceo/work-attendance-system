@@ -1,6 +1,6 @@
 # Work Attendance TODO
 
-Updated: 2026-07-23
+Updated: 2026-07-24
 
 ## Current rules
 
@@ -12,6 +12,18 @@ Updated: 2026-07-23
 - Keep fixes minimal and avoid unrelated modules.
 
 ## Latest findings
+
+- Attendance history mobile compact layout on 2026-07-24:
+  - [x] Compact the `/attendance/history` mobile filter panel into one horizontal row with small controls.
+  - [x] Removed the mobile filter horizontal scrollbar by fitting all four controls in one row.
+  - [x] Compact the five summary cards into a 3-column mobile grid so they occupy no more than two rows.
+  - [x] Reduced mobile summary cards to smaller metric-card sizing.
+  - [x] Convert mobile attendance detail rows into short daily cards with date, check-in/status, and one-line note.
+  - [x] Hide empty attendance notes instead of rendering `-`.
+  - [x] Keep the change scoped to `app/attendance/history/attendance-history.module.css`.
+  - [x] Confirmed `npm run lint -- app/attendance/history/page.tsx app/attendance/history/layout.tsx` succeeds.
+  - [x] Confirmed `npm run build` succeeds.
+  - [ ] Visually recheck `/attendance/history` on a real mobile viewport after deployment.
 
 - Attendance history full-width layout on 2026-07-23:
   - [x] Checked the `การลงเวลาของฉัน` page at `/attendance/history` against the school attendance page layout.

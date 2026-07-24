@@ -401,7 +401,7 @@ export default function AttendanceHistoryPage() {
                             {status.label}
                           </span>
                         </td>
-                        <td data-label="หมายเหตุ">{record.note || "-"}</td>
+                        <td data-label="หมายเหตุ">{record.note?.trim() || ""}</td>
                       </tr>
                     );
                   })}

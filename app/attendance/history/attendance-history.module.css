@@ -96,3 +96,247 @@
   .attendanceTab,.activeAttendanceTab{flex:1;padding:0 10px;font-size:13px}
 }
 /* ATTENDANCE ROLE TABS END */
+
+/* MOBILE COMPACT HISTORY START */
+@media(max-width:700px){
+  .page{
+    padding:8px 8px 18px;
+  }
+
+  .panel{
+    padding:12px;
+    border-radius:16px;
+  }
+
+  .pageHeader{
+    gap:8px;
+  }
+
+  .pageHeader h1{
+    font-size:26px;
+    line-height:1.18;
+  }
+
+  .subtitle{
+    font-size:13px;
+    line-height:1.45;
+  }
+
+  .profileStrip{
+    gap:8px;
+    margin-top:14px;
+    padding:12px;
+  }
+
+  .profileStrip small{
+    font-size:11px;
+  }
+
+  .profileStrip strong{
+    font-size:13px;
+    line-height:1.4;
+  }
+
+  .attendanceTabs{
+    margin-top:12px;
+    padding:4px;
+  }
+
+  .attendanceTab,
+  .activeAttendanceTab{
+    min-height:36px;
+    padding:0 8px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  .toolbar{
+    display:grid;
+    grid-template-columns:1.04fr 1.04fr .9fr .72fr;
+    gap:4px;
+    margin-top:12px;
+    padding:7px;
+    overflow:visible;
+    border-radius:13px;
+  }
+
+  .toolbar label{
+    min-width:0;
+    gap:3px;
+  }
+
+  .toolbar label span{
+    overflow:hidden;
+    font-size:10px;
+    line-height:1.1;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .toolbar input,
+  .toolbar select{
+    height:34px;
+    min-width:0;
+    padding:0 5px;
+    border-radius:9px;
+    font-size:11px;
+  }
+
+  .primaryButton{
+    min-height:34px;
+    width:auto;
+    min-width:0;
+    padding:0 5px;
+    border-radius:9px;
+    font-size:10.5px;
+    white-space:nowrap;
+  }
+
+  .summaryGrid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:5px;
+    margin-top:10px;
+  }
+
+  .summaryGrid article{
+    min-height:54px;
+    padding:7px 7px;
+    border-radius:11px;
+  }
+
+  .summaryGrid span{
+    min-height:20px;
+    font-size:9.5px;
+    line-height:1.08;
+  }
+
+  .summaryGrid strong{
+    margin-top:2px;
+    font-size:20px;
+    line-height:1;
+  }
+
+  .tableSection{
+    margin-top:12px;
+    padding:12px;
+    border-radius:15px;
+  }
+
+  .tableHeader{
+    align-items:center;
+    margin-bottom:10px;
+  }
+
+  .tableHeader h2{
+    font-size:21px;
+    line-height:1.15;
+  }
+
+  .tableHeader>span{
+    padding:5px 9px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  .tableWrap{
+    overflow:visible;
+  }
+
+  .tableWrap table,
+  .tableWrap thead,
+  .tableWrap tbody{
+    display:block;
+    min-width:0;
+    width:100%;
+  }
+
+  .tableWrap thead{
+    display:none;
+  }
+
+  .tableWrap tr{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:4px 8px;
+    margin-bottom:8px;
+    padding:10px 11px;
+    border:1px solid rgba(47,141,105,.14);
+    border-radius:13px;
+    background:rgba(255,255,255,.86);
+  }
+
+  .tableWrap td{
+    display:block;
+    min-width:0;
+    padding:0;
+    border:0;
+    font-size:12px;
+    line-height:1.35;
+  }
+
+  .tableWrap td::before{
+    content:none;
+  }
+
+  .tableWrap td:nth-child(1){
+    grid-column:1/-1;
+  }
+
+  .tableWrap td:nth-child(1) strong{
+    overflow:hidden;
+    font-size:13px;
+    line-height:1.25;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .tableWrap td:nth-child(2){
+    grid-column:1;
+    color:#60766d;
+  }
+
+  .tableWrap td:nth-child(2) strong{
+    display:inline;
+    font-size:13px;
+  }
+
+  .tableWrap td:nth-child(2) strong::before{
+    content:"เข้า ";
+    color:#6d8178;
+    font-weight:700;
+  }
+
+  .tableWrap td:nth-child(2) small{
+    display:inline;
+    margin:0 0 0 5px;
+    font-size:11px;
+  }
+
+  .tableWrap td:nth-child(3){
+    grid-column:2;
+    grid-row:2;
+    align-self:center;
+    text-align:right;
+  }
+
+  .tableWrap td:nth-child(4){
+    grid-column:1/-1;
+    overflow:hidden;
+    color:#6d8178;
+    font-size:12px;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .tableWrap td:nth-child(4):empty{
+    display:none;
+  }
+
+  .statusBadge{
+    min-height:24px;
+    padding:4px 8px;
+    font-size:11px;
+    white-space:nowrap;
+  }
+}
+/* MOBILE COMPACT HISTORY END */
